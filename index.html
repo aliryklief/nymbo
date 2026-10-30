@@ -199,6 +199,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div class="card">
     <div class="lbl">ROOM CODE</div>
     <div id="lobbyCode" class="logo" style="font-size:clamp(56px,18vw,88px);letter-spacing:.08em">----</div>
+    <div id="lobbyWorld" class="lbl" style="margin:0"></div>
     <p id="lobbyMsg" class="rules" style="text-align:center;margin:0"></p>
     <ul id="lobbyList"></ul>
     <button class="go" id="lobbyStart" hidden>START MATCH</button>
@@ -3934,7 +3935,7 @@ function netStatus(t) { $('lobbyMsg').textContent = t; }
 function lobbyShow(code, list, isHost) {
   show(null); $('lobby').hidden = false; $('lobbyCode').textContent = code;
   $('lobbyList').innerHTML = robots.map((r, i) => { const p = list.find(x => x.idx === i); return `<li style="--c:${r.color}"><i></i><b>${p ? p.name.replace(/</g, '') : 'Bot'}</b><span>${r.team === 'blue' ? 'BLUE' : 'RED'}</span></li>`; }).join('');
-  $('lobbyStart').hidden = !isHost;
+  $('lobbyStart').hidden = !isHost; $('lobbyWorld').textContent = isHost || (NET && NET.me >= 0) ? (NIGHT ? '✦ AURORA NIGHT' : '☀ DAY') : '';
 }
 
 // ---------------- HOST ----------------
@@ -3972,7 +3973,7 @@ function hostMsg(c, m) {
     const used = new Set(N.list.map(p => p.idx)), idx = SEATS.find(i => !used.has(i));
     if (idx === undefined) { c.send(JSON.stringify({ t: 'busy' })); return; }
     c.robot = robots[idx]; c.ready = true; N.conns.push(c); N.list.push({ idx, name: String(m.name || 'Player').slice(0, 12), conn: c });
-    c.send(JSON.stringify({ t: 'seat', idx, code: N.code }));
+    c.send(JSON.stringify({ t: 'seat', idx, code: N.code, world: NIGHT ? 'night' : 'day' })); // everyone plays in the host's world
     hostLobbyUpdate(); sfx('ui');
     return;
   }
@@ -4081,7 +4082,12 @@ async function netJoin(code) {
 function clientMsg(m) {
   const N = NET;
   if (m.t === 'busy') { netStatus('That match has already started or is full.'); return; }
-  if (m.t === 'seat') { N.me = m.idx; netStatus('You are in! Waiting for the host to start…'); return; }
+  if (m.t === 'seat') {
+    if ((m.world === 'night') !== NIGHT) { // the host plays in the other world: switch to it (the page reloads and re-joins by itself)
+      S.world = m.world; saveS(); netStatus(m.world === 'night' ? 'Switching to Aurora night…' : 'Switching to Day…'); N.peer.destroy(); setTimeout(() => location.reload(), 400); return;
+    }
+    N.me = m.idx; netStatus('You are in! Waiting for the host to start…'); return;
+  }
   if (m.t === 'lobby') { lobbyShow(N.code, m.list, false); netStatus(N.me >= 0 ? 'You are ' + (robots[N.me].team === 'blue' ? 'BLUE' : 'RED') + '. Waiting for the host to start…' : 'Joining…'); return; }
   if (m.t === 'start') {
     $('lobby').hidden = true; $('againBtn').textContent = 'WAITING FOR HOST…'; $('againBtn').disabled = true;
