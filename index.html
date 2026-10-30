@@ -245,6 +245,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 <div id="loading">NYMBO</div>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/","rapier":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/rapier.es.js"}}</script>
+<script>window.NYMBO_FILES=["alert", "alert_2", "alert_3", "amb_bed", "amb_birds", "amb_grass", "amb_night", "amb_night_2", "amb_night_3", "amb_trees", "amb_wind", "amb_wind_2", "amb_wind_3", "baa", "baa1", "baa2", "baa3", "baa4", "baa5", "baa6", "baa7", "baa8", "baa9", "baaAngry", "baaAngry_2", "baaAngry_3", "baa_2", "baa_3", "beep", "blackout", "blackout_2", "blackout_3", "boom", "boom1", "boom2", "boom_2", "boom_3", "boom_big", "boom_big_2", "boom_big_3", "boom_tail", "boom_tail_2", "boost", "boost_2", "boost_3", "catch", "catch_2", "catch_3", "cheer", "chimes", "chirp_blue", "chirp_blue_2", "chirp_blue_3", "chirp_red", "chirp_red_2", "chirp_red_3", "clonk", "clonk1", "clonk2", "clonk3", "clonk_2", "clonk_3", "clonk_big", "clonk_big_2", "clonk_big_3", "cloth", "confirm", "crow", "crow_2", "crow_3", "crumble", "crumble1", "crumble2", "crumble_2", "crumble_3", "defeat", "defeat_2", "denied", "denied_2", "denied_3", "dodge", "dodge_2", "dodge_3", "flagDrop", "flagDrop_2", "flagDrop_3", "flagGrab", "flagGrab_2", "flagGrab_3", "flagdrop", "freeze", "freeze_2", "freeze_3", "full", "full_2", "full_3", "glock", "go", "go_2", "go_3", "gong", "grab", "grab1", "grab2", "grab3", "grab_2", "grab_3", "grab_bomb", "grab_bomb_2", "grab_bomb_3", "grab_freeze", "grab_freeze_2", "grab_freeze_3", "grab_homing", "grab_homing_2", "heart", "hit", "hit1", "hit2", "hit3", "hit_2", "hit_3", "hole", "hoof", "hoof_2", "hoof_3", "ice_crack", "ice_crack_2", "ice_crack_3", "impact_stone", "impact_stone_2", "impact_stone_3", "impact_wood", "impact_wood_2", "impact_wood_3", "intro", "intro_2", "invis", "invis_2", "invis_3", "jet", "jet_2", "jump", "jump2", "jump_2", "jump_3", "ko", "ko_2", "ko_3", "land", "land2", "land_2", "land_3", "lightsOn", "lightsOn_2", "lightsOn_3", "lock", "lose", "lose_2", "lose_3", "moo", "moo1", "moo2", "moo3", "moo4", "moo5", "mooAngry", "mooAngry_2", "mooAngry_3", "moo_2", "moo_3", "nuke", "nuke_rumble", "pad", "pad_2", "pad_3", "plop", "poof", "poof_2", "poof_3", "pop", "portal", "portal_2", "portal_3", "portal_hum", "powerdown", "powerup", "reload", "reload_2", "reload_3", "repair", "repair_2", "repair_3", "respawn", "respawn_2", "respawn_3", "roll", "score", "score_2", "score_3", "servo", "servo_2", "servo_3", "shatter", "shatter1", "shatter2", "shatter_2", "shatter_3", "siren", "slide", "slide_2", "slowmo", "slowmo_2", "snort", "snort_2", "snort_3", "streak", "streak_2", "streak_3", "swoop", "throw", "throw1", "throw2", "throw3", "throw_2", "throw_3", "tick", "tornado", "tramp", "ui", "v_cow", "v_dark", "v_frozen", "v_gotit", "v_ice", "v_invis", "v_nuke", "v_oops", "v_ouch", "v_returned", "v_run", "v_scored", "v_slow", "v_stolen", "v_theyscored", "v_tornado", "v_visible", "visible", "visible_2", "vjump1", "vjump2", "vjump3", "whoosh_big", "whoosh_big_2", "whoosh_big_3", "whoosh_long", "win", "win_2"]</script>
 <script type="module">
 // ============================================================
 // NYMBO · match test build
@@ -1360,7 +1361,7 @@ function audioInit() {
     noiseBuf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     bus = master; send = AC.createGain(); send.gain.value = .3; send.connect(verb);
-    ambBus = AC.createGain(); ambBus.gain.value = 0; ambBus.connect(master);
+    ambBus = AC.createGain(); ambBus.gain.value = 0; mixInit(); ambBus.connect(worldOut());
     startAmbience();
     document.addEventListener('click', e => { if (e.target.closest && e.target.closest('button')) sfx('ui'); }, true);
   } catch (e) { AC = null; }
@@ -1563,12 +1564,12 @@ function sfx(name, pos, arg) {
     if (pn.positionX) { pn.positionX.value = pos.x; pn.positionY.value = pos.y; pn.positionZ.value = pos.z; } else pn.setPosition(pos.x, pos.y, pos.z);
     let tail = g;
     if (far > .08) { const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 17000 - far * 14000; tail.connect(lp); tail = lp; }
-    tail.connect(pn); pn.connect(master);
+    tail.connect(pn); pn.connect(worldOut()); // through the world channel (ducking, KO muffle, slow-mo, bass)
     sg.gain.value = .05 + far * .35; sg.connect(field); // mostly dry up close, a hint of echo far away
   } else {
     g.connect(master); sg.gain.value = .25; sg.connect(verb); // menu / score / bell sounds: unchanged
   }
-  const ob = bus, os = send; bus = g; send = sg; PV = rr(.97, 1.03);
+  const ob = bus, os = send; bus = g; send = sg; PV = rr(.96, 1.04) * (MIX ? MIX.pitch : 1); // a little different every time, deeper in slow-mo
   try { (typeof fn === 'function' ? fn : SFX_SYNTH[name])(arg); } finally { bus = ob; send = os; PV = 1; }
 }
 const listenerAt = V(0, 0, 0);
@@ -1612,6 +1613,7 @@ function updateAmbience(dt) {
   if (!AC || !amb) return;
   placeListener();
   if (typeof updateMood === 'function') updateMood(dt); // happy / anxious / scary soundscape
+  if (typeof updateMix === 'function') updateMix(dt);
   const t = AC.currentTime, on = S.sound ? (match.state === 'menu' ? .6 : 1) : 0;
   ambBus.gain.setTargetAtTime(on * .6, t, .8);
   if (typeof updateAmbienceReal === 'function') updateAmbienceReal(dt);
@@ -1624,7 +1626,7 @@ function updateAmbience(dt) {
     M.lp.frequency.setTargetAtTime(170 + M.rev * 160, t, .15); M.wob.frequency.setTargetAtTime(5 + M.rev * 6, t, .2);
     const vol = live ? .03 * clamp((M.rev - .15) / .5, 0, 1) : 0; M.g.gain.setTargetAtTime(vol, t, .25); M.wobG.gain.setTargetAtTime(vol * .25, t, .25); // silent when standing still
   }
-  if (!S.classic) { for (const h of amb.hums) h.g.gain.setTargetAtTime(listenerAt.distanceTo(h.pos) < 22 ? .05 : 0, AC.currentTime, .6); return; } // the portal hum is shared by both sets
+  if (!S.classic) { for (const h of amb.hums) h.g.gain.setTargetAtTime(0, AC.currentTime, .6); return; } // (the recorded portal hum plays instead) // the portal hum is shared by both sets
   // breezes roll through the grass, sometimes on one side, sometimes the other, with calm gaps
   for (const [key, side] of [['gustL', 'grassL'], ['gustR', 'grassR']]) {
     amb[key] -= dt; if (amb[key] > 0) continue;
@@ -1679,8 +1681,7 @@ const SOUND_FILES = ['alert', 'amb_trees', 'baa1', 'baa2', 'baa3', 'baa4', 'baa5
   'cheer', 'chimes', 'clonk1', 'clonk2', 'clonk3', 'clonk_big', 'cloth', 'confirm', 'crumble1', 'crumble2', 'denied', 'dodge', 'flagdrop', 'freeze', 'full', 'glock', 'gong',
   'grab1', 'grab2', 'grab3', 'grab_bomb', 'grab_freeze', 'grab_homing', 'heart', 'hit1', 'hit2', 'hit3', 'hoof', 'ice_crack', 'impact_stone', 'impact_wood', 'jump', 'jump2',
   'ko', 'land', 'land2', 'lock', 'moo1', 'moo2', 'moo3', 'moo4', 'moo5', 'nuke_rumble', 'plop', 'pop', 'portal', 'powerdown', 'powerup', 'reload', 'respawn', 'roll',
-  'shatter1', 'shatter2', 'siren', 'throw1', 'throw2', 'throw3', 'tick', 'ui', 'whoosh_big', 'whoosh_long', 'tramp', 'vjump1', 'vjump2', 'vjump3',
-  'v_run', 'v_gotit', 'v_scored', 'v_theyscored', 'v_stolen', 'v_returned', 'v_ouch', 'v_frozen', 'v_oops', 'v_cow', 'v_nuke', 'v_ice', 'v_tornado', 'v_dark', 'v_slow', 'v_invis', 'v_visible'];
+  'shatter1', 'shatter2', 'siren', 'throw1', 'throw2', 'throw3', 'tick', 'ui', 'whoosh_big', 'whoosh_long', 'tramp'];
 const LOOPS = { amb_bed: { start: .25, len: 40 }, amb_grass: { start: .25, len: 30 }, amb_trees: { start: .25, len: 24 }, roll: { start: .15, len: 4 } };
 const BUF = {}; let realLoading = false;
 // (the downloadable one-file version carries its sounds inside the file as NYMBO_SOUNDS)
@@ -1738,7 +1739,7 @@ Object.assign(SFX_REAL, {
   ko: R('ko', () => play('ko', .55, rr(.95, 1.08))),
   boing: R('ko', () => play('ko', .35, 1.3)),
   jump: R('jump', () => play('jump', .4, rr(.95, 1.08))),
-  vjump: R('vjump1', (second) => { play('vjump' + (1 + Math.floor(Math.random() * 3)), .8, 1, 0, false); }), // your robot shouts a happy "Jump!" (both jumps)
+  vjump: R('jump', (second) => play(second ? 'jump2' : 'jump', .5, rr(.95, 1.08))),
   jump2: R('jump2', () => play('jump2', .45, rr(1, 1.1))),
   land: R('land', () => play(Math.random() < .5 ? 'land' : 'land2', .55)),
   heart: R('heart', () => { play('heart', 1, .8); play('heart', .7, .75, .15); }),
@@ -1912,6 +1913,211 @@ function updateMood(dt) {
       if (d > dt * 4.5 && o.servoT <= 0 && rPos(o).distanceTo(rPos(P)) < 18) { o.servoT = rr(.8, 1.6); servoWhir(o, o === P ? .6 : .9); } } // a quick servo whirr on sharp turns
   }
 }
+
+// ============================================================
+// SOUND SET 3: the AI-made sounds (Stable Audio Open Small, polished by tools/pick.py).
+// Every sound has up to three takes (name, name_2, name_3) played round-robin with a little pitch wobble, so
+// nothing repeats exactly. Layers are stacked where one sample isn't enough (a nuke is a nuke + a big boom + a
+// long tail). This file overrides the older sample set's entries; "Classic sounds" still switches to the synth set.
+// ============================================================
+const V3 = ['clonk', 'clonk_big', 'crumble', 'throw', 'catch', 'grab', 'grab_bomb', 'grab_freeze', 'grab_homing', 'impact_stone', 'impact_wood',
+  'hit', 'ko', 'land', 'jump', 'dodge', 'respawn', 'reload', 'denied', 'full', 'servo', 'chirp_blue', 'chirp_red',
+  'freeze', 'shatter', 'ice_crack', 'slide', 'boom', 'boom_big', 'boom_tail', 'nuke', 'siren', 'jet', 'tornado', 'blackout', 'lightsOn', 'slowmo', 'invis', 'visible', 'whoosh_big', 'whoosh_long',
+  'portal', 'portal_hum', 'pad', 'boost', 'repair', 'hole', 'amb_wind', 'amb_trees', 'amb_birds', 'amb_night', 'crow',
+  'flagGrab', 'flagDrop', 'alert', 'score', 'lose', 'streak', 'win', 'defeat', 'beep', 'go', 'tick', 'heart', 'intro', 'lock', 'ui', 'swoop',
+  'moo', 'mooAngry', 'baa', 'baaAngry', 'hoof', 'snort', 'poof'];
+{ const have = window.NYMBO_SOUNDS ? new Set(Object.keys(NYMBO_SOUNDS)) : window.NYMBO_FILES ? new Set(NYMBO_FILES) : null; // only ask for takes that exist
+  for (const n of V3) for (const s of ['', '_2', '_3']) if ((!have || have.has(n + s)) && !SOUND_FILES.includes(n + s)) SOUND_FILES.push(n + s); }
+Object.assign(LOOPS, { amb_wind: { start: 0, len: 7.9 }, amb_night: { start: 0, len: 7.9 }, amb_birds: { start: 0, len: 7.9 }, amb_trees: { start: 0, len: 7.9 }, portal_hum: { start: 0, len: 7.9 }, slide: { start: .1, len: 5 } });
+// a random available take of a sound
+const takeOf = n => { const o = [n, n + '_2', n + '_3'].filter(k => BUF[k]); return o.length ? o[Math.floor(Math.random() * o.length)] : null; };
+const pl = (n, vol = 1, rate = 1, delay = 0, wet = true) => { const k = takeOf(n); return k ? play(k, vol, rate * rr(.96, 1.04), delay, wet) : null; };
+const R3 = (need, fn) => ({ need, fn });
+Object.assign(SFX_REAL, {
+  // blocks
+  impact: R3('clonk', (s = 1) => { if (s > 2.2) { pl('clonk_big', .75, clamp(1.15 / Math.sqrt(s), .7, 1.05)); } else pl('clonk', .6, clamp(1.2 / Math.sqrt(s), .85, 1.35)); }),
+  crumble: R3('crumble', () => { pl('crumble', .8); pl('clonk_big', .4, .9, .05); }),
+  throw: R3('throw', () => pl('throw', .7)),
+  catch: R3('catch', () => { pl('catch', .9); pl('grab', .4, 1.1, .03); }),
+  grab: R3('grab', () => pl('grab', .7)),
+  grab_bomb: R3('grab_bomb', () => { pl('grab', .5); pl('grab_bomb', .6, 1, .02); }),
+  grab_freeze: R3('grab_freeze', () => { pl('grab', .5); pl('grab_freeze', .6, 1, .02); }),
+  grab_homing: R3('grab_homing', () => { pl('grab', .5); pl('grab_homing', .6, 1, .02); }),
+  // robots
+  hit: R3('hit', () => { pl('hit', .95); pl('clonk', .35, .8, .01); }),
+  ko: R3('ko', () => pl('ko', .7)),
+  land: R3('land', () => pl('land', .5)),
+  jump: R3('jump', () => pl('jump', .45)),
+  vjump: R3('jump', second => pl('jump', .5, second ? 1.18 : 1)),
+  jump2: R3('jump', () => pl('jump', .45, 1.18)),
+  dodge: R3('dodge', () => pl('dodge', .7)),
+  respawn: R3('respawn', () => pl('respawn', .6)),
+  reload: R3('reload', () => pl('reload', .5)),
+  denied: R3('denied', () => pl('denied', .55)),
+  full: R3('full', () => pl('full', .7)),
+  // freeze and ice
+  freeze: R3('freeze', () => { pl('freeze', .9); pl('ice_crack', .5, 1, .08); }),
+  shatter: R3('shatter', () => { pl('shatter', .9); pl('ice_crack', .4, 1.1, .02); }),
+  boing: R3('land', () => pl('land', .35, 1.3)),
+  // explosions and powers
+  boom: R3('boom', () => { pl('boom', 1); pl('boom_tail', .45, 1, .12); }),
+  nuke: R3('nuke', () => { pl('nuke', 1); pl('boom_big', .9, .85, .05); pl('boom_tail', .7, .8, .6); }),
+  siren: R3('siren', () => pl('siren', .55, 1, 0, false)),
+  jet: R3('jet', () => pl('jet', .9)),
+  tornado: R3('tornado', () => pl('tornado', .9)),
+  blackout: R3('blackout', () => pl('blackout', .8)),
+  lightsOn: R3('lightsOn', () => pl('lightsOn', .6)),
+  slowmo: R3('slowmo', () => pl('slowmo', .85)),
+  invis: R3('invis', () => pl('invis', .6)),
+  visible: R3('visible', () => pl('visible', .6)),
+  swoop: R3('swoop', () => pl('swoop', .7)),
+  // world
+  portal: R3('portal', () => pl('portal', .7)),
+  pad: R3('pad', () => { pl('pad', .9); pl('whoosh_big', .3, 1.3, .08); }),
+  boost: R3('boost', () => pl('boost', .8)),
+  repair: R3('repair', () => pl('repair', .6)),
+  hole: R3('hole', () => { pl('hole', .9); pl('shatter', .5, .9, .05); }),
+  // flags, scoring, match
+  flagGrab: R3('flagGrab', () => pl('flagGrab', .85, 1, 0, false)),
+  flagDrop: R3('flagDrop', () => pl('flagDrop', .7)),
+  alert: R3('alert', () => pl('alert', .7, 1, 0, false)),
+  score: R3('score', () => pl('score', .9, 1, 0, false)),
+  lose: R3('lose', () => pl('lose', .7, 1, 0, false)),
+  streak: R3('streak', () => pl('streak', .8, 1, 0, false)),
+  win: R3('win', () => pl('win', .9, 1, 0, false)),
+  defeat: R3('defeat', () => pl('defeat', .85, 1, 0, false)),
+  beep: R3('beep', () => pl('beep', .5, 1, 0, false)),
+  go: R3('go', () => pl('go', .9, 1, 0, false)),
+  motif: R3('go', () => pl('go', .9, 1, 0, false)),
+  tick: R3('tick', () => pl('tick', .5, 1, 0, false)),
+  heart: R3('heart', () => pl('heart', 1, 1, 0, false)),
+  intro: R3('intro', () => pl('intro', .8, 1, 0, false)),
+  lock: R3('lock', () => pl('lock', .5, 1, 0, false)),
+  ui: R3('ui', () => pl('ui', .6, 1, 0, false)),
+  // animals
+  moo: R3('moo', () => pl('moo', .8)),
+  mooAngry: R3('mooAngry', () => pl('mooAngry', 1)),
+  baa: R3('baa', () => pl('baa', .7)),
+  baaAngry: R3('baaAngry', () => pl('baaAngry', 1)),
+  hoof: R3('hoof', () => pl('hoof', .6)),
+  snort: R3('snort', () => pl('snort', .7)),
+  poof: R3('poof', () => { pl('poof', .9); pl('baaAngry', .6, 1.1, .1); }),
+});
+// robot chatter and servos: the generated ones, placed where the robot is
+robotChatter = function (r, vol) {
+  const k = takeOf(r.team === P.team ? 'chirp_blue' : 'chirp_red'); if (!k) return;
+  const p = rPos(r), s = AC.createBufferSource(), g = AC.createGain(); s.buffer = BUF[k]; s.playbackRate.value = rr(.95, 1.08); g.gain.value = .35 * vol; s.connect(g); g.connect(moodPan({ x: p.x, y: p.y + 1, z: p.z })); s.start();
+};
+servoWhir = function (r, vol) {
+  const k = takeOf('servo'); if (!k) return;
+  const p = rPos(r), s = AC.createBufferSource(), g = AC.createGain(); s.buffer = BUF[k]; s.playbackRate.value = rr(.9, 1.15); g.gain.value = .3 * vol; s.connect(g); g.connect(moodPan({ x: p.x, y: p.y + .5, z: p.z })); s.start();
+};
+// the far-off spooky things when you're alone: the generated crow replaces the synth one half the time
+{ const spooky0 = spookyThing; spookyThing = function (vol) { const k = takeOf('crow'); if (k && Math.random() < .6) { const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = BUF[k]; g.gain.value = .5 * vol; s.connect(g); g.connect(moodPan(aroundYou(25, 45, rr(3, 10)))); s.start(); } else spooky0(vol); }; }
+// ambience: a soft wind bed (crickets at night), birds that swell when the mood is happy, the nearest tree rustling now and then
+updateAmbienceReal = function (dt) {
+  if (!ambR) return;
+  const t = AC.currentTime; ambR.bus.gain.setTargetAtTime(S.classic ? 0 : 1, t, .4);
+  const bedName = NIGHT ? 'amb_night' : 'amb_wind';
+  if (!ambR.started && BUF[bedName] && BUF.amb_trees) {
+    ambR.started = true;
+    const pn = AC.createPanner(); pn.panningModel = 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 5; pn.rolloffFactor = 1.3; pn.connect(ambR.bus); ambR.treePan = pn;
+    ambR.g.trees = loopSrc('amb_trees', pn, 0);
+    ambR.g.bed = loopSrc(bedName, ambR.bus, 0);
+    if (BUF.amb_birds) ambR.g.birds = loopSrc('amb_birds', ambR.bus, 0);
+  }
+  if (!ambR.started) return;
+  const live = match.state !== 'menu';
+  ambR.g.bed.gain.setTargetAtTime(live ? .16 : .1, t, 1.5);
+  if (ambR.g.birds) ambR.g.birds.gain.setTargetAtTime(mood && live && !NIGHT ? .12 * mood.w.happy : 0, t, 1.2);
+  let nt = null, nd = 1e9; for (const tr of TREES) { const d = Math.hypot(tr.x - listenerAt.x, tr.z - listenerAt.z); if (d < nd) { nd = d; nt = tr; } }
+  if (nt && !ambR.busy) setPos(ambR.treePan, { x: nt.x, y: nt.h + 1.5, z: nt.z });
+  ambR.rustle -= dt;
+  if (ambR.rustle <= 0) {
+    ambR.rustle = rr(7, 16);
+    if (nt && nd < 30) { const v = rr(.3, .7), hold = rr(1.2, 2.8), g = ambR.g.trees.gain; ambR.busy = true; g.cancelScheduledValues(t); g.setTargetAtTime(v, t, .6); g.setTargetAtTime(0, t + hold, .8); setTimeout(() => { ambR.busy = false; }, (hold + 3) * 1000); }
+  }
+};
+happyBird = function () {}; // (birdsong comes from the recorded bed now)
+// portals hum for real: the generated loop, placed at each portal
+{ const hum0 = startAmbienceReal; startAmbienceReal = function () { hum0(); setTimeout(() => { if (!BUF.portal_hum || !ambR) return; for (const Q of PORTALS) { const pn = AC.createPanner(); pn.panningModel = 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 4; pn.rolloffFactor = 1.4; pn.connect(ambR.bus); setPos(pn, Q.pos); loopSrc('portal_hum', pn, .22); } }, 4000); }; }
+
+// ============================================================
+// THE MIX: what makes the sound feel like a place and like a body, not a list of samples.
+//  - every in-world sound goes through one "world" channel: a low-pass (the world goes muffled when you're
+//    knocked out or time slows), a bass enhancer (so thumps still land on a phone speaker), and a ducker
+//    (a big explosion or a score pushes everything else down for a moment, then it swells back)
+//  - thrown blocks flying at YOU make a rising whistle that pans with them and pitches up as they close in
+//  - a knock-out: the world drops to a dull thud and a ring in your ears, then clears over a second
+//  - slow-mo: everything drops in pitch and goes dark and heavy
+//  - carrying a flag: the world gets slightly narrower and duller, so your heartbeat and footsteps stand out
+// ============================================================
+let MIX = null;
+function mixInit() {
+  if (!AC || MIX) return;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 20000; lp.Q.value = .5;
+  const duck = AC.createGain(); duck.gain.value = 1;
+  const world = AC.createGain(); world.gain.value = 1;
+  // bass enhancer: take the lows, soft-clip them (makes harmonics a small speaker CAN play), blend a little back in
+  const bl = AC.createBiquadFilter(); bl.type = 'lowpass'; bl.frequency.value = 160; bl.Q.value = .7;
+  const sh = AC.createWaveShaper(); const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(x * 3.2) * .9; } sh.curve = curve; sh.oversample = '2x';
+  const bh = AC.createBiquadFilter(); bh.type = 'highpass'; bh.frequency.value = 90; const bg = AC.createGain(); bg.gain.value = .35;
+  world.connect(lp); lp.connect(duck); duck.connect(master);
+  world.connect(bl); bl.connect(sh); sh.connect(bh); bh.connect(bg); bg.connect(duck);
+  const ring = AC.createOscillator(), ringG = AC.createGain(); ring.frequency.value = 3600; ringG.gain.value = 0; ring.connect(ringG); ringG.connect(master); ring.start(); // the ear-ring after a KO
+  MIX = { world, lp, duck, ring: ringG, duckT: 0, koT: 0, slow: 0, incoming: new Map(), pitch: 1 };
+}
+// every world sound and the ambience go through the world channel
+const worldOut = () => (MIX || mixInit(), MIX ? MIX.world : master);
+// push everything down for a moment (amount 0..1 = how hard, hold = seconds before it swells back)
+function mixDuck(amount = .5, hold = .12) {
+  if (!MIX) return; const t = AC.currentTime, g = MIX.duck.gain;
+  g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(1 - amount, t + .02); g.setTargetAtTime(1, t + hold, .35);
+}
+// you got knocked out: a thud of silence, then a ring that clears
+function mixKO() {
+  if (!MIX) return; const t = AC.currentTime;
+  MIX.lp.frequency.cancelScheduledValues(t); MIX.lp.frequency.setValueAtTime(20000, t); MIX.lp.frequency.exponentialRampToValueAtTime(420, t + .03); MIX.lp.frequency.exponentialRampToValueAtTime(20000, t + 1.6);
+  MIX.ring.gain.cancelScheduledValues(t); MIX.ring.gain.setValueAtTime(0, t); MIX.ring.gain.linearRampToValueAtTime(.035, t + .04); MIX.ring.gain.exponentialRampToValueAtTime(.0001, t + 1.8);
+  MIX.koT = 1.6; mixDuck(.7, .25);
+}
+function updateMix(dt) {
+  if (!AC) return; if (!MIX) mixInit(); if (!MIX) return;
+  const t = AC.currentTime, playing = typeof P !== 'undefined' && P && P.body && match.state === 'play';
+  // slow-mo: the world goes deep and heavy (the pitch of every new sound drops too, see PV in sfx)
+  const slow = playing && typeof PW !== 'undefined' && PW.slowT > 0 ? 1 : 0; MIX.slow += (slow - MIX.slow) * Math.min(1, dt * 6);
+  MIX.pitch = 1 - .3 * MIX.slow;
+  MIX.koT = Math.max(0, MIX.koT - dt);
+  if (MIX.koT <= 0) { // flag-carrier: a touch duller and more inward; slow-mo: dark
+    const flag = playing && P.stack[0] && P.stack[0].kind === 'flag';
+    const target = MIX.slow > .5 ? 1500 : flag ? 7000 : 20000;
+    MIX.lp.frequency.setTargetAtTime(target, t, .25);
+  }
+  // incoming! blocks flying at you whistle, panned where they are, pitching up as they close in
+  if (playing) {
+    const me = rPos(P); me.y += .6;
+    for (const e of blocks) {
+      if (!e.live || e.dead || !e.body || e.thrower === P || e.frozenT > 0) { const w = MIX.incoming.get(e); if (w) { stopIncoming(e, w); } continue; }
+      const p = e.body.translation(), v = e.body.linvel(), rel = V(me.x - p.x, me.y - p.y, me.z - p.z), d = rel.length(), vv = Math.hypot(v.x, v.y, v.z);
+      const closing = vv > 2 ? (rel.x * v.x + rel.y * v.y + rel.z * v.z) / (d * vv) : -1; // 1 = straight at you
+      const miss = d * Math.sqrt(Math.max(0, 1 - closing * closing));
+      const want = closing > .75 && miss < 4 && d < 30 && d > 1.2;
+      let w = MIX.incoming.get(e);
+      if (want && !w && BUF.whoosh_big) {
+        const s = AC.createBufferSource(), g = AC.createGain(), bp = AC.createBiquadFilter(), pn = AC.createPanner();
+        s.buffer = BUF.whoosh_big; s.loop = true; s.loopStart = .05; s.loopEnd = Math.min(s.buffer.duration - .05, .6); bp.type = 'bandpass'; bp.Q.value = 1.6; bp.frequency.value = 900;
+        pn.panningModel = 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 4; pn.rolloffFactor = 1; g.gain.value = 0;
+        s.connect(bp); bp.connect(g); g.connect(pn); pn.connect(MIX.world); s.start(); w = { s, g, bp, pn }; MIX.incoming.set(e, w);
+      }
+      if (w) {
+        if (!want) { stopIncoming(e, w); continue; }
+        setPos(w.pn, p); const k = clamp(1 - d / 30, 0, 1), vk = clamp(vv / 28, 0, 1);
+        w.g.gain.setTargetAtTime(.25 * k * (.4 + .6 * vk), t, .05); w.bp.frequency.setTargetAtTime(700 + 1800 * k + 600 * vk, t, .06); w.s.playbackRate.setTargetAtTime(.9 + k * .7 + vk * .3, t, .08);
+      }
+    }
+  } else for (const [e, w] of MIX.incoming) stopIncoming(e, w);
+}
+function stopIncoming(e, w) { const t = AC.currentTime; w.g.gain.setTargetAtTime(0, t, .04); try { w.s.stop(t + .25); } catch (x) {} MIX.incoming.delete(e); }
 
 // ============================================================
 // ROBOTS: round robots (refs 6/7), legs never move. Physics capsule bodies.
@@ -2121,7 +2327,7 @@ function ragdoll(r, dir, by, power = 1) {
   r.body.applyTorqueImpulse({ x: rr(-1, 1) * m * .6, y: rr(-1, 1) * m * .3, z: rr(-1, 1) * m * .6 }, true);
   r.model.eyesN.visible = false; r.model.eyesX.visible = true;
   r.stats.kos++; if (by) by.stats.hits++;
-  sfx('hit', rPos(r)); if (r.isPlayer) { say('v_ouch'); buzz('ko'); shake = Math.max(shake, .6); sfx('ko'); }
+  sfx('hit', rPos(r)); if (r.isPlayer) { toast('KNOCKED OUT'); mixKO(); buzz('ko'); shake = Math.max(shake, .6); sfx('ko'); }
   else if (by && by.isPlayer) { buzz('hit'); if (shattered) shake = Math.max(shake, .35); }
   onKO(r, by, shattered, hadFlag);
   return true;
@@ -2147,7 +2353,7 @@ function freezeRobot(r, dir) {
   const lv = r.body.linvel(), d = dir ? V(dir.x, 0, dir.z) : V(lv.x, 0, lv.z);
   r.slideV = d.lengthSq() > .01 ? d.normalize().multiplyScalar(7) : V(); // frozen solid and sliding off the way you were hit
   r.frozenT = FREEZE_TIME; setIce(r, true); r.dashV = 0; r.spinDir = rnd() < .5 ? 1 : -1; r.spin = 0;
-  if (r.isPlayer) { say('v_frozen'); buzz('frozen'); }
+  if (r.isPlayer) { toast('FROZEN ❄'); buzz('frozen'); }
   return true;
 }
 // frozen = the robot itself turns to ice (no big box around it)
@@ -2179,7 +2385,7 @@ function updateRobot(r, dt) {
     if (r.frozenT <= 0) unfreezeRobot(r); return;
   }
   const t = r.body.translation();
-  if (t.y < -16) { dropFlags(r); r.state = 'rag'; r.ragT = 0; if (r.isPlayer) say('v_oops'); return; }
+  if (t.y < -16) { dropFlags(r); r.state = 'rag'; r.ragT = 0; if (r.isPlayer) toast('FELL OFF'); return; }
   groundRay.origin = { x: t.x, y: t.y, z: t.z };
   const hit = world.castRay(groundRay, 1.08, true, undefined, undefined, r.col);
   const lv = r.body.linvel();
@@ -2263,7 +2469,7 @@ const score = { blue: 0, red: 0 };
 let match = { state: 'menu', time: MATCH_TIME, count: 0 };
 
 function explode(pos, team, by) {
-  fxBurst(pos, 0xff8a2a, BOMB_R * .8, .5); fxDebris(pos, 0xffa040, 30, 11); fxDebris(pos, 0x3a3d48, 14, 9); sfx('boom', pos);
+  fxBurst(pos, 0xff8a2a, BOMB_R * .8, .5); fxDebris(pos, 0xffa040, 30, 11); fxDebris(pos, 0x3a3d48, 14, 9); sfx('boom', pos); if (P && P.body) mixDuck(clamp(1 - pos.distanceTo(rPos(P)) / 30, 0, .6), .15);
   if (P && P.body) shake = Math.max(shake, Math.max(0, 1.1 - pos.distanceTo(rPos(P)) / 16));
   if (P && P.body && pos.distanceTo(rPos(P)) < 9) buzz('blast'); // only when it's close to you
   // everything nearby goes flying, including fort blocks
@@ -2437,8 +2643,8 @@ function handleContacts() {
 // ---------------- flags ----------------
 function onFlagTaken(f, r) {
   netEv(['flag', f.team, robots.indexOf(r)]);
-  if (f.team === P.team) { say('v_stolen', .25); buzz('stolen'); sfx('alert'); }
-  else if (r.isPlayer) { say('v_gotit', .15); sfx('flagGrab'); }
+  if (f.team === P.team) { bigToast('FLAG STOLEN!', 'red'); buzz('stolen'); sfx('alert'); }
+  else if (r.isPlayer) { bigToast('RUN!', 'blue'); sfx('flagGrab'); }
   else toast(`${r.name.toUpperCase()} HAS A RED FLAG`);
 }
 function updateFlags() {
@@ -2455,18 +2661,18 @@ function updateFlags() {
     if (inGate(enemy, p)) { scoreFlag(enemy, f, f.thrower); continue; }
     // your own team touching a loose flag sends it straight home
     // ...but not inside your own fort: a flag that falls in there stays put until someone steals it
-    if (!f.atHome && !f.live) { f.looseSince = f.looseSince ?? match.time; if (f.looseSince - match.time > 25 && !inOwnFort(f.team, p)) { resetFlag(f); f.looseSince = null; netEv(['ret', f.team]); if (f.team === P.team) say('v_returned'); continue; } } else f.looseSince = null;
+    if (!f.atHome && !f.live) { f.looseSince = f.looseSince ?? match.time; if (f.looseSince - match.time > 25 && !inOwnFort(f.team, p)) { resetFlag(f); f.looseSince = null; netEv(['ret', f.team]); if (f.team === P.team) toast('FLAG RETURNED'); continue; } } else f.looseSince = null;
     if (!f.atHome && !inOwnFort(f.team, p)) for (const r of robots) {
       if (r.team === f.team && r.state === 'play' && capsuleDist(r, p) < 1.7) {
         resetFlag(f);
-        netEv(['ret', f.team]); if (f.team === P.team) say('v_returned');
+        netEv(['ret', f.team]); if (f.team === P.team) toast('FLAG RETURNED');
         break;
       }
     }
   }
 }
 function scoreFlag(team, f, by) {
-  netEv(['score', team]);
+  netEv(['score', team]); mixDuck(.55, .5);
   score[team]++;
   if (by) by.stats.flags++;
   const g = GATES[team]; g.flash = 1;
@@ -2474,7 +2680,7 @@ function scoreFlag(team, f, by) {
   // a scored flag is gone for good (it doesn't go back on its tower)
   if (f.holder) { const h = f.holder; h.stack = h.stack.filter(x => x !== f); f.holder = null; refreshHeld(h); }
   destroyBlock(f); f.scored = true;
-  say(team === P.team ? 'v_scored' : 'v_theyscored', .7); // after the scoring jingle
+  bigToast(team === P.team ? (P.team === 'blue' ? 'BLUE SCORES!' : 'RED SCORES!') : (team === 'blue' ? 'BLUE SCORES' : 'RED SCORES'), team);
   buzz(team === P.team ? 'score' : 'theyScore'); sfx(team === P.team ? 'score' : 'lose');
   renderHud(true);
   if (score[team] >= WIN_FLAGS) endMatch();
@@ -2536,7 +2742,7 @@ function breakStage(pos, rad) {
   rebuildPits();
   // everything resting there drops: wake the blocks and animals so they actually fall
   for (const e of blocks) { if (e.dead || !e.body || e.holder) continue; const t = e.body.translation(); if (t.y < 3 && isHole(t.x, t.z)) { if (e.anchored) unanchorAround(V(t.x, t.y, t.z), .6); e.body.wakeUp && e.body.wakeUp(); } }
-  sfx('shatter', pos); fxDebris(V(pos.x, .2, pos.z), 0xd8f4ff, 40, 9); fxDebris(V(pos.x, .2, pos.z), 0x6b4a2e, 20, 6);
+  sfx('hole', pos); fxDebris(V(pos.x, .2, pos.z), 0xd8f4ff, 40, 9); fxDebris(V(pos.x, .2, pos.z), 0x6b4a2e, 20, 6);
   HOLE_GROUPS.push({ cells: smash, t: HOLE_BACK, at: pos.clone() });
 }
 function updateHoles(dt) {
@@ -3196,7 +3402,7 @@ function breakLoose(a, r) {
   a.mesh.userData.face.visible = true; a.mesh.material.emissive.setRGB(.55, 0, 0);
   sfx('mooAngry', at); sfx('snort', at);
   fxBurst(at, 0xff4a2a, 1.6, .35);
-  if (r.isPlayer) { say('v_cow'); buzz('cow'); shake = Math.max(shake, .4); }
+  if (r.isPlayer) { bigToast('RUN!', 'red'); buzz('cow'); shake = Math.max(shake, .4); }
 }
 function updateRage(a, dt) {
   const R = a.rage, t = a.body.translation(), p = V(t.x, t.y, t.z), lv = a.body.linvel();
@@ -3316,9 +3522,9 @@ function firePower(p, at) {
   PW.cool[p.id] = p.cd;
   if (p.id === 'nuke') nukeAt(at);
   else if (p.id === 'air') airStrikeAt(at);
-  else if (p.id === 'dark') { PW.darkT = DARK_T; sfx('blackout'); say('v_dark', .2); }
-  else if (p.id === 'slow') { PW.slowT = SLOW_T; sfx('slowmo'); say('v_slow', .2); for (const r of robots) if (isSlowed(r) && r.state === 'play') koPop(rPos(r), 'SLOW', '#ffd400'); }
-  else if (p.id === 'invis') { PW.invisT = INVIS_T; sfx('invis'); say('v_invis', .2); }
+  else if (p.id === 'dark') { PW.darkT = DARK_T; sfx('blackout'); bigToast('BLACKOUT', 'blue'); }
+  else if (p.id === 'slow') { PW.slowT = SLOW_T; sfx('slowmo'); mixDuck(.5, .3); bigToast('SLOW-MO', 'blue'); for (const r of robots) if (isSlowed(r) && r.state === 'play') koPop(rPos(r), 'SLOW', '#ffd400'); }
+  else if (p.id === 'invis') { PW.invisT = INVIS_T; sfx('invis'); toast('INVISIBLE · THROWING ENDS IT'); }
   else if (p.id === 'tornado') startTornado(at);
 }
 
@@ -3484,12 +3690,12 @@ function updateStrikes(dt) {
   }
 }
 function nukeAt(at) {
-  sfx('siren'); say('v_nuke', .3);
+  sfx('siren'); bigToast('NUKE INCOMING', 'blue');
   dropFromSky(at, 'nuke', 3, NUKE_KO, nukeBlast);
 }
 function nukeBlast(pos) {
   const team = P.team; pos = pos.clone().setY(.5);
-  sfx('nuke', pos); shake = Math.max(shake, 1.6); buzz('rumble');
+  sfx('nuke', pos); shake = Math.max(shake, 1.6); buzz('rumble'); mixDuck(.85, .6);
   flashEl.classList.remove('on'); void flashEl.offsetWidth; flashEl.classList.add('on');
   fxBurst(pos, 0xfff2c0, NUKE_KO * 1.2, 1.1); fxBurst(pos, 0xff6a2a, NUKE_R * 1.1, .9); fxBurst(pos, 0x2b2d33, NUKE_R * .7, 1.4);
   fxDebris(pos, 0xffa040, 70, 22); fxDebris(pos, 0x3a3d48, 50, 16); fxDebris(pos, 0xffe14a, 40, 26);
@@ -3521,7 +3727,7 @@ function nukeBlast(pos) {
   }
 }
 function airStrikeAt(at) {
-  sfx('jet'); say('v_ice', .2);
+  sfx('jet'); bigToast('ICE STRIKE', 'blue');
   zonesFor({ pick: 3 }, at).forEach((z, i) => dropFromSky(z, 'ice', 1.9 + i * .35, AIR_R, p => freezeArea(p.clone().setY(.6), P.team, P, AIR_R)));
 }
 // ---------- tornado ----------
@@ -3532,7 +3738,7 @@ function startTornado(at) {
   const g = new THREE.Group(); g.position.set(at.x, 0, at.z); scene.add(g);
   const rings = []; for (let i = 0; i < 11; i++) { const m = new THREE.Mesh(twGeo, twMat); const h = 2.6; m.position.y = .5 + i * h * .85; m.scale.set(1.3 + i * .85, h, 1.3 + i * .85); g.add(m); rings.push(m); } // a big funnel, ~25 blocks tall
   PW.tornado = { pos: at.clone().setY(0), t: TORNADO_T, dir: rnd() * 6.28, g, rings, hit: new Set(), puff: 0, snd: 0 };
-  sfx('tornado', at); say('v_tornado', .2);
+  sfx('tornado', at); bigToast('TORNADO', 'blue');
 }
 function endTornado() { const T = PW.tornado; if (!T) return; scene.remove(T.g); PW.tornado = null; }
 function updateTornado(dt) {
@@ -3596,7 +3802,7 @@ function updatePowers(dt) {
     if (PW.smoke.t <= 0) PW.smoke = null;
   }
   updateTornado(dt);
-  if (PW.invisT > 0) { PW.invisT -= dt; if (PW.invisT <= 0) { PW.invisT = 0; sfx('visible'); say('v_visible'); } }
+  if (PW.invisT > 0) { PW.invisT -= dt; if (PW.invisT <= 0) { PW.invisT = 0; sfx('visible'); toast('VISIBLE AGAIN'); } }
   if (PW.slowT > 0) for (const r of robots) if (isSlowed(r) && r.state === 'play' && rnd() < .3) { const c = rPos(r); emit(V(c.x + rr(-.4, .4), c.y + rr(-.2, 1.2), c.z + rr(-.4, .4)), 0xffd400, V(0, .6, 0), .14, .6, 0); } // slowed robots leave a golden shimmer
   if (PW.slowT > 0) { PW.slowT -= dt; if (PW.slowT <= 0) toast('SLOW-MO OVER'); }
   const was = PW.dark;
@@ -4112,9 +4318,9 @@ function clientEv(e) {
   else if (k === 'hole') { setHole(e[1], e[2], !!e[3]); NET.pits = true; }
   else if (k === 'tramp') { const Pd = PADS[e[1]]; if (Pd) { Pd.broken = !!e[2]; Pd.g.visible = !e[2]; if (!e[2]) Pd.grow = 0; } }
   else if (k === 'wool') woolHeap(V(e[1], 0, e[2]));
-  else if (k === 'flag') { if (e[1] === P.team) { say('v_stolen', .25); buzz('stolen'); sfx('alert'); } else if (e[2] === robots.indexOf(P)) { say('v_gotit', .15); sfx('flagGrab'); } }
-  else if (k === 'ret') { if (e[1] === P.team) say('v_returned'); }
-  else if (k === 'score') { const g = GATES[e[1]]; g.flash = 1; buzz(e[1] === P.team ? 'score' : 'theyScore'); sfx(e[1] === P.team ? 'score' : 'lose'); say(e[1] === P.team ? 'v_scored' : 'v_theyscored', .7); }
+  else if (k === 'flag') { if (e[1] === P.team) { bigToast('FLAG STOLEN!', 'red'); buzz('stolen'); sfx('alert'); } else if (e[2] === robots.indexOf(P)) { bigToast('RUN!', 'blue'); sfx('flagGrab'); } }
+  else if (k === 'ret') { if (e[1] === P.team) toast('FLAG RETURNED'); }
+  else if (k === 'score') { const g = GATES[e[1]]; g.flash = 1; buzz(e[1] === P.team ? 'score' : 'theyScore'); sfx(e[1] === P.team ? 'score' : 'lose'); bigToast(e[1] === 'blue' ? 'BLUE SCORES!' : 'RED SCORES!', e[1]); }
   else if (k === 'end') { setTimeout(() => endMatch(), 150); }
   else if (k === 'count') { if (match.state === 'menu') startCountdown(); }
   else if (k === 'toast') toast(e[1]);
@@ -4186,9 +4392,9 @@ function clientTick(dt, t) {
     const was = r.netSt ?? 0, nowSt = s.st, fl = s.fl;
     // what happens to YOU shows up here (the host decides it, this phone plays it)
     if (r === P) {
-      if (was === 0 && nowSt === 1) { if (y < -6) say('v_oops'); else { say('v_ouch'); buzz('ko'); shake = Math.max(shake, .6); sfx('ko'); } }
+      if (was === 0 && nowSt === 1) { if (y < -6) toast('FELL OFF'); else { toast('KNOCKED OUT'); mixKO(); buzz('ko'); shake = Math.max(shake, .6); sfx('ko'); } }
       if (was !== 0 && nowSt === 0) { sfx('respawn'); snapCamera = true; }
-      if (!(r.netFl & 1) && (fl & 1)) { say('v_frozen'); buzz('frozen'); }
+      if (!(r.netFl & 1) && (fl & 1)) { toast('FROZEN ❄'); buzz('frozen'); }
     }
     if (!(r.netFl & 4) && (fl & 4) && (r.netFl & 64)) r.model.sqv -= .5; // a little squash when landing
     r.state = nowSt === 0 ? 'play' : 'rag'; r.netSt = nowSt; r.netFl = fl | 64;

@@ -1,0 +1,41 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nymbo sound check</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Lexend:wght@400;600&display=swap">
+<style>
+body{margin:0;background:#0e1424;color:#fff;font-family:Lexend,system-ui,sans-serif;padding:16px}
+h1{font-family:'Lilita One';font-weight:400;font-size:40px;margin:0 0 4px}h1 span{color:#ffd400}
+p{color:#c3cee6;font-size:14px;margin:0 0 14px}
+h2{font-family:'Lilita One';font-weight:400;font-size:20px;margin:18px 0 8px;color:#ffd400}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.s{background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.14);border-radius:12px;padding:8px}
+.s b{display:block;font-weight:600;font-size:13px;margin-bottom:6px}
+.s i{display:block;font-style:normal;font-size:11px;color:#8c98b8;margin-bottom:6px}
+.s button{border:0;border-radius:8px;padding:7px 0;width:30%;margin-right:3%;background:#ffd400;color:#0e1424;font:600 13px Lexend;cursor:pointer}
+.s button:last-child{margin-right:0}.s button[disabled]{opacity:.25}
+#all{position:fixed;right:14px;bottom:14px;border:0;border-radius:999px;padding:12px 18px;background:#2aa2ff;color:#fff;font:600 14px Lexend}
+</style></head><body>
+<h1>NYM<span>BO</span> sound check</h1>
+<p>Tap a number to hear a take (1, 2, 3). Tell me the sound's name and what's wrong with it, e.g. "boom 2 is too soft" or "jump is annoying".</p>
+<div id="list"></div><button id="all">Play everything</button>
+<script>
+const G = {
+  'Blocks': ['clonk','clonk_big','crumble','throw','catch','grab','grab_bomb','grab_freeze','grab_homing','impact_stone','impact_wood'],
+  'Robots': ['hit','ko','land','jump','dodge','respawn','reload','denied','full','servo','chirp_blue','chirp_red'],
+  'Ice': ['freeze','shatter','ice_crack','slide'],
+  'Explosions and powers': ['boom','boom_big','boom_tail','nuke','siren','jet','tornado','blackout','lightsOn','slowmo','invis','visible','whoosh_big','whoosh_long'],
+  'World': ['portal','portal_hum','pad','boost','repair','hole','amb_wind','amb_trees','amb_birds','amb_night','crow'],
+  'Flags and match': ['flagGrab','flagDrop','alert','score','lose','streak','win','defeat','beep','go','tick','heart','intro','lock','ui','swoop'],
+  'Animals': ['moo','mooAngry','baa','baaAngry','hoof','snort','poof'],
+};
+const DESC = {};
+const list = document.getElementById('list'); let cur = null;
+const playFile = f => { if (cur) { cur.pause(); } cur = new Audio('sounds/' + f + '.mp3'); cur.play().catch(() => {}); return cur; };
+for (const [grp, names] of Object.entries(G)) {
+  const h = document.createElement('h2'); h.textContent = grp; list.appendChild(h); const g = document.createElement('div'); g.className = 'g'; list.appendChild(g);
+  for (const n of names) {
+    const d = document.createElement('div'); d.className = 's'; d.innerHTML = `<b>${n}</b>` + [1, 2, 3].map(k => `<button data-f="${k === 1 ? n : n + '_' + k}">${k}</button>`).join('');
+    g.appendChild(d);
+    d.querySelectorAll('button').forEach(b => { fetch('sounds/' + b.dataset.f + '.mp3', { method: 'HEAD' }).then(r => { if (!r.ok) b.disabled = true; }).catch(() => b.disabled = true); b.onclick = () => playFile(b.dataset.f); });
+  }
+}
+document.getElementById('all').onclick = async () => { for (const names of Object.values(G)) for (const n of names) { const a = playFile(n); await new Promise(r => { a.onended = r; a.onerror = r; setTimeout(r, 4000); }); await new Promise(r => setTimeout(r, 350)); } };
+</script></body></html>

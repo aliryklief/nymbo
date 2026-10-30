@@ -58,3 +58,9 @@ sound set is kept and can be switched back on with **Classic sounds** in the pau
 - `tramp.mp3` (hidden trampoline): from the CC0 "100 CC0 SFX" pack (spring_02), OpenGameArt.
 - `vjump1-3.mp3` (your robot shouting "Jump!"): generated with the Piper text-to-speech voice `en_US-kristin-medium`
   (trained on public-domain LibriVox recordings), pitched up about 3 semitones for a younger voice.
+
+## Sound set 3 (current)
+Most sound effects were generated with Stable Audio Open Small (Stability AI Community License; outputs are owned by
+the creator) from text descriptions written for Nymbo, then chosen and polished by tools/pick.py. Powered by Stability AI.
+A few precise UI sounds (heartbeat, countdown beep, clock tick, lock-on, menu click) are synthesised in code (tools/synth_small.py).
+Before Nymbo earns money: register (free) at https://stability.ai/community-license and keep this credit visible in the game's about page.
