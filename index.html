@@ -30,8 +30,11 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #sB{color:#5cc0ff}#sR{color:#ff6a5a}
 #timer{font-family:var(--display);font-size:20px;line-height:1;font-variant-numeric:tabular-nums;min-width:46px;text-align:center}
 #timer.low{color:var(--yellow)}
-/* bottom ammo pill */
-#ammo{bottom:calc(env(safe-area-inset-bottom,0px) + 10px);left:50%;transform:translateX(-50%);display:flex;align-items:flex-end;gap:8px;padding:6px 10px 6px 6px;border-radius:16px;background:var(--panel);border:1.5px solid var(--line)}
+/* left-side ammo magazine: the block in your hands sits in the top "chamber", the next ones stack below it, the count at the bottom */
+#ammo{left:calc(env(safe-area-inset-left,0px) + 8px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;padding:6px 6px 8px;border-radius:16px;background:var(--panel);border:1.5px solid var(--line)}
+#micBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:8;padding:8px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--panel);color:#fff;font:600 12px/1 var(--body);letter-spacing:.08em}
+#micBtn.on,#lobbyMic.on{background:#1f8f4a;border-color:#4be08a}
+#micBtn.busy{opacity:.6}
 #reload{left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;opacity:0;transition:opacity .15s}
 #reload.on{opacity:1}
 #reload svg{width:100%;height:100%;animation:spin .7s linear infinite}
@@ -41,12 +44,12 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #aNow{width:54px;height:54px;display:block}
 #aNowBox.pop{animation:apop .22s ease-out}
 @keyframes apop{0%{transform:scale(.82)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
-#aNext{display:grid;gap:2px;justify-items:start}
+#aNext{display:grid;gap:3px;justify-items:center}
 #aNext span{font:600 8.5px/1 var(--body);letter-spacing:.18em;color:var(--muted);padding-left:2px}
-#aNext div{display:flex;align-items:flex-end;gap:4px}
+#aNext div{display:flex;flex-direction:column;align-items:center;gap:4px}
 #aN1{width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.06)}
 #aN2{width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,.04);opacity:.8}
-#cnt{font-family:var(--display);font-weight:400;font-size:22px;line-height:1;min-width:22px;text-align:right;font-variant-numeric:tabular-nums;align-self:center}
+#cnt{font-family:var(--display);font-weight:400;font-size:20px;line-height:1;text-align:center;font-variant-numeric:tabular-nums;border-top:1px solid var(--line);padding-top:5px;width:100%}
 #cnt small{display:block;font:600 8.5px/1 var(--body);letter-spacing:.14em;color:var(--muted);margin-top:2px}
 /* crosshair, warnings, toasts */
 #cross{left:0;top:0;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:2.5px solid rgba(255,255,255,.85);box-shadow:0 0 0 2px rgba(0,0,0,.2);transition:width .12s,height .12s,margin .12s,border-color .12s}
@@ -75,6 +78,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #vig.on.beat{animation:beat .4s ease-out}
 @keyframes beat{0%{opacity:.95}100%{opacity:.45}}
 #pwr{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:7}
+#shieldBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);top:calc(50% + 190px);z-index:7;width:52px;height:52px}
 .pw{pointer-events:auto;position:relative;width:46px;height:46px;border-radius:50%;border:2.5px solid var(--c);background:rgba(10,14,26,.62);color:var(--c);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 rgba(0,0,0,.3);touch-action:none;-webkit-tap-highlight-color:transparent}
 .pw svg{width:24px;height:24px;position:relative;z-index:1}
 .pw i{position:absolute;inset:-2px;border-radius:50%;background:conic-gradient(rgba(0,0,0,.62) calc(var(--k,0)*360deg),transparent 0)}
@@ -95,7 +99,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #count{top:45%;left:50%;transform:translate(-50%,-50%);font-family:var(--display);font-size:96px;text-shadow:0 6px 0 rgba(0,0,0,.3)}
 /* landscape buttons */
 #lbtns{display:none}
-@media (orientation:landscape){#lbtns{display:block}#pwr{flex-direction:row;top:calc(env(safe-area-inset-top,0px) + 58px);left:calc(env(safe-area-inset-left,0px) + 10px);right:auto;transform:none}}
+@media (orientation:landscape){#lbtns{display:block}#shieldBtn{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 64px)}#pwr{flex-direction:row;top:calc(env(safe-area-inset-top,0px) + 58px);left:calc(env(safe-area-inset-left,0px) + 10px);right:auto;transform:none}}
 .lbtn{position:fixed;pointer-events:auto;border-radius:50%;display:grid;place-items:center;font-family:var(--display);letter-spacing:.04em;color:#fff;border:3px solid rgba(255,255,255,.5);box-shadow:0 6px 16px rgba(0,0,0,.3);touch-action:none;cursor:pointer;font-size:14px;opacity:.85}
 .lbtn.down{transform:scale(.92);filter:brightness(1.2)}
 #bThrow{right:calc(env(safe-area-inset-right,0px) + 26px);bottom:calc(env(safe-area-inset-bottom,0px) + 30px);width:92px;height:92px;background:rgba(255,212,0,.85);color:var(--ink);font-size:18px}
@@ -137,6 +141,18 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 #lobbyList li i{width:14px;height:14px;border-radius:4px;background:var(--c);flex:none}
 #lobbyList li b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #lobbyList li span{font-size:10px;letter-spacing:.12em;color:var(--muted)}
+.labsnd{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}.labsnd b{font-weight:600}.labsnd .src{display:block;font-size:11px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}.chip{display:inline-flex;align-items:center;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden}
+.chip button{border:0;background:transparent;color:#fff;font:600 12px var(--body);padding:7px 9px;cursor:pointer}.chip .cp{background:rgba(255,212,0,.25);color:var(--yellow)}
+.chip.on{background:var(--yellow)}.chip.on button{color:var(--ink)}.chip.on .cp{background:rgba(0,0,0,.12);color:var(--ink)}
+.chip.up{padding:7px 9px;font:600 12px var(--body);color:var(--muted);cursor:pointer;border:1.5px dashed rgba(255,255,255,.25);background:transparent}
+.chip .thumb{width:26px;height:26px;margin-left:5px;border-radius:6px;background:#22304f center/cover;flex:none}
+.labrow{display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}
+.labrow b{font-weight:600}.labrow .src{display:block;font-size:11px;color:var(--muted);grid-column:1;margin-top:-2px}
+.labrow.look{grid-template-columns:40px 1fr auto auto}.labrow .thumb{width:40px;height:40px;border-radius:8px;background:#22304f center/cover}
+.labrow button,.labrow .lu{border:0;border-radius:8px;padding:7px 10px;font:600 12px var(--body);cursor:pointer;background:rgba(255,255,255,.12);color:#fff}
+.labrow .lp{background:var(--yellow);color:var(--ink)}.labrow .lr{background:rgba(255,77,64,.35)}
+#soundList h3{font-family:var(--display);font-weight:400;font-size:16px;color:var(--yellow);margin:12px 0 2px}
 .tog{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin:10px 0}
 .tog input{width:22px;height:22px;accent-color:var(--yellow)}
 #endTitle{font-family:var(--display);font-size:clamp(48px,15vw,76px);text-align:center;line-height:1;text-shadow:0 5px 0 rgba(0,0,0,.3)}
@@ -169,6 +185,8 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div id="vig"></div>
   <div id="thief" hidden><b></b><i></i></div>
   <div id="pwr"></div>
+  <button class="pw" id="shieldBtn" style="--c:#ffffff" aria-label="SHIELD"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v6c0 5.2 3.4 9.6 8 11 4.6-1.4 8-5.8 8-11V5z" opacity=".35"/><path d="M12 4.2 6 6.4v4.6c0 4.1 2.5 7.6 6 8.9 3.5-1.3 6-4.8 6-8.9V6.4z"/></svg><i></i></button>
+  <button id="micBtn" hidden>🎤 off</button>
   <div id="flash"></div>
   <div class="hud" id="count" hidden>3</div>
   <div class="warn" id="wl"></div><div class="warn" id="wr"></div><div class="warn" id="wt"></div><div class="warn" id="wb"></div>
@@ -193,6 +211,21 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <div class="net"><input id="netName" maxlength="12" placeholder="Your name" autocomplete="off"><button class="ghost" id="hostBtn">HOST</button></div>
     <div class="net"><input id="netCode" inputmode="numeric" maxlength="4" placeholder="Room code" autocomplete="off"><button class="ghost" id="joinBtn">JOIN</button></div>
     <button class="ghost" id="howBtn">How to play</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="ghost" id="soundLabBtn">🔊 Sound lab</button><button class="ghost" id="lookLabBtn">🎨 Look lab</button></div>
+  </div>
+</div>
+<div class="sheet" id="soundlab" hidden>
+  <div class="card" style="width:min(560px,100%)">
+    <div class="panel"><h2>Sound lab</h2><p class="rules" style="margin:0 0 8px">Every sound in the game. Tap ▶ to hear it. Upload your own file to replace one (it's kept on this device; export the zip and send it to be put in the game for everyone).</p>
+      <div id="soundList"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport">Export my replacements</button><button class="ghost" id="soundLabBack">Back</button></div></div>
+  </div>
+</div>
+<div class="sheet" id="looklab" hidden>
+  <div class="card" style="width:min(560px,100%)">
+    <div class="panel"><h2>Look lab</h2><p class="rules" style="margin:0 0 8px">The textures the game draws with. Upload an image to replace one (square images, 64 to 512 pixels, work best). Kept on this device; export to send.</p>
+      <div id="lookList"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport2">Export my replacements</button><button class="ghost" id="lookLabBack">Back</button></div></div>
   </div>
 </div>
 <div class="sheet" id="lobby" hidden>
@@ -203,6 +236,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <p id="lobbyMsg" class="rules" style="text-align:center;margin:0"></p>
     <ul id="lobbyList"></ul>
     <button class="go" id="lobbyStart" hidden>START MATCH</button>
+    <button class="ghost" id="lobbyMic" hidden>🎤 off</button>
     <button class="ghost" id="lobbyBack">Leave</button>
   </div>
 </div>
@@ -245,7 +279,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 <div id="loading">NYMBO</div>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/","rapier":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/rapier.es.js"}}</script>
-<script>window.NYMBO_FILES=["alert", "alert_2", "alert_3", "amb_bed", "amb_birds", "amb_grass", "amb_night", "amb_night_2", "amb_night_3", "amb_trees", "amb_wind", "amb_wind_2", "amb_wind_3", "baa", "baa1", "baa2", "baa3", "baa4", "baa5", "baa6", "baa7", "baa8", "baa9", "baaAngry", "baaAngry_2", "baaAngry_3", "baa_2", "baa_3", "beep", "blackout", "blackout_2", "blackout_3", "boom", "boom1", "boom2", "boom_2", "boom_3", "boom_big", "boom_big_2", "boom_big_3", "boom_tail", "boom_tail_2", "boost", "boost_2", "boost_3", "catch", "catch_2", "catch_3", "cheer", "chimes", "chirp_blue", "chirp_blue_2", "chirp_blue_3", "chirp_red", "chirp_red_2", "chirp_red_3", "clonk", "clonk1", "clonk2", "clonk3", "clonk_2", "clonk_3", "clonk_big", "clonk_big_2", "clonk_big_3", "cloth", "confirm", "crow", "crow_2", "crow_3", "crumble", "crumble1", "crumble2", "crumble_2", "crumble_3", "defeat", "defeat_2", "denied", "denied_2", "denied_3", "dodge", "dodge_2", "dodge_3", "flagDrop", "flagDrop_2", "flagDrop_3", "flagGrab", "flagGrab_2", "flagGrab_3", "flagdrop", "freeze", "freeze_2", "freeze_3", "full", "full_2", "full_3", "glock", "go", "go_2", "go_3", "gong", "grab", "grab1", "grab2", "grab3", "grab_2", "grab_3", "grab_bomb", "grab_bomb_2", "grab_bomb_3", "grab_freeze", "grab_freeze_2", "grab_freeze_3", "grab_homing", "grab_homing_2", "heart", "hit", "hit1", "hit2", "hit3", "hit_2", "hit_3", "hole", "hoof", "hoof_2", "hoof_3", "ice_crack", "ice_crack_2", "ice_crack_3", "impact_stone", "impact_stone_2", "impact_stone_3", "impact_wood", "impact_wood_2", "impact_wood_3", "intro", "intro_2", "invis", "invis_2", "invis_3", "jet", "jet_2", "jump", "jump2", "jump_2", "jump_3", "ko", "ko_2", "ko_3", "land", "land2", "land_2", "land_3", "lightsOn", "lightsOn_2", "lightsOn_3", "lock", "lose", "lose_2", "lose_3", "moo", "moo1", "moo2", "moo3", "moo4", "moo5", "mooAngry", "mooAngry_2", "mooAngry_3", "moo_2", "moo_3", "nuke", "nuke_rumble", "pad", "pad_2", "pad_3", "plop", "poof", "poof_2", "poof_3", "pop", "portal", "portal_2", "portal_3", "portal_hum", "powerdown", "powerup", "reload", "reload_2", "reload_3", "repair", "repair_2", "repair_3", "respawn", "respawn_2", "respawn_3", "roll", "score", "score_2", "score_3", "servo", "servo_2", "servo_3", "shatter", "shatter1", "shatter2", "shatter_2", "shatter_3", "siren", "slide", "slide_2", "slowmo", "slowmo_2", "snort", "snort_2", "snort_3", "streak", "streak_2", "streak_3", "swoop", "throw", "throw1", "throw2", "throw3", "throw_2", "throw_3", "tick", "tornado", "tramp", "ui", "v_cow", "v_dark", "v_frozen", "v_gotit", "v_ice", "v_invis", "v_nuke", "v_oops", "v_ouch", "v_returned", "v_run", "v_scored", "v_slow", "v_stolen", "v_theyscored", "v_tornado", "v_visible", "visible", "visible_2", "vjump1", "vjump2", "vjump3", "whoosh_big", "whoosh_big_2", "whoosh_big_3", "whoosh_long", "win", "win_2"]</script>
+<script>window.NYMBO_FILES=["alert", "alert_2", "alert_3", "amb_bed", "amb_birds", "amb_grass", "amb_night", "amb_night_2", "amb_night_3", "amb_trees", "amb_wind", "amb_wind_2", "amb_wind_3", "baa1", "baa2", "baa3", "baa4", "baa5", "baa6", "baa7", "baa8", "baa9", "beep", "blackout", "blackout_2", "blackout_3", "boom", "boom1", "boom2", "boom_2", "boom_3", "boom_big", "boom_big_2", "boom_big_3", "boom_tail", "boom_tail_2", "boost", "boost_2", "boost_3", "catch", "catch_2", "catch_3", "cheer", "chimes", "chirp_blue", "chirp_blue_2", "chirp_blue_3", "chirp_red", "chirp_red_2", "chirp_red_3", "clonk", "clonk1", "clonk2", "clonk3", "clonk_2", "clonk_3", "clonk_big", "clonk_big_2", "clonk_big_3", "cloth", "confirm", "crow", "crow_2", "crow_3", "crumble", "crumble1", "crumble2", "crumble_2", "crumble_3", "defeat", "defeat_2", "denied", "denied_2", "denied_3", "dodge", "dodge_2", "dodge_3", "flagDrop", "flagDrop_2", "flagDrop_3", "flagGrab", "flagGrab_2", "flagGrab_3", "flagdrop", "freeze", "freeze_2", "freeze_3", "full", "full_2", "full_3", "glock", "go", "go_2", "go_3", "gong", "grab", "grab1", "grab2", "grab3", "grab_2", "grab_3", "grab_bomb", "grab_bomb_2", "grab_bomb_3", "grab_freeze", "grab_freeze_2", "grab_freeze_3", "grab_homing", "grab_homing_2", "heart", "hit", "hit1", "hit2", "hit3", "hit_2", "hit_3", "hole", "hoof", "hoof_2", "hoof_3", "ice_crack", "ice_crack_2", "ice_crack_3", "impact_stone", "impact_stone_2", "impact_stone_3", "impact_wood", "impact_wood_2", "impact_wood_3", "intro", "intro_2", "invis", "invis_2", "invis_3", "jet", "jet_2", "jump", "jump2", "jump_2", "jump_3", "ko", "ko_2", "ko_3", "land", "land2", "land_2", "land_3", "lightsOn", "lightsOn_2", "lightsOn_3", "lock", "lose", "lose_2", "lose_3", "moo1", "moo2", "moo3", "moo4", "moo5", "nuke", "nuke_rumble", "pad", "pad_2", "pad_3", "plop", "pop", "portal", "portal_2", "portal_3", "portal_hum", "powerdown", "powerup", "reload", "reload_2", "reload_3", "repair", "repair_2", "repair_3", "respawn", "respawn_2", "respawn_3", "roll", "score", "score_2", "score_3", "servo", "servo_2", "servo_3", "shatter", "shatter1", "shatter2", "shatter_2", "shatter_3", "siren", "slide", "slide_2", "slowmo", "slowmo_2", "streak", "streak_2", "streak_3", "swoop", "throw", "throw1", "throw2", "throw3", "throw_2", "throw_3", "tick", "tornado", "tramp", "ui", "v2_alert", "v2_amb_bed", "v2_amb_grass", "v2_amb_trees", "v2_baa1", "v2_baa2", "v2_baa3", "v2_baa4", "v2_baa5", "v2_baa6", "v2_baa7", "v2_baa8", "v2_baa9", "v2_boom1", "v2_boom2", "v2_boom_tail", "v2_cheer", "v2_chimes", "v2_clonk1", "v2_clonk2", "v2_clonk3", "v2_clonk_big", "v2_cloth", "v2_confirm", "v2_crumble1", "v2_crumble2", "v2_denied", "v2_dodge", "v2_flagdrop", "v2_freeze", "v2_full", "v2_glock", "v2_gong", "v2_grab1", "v2_grab2", "v2_grab3", "v2_grab_bomb", "v2_grab_freeze", "v2_grab_homing", "v2_heart", "v2_hit1", "v2_hit2", "v2_hit3", "v2_hoof", "v2_ice_crack", "v2_impact_stone", "v2_impact_wood", "v2_jump", "v2_jump2", "v2_ko", "v2_land", "v2_land2", "v2_lock", "v2_moo1", "v2_moo2", "v2_moo3", "v2_moo4", "v2_moo5", "v2_nuke_rumble", "v2_plop", "v2_pop", "v2_portal", "v2_powerdown", "v2_powerup", "v2_reload", "v2_respawn", "v2_roll", "v2_shatter1", "v2_shatter2", "v2_siren", "v2_throw1", "v2_throw2", "v2_throw3", "v2_tick", "v2_tramp", "v2_ui", "v2_v_cow", "v2_v_dark", "v2_v_frozen", "v2_v_gotit", "v2_v_ice", "v2_v_invis", "v2_v_nuke", "v2_v_oops", "v2_v_ouch", "v2_v_returned", "v2_v_run", "v2_v_scored", "v2_v_slow", "v2_v_stolen", "v2_v_theyscored", "v2_v_tornado", "v2_v_visible", "v2_vjump1", "v2_vjump2", "v2_vjump3", "v2_whoosh_big", "v2_whoosh_long", "v_cow", "v_dark", "v_frozen", "v_gotit", "v_ice", "v_invis", "v_nuke", "v_oops", "v_ouch", "v_returned", "v_run", "v_scored", "v_slow", "v_stolen", "v_theyscored", "v_tornado", "v_visible", "visible", "visible_2", "vjump1", "vjump2", "vjump3", "whoosh_big", "whoosh_big_2", "whoosh_big_3", "whoosh_long", "win", "win_2"]</script>
 <script type="module">
 // ============================================================
 // NYMBO · match test build
@@ -1363,6 +1397,7 @@ function audioInit() {
     bus = master; send = AC.createGain(); send.gain.value = .3; send.connect(verb);
     ambBus = AC.createGain(); ambBus.gain.value = 0; mixInit(); ambBus.connect(worldOut());
     startAmbience();
+    if (typeof loadPendingSfx === 'function') setTimeout(loadPendingSfx, 0);
     document.addEventListener('click', e => { if (e.target.closest && e.target.closest('button')) sfx('ui'); }, true);
   } catch (e) { AC = null; }
 }
@@ -1552,7 +1587,7 @@ const SFX_SYNTH = { // the original made-in-code sound set (kept: switch back wi
 };
 // play a sound; if a world position is given it is quieter, duller and wetter far away, and panned left/right
 function sfx(name, pos, arg) {
-  const fn = (!S.classic && typeof SFX_REAL !== 'undefined' && SFX_REAL[name] && realReady(name)) || SFX_SYNTH[name];
+  const fn = (typeof pickSfxFn === 'function' && pickSfxFn(name)) || (!S.classic && typeof SFX_REAL !== 'undefined' && SFX_REAL[name] && realReady(name)) || SFX_SYNTH[name];
   if (!AC || !S.sound || !fn) return;
   const g = AC.createGain(), sg = AC.createGain();
   if (pos && typeof P !== 'undefined' && P && P.body) {
@@ -1699,8 +1734,9 @@ function say(n, delay = 0, vol = .95) {
   const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = BUF[n]; g.gain.value = vol; s.connect(g); g.connect(master); s.start(AC.currentTime + delay); voiceSrc = s;
 }
 // play a recorded sound through the current sound's 3D chain
+let playPrefix = '';
 function play(n, vol = 1, rate = 1, delay = 0, wet = true) {
-  const b = BUF[n]; if (!b) return null;
+  const b = BUF[playPrefix + n] || BUF[n]; if (!b) return null;
   const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = b; s.playbackRate.value = rate * PV; g.gain.value = vol;
   s.connect(g); out(g, wet); s.start(T0(delay)); return s;
 }
@@ -1925,13 +1961,16 @@ const V3 = ['clonk', 'clonk_big', 'crumble', 'throw', 'catch', 'grab', 'grab_bom
   'freeze', 'shatter', 'ice_crack', 'slide', 'boom', 'boom_big', 'boom_tail', 'nuke', 'siren', 'jet', 'tornado', 'blackout', 'lightsOn', 'slowmo', 'invis', 'visible', 'whoosh_big', 'whoosh_long',
   'portal', 'portal_hum', 'pad', 'boost', 'repair', 'hole', 'amb_wind', 'amb_trees', 'amb_birds', 'amb_night', 'crow',
   'flagGrab', 'flagDrop', 'alert', 'score', 'lose', 'streak', 'win', 'defeat', 'beep', 'go', 'tick', 'heart', 'intro', 'lock', 'ui', 'swoop',
-  'moo', 'mooAngry', 'baa', 'baaAngry', 'hoof', 'snort', 'poof'];
+  ];
 { const have = window.NYMBO_SOUNDS ? new Set(Object.keys(NYMBO_SOUNDS)) : window.NYMBO_FILES ? new Set(NYMBO_FILES) : null; // only ask for takes that exist
   for (const n of V3) for (const s of ['', '_2', '_3']) if ((!have || have.has(n + s)) && !SOUND_FILES.includes(n + s)) SOUND_FILES.push(n + s); }
 Object.assign(LOOPS, { amb_wind: { start: 0, len: 7.9 }, amb_night: { start: 0, len: 7.9 }, amb_birds: { start: 0, len: 7.9 }, amb_trees: { start: 0, len: 7.9 }, portal_hum: { start: 0, len: 7.9 }, slide: { start: .1, len: 5 } });
 // a random available take of a sound
-const takeOf = n => { const o = [n, n + '_2', n + '_3'].filter(k => BUF[k]); return o.length ? o[Math.floor(Math.random() * o.length)] : null; };
+let forceTake = 0; // 0 = random take; 1..3 = that take (set by the Sound lab)
+const takeOf = n => { const o = [n, n + '_2', n + '_3'].filter(k => BUF[k]); if (!o.length) return null; if (forceTake) return o[Math.min(o.length, forceTake) - 1]; return o[Math.floor(Math.random() * o.length)]; };
 const pl = (n, vol = 1, rate = 1, delay = 0, wet = true) => { const k = takeOf(n); return k ? play(k, vol, rate * rr(.96, 1.04), delay, wet) : null; };
+const SFX_V2 = { ...SFX_REAL }; // the previous recorded set, kept for the Sound lab
+var BUF_V2_FILES; for (const n of Object.keys(BUF_V2_FILES = ['alert', 'amb_trees', 'baa1', 'boom1', 'boom2', 'boom_tail', 'cheer', 'chimes', 'clonk1', 'clonk2', 'clonk3', 'clonk_big', 'cloth', 'confirm', 'crumble1', 'crumble2', 'denied', 'dodge', 'flagdrop', 'freeze', 'full', 'glock', 'gong', 'grab1', 'grab2', 'grab3', 'grab_bomb', 'grab_freeze', 'grab_homing', 'heart', 'hit1', 'hit2', 'hit3', 'hoof', 'ice_crack', 'impact_stone', 'impact_wood', 'jump', 'jump2', 'ko', 'land', 'land2', 'lock', 'nuke_rumble', 'plop', 'pop', 'portal', 'powerdown', 'powerup', 'reload', 'respawn', 'roll', 'shatter1', 'shatter2', 'siren', 'throw1', 'throw2', 'throw3', 'tick', 'ui', 'whoosh_big', 'whoosh_long', 'tramp'].reduce((o, k) => (o[k] = 1, o), {}))) SOUND_FILES.push('v2_' + n);
 const R3 = (need, fn) => ({ need, fn });
 Object.assign(SFX_REAL, {
   // blocks
@@ -1947,6 +1986,7 @@ Object.assign(SFX_REAL, {
   hit: R3('hit', () => { pl('hit', .95); pl('clonk', .35, .8, .01); }),
   ko: R3('ko', () => pl('ko', .7)),
   land: R3('land', () => pl('land', .5)),
+  shield: R3('clonk', () => { for (let i = 0; i < 5; i++) pl(i % 2 ? 'clonk' : 'land', .55, rr(.8, 1.1), i * .05); pl('clonk_big', .6, .9, .22); }), // a ring of blocks thumping down around you
   jump: R3('jump', () => pl('jump', .45)),
   vjump: R3('jump', second => pl('jump', .5, second ? 1.18 : 1)),
   jump2: R3('jump', () => pl('jump', .45, 1.18)),
@@ -1994,14 +2034,7 @@ Object.assign(SFX_REAL, {
   intro: R3('intro', () => pl('intro', .8, 1, 0, false)),
   lock: R3('lock', () => pl('lock', .5, 1, 0, false)),
   ui: R3('ui', () => pl('ui', .6, 1, 0, false)),
-  // animals
-  moo: R3('moo', () => pl('moo', .8)),
-  mooAngry: R3('mooAngry', () => pl('mooAngry', 1)),
-  baa: R3('baa', () => pl('baa', .7)),
-  baaAngry: R3('baaAngry', () => pl('baaAngry', 1)),
-  hoof: R3('hoof', () => pl('hoof', .6)),
-  snort: R3('snort', () => pl('snort', .7)),
-  poof: R3('poof', () => { pl('poof', .9); pl('baaAngry', .6, 1.1, .1); }),
+  // (animals: the original recorded moos, baas, hooves and the wool poof stay exactly as they were)
 });
 // robot chatter and servos: the generated ones, placed where the robot is
 robotChatter = function (r, vol) {
@@ -2285,7 +2318,7 @@ function throwAt(r, aim, speed, homingTarget = null) {
 }
 function dodge(r, sign) {
   if (!canAct(r)) return false;
-  if (r.charges <= 0) { if (r.isPlayer) { showReload = true; sfx('denied'); } return false; } // reloading: show the little spinner
+  if (r.charges <= 0) { if (r.isPlayer) { sfx('denied'); } return false; } // reloading (no spinner any more; you learn the rhythm)
   r.charges--; r.reloadT = DODGE_RELOAD; r.dashV = 15 * sign; r.dashT = .22; sfx('dodge', rPos(r));
   return true;
 }
@@ -2988,14 +3021,15 @@ function onHead(x, y) {
 const playing = () => match.state === 'play';
 stage.addEventListener('pointerdown', e => {
   if (gest || !playing()) return;
-  stage.setPointerCapture?.(e.pointerId);
+  try { stage.setPointerCapture?.(e.pointerId); } catch (err) {}
+  SHIELD.stopT = 0;
   gest = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, t0: now(), mode: 'pending', yawStart: P.yawT, samples: [[e.clientX, e.clientY, now()]], turnFrom: e.clientX, onHead: onHead(e.clientX, e.clientY) };
   pts.length = 0; pts.push([e.clientX, e.clientY, now()]);
 });
 stage.addEventListener('pointermove', e => {
   if (!gest || e.pointerId !== gest.id) return;
   gest.x = e.clientX; gest.y = e.clientY; const t = now();
-  if (gest.mode === 'hold' && !gest.held && e.timeStamp - gest.t0 < 160 && Math.hypot(gest.x - gest.x0, gest.y - gest.y0) > 8) gest.mode = 'pending';
+  if (gest.mode === 'hold' && !gest.held && e.timeStamp - gest.t0 < 160 && Math.hypot(gest.x - gest.x0, gest.y - gest.y0) > 10) gest.mode = 'pending';
   else if (gest.mode === 'hold') gest.held = true;
   gest.samples.push([gest.x, gest.y, t]); while (gest.samples.length > 2 && t - gest.samples[0][2] > 90) gest.samples.shift();
   (gest.all || (gest.all = [[gest.x0, gest.y0, gest.t0]])).push([gest.x, gest.y, e.timeStamp || t]);
@@ -3007,6 +3041,17 @@ stage.addEventListener('pointermove', e => {
     gest.mode = (dy < 0 ? -dy > Math.abs(dx) * .55 : dy > Math.abs(dx) * .8) ? 'vertical' : 'turn';
     gest.turnFrom = gest.x;
   } else if (gest.mode === 'hold' && Math.abs(dx) > 8) { gest.mode = 'holdturn'; gest.turnFrom = gest.x; }
+  // act DURING the stroke, not when the finger lifts: a swipe down grabs the moment it's clearly a swipe down,
+  // a swipe up throws as soon as the flick has peaked (or run far), a fast sideways flick anywhere dodges.
+  if (gest.mode === 'vertical' && dy > 30) { gest.mode = 'done'; playerGrab(); }
+  else if (gest.mode === 'vertical' && dy < -30) {
+    const vNow = gest.samples.length > 1 ? (gest.samples[0][1] - gest.y) / Math.max(1, t - gest.samples[0][2]) : 0;
+    gest.peak = Math.max(gest.peak || 0, vNow);
+    if (-dy > innerHeight * .22 || (gest.peak > .6 && vNow < gest.peak * .5) || t - gest.t0 > 260) { gest.mode = 'done'; playerThrow(swipePower(gest)); }
+  } else if (gest.mode === 'turn' && !gest.onHead && t - gest.t0 < 200 && Math.abs(dx) > 36 && Math.abs(dx) > Math.abs(dy) * 1.8) {
+    const vx = Math.abs(dx) / Math.max(1, t - gest.t0) * 390 / innerWidth;
+    if (vx > 1.0) { gest.mode = 'dodged'; P.yawT = gest.yawStart; if (playerDodge(Math.sign(dx))) toast(dx > 0 ? 'DODGE ⇢' : '⇠ DODGE'); }
+  }
   if (gest.mode === 'turn' || gest.mode === 'holdturn') P.yawT = gest.yawStart - (gest.x - gest.turnFrom) * S.turn / 1000;
 });
 // how hard you swiped: the fastest 70ms stretch of the whole stroke (screen-size independent).
@@ -3122,8 +3167,9 @@ function throwFor(P, power, lineTarget, homingTarget) {
 function updatePlayerControl(dt) {
   if (PW.pick) { P.wantSpeed = 0; return; } // standing still while you pick a spot on the map
   if (match.state !== 'play' || !canAct(P)) { P.wantSpeed = 0; if (NET && NET.client) NET.move(0); return; }
-  if (gest && gest.mode === 'pending' && now() - gest.t0 > 160) gest.mode = 'hold';
-  const stopped = (gest && (gest.mode === 'hold' || gest.mode === 'holdturn')) || btnStop || keys.KeyS;
+  if (gest && gest.mode === 'pending' && now() - gest.t0 > 120) gest.mode = 'hold'; // a finger that stays put ~0.12s is a stop
+  if (SHIELD.stopT > 0) SHIELD.stopT -= dt;
+  const stopped = (gest && (gest.mode === 'hold' || gest.mode === 'holdturn')) || btnStop || keys.KeyS || SHIELD.stopT > 0; // after a shield you stand inside your wall for a moment
   stopHeld = stopped ? stopHeld + dt : 0; // keep holding stop and you start backing up
   if (keys.KeyA || keys.ArrowLeft) P.yawT += 2.6 * dt;
   if (keys.KeyD || keys.ArrowRight) P.yawT -= 2.6 * dt;
@@ -3813,6 +3859,45 @@ function updatePowers(dt) {
 }
 
 // ============================================================
+// DEFENSE SHIELD: everyone has it. Tap it and every block you carry drops in a ring around you at once,
+// a quick wall to hide behind. Then it recharges (like the powers), so you can't spam it.
+// Flags and animals stay in your hands; only blocks are used.
+// ============================================================
+const SHIELD_CD = 20, SHIELD_R = 1.75;
+const SHIELD = { cool: 0, stopT: 0 }; // stopT: you stand still inside the wall for a moment (swipe/tap to move again)
+const shieldBtn = $('shieldBtn');
+function shieldFor(r) { // the host (or offline game) builds the ring for any robot
+  if (!canAct(r)) return 0;
+  const use = r.stack.filter(e => e.kind !== 'flag' && e.kind !== 'animal'); if (!use.length) return 0;
+  r.stack = r.stack.filter(e => !use.includes(e));
+  const p = rPos(r), n = use.length, perRing = Math.min(n, 10), rings = Math.ceil(n / perRing);
+  const a0 = r.yaw + Math.PI; // the first gap-free arc faces where you're looking, so the wall is in front of you first
+  use.forEach((e, i) => {
+    const ring = Math.floor(i / perRing), k = i % perRing, cnt = Math.min(perRing, n - ring * perRing);
+    const ang = a0 + (k / cnt) * Math.PI * 2 + ring * .3, rad = SHIELD_R + ring * .15;
+    e.holder = null; e.live = false; e.atHome = false; e.rolled = null; e.thrower = null;
+    const y = p.y - .95 + e.dims.y / 2 + .05 + ring * 1.05;
+    makeBody(e, V(p.x + Math.sin(ang) * rad, y, p.z + Math.cos(ang) * rad), null, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 });
+    if (e.inst < 0 && e.mesh) e.mesh.visible = true; // instanced blocks are redrawn from their body each frame
+  });
+  refreshHeld(r); fxBurst(p.clone().setY(p.y + .6), 0xffffff, 1.6, .35); sfx('shield', p);
+  return n;
+}
+function playerShield() {
+  if (match.state !== 'play' || !canAct(P) || SHIELD.cool > 0) { sfx('denied'); return; }
+  const have = P.stack.some(e => e.kind !== 'flag' && e.kind !== 'animal'); if (!have) { toast('NO BLOCKS FOR A SHIELD'); sfx('denied'); return; }
+  SHIELD.cool = SHIELD_CD; SHIELD.stopT = 1.5;
+  if (NET && NET.client) { NET.act(['sh']); toast('SHIELD UP'); return; }
+  if (shieldFor(P)) toast('SHIELD UP');
+}
+shieldBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); });
+shieldBtn.addEventListener('click', e => { e.stopPropagation(); playerShield(); });
+function updateShield(dt) {
+  if (SHIELD.cool > 0) SHIELD.cool = Math.max(0, SHIELD.cool - dt);
+  const k = SHIELD.cool / SHIELD_CD; shieldBtn.style.setProperty('--k', k); shieldBtn.classList.toggle('ready', k === 0 && !!P && P.stack.some(e => e.kind !== 'flag' && e.kind !== 'animal'));
+}
+
+// ============================================================
 // MATCH FLOW + MAIN LOOP
 // ============================================================
 for (const team of ['blue', 'red']) for (let i = 0; i < 4; i++) createRobot(team, i);
@@ -3831,7 +3916,7 @@ function resize() {
 addEventListener('resize', resize); resize();
 
 // ---------------- screens ----------------
-const show = id => { for (const s of ['menu', 'howto', 'pause', 'end', 'lobby']) $(s).hidden = s !== id; };
+const show = id => { for (const s of ['menu', 'howto', 'pause', 'end', 'lobby', 'soundlab', 'looklab']) $(s).hidden = s !== id; };
 function setDiff(d) { S.diff = d; saveS(); document.querySelectorAll('[data-diff]').forEach(b => b.setAttribute('aria-pressed', b.dataset.diff === d)); }
 document.querySelectorAll('[data-diff]').forEach(b => b.onclick = () => setDiff(b.dataset.diff));
 setDiff(S.diff);
@@ -4003,7 +4088,7 @@ function tick(dt, t = now()) {
   pulseHalos(t); if (match.state !== 'paused') updateIce(dt);
   updateFx(dt);
   updateCamera(dt);
-  if (match.state !== 'paused') updatePowers(dt);
+  if (match.state !== 'paused') { updatePowers(dt); updateShield(dt); }
   if (NET && NET.host) NET.hostTick(dt);
 }
 plainIM.instanceColor.needsUpdate = true;
@@ -4190,6 +4275,7 @@ function hostMsg(c, m) {
     if (a[0] === 'j') { if (canAct(r)) r.jumpReq = true; }
     else if (a[0] === 'd') dodge(r, a[1]);
     else if (a[0] === 'g') grabFor(r);
+    else if (a[0] === 'sh') shieldFor(r);
     else if (a[0] === 't') { if (canAct(r)) { if (typeof a[4] === 'number') r.yaw = r.yawT = a[4]; const lt = robots[a[2]], ht = robots[a[3]]; throwFor(r, a[1], lt && hittable(lt) ? lt : null, ht && hittable(ht) ? ht : null); } }
   }
 }
@@ -4455,6 +4541,212 @@ $('lobbyBack').onclick = () => { try { sessionStorage.removeItem('nymbo-host'); 
 // coming back after a reload: the host reopens the same room, a joiner re-joins it by itself
 try { if (sessionStorage.getItem('nymbo-rehost') === '1') { sessionStorage.removeItem('nymbo-rehost'); setTimeout(() => netHost(), 300); } } catch (e) {}
 try { const j = sessionStorage.getItem('nymbo-join'); if (j && sessionStorage.getItem('nymbo-auto') !== '1') { $('netCode').value = j; setTimeout(() => netJoin(j), 300); } } catch (e) {}
+
+// ============================================================
+// THE LABS (home menu → Sound lab / Look lab)
+//  Sound lab: hear every sound the game uses, and upload your own file to replace any of them.
+//  Look lab:  see the textures the game draws with, and upload your own image to replace any of them.
+// Replacements live on this device (saved in the browser, they survive reloads) and can be exported as a zip
+// to send to whoever builds the game, so they can be put in for everyone.
+// ============================================================
+const CUSTOM = { sfx: {}, tex: {} };
+// ---- a tiny store in the browser (IndexedDB) ----
+const LAB_DB = { open: () => new Promise((ok, no) => { const r = indexedDB.open('nymbo-labs', 1); r.onupgradeneeded = () => { r.result.createObjectStore('sfx'); r.result.createObjectStore('tex'); }; r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }),
+  put: async (store, key, val) => { try { const db = await LAB_DB.open(); db.transaction(store, 'readwrite').objectStore(store).put(val, key); } catch (e) {} },
+  del: async (store, key) => { try { const db = await LAB_DB.open(); db.transaction(store, 'readwrite').objectStore(store).delete(key); } catch (e) {} },
+  all: async store => { try { const db = await LAB_DB.open(); return await new Promise(ok => { const out = {}, c = db.transaction(store).objectStore(store).openCursor(); c.onsuccess = () => { const cur = c.result; if (!cur) return ok(out); out[cur.key] = cur.value; cur.continue(); }; c.onerror = () => ok(out); }); } catch (e) { return {}; } } };
+// ---------------- SOUND LAB ----------------
+const SFX_GROUPS = {
+  'Blocks': ['impact', 'crumble', 'throw', 'catch', 'grab', 'grab_bomb', 'grab_freeze', 'grab_homing'],
+  'Robots': ['hit', 'ko', 'land', 'jump', 'jump2', 'dodge', 'respawn', 'reload', 'denied', 'full'],
+  'Ice': ['freeze', 'shatter'],
+  'Explosions and powers': ['boom', 'nuke', 'siren', 'jet', 'tornado', 'blackout', 'lightsOn', 'slowmo', 'invis', 'visible', 'swoop'],
+  'World': ['portal', 'pad', 'boost', 'repair', 'hole'],
+  'Flags and match': ['flagGrab', 'flagDrop', 'alert', 'score', 'lose', 'streak', 'win', 'defeat', 'beep', 'go', 'tick', 'heart', 'intro', 'lock', 'ui'],
+  'Animals': ['moo', 'mooAngry', 'baa', 'baaAngry', 'hoof', 'snort', 'poof'],
+};
+// which version of each sound plays: 'ai' (random take), 'ai1'..'ai3' (that take), 'v2' (previous recorded set), 'synth' (classic), 'custom:<n>' (an upload)
+const CHOICE = { sfx: {}, tex: {} };
+try { Object.assign(CHOICE, JSON.parse(localStorage.getItem('nymbo-choice') || '{}')); } catch (e) {}
+const saveChoice = () => { try { localStorage.setItem('nymbo-choice', JSON.stringify(CHOICE)); } catch (e) {} };
+function pickSfxFn(name) {
+  const c = CHOICE.sfx[name]; if (!c || c === 'ai') return null;
+  if (c.startsWith('custom:')) { const u = (CUSTOM.sfx[name] || [])[+c.slice(7)]; return u ? () => playCustom(u) : null; }
+  if (c === 'synth') return SFX_SYNTH[name] || null;
+  if (c === 'v2') { const f = SFX_V2[name]; return f ? () => { playPrefix = 'v2_'; try { f.fn(2); } finally { playPrefix = ''; } } : null; }
+  if (/^ai[123]$/.test(c)) { const f = SFX_REAL[name]; return f ? a => { forceTake = +c[2]; try { f.fn(a); } finally { forceTake = 0; } } : null; }
+  return null;
+}
+async function addCustomSfx(name, file) {
+  const buf = await file.arrayBuffer();
+  const decoded = await new Promise((ok, no) => AC.decodeAudioData(buf.slice(0), ok, no));
+  (CUSTOM.sfx[name] = CUSTOM.sfx[name] || []).push({ buf: decoded, file: new Uint8Array(buf), fname: file.name });
+  const all = CUSTOM.sfx[name].map(u => ({ data: u.file.buffer, fname: u.fname })); LAB_DB.put('sfx', name, all);
+  return CUSTOM.sfx[name].length - 1;
+}
+function playCustom(u) { const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = u.buf; s.playbackRate.value = PV; g.gain.value = .9; s.connect(g); out(g, true); s.start(T0(0)); }
+function sfxChoices(n) {
+  const o = []; const takes = [n, n + '_2', n + '_3'].filter(k => BUF[k]).length;
+  if (SFX_REAL[n] && SFX_REAL[n] !== SFX_V2[n]) { if (takes > 1) { o.push(['ai', 'New (random take)']); for (let k = 1; k <= takes; k++) o.push(['ai' + k, 'New take ' + k]); } else o.push(['ai', 'New']); }
+  if (SFX_V2[n]) o.push(['v2', 'Previous set']);
+  if (SFX_SYNTH[n]) o.push(['synth', 'Classic']);
+  (CUSTOM.sfx[n] || []).forEach((u, i) => o.push(['custom:' + i, 'Yours: ' + u.fname.replace(/</g, '')]));
+  return o;
+}
+function soundLabRows() {
+  const box = $('soundList'); box.innerHTML = '';
+  for (const [grp, names] of Object.entries(SFX_GROUPS)) {
+    const h = document.createElement('h3'); h.textContent = grp; box.appendChild(h);
+    for (const n of names) {
+      const row = document.createElement('div'); row.className = 'labsnd'; const cur = CHOICE.sfx[n] || 'ai';
+      const chips = sfxChoices(n).map(([id, label]) => `<span class="chip${id === cur ? ' on' : ''}" data-id="${id}"><button class="cp" title="hear">▶</button><button class="cu">${label}</button></span>`).join('');
+      row.innerHTML = `<b>${n}</b><div class="chips">${chips}<label class="chip up">+ Upload<input type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a" hidden></label></div>`;
+      row.querySelectorAll('.chip[data-id]').forEach(ch => {
+        const id = ch.dataset.id;
+        ch.querySelector('.cp').onclick = () => { audioInit(); const was = CHOICE.sfx[n]; CHOICE.sfx[n] = id; sfx(n, null, 2); CHOICE.sfx[n] = was; }; // preview without switching
+        ch.querySelector('.cu').onclick = () => { CHOICE.sfx[n] = id; saveChoice(); audioInit(); sfx(n, null, 2); soundLabRows(); };
+      });
+      row.querySelector('input').onchange = async e => { const f = e.target.files[0]; if (!f) return; audioInit(); try { const i = await addCustomSfx(n, f); CHOICE.sfx[n] = 'custom:' + i; saveChoice(); toast('NOW USING ' + f.name.toUpperCase()); } catch (x) { toast("COULDN'T READ THAT FILE"); } soundLabRows(); };
+      box.appendChild(row);
+    }
+  }
+}
+// ---------------- LOOK LAB ----------------
+// each slot: what it is, and how to paint an uploaded image onto it
+const slabMesh = () => scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6);
+const paintMat = (m, tex) => { m.map = tex; m.color.set(0xffffff); if (m.emissiveMap) m.emissiveMap = tex; m.needsUpdate = true; };
+const LOOK_SLOTS = [
+  { id: 'grass', name: 'Ground (top)', tip: 'repeats once per square; a 64×64 image works well', apply: t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(MX, MZ); t.magFilter = THREE.NearestFilter; paintMat(slabMesh().material[2], t); } },
+  { id: 'ground_side', name: 'Ground (side)', tip: 'the cliff face under the grass', apply: t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; const m = slabMesh().material; const t2 = t.clone(); t.repeat.set(MZ * 2, 1); t2.repeat.set(MX * 2, 1); t2.needsUpdate = true; paintMat(m[0], t); paintMat(m[1], t); paintMat(m[4], t2); paintMat(m[5], t2); } },
+  { id: 'block', name: 'Blocks (forts, ammo, trees)', tip: 'drawn on every plain block, tinted by the block\'s colour', apply: t => { plainIM.material.map = t; plainIM.material.needsUpdate = true; } },
+  { id: 'robot_blue', name: 'Robot body (blue team)', tip: 'wrapped round the body, head and arms', apply: t => { for (const r of robots) if (r.team === 'blue') paintMat(r.model.mats[0], t); } },
+  { id: 'robot_red', name: 'Robot body (red team)', tip: 'wrapped round the body, head and arms', apply: t => { for (const r of robots) if (r.team === 'red') paintMat(r.model.mats[0], t); } },
+  { id: 'ball', name: 'Robot ball', tip: 'the rolling ball under every robot', apply: t => { for (const r of robots) paintMat(r.model.mats[2], t); } },
+  { id: 'flag', name: 'Flag block', tip: 'the flag logo on the team flags', apply: t => { for (const k in flagMats) { flagMats[k].map = t; flagMats[k].emissiveMap = t; flagMats[k].needsUpdate = true; } } },
+  { id: 'bomb', name: 'Bomb block', tip: 'the bomb\'s glass shell logo', apply: t => { kindMat.bomb.map = t; kindMat.bomb.emissiveMap = t; kindMat.bomb.needsUpdate = true; } },
+  { id: 'freeze', name: 'Freeze block', tip: 'the freeze block\'s logo', apply: t => { kindMat.freeze.map = t; kindMat.freeze.emissiveMap = t; kindMat.freeze.needsUpdate = true; } },
+  { id: 'homing', name: 'Homing block', tip: 'the homing block\'s logo', apply: t => { kindMat.homing.map = t; kindMat.homing.emissiveMap = t; kindMat.homing.needsUpdate = true; } },
+  { id: 'trampoline', name: 'Trampoline mat', tip: 'the round mat', apply: t => paintMat(tramp.mat, t) },
+  { id: 'pasture', name: 'Pasture meadow', tip: 'the round patch under the animals', apply: t => { scene.traverse(o => { if (o.isMesh && o.geometry.type === 'CircleGeometry' && o.material.map && o.geometry.parameters.radius > 8) paintMat(o.material, t); }); } },
+];
+async function addCustomTex(slot, file) {
+  const bmp = await createImageBitmap(file); const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  const buf = await file.arrayBuffer(); (CUSTOM.tex[slot.id] = CUSTOM.tex[slot.id] || []).push({ tex: t, file: new Uint8Array(buf), fname: file.name, canvas: c, type: file.type });
+  LAB_DB.put('tex', slot.id, CUSTOM.tex[slot.id].map(u => ({ data: u.file.buffer, fname: u.fname, type: u.type }))); return CUSTOM.tex[slot.id].length - 1;
+}
+function applyTexChoice(slot) { const c = CHOICE.tex[slot.id]; const u = c != null && (CUSTOM.tex[slot.id] || [])[c]; if (u) slot.apply(u.tex); }
+function lookLabRows() {
+  const box = $('lookList'); box.innerHTML = '';
+  for (const s of LOOK_SLOTS) {
+    const row = document.createElement('div'); row.className = 'labsnd'; const cur = CHOICE.tex[s.id]; const ups = CUSTOM.tex[s.id] || [];
+    const chips = [`<span class="chip${cur == null ? ' on' : ''}"><button class="cu" data-i="">Game</button></span>`, ...ups.map((u, i) => `<span class="chip${cur === i ? ' on' : ''}"><i class="thumb" style="background-image:url(${u.canvas.toDataURL()})"></i><button class="cu" data-i="${i}">${u.fname.replace(/</g, '')}</button></span>`)].join('');
+    row.innerHTML = `<b>${s.name}</b><span class="src">${s.tip}</span><div class="chips">${chips}<label class="chip up">+ Upload<input type="file" accept="image/*" hidden></label></div>`;
+    row.querySelectorAll('.cu').forEach(b => b.onclick = () => { const i = b.dataset.i; if (i === '') { if (CHOICE.tex[s.id] != null) { delete CHOICE.tex[s.id]; saveChoice(); toast('BACK TO THE GAME TEXTURE (AFTER A RELOAD)'); } } else { CHOICE.tex[s.id] = +i; saveChoice(); applyTexChoice(s); } lookLabRows(); });
+    row.querySelector('input').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const i = await addCustomTex(s, f); CHOICE.tex[s.id] = i; saveChoice(); applyTexChoice(s); toast('NOW USING ' + f.name.toUpperCase()); } catch (x) { toast("COULDN'T READ THAT IMAGE"); } lookLabRows(); };
+    box.appendChild(row);
+  }
+}
+// ---------------- export everything you replaced as one zip ----------------
+function crc32(u8) { let c, crc = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) { c = (crc ^ u8[i]) & 0xFF; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crc = (crc >>> 8) ^ c; } return (crc ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(files) { // [{name, data: Uint8Array}] -> Blob (stored, no compression)
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  for (const f of files) {
+    const n = enc.encode(f.name), crc = crc32(f.data), h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(8, 0, true); h.setUint32(14, crc, true); h.setUint32(18, f.data.length, true); h.setUint32(22, f.data.length, true); h.setUint16(26, n.length, true);
+    parts.push(new Uint8Array(h.buffer), n, f.data);
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint32(16, crc, true); c.setUint32(20, f.data.length, true); c.setUint32(24, f.data.length, true); c.setUint16(28, n.length, true); c.setUint32(42, off, true);
+    central.push(new Uint8Array(c.buffer), n); off += 30 + n.length + f.data.length;
+  }
+  const cs = central.reduce((a, b) => a + b.length, 0), e = new DataView(new ArrayBuffer(22)); e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cs, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
+}
+function exportLabs() {
+  const files = [];
+  for (const [n, list] of Object.entries(CUSTOM.sfx)) list.forEach((c, i) => files.push({ name: `sounds/${n}${i ? '_' + (i + 1) : ''}.${c.fname.split('.').pop() || 'mp3'}`, data: c.file }));
+  for (const [id, list] of Object.entries(CUSTOM.tex)) list.forEach((c, i) => files.push({ name: `textures/${id}${i ? '_' + (i + 1) : ''}.${c.fname.split('.').pop() || 'png'}`, data: c.file }));
+  files.push({ name: 'choices.json', data: new TextEncoder().encode(JSON.stringify(CHOICE, null, 1)) }); // which version of each sound/texture was picked
+  if (files.length < 2) { toast('NOTHING REPLACED YET'); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(makeZip(files)); a.download = 'nymbo-custom.zip'; a.click();
+}
+// ---------------- load what was saved on this device ----------------
+(async () => {
+  const tex = await LAB_DB.all('tex');
+  for (const [id, list] of Object.entries(tex)) { const slot = LOOK_SLOTS.find(s => s.id === id); if (!slot || !Array.isArray(list)) continue; for (const v of list) try { await addCustomTex(slot, new File([v.data], v.fname, { type: v.type || 'image/png' })); } catch (e) {} applyTexChoice(slot); }
+  const sfxs = await LAB_DB.all('sfx'); CUSTOM.pendingSfx = sfxs; // sounds need the audio engine, which starts on the first tap
+})();
+const loadPendingSfx = async () => { const p = CUSTOM.pendingSfx; if (!p || !AC) return; CUSTOM.pendingSfx = null; for (const [n, list] of Object.entries(p)) if (Array.isArray(list)) for (const v of list) try { await addCustomSfx(n, new File([v.data], v.fname)); } catch (e) {} };
+// ---------------- the menu ----------------
+$('soundLabBtn').onclick = () => { audioInit(); loadPendingSfx().then(soundLabRows); show('soundlab'); };
+$('lookLabBtn').onclick = () => { lookLabRows(); show('looklab'); };
+$('soundLabBack').onclick = $('lookLabBack').onclick = () => show(match.state === 'paused' ? 'pause' : 'menu');
+$('labExport').onclick = $('labExport2').onclick = exportLabs;
+
+// ============================================================
+// VOICE CHAT (test version): talk to the people in your room.
+// Every phone sends its microphone to the host. The host hears everyone and sends each player a mix of all the
+// OTHER voices (so you never hear yourself). Tap the mic button in the lobby or during the match to turn your
+// microphone on or off. Nothing is recorded anywhere.
+// ============================================================
+const VOICE = { on: false, mic: null, calls: new Map(), audioEls: [], mixes: new Map() };
+function voiceBtn(state) { const b = $('micBtn'); b.hidden = !NET; b.classList.toggle('on', state === 'on'); b.classList.toggle('busy', state === 'busy'); b.textContent = state === 'on' ? '🎤 on' : state === 'busy' ? '🎤 …' : '🎤 off'; }
+// remote audio must sit in an <audio> element to flow in most browsers; we keep it muted there and play it through the game's mixer
+function hearStream(stream, key) {
+  const el = document.createElement('audio'); el.srcObject = stream; el.muted = true; el.autoplay = true; el.playsInline = true; document.body.appendChild(el); VOICE.audioEls.push(el);
+  audioInit(); const src = AC.createMediaStreamSource(stream), g = AC.createGain(); g.gain.value = 1.4; const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 120;
+  src.connect(hp); hp.connect(g); g.connect(master); return { el, src, g };
+}
+async function voiceToggle() {
+  if (!NET) return;
+  if (VOICE.on) { voiceOff(); return; }
+  voiceBtn('busy');
+  try { VOICE.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }); }
+  catch (e) { voiceBtn('off'); toast('MIC NOT ALLOWED'); return; }
+  VOICE.on = true; voiceBtn('on'); audioInit();
+  if (NET.host) { hostVoiceStart(); } else { joinerVoiceStart(); }
+}
+function voiceOff() {
+  VOICE.on = false; voiceBtn('off');
+  if (VOICE.mic) { VOICE.mic.getTracks().forEach(t => t.stop()); VOICE.mic = null; }
+  for (const c of VOICE.calls.values()) { try { c.close(); } catch (e) {} } VOICE.calls.clear();
+  if (NET && NET.host) hostMixRebuild();
+}
+// ---- host: receive every call, hear it, and answer with "everyone except you" ----
+function hostVoiceStart() {
+  if (VOICE.hostReady) { hostMixRebuild(); return; }
+  VOICE.hostReady = true;
+  NET.peer.on('call', call => {
+    const conn = NET.conns.find(c => c.peer === call.peer); const r = conn && conn.robot;
+    const dest = AC.createMediaStreamDestination(); VOICE.mixes.set(call.peer, dest);
+    call.answer(dest.stream);
+    call.on('stream', stream => { const h = hearStream(stream, call.peer); VOICE.calls.set(call.peer, Object.assign(call, { heard: h, robot: r })); hostMixRebuild(); toast((r ? r.name : 'Someone') + ' IS ON VOICE'); });
+    call.on('close', () => { VOICE.calls.delete(call.peer); VOICE.mixes.delete(call.peer); hostMixRebuild(); });
+  });
+  hostMixRebuild();
+}
+function hostMixRebuild() { // each joiner's outgoing mix = host mic + every other joiner's voice
+  if (!AC) return;
+  if (VOICE.micSrc) { try { VOICE.micSrc.disconnect(); } catch (e) {} VOICE.micSrc = null; }
+  if (VOICE.mic) VOICE.micSrc = AC.createMediaStreamSource(VOICE.mic);
+  for (const [peerId, dest] of VOICE.mixes) {
+    for (const [otherId, call] of VOICE.calls) { if (!call.heard) continue; try { call.heard.src.disconnect(dest); } catch (e) {} if (otherId !== peerId) call.heard.src.connect(dest); }
+    if (VOICE.micSrc) VOICE.micSrc.connect(dest);
+  }
+}
+// ---- joiner: call the host with the mic, hear what comes back ----
+function joinerVoiceStart() {
+  const call = NET.peer.call(NET_PREFIX + NET.code, VOICE.mic);
+  if (!call) { voiceOff(); toast('VOICE FAILED'); return; }
+  VOICE.calls.set('host', call);
+  call.on('stream', stream => { hearStream(stream, 'host'); toast('VOICE CONNECTED'); });
+  call.on('close', () => { if (VOICE.on) { voiceOff(); toast('VOICE ENDED'); } });
+  call.on('error', () => { voiceOff(); toast('VOICE FAILED'); });
+}
+// a host without a mic still relays the joiners' voices to each other
+{ const orig = hostStart; hostStart = function () { orig(); if (NET && NET.host && !VOICE.hostReady) { audioInit(); hostVoiceStart(); } voiceBtn(VOICE.on ? 'on' : 'off'); }; }
+$('micBtn').onclick = voiceToggle;
+$('lobbyMic').onclick = voiceToggle;
+setInterval(() => { const inRoom = !!NET; $('micBtn').hidden = !inRoom || match.state === 'menu' && $('lobby').hidden; $('lobbyMic').hidden = !inRoom; const on = VOICE.on; for (const b of [$('micBtn'), $('lobbyMic')]) { b.classList.toggle('on', on); b.textContent = on ? '🎤 on' : '🎤 off'; } if (NET && NET.host && !VOICE.hostReady && NET.peer) { hostVoiceStart(); } }, 500);
 
 document.getElementById('loading').hidden = true;
 </script>
