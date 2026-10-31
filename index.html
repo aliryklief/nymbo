@@ -436,7 +436,7 @@ const skyDome = new THREE.Mesh(new THREE.SphereGeometry(380, 32, 16), new THREE.
     }` }));
 skyDome.renderOrder = -10; skyDome.frustumCulled = false; scene.add(skyDome);
 scene.onBeforeRender = (r, s, cam) => skyDome.position.copy(cam.position);
-const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 480);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 480); // near .3 (was .1): ~3x the depth precision, so flat things on the grass stop flickering
 scene.add(new THREE.HemisphereLight(0xdcecff, 0x5c7a3c, 1.15));
 const sun = new THREE.DirectionalLight(0xfff1d8, 2.5);
 sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
@@ -451,7 +451,7 @@ const eventQueue = new RAPIER.EventQueue(true);
 const byCollider = new Map();      // collider handle -> { type:'block'|'robot'|'static'|'animal', ref }
 
 // shared geometry
-const cubeGeo = new RoundedBoxGeometry(1, 1, 1, 2, .07);
+const cubeGeo = new RoundedBoxGeometry(1, 1, 1, 1, .07); // 1 segment: 108 triangles a block instead of 300 (≈1,960 blocks on screen), same soft edges
 const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
 // ============================================================
@@ -681,9 +681,13 @@ function portalCheck(p) { // is point p inside a portal's doorway? returns the p
 
 // draw all fixed scenery in two instanced batches
 {
-  const im = new THREE.InstancedMesh(cubeGeo, new LiteMat({ roughness: .9 }), staticCells.length);
-  staticCells.forEach(([x, y, z, c], i) => { tmpM.makeTranslation(x, y, z); im.setMatrixAt(i, tmpM); im.setColorAt(i, c); });
-  im.castShadow = im.receiveShadow = true; scene.add(im);
+  // flat stone pads (under hubs and portals) use sharp-edged tiles so no grass shows in thin lines between them; everything else keeps rounded blocks
+  for (const [geo, list] of [[cubeGeo, staticCells.filter(c => c[1] > -.4)], [boxGeo, staticCells.filter(c => c[1] <= -.4)]]) {
+    if (!list.length) continue;
+    const im = new THREE.InstancedMesh(geo, new LiteMat({ roughness: .9 }), list.length);
+    list.forEach(([x, y, z, c], i) => { tmpM.makeTranslation(x, y, z); im.setMatrixAt(i, tmpM); im.setColorAt(i, c); });
+    im.castShadow = geo === cubeGeo; im.receiveShadow = true; scene.add(im);
+  }
   const cm = new THREE.InstancedMesh(boxGeo, new LiteMat({ color: 0xffffff, emissive: 0xc8dcf5, emissiveIntensity: .5, roughness: 1 }), cloudCells.length);
   cloudCells.forEach(([x, y, z], i) => { tmpM.compose(tmpV.set(x, y, z), tmpQ.identity(), tmpS.set(2, 2, 2)); cm.setMatrixAt(i, tmpM); });
   scene.add(cm);
@@ -786,14 +790,14 @@ const tramp = (() => {
   h.strokeStyle = '#ffd21f'; h.lineWidth = 16; h.beginPath(); h.arc(128, 128, 78, 0, 7); h.stroke(); h.fillStyle = '#ffd21f'; h.beginPath(); h.arc(128, 128, 30, 0, 7); h.fill();
   const matTex = new THREE.CanvasTexture(m); matTex.colorSpace = THREE.SRGBColorSpace; matTex.userData.cv = m;
   const pts = []; for (let i = 0; i <= 60; i++) { const a = i / 60 * Math.PI * 2 * 5; pts.push(V(Math.cos(a) * .09, i / 60 * .32, Math.sin(a) * .09)); }
-  return { rim: new LiteMat({ map: rimTex }), mat: new LiteMat({ map: matTex }), steel: new LiteMat({ color: 0xb8bec9 }), base: new LiteMat({ color: 0x2a2c33 }),
+  return { rim: new LiteMat({ map: rimTex }), mat: new LiteMat({ map: matTex }), steel: new LiteMat({ color: 0xb8bec9 }), base: new LiteMat({ color: 0x2a2c33, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }),
     rimGeo: new THREE.TorusGeometry(1.5, .17, 10, 40).rotateX(Math.PI / 2), matGeo: new THREE.CylinderGeometry(1.42, 1.42, .04, 40),
     springGeo: new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, .022, 5), baseGeo: new THREE.TorusGeometry(1.5, .07, 6, 40).rotateX(Math.PI / 2) };
 })();
 function trampoline(x, z) {
   const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
   // set INTO the ground (flush, nothing to bump into): a dark pit ring, the striped rim barely sticking out, the mat level with the grass
-  const pit = new THREE.Mesh(new THREE.CircleGeometry(1.85, 40).rotateX(-Math.PI / 2), tramp.base); pit.position.y = .006; g.add(pit);
+  const pit = new THREE.Mesh(new THREE.CircleGeometry(1.85, 40).rotateX(-Math.PI / 2), tramp.base); pit.position.y = .012; g.add(pit);
   const top = new THREE.Group(); top.position.y = 0; g.add(top);
   const rim = new THREE.Mesh(tramp.rimGeo, tramp.rim.clone()); // (own material: each rim flashes on its own) rim.position.y = -.07; rim.scale.set(1, .7, 1); top.add(rim);
   const mat = new THREE.Mesh(tramp.matGeo, tramp.mat); mat.position.y = .02; mat.receiveShadow = true; top.add(mat);
@@ -864,9 +868,14 @@ function updateLaunchers(dt, visualOnly = false) {
   if (visualOnly) return; // (a joined phone only shows the lights; the host does the launching)
   for (const r of robots) {
     if (r.state !== 'play' || r.frozenT > 0) continue;
-    const c = rPos(r), lv = r.body.linvel();
+    const c = rPos(r), lv = r.body.linvel(), prev = r.padPrev || c; r.padPrev = c.clone();
+    // the pad can fire again as soon as you're back on the ground (the old 2.9 s lock outlasted the flight, so landing back on
+    // a pad sometimes did nothing), and it checks the path since last frame, so a fast robot or a slow frame can't skip over it
+    const ready = (r.padT || 0) <= 0 || (r.grounded && r.padT < 2.4);
     for (const Pd of PADS) {
-      if (!Pd.broken && Pd.grow >= 1 && Math.hypot(c.x - Pd.x, c.z - Pd.z) < 1.55 && c.y < 2 && lv.y < 2 && (r.padT || 0) <= 0) {
+      const dx = c.x - prev.x, dz = c.z - prev.z, L2 = dx * dx + dz * dz, u = L2 > 1e-6 ? clamp(((Pd.x - prev.x) * dx + (Pd.z - prev.z) * dz) / L2, 0, 1) : 1;
+      const near = Math.hypot(prev.x + dx * u - Pd.x, prev.z + dz * u - Pd.z);
+      if (!Pd.broken && Pd.grow >= 1 && near < 1.6 && c.y < 2.2 && lv.y < 3 && ready) {
         // keep going the way you were going (or the way you face if you were standing still)
         const sp = Math.hypot(lv.x, lv.z), f = sp > 1 ? V(lv.x / sp, 0, lv.z / sp) : fwdOf(r.yaw); let out = clamp(sp * 1.5, PAD_FWD, PAD_FWD_MAX);
         // never send anyone off the island or into a fort: shorten the throw until the landing spot is safe
@@ -2350,7 +2359,7 @@ const blobRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
 const RB = {
   body: new RoundedBoxGeometry(.9, .7, .68, 3, .16), head: new RoundedBoxGeometry(1.06, .86, .88, 3, .2),
   visor: new RoundedBoxGeometry(.84, .56, .06, 2, .03), arm: new RoundedBoxGeometry(.25, .56, .28, 2, .1),
-  ball: new THREE.SphereGeometry(.37, 40, 28).rotateZ(Math.PI / 2), // poles on the rolling axis, so the stripes sweep round as it rolls
+  ball: new THREE.SphereGeometry(.37, 28, 18).rotateZ(Math.PI / 2), // poles on the rolling axis, so the stripes sweep round as it rolls
   ear: new THREE.CylinderGeometry(.12, .12, .08, 14), bolt: new THREE.CylinderGeometry(.03, .05, .22, 6),
 };
 const ballTexs = {};
@@ -2620,7 +2629,7 @@ function updateRobot(r, dt) {
   const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
   if (r.pull) { des.add(r.pull); } // the black hole's drag
   if (r.boost) { des.add(r.boost); r.boost.multiplyScalar(Math.exp(-1.3 * dt)); if (r.boost.lengthSq() < .3) r.boost = null; } // speed arrows
-  if (r.padT > 0) r.padT -= dt;
+  if (r.padT > 0) { r.padT -= dt; if (r.grounded && r.padT < 2.4) r.padT = 0; } // landed: normal steering straight back
   const k = 1 - Math.exp(-(r.grounded ? (onIce(rPos(r)) ? 1.3 : 14) : r.padT > 0 ? .45 : 4) * dt); // launched by a pad: you keep the launch, steering only a little // ice slick: almost no grip
   let vy = lv.y;
   if (r.jumpReq) {
@@ -2808,7 +2817,7 @@ function detonate(e) {
   if (e.kind === 'bomb') explode(p, team, e.thrower);
   else if (e.kind === 'freeze') freezeArea(p, team, e.thrower);
   else if (e.kind === 'warp') warpTo(e.thrower, p);
-  else if (isSticky(e.kind)) explode(p, null, e.thrower, e.kind === 'egg' ? .9 : 1.3); // sticky: bigger blast and NO sides — it knocks out the thrower too
+  else if (isSticky(e.kind)) explode(p, null, e.thrower, e.kind === 'egg' ? .9 : .9); // sticky: 90% of a bomb's blast and NO sides — it knocks out the thrower too
   else { fxBurst(p, 0xb36bff, 1.2, .3); fxDebris(p, 0xc58bff, 14, 5); sfx('hit', p); }
   consumePower(e);
 }
@@ -4152,7 +4161,7 @@ function updateTornado(dt) {
   T.puff -= dt; if (T.puff <= 0) { T.puff = .025; const a = rnd() * 6.28, r = rr(.8, 5); emit(V(T.pos.x + Math.cos(a) * r, rr(0, 10), T.pos.z + Math.sin(a) * r), rnd() < .5 ? 0x8a7a5a : 0xcfc6b0, V(-Math.sin(a) * 8, rr(4, 9), Math.cos(a) * 8), rr(.3, .7), 1, 2); }
   T.snd -= dt; if (T.snd <= 0) { T.snd = 1.1; sfx('jet', T.pos.clone().setY(2)); }
   // tears at walls it touches and sucks up anything loose: pulled in, spun round, lifted, then thrown out the top
-  for (const y of [1, 3, 5.5, 9]) unanchorAround(T.pos.clone().setY(y), 3.2 * life); // rips whole chunks out of walls and towers
+  T.rip = (T.rip || 0) + 1; if (T.rip % 4 === 0) unanchorAround(T.pos.clone().setY([1, 3, 5.5, 9][(T.rip / 4) % 4 | 0]), 3.2 * life); // rips chunks out of walls and towers — one height per 4 frames, so it never hitches
   for (const e of blocks) {
     if (e.dead || !e.body || e.holder || e.anchored || e.kind === 'flag') continue;
     const t = e.body.translation(), dx = t.x - T.pos.x, dz = t.z - T.pos.z, d = Math.hypot(dx, dz);
@@ -4590,7 +4599,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
