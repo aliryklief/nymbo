@@ -979,7 +979,7 @@ const KIND_COL = {
   homing: ['#b26bff', '#5a14b8', 0xb36bff, '#ffffff', 'rgba(255,255,255,.45)'],
   warp: ['#ff6ad5', '#8a0fb8', 0xff7ae0, '#ffffff', 'rgba(255,255,255,.5)'],
   sticky: ['#9be24a', '#2e6b12', 0xc8ff5a, '#1a2a0c', 'rgba(0,0,0,.35)'], // your one start block: sticks where it lands (on a robot too), bang 2.5 s later
-  egg: ['#fff6dc', '#e8cf9a', 0xfff0b0, '#9a7b4a', 'rgba(120,90,40,.4)'],     // the easter egg: dropped by a bird when a tree falls, bang 5 s later
+  egg: ['#fff6dc', '#e8cf9a', 0xfff0b0, '#9a7b4a', 'rgba(120,90,40,.4)'],     // the easter egg: a bird drops it from the signpost; it bursts into a stink cloud where it lands (catch it first and it's yours to throw)
 };
 const kindMat = {}, coreMat = {};
 // power blocks are see-through "jelly glass" boxes: a tinted shell with a solid logo, and a solid little core inside
@@ -1025,7 +1025,7 @@ const KIND_CSS = { bomb: 'linear-gradient(135deg,#2b2d33,#0b0b0e)', freeze: 'lin
 const iceOverlayMat = new LiteMat({ color: 0xaef4ff, transparent: true, opacity: .45, roughness: .05, emissive: 0x3ccfff, emissiveIntensity: .4, depthWrite: false });
 
 const isPower = k => k === 'bomb' || k === 'freeze' || k === 'homing' || k === 'warp' || k === 'sticky' || k === 'egg';
-const isSticky = k => k === 'sticky' || k === 'egg';
+const isSticky = k => k === 'sticky'; // (the egg doesn't stick: it bursts the moment it touches anything)
 function newBlock(kind, pos, o = {}) {
   const dims = o.dims ? o.dims.clone() : V(1, 1, 1).multiplyScalar(o.size || 1);
   const e = { id: nextId++, kind, dims, size: Math.max(dims.x, dims.y, dims.z), rad: (dims.x + dims.y + dims.z) / 6,
@@ -2653,9 +2653,10 @@ function updateRobot(r, dt) {
   r.lastVy = lv.y;
   r.yaw += angDiff(r.yaw, r.yawT) * Math.min(1, dt * (r.isPlayer ? 14 : 9));
   if (r.dashT > 0) r.dashT -= dt; else r.dashV *= Math.pow(.001, dt);
-  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
+  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
   if (r.pull) { des.add(r.pull); } // the black hole's drag
   if (r.boost) { des.add(r.boost); r.boost.multiplyScalar(Math.exp(-1.3 * dt)); if (r.boost.lengthSq() < .3) r.boost = null; } // speed arrows
+  if (r.gasT > 0) r.gasT -= dt; // (in the stink cloud: crawling)
   if (r.padT > 0) { r.padT -= dt; if (r.grounded && r.padT < 2.4) r.padT = 0; } // landed: normal steering straight back
   const k = 1 - Math.exp(-(r.grounded ? (onIce(rPos(r)) ? 1.3 : 14) : r.padT > 0 ? .45 : 4) * dt); // launched by a pad: you keep the launch, steering only a little // ice slick: almost no grip
   let vy = lv.y;
@@ -2844,7 +2845,8 @@ function detonate(e) {
   if (e.kind === 'bomb') explode(p, team, e.thrower);
   else if (e.kind === 'freeze') freezeArea(p, team, e.thrower);
   else if (e.kind === 'warp') warpTo(e.thrower, p);
-  else if (isSticky(e.kind)) explode(p, null, e.thrower, e.kind === 'egg' ? .9 : .9); // sticky: 90% of a bomb's blast and NO sides — it knocks out the thrower too
+  else if (e.kind === 'egg') gasCloud(p);
+  else if (isSticky(e.kind)) explode(p, null, e.thrower, .9); // sticky: 90% of a bomb's blast and NO sides — it knocks out the thrower too
   else { fxBurst(p, 0xb36bff, 1.2, .3); fxDebris(p, 0xc58bff, 14, 5); sfx('hit', p); }
   consumePower(e);
 }
@@ -2911,7 +2913,8 @@ function handleContacts() {
       if (B && B.type === 'robot' && e.kind === 'homing' && !hittable(B.ref)) continue; // glances off see-through / knocked-out robots and keeps hunting
       if (B && B.type === 'block' && B.ref.holder) continue;
       if (e.kind === 'homing' && e.target && e.liveT < 2.4 && (!B || B.type === 'static')) continue; // homing skims the floor while chasing
-      if (isSticky(e.kind)) { stickTo(e, B); continue; } // grenades and eggs don't go off on contact: they stick, then the fuse runs
+      if (isSticky(e.kind)) { stickTo(e, B); continue; }
+      if (e.kind === 'egg' && B && B.type === 'block' && B.ref.kind === 'egg') continue; // grenades and eggs don't go off on contact: they stick, then the fuse runs
       if (B && B.type === 'robot' && e.kind !== 'freeze' && e.thrower && B.ref.team !== e.thrower.team) { const lv = e.body.linvel(); ragdoll(B.ref, V(lv.x, 0, lv.z), e.thrower); } // a direct hit always counts
       detonate(e);
     }
@@ -3038,8 +3041,9 @@ function updateHoles(dt) {
 // ============================================================
 // STICKY THINGS + THE BIRDS
 //  sticky grenade (your one start block): sticks to whatever it hits first, a robot included, and goes off 2.5 s later.
-//  egg bomb: once in a while a tree that comes down had a nest in it. The birds burst out, one of them drops an egg
-//  on its way, the egg sticks where it lands and goes off 5 s later. Rare, on purpose.
+//  egg: once in a while a tree that comes down had a nest in it. One bird flies to the centre signpost, sits, and drops
+//  its egg when someone comes close. The egg bursts into a big see-through cloud of green stink the moment it touches
+//  anything — catch it on the way down and it's yours to throw instead. Everyone in the cloud crawls along.
 // ============================================================
 const STUCK = []; // { e, to (robot|null), off, fuse }
 function stickTo(e, B) {
@@ -3122,6 +3126,36 @@ function updateBirds(dt) {
 }
 // a tree block coming loose = that tree is falling
 { const u0 = unanchor; unanchor = function (e) { const was = e.anchored; u0(e); if (was && e.kind === 'tree' && e.body) { const t = e.body.translation(); let best = null, bd = 9; for (const tr of TREES) { const d = Math.hypot(tr.x - t.x, tr.z - t.z); if (d < bd) { bd = d; best = tr; } } if (best && bd < 2.5) treeFell(best); } }; }
+
+// ---- the stink cloud ----
+const GAS = [], GAS_R = 6.5, GAS_LIFE = 13;
+const gasMat = new THREE.MeshBasicMaterial({ color: 0xb6d43a, transparent: true, opacity: .3, depthWrite: false }); // sickly yellow-green, still see-through
+const gasGeo = new THREE.IcosahedronGeometry(1, 2);
+function gasCloud(p, to) {
+  if (!to) { // drifts towards the trampoline on the side it burst
+    let best = null, bd = 1e9; for (const Pd of PADS) { const d = Math.hypot(Pd.x - p.x, Pd.z - p.z); if (d < bd) { bd = d; best = Pd; } }
+    to = best ? V(best.x, 0, best.z) : p.clone();
+  }
+  const g = new THREE.Group(); g.position.set(p.x, 0, p.z); scene.add(g);
+  for (let i = 0; i < 9; i++) { const m = new THREE.Mesh(gasGeo, gasMat.clone()); const a = i / 9 * Math.PI * 2, r = i ? rr(1.8, 3.6) : 0; m.position.set(Math.cos(a) * r, rr(1, 2.6), Math.sin(a) * r); m.scale.setScalar(rr(2.2, 3.2)); m.userData.ph = rnd() * 6; g.add(m); }
+  const dir = V(to.x - p.x, 0, to.z - p.z), L = dir.length(); dir.normalize();
+  GAS.push({ g, pos: V(p.x, 0, p.z), dir, dist: Math.max(0, L - 2), moved: 0, t: 0 });
+  fxBurst(V(p.x, .8, p.z), 0x9be04a, 1.4, .4); sfx('poof', V(p.x, .5, p.z)); sfx('hole', V(p.x, .5, p.z));
+  netEv(['gas', +p.x.toFixed(2), +p.z.toFixed(2), +to.x.toFixed(2), +to.z.toFixed(2)]);
+}
+function updateGas(dt) {
+  for (let i = GAS.length - 1; i >= 0; i--) {
+    const G_ = GAS[i]; G_.t += dt; const k = G_.t / GAS_LIFE;
+    if (G_.moved < G_.dist) { const step = Math.min(1.7 * dt, G_.dist - G_.moved); G_.pos.addScaledVector(G_.dir, step); G_.moved += step; }
+    G_.g.position.copy(G_.pos);
+    const fade = Math.min(1, G_.t / .6) * (k > .75 ? Math.max(0, 1 - (k - .75) / .25) : 1), grow = 1 + k * .35;
+    G_.puff = (G_.puff || 0) - dt; if (G_.puff <= 0 && fade > .3) { G_.puff = .09; const a = rnd() * 6.28, r = rr(0, GAS_R * .8); emit(V(G_.pos.x + Math.cos(a) * r, rr(.3, 2.5), G_.pos.z + Math.sin(a) * r), rnd() < .5 ? 0x6f8f1e : 0xc8e05a, V(rr(-.4, .4), rr(.3, .9), rr(-.4, .4)), rr(.2, .4), 1.6, 1); } // stinky wisps
+    for (const m of G_.g.children) { m.material.opacity = .3 * fade; m.position.y += Math.sin(G_.t * .9 + m.userData.ph) * .004; m.rotation.y += dt * .2; }
+    G_.g.scale.setScalar(grow);
+    if (fade > .25) for (const r of robots) { if (r.state !== 'play') continue; const c = rPos(r); if (Math.hypot(c.x - G_.pos.x, c.z - G_.pos.z) < GAS_R * grow && c.y < 7) { if (r.isPlayer && !(r.gasT > 0)) toast('PHEW! STINK CLOUD'); r.gasT = .25; } }
+    if (G_.t >= GAS_LIFE) { scene.remove(G_.g); G_.g.children.forEach(m => m.material.dispose()); GAS.splice(i, 1); }
+  }
+}
 
 // ============================================================
 // BOTS: same rules as you (same speed cap, same throws, same physics). No cheating, no walking through walls.
@@ -4622,7 +4656,7 @@ function tick(dt, t = now()) {
     if (n === 3) acc = 0;
     renderAlpha = clamp(acc / world.timestep, 0, 1);
     updateBlocks(dt);
-    if (active) { updateProjectiles(dt); updateFlags(); updateRepair(dt); updateLaunchers(dt); updateHoles(dt); updateSticky(dt); updateBirds(dt); }
+    if (active) { updateProjectiles(dt); updateFlags(); updateRepair(dt); updateLaunchers(dt); updateHoles(dt); updateSticky(dt); updateBirds(dt); updateGas(dt); }
     updateAnimals(dt);
     portalCool = Math.max(0, portalCool - dt);
     for (const Q of PORTALS) {
@@ -4647,7 +4681,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -5068,6 +5102,7 @@ function clientEv(e) {
   else if (k === 'bh') startBlackHole(e[1]);
   else if (k === 'stick') { const b = blockById(e[1]); if (b && !b.stuck) { b.live = false; b.stuck = { to: e[5] >= 0 ? robots[e[5]] : null, off: null, fuse: b.kind === 'egg' ? 5 : 2.5, beep: 0 }; if (b.stuck.to) { b.stuck.off = V(e[2], e[3], e[4]).sub(rPos(b.stuck.to)); } dropBody(b); makeBody(b, V(e[2], e[3], e[4]), null); b.body.setBodyType(RAPIER.RigidBodyType.Fixed, true); b.col.setSensor(true); STUCK.push(b); sfx('catch', V(e[2], e[3], e[4])); } }
   else if (k === 'birds') { const tr = TREES.find(t => Math.hypot(t.x - e[1], t.z - e[2]) < .5); if (tr && !tr.flown) { tr.flown = true; birdsOut(tr, e[4] || 'blue'); } }
+  else if (k === 'gas') gasCloud(V(e[1], 0, e[2]), V(e[3], 0, e[4]));
   else if (k === 'birdgo') { for (const b of BIRDS) if (b.mode === 'perch') birdLeave(b); }
   else if (k === 'bhx') { const b = blockById(e[1]); if (b && !b.dead) { const t = b.body ? b.body.translation() : null; if (t) fxBurst0(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(b); } }
   else if (k === 'out') { const r = robots[e[1]]; if (r) { r.state = 'out'; r.model.g.visible = false; toast([[r.name.toUpperCase(), r.color], [' WAS SWALLOWED', null]]); if (r === P) specStart('SWALLOWED · DRAG TO LOOK AROUND'); } }
@@ -5181,7 +5216,7 @@ function clientTick(dt, t) {
   for (const Q of PORTALS) Q.disc.rotation.z -= dt * 1.5;
   for (const team of ['blue', 'red']) { const g = GATES[team]; g.flash = Math.max(0, g.flash - dt); g.glow.material.opacity = .5 + .4 * Math.sin(t / 300) * .2 + g.flash * .5; }
   for (const r of robots) syncRobot(r);
-  updateFun(dt); updateAmbience(dt); pulseHalos(t); updateIce(dt); updateWool(dt); updateFx(dt); updateCamera(dt);
+  updateFun(dt); updateAmbience(dt); pulseHalos(t); updateBirds(dt); updateGas(dt); updateSticky(dt); updateIce(dt); updateWool(dt); updateFx(dt); updateCamera(dt);
   if (hitStop > 0) hitStop = 0;
 }
 // on the host: copy every in-world sound and effect to the friends' phones as it happens
