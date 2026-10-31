@@ -577,15 +577,19 @@ function tree(x, z, h) {
   staticBoxes.push({ x0: x - 1.5, y0: 0, z0: z - 1.5, x1: x + 1.5, y1: h + 3, z1: z + 1.5, foot: true }); // keeps other scenery and animals clear
 }
 // trees: two groves on the flanks give cover for sneaking round, plus a few loners. The middle stays open.
-const GROVES = [{ x: -20, z: -23, n: 7 }, { x: 20, z: 23, n: 7 }, { x: -5, z: 33, n: 4 }, { x: 5, z: -33, n: 4 }];
+// same 27 trees as before, spread wider: smaller groves, a few round each pasture (the corners looked empty), more loners
+const GROVES = [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }];
+for (const p of PORTAL_SPOTS) { const L = Math.hypot(p.x, p.z), pa = { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; // trees scattered round the pasture fence, never in the portal's way
+  for (let i = 0, n = 0; i < 120 && n < 4; i++) { const a = rnd() * Math.PI * 2, d = rr(11, 16), x = Math.round(pa.x + Math.cos(a) * d), z = Math.round(pa.z + Math.sin(a) * d);
+    if (Math.hypot(x - p.x, z - p.z) < 7 || !clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue; tree(x, z, 2 + Math.floor(rnd() * 3)); n++; } }
 for (const gv of GROVES) for (let i = 0, n = 0; i < 80 && n < gv.n; i++) {
   const x = Math.round(gv.x + rr(-10, 10)), z = Math.round(gv.z + rr(-5, 5));
   if (!clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue;
   tree(x, z, 2 + Math.floor(rnd() * 3)); n++;
 }
-for (let i = 0, n = 0; i < 300 && n < 5; i++) {
+for (let i = 0, n = 0; i < 400 && n < 3; i++) {
   const x = Math.round(rr(-MX + 6, MX - 6)), z = Math.round(rr(-MZ + 6, MZ - 6));
-  if (!clearAt(x, z, 6) || staticBoxes.some(b => Math.abs(b.x0 - x) < 10 && Math.abs(b.z0 - z) < 10)) continue;
+  if (!clearAt(x, z, 6) || staticBoxes.some(b => Math.abs(b.x0 - x) < 9 && Math.abs(b.z0 - z) < 9)) continue;
   tree(x, z, 2 + Math.floor(rnd() * 3)); n++;
 }
 // stone props: drawn as real movable blocks later (only the floor, gateways and portals are fixed)
@@ -1054,7 +1058,7 @@ function destroyBlock(e) { dropBody(e); hideBlock(e); e.dead = true; e.live = fa
 
 // ---------- forts: faded team colours, walls, four flag towers ----------
 const FLAGS = { blue: [], red: [] };
-const fadeCol = c => '#' + new THREE.Color(c).lerp(new THREE.Color('#c4c7ce'), .45).getHexString(); // fort bricks: a bit more colour than before, still faded enough that the robots pop against them
+const fadeCol = c => '#' + new THREE.Color(c).lerp(new THREE.Color('#c4c7ce'), .5).getHexString(); // fort bricks: a bit more colour than before, still faded enough that the robots pop against them
 const TOWER_H = 12; // flags high up: you can spot them from anywhere on the map
 // Big brick forts (Toblo scale): 2-thick, 3-high outer walls of 2x1 bricks laid in a staggered pattern,
 // a doorway in the middle of each side, two inner wall pieces, and four tall towers carrying the flags.
