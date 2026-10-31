@@ -28,26 +28,32 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 .head svg{width:100%;height:100%;display:block}
 .head.me{box-shadow:0 0 0 2px var(--yellow)}
 .head.dim{opacity:.5}
-#mid{display:flex;align-items:center;gap:6px;background:var(--panel);border:2px solid var(--ink2);border-radius:12px;padding:3px 8px;flex:none}
+#mid{pointer-events:auto;cursor:pointer;color:#fff;font:inherit;display:flex;align-items:center;gap:6px;background:var(--panel);border:2px solid var(--ink2);border-radius:12px;padding:3px 8px;flex:none}
 #mid b{font-family:var(--display);font-weight:400;font-size:17px;line-height:1;font-variant-numeric:tabular-nums;min-width:12px;text-align:center}
 #sB{color:#5cc0ff}#sR{color:#ff6a5a}
 #timer{font-family:var(--display);font-size:17px;line-height:1;font-variant-numeric:tabular-nums;min-width:46px;text-align:center}
 #timer.low{color:var(--yellow)}
-/* left-side ammo magazine, upside down: the block in your hands big at the bottom, the next three stacked above it,
-   each smaller and fainter until they fade out. No box around it. */
-#ammo{left:calc(env(safe-area-inset-left,0px) + 10px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:5px}
-#aNowBox{position:relative;width:56px;height:56px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
-#aNow{width:56px;height:56px;display:block}
-#aNowBox.pop{animation:apop .22s ease-out}
+/* LEFT = what you carry, RIGHT = what you can fire. Mirror images: the block in your hands sits level with the shield
+   button (both on the 50% line), the next blocks stack upwards on the left exactly like earned powers stack upwards on the
+   right, each step smaller and fainter. The bottom half of the screen stays clear for moving and seeing players. */
+#ammo{left:calc(env(safe-area-inset-left,0px) + 8px);top:50%;transform:translateY(-50%);width:52px;display:flex;flex-direction:column;align-items:center}
+#aNowBox{position:relative;width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);background:rgba(10,14,26,.62);display:grid;place-items:center;box-shadow:0 3px 0 rgba(0,0,0,.3);transition:border-color .2s,box-shadow .2s}
+#aNowBox.has{border-color:var(--yellow);box-shadow:0 3px 0 rgba(0,0,0,.3),0 0 12px var(--yellow)}
+#aNow{width:42px;height:42px;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
+#aNowBox.bump{animation:apop .22s ease-out}
 @keyframes apop{0%{transform:scale(.82)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
-#aNext{display:flex;flex-direction:column;align-items:center;gap:4px}
-#aN1{width:38px;height:38px;opacity:.55}
-#aN2{width:28px;height:28px;opacity:.3}
-#aN3{width:20px;height:20px;opacity:.14}
-#cnt{font-family:var(--display);font-weight:400;font-size:18px;line-height:1;text-align:center;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.6)}
-#cnt small{display:block;font:600 8px/1 var(--body);letter-spacing:.14em;color:var(--muted);margin-top:2px}
+#aNext{position:fixed;left:calc(env(safe-area-inset-left,0px) + 8px);bottom:calc(50% + 35px);width:52px;display:flex;flex-direction:column;align-items:center;gap:9px}
+#aNext canvas{display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
+#aN1{width:46px;height:46px;opacity:.85}
+#aN2{width:46px;height:46px;opacity:.5;transform:scale(.9)}
+#aN3{width:46px;height:46px;opacity:.25;transform:scale(.8)}
 #specBack{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:30;padding:10px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--panel);color:#fff;font:600 13px/1 var(--body);letter-spacing:.06em}
 .chip.cur{background:#ffd400;color:#111}
+.dz{top:18%;bottom:18%;width:10vw;border-radius:14px;background:linear-gradient(90deg,rgba(255,255,255,.035),transparent);opacity:1;transition:background .25s}
+#dzL{left:0}#dzR{right:0;background:linear-gradient(270deg,rgba(255,255,255,.06),transparent)}
+.dz.soft{background:linear-gradient(90deg,rgba(255,255,255,.14),transparent)}#dzR.soft{background:linear-gradient(270deg,rgba(255,255,255,.14),transparent)}
+.dz.hit{animation:dzhit .35s ease-out}
+@keyframes dzhit{0%{background:rgba(120,255,140,.45)}100%{background:rgba(120,255,140,0)}}
 #micBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:8;padding:8px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--panel);color:#fff;font:600 12px/1 var(--body);letter-spacing:.08em}
 #micBtn.on,#lobbyMic.on{background:#1f8f4a;border-color:#4be08a}
 #micBtn.busy{opacity:.6}
@@ -86,13 +92,13 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #vig.on{opacity:.45}#vig.on.hot{box-shadow:inset 0 0 46px 5px rgba(255,30,30,.7)}
 #vig.on.beat{animation:beat .4s ease-out}
 @keyframes beat{0%{opacity:.95}100%{opacity:.45}}
-#pwr{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:7}
-#pwrN{position:fixed;right:calc(env(safe-area-inset-right,0px) + 6px);top:calc(50% - 170px);z-index:8;font-family:var(--display);font-size:13px;color:#ffd400;text-shadow:0 1px 0 #000}
-#holeBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);top:calc(50% + 250px);z-index:7;width:52px;height:52px;background:#000;box-shadow:0 0 18px #b36bff}
+#pwr{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);bottom:calc(50% + 35px);width:52px;display:flex;flex-direction:column;align-items:center;gap:9px;z-index:7}
+#holeBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);top:calc(50% + 35px);z-index:7;width:52px;height:52px;background:#000;box-shadow:0 0 18px #b36bff}
 .pw.rolling{animation:pwroll .12s linear infinite alternate}.pw.landed{animation:pwland .5s cubic-bezier(.2,1.4,.3,1)}
 @keyframes pwroll{from{transform:scale(1) rotate(-4deg)}to{transform:scale(1.08) rotate(4deg)}}
 @keyframes pwland{0%{transform:scale(1.6)}100%{transform:scale(1)}}
-#shieldBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);top:calc(50% + 190px);z-index:7;width:52px;height:52px}
+#shieldBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);top:50%;transform:translateY(-50%);z-index:7;width:52px;height:52px;opacity:0;transition:opacity .35s;pointer-events:none}
+#shieldBtn.show{opacity:1;pointer-events:auto}
 .pw{pointer-events:auto;position:relative;width:46px;height:46px;border-radius:50%;border:2.5px solid var(--c);background:rgba(10,14,26,.62);color:var(--c);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 rgba(0,0,0,.3);touch-action:none;-webkit-tap-highlight-color:transparent}
 .pw svg{width:24px;height:24px;position:relative;z-index:1}
 .pw i{position:absolute;inset:-2px;border-radius:50%;background:conic-gradient(rgba(0,0,0,.62) calc(var(--k,0)*360deg),transparent 0)}
@@ -113,8 +119,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #count{top:45%;left:50%;transform:translate(-50%,-50%);font-family:var(--display);font-size:96px;text-shadow:0 6px 0 rgba(0,0,0,.3)}
 /* landscape buttons */
 #lbtns{display:none}
-@media (orientation:landscape){#lbtns{display:block}#shieldBtn{top:calc(env(safe-area-inset-top,0px) + 58px);left:calc(env(safe-area-inset-left,0px) + 352px);right:auto}#holeBtn{top:calc(env(safe-area-inset-top,0px) + 58px);left:calc(env(safe-area-inset-left,0px) + 412px);right:auto}#pwrN{top:calc(env(safe-area-inset-top,0px) + 108px);left:calc(env(safe-area-inset-left,0px) + 12px);right:auto}#pwr{flex-direction:row;top:calc(env(safe-area-inset-top,0px) + 58px);left:calc(env(safe-area-inset-left,0px) + 10px);right:auto;transform:none}}
-.lbtn{position:fixed;pointer-events:auto;border-radius:50%;display:grid;place-items:center;font-family:var(--display);letter-spacing:.04em;color:#fff;border:3px solid rgba(255,255,255,.5);box-shadow:0 6px 16px rgba(0,0,0,.3);touch-action:none;cursor:pointer;font-size:14px;opacity:.85}
+@media (orientation:landscape){#lbtns{display:block}}
 .lbtn.down{transform:scale(.92);filter:brightness(1.2)}
 #bThrow{right:calc(env(safe-area-inset-right,0px) + 26px);bottom:calc(env(safe-area-inset-bottom,0px) + 30px);width:92px;height:92px;background:rgba(255,212,0,.85);color:var(--ink);font-size:18px}
 #bJump{right:calc(env(safe-area-inset-right,0px) + 134px);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);width:66px;height:66px;background:rgba(255,255,255,.2)}
@@ -189,12 +194,13 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div class="hud" id="edge"></div>
   <div class="hud" id="cross"></div>
   <div class="hud" id="top">
-    <button id="pauseBtn" aria-label="Pause">II</button>
     <div class="heads" id="teamB"></div>
-    <div id="mid"><b id="sB">0</b><div id="timer">5:00</div><b id="sR">0</b></div>
+    <button id="mid" aria-label="Map and menu"><b id="sB">0</b><div id="timer">5:00</div><b id="sR">0</b></button>
     <div class="heads" id="teamR"></div>
   </div>
-  <div class="hud" id="ammo"><div id="aNext"><canvas id="aN3"></canvas><canvas id="aN2"></canvas><canvas id="aN1"></canvas></div><div id="aNowBox"><canvas id="aNow"></canvas></div><b id="cnt">0<small>BLOCKS</small></b></div>
+  <div class="hud dz" id="dzL"></div><div class="hud dz" id="dzR"></div>
+  <div class="hud" id="aNext"><canvas id="aN3"></canvas><canvas id="aN2"></canvas><canvas id="aN1"></canvas></div>
+  <div class="hud" id="ammo"><div id="aNowBox"><canvas id="aNow"></canvas></div></div>
   <div class="hud" id="reload"><svg viewBox="0 0 34 34"><circle cx="17" cy="17" r="13" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="4"/><circle id="reloadArc" cx="17" cy="17" r="13" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-dasharray="20 82"/></svg></div>
   <div class="hud" id="toast" hidden></div>
   <div class="hud" id="feed"></div>
@@ -277,7 +283,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
       <li><div class="g">•</div><div><b>Tap: jump</b><span>Tap again in the air to double jump (about 3 blocks)</span></div></li>
       <li><div class="g">✋</div><div><b>Hold: stop, keep holding: reverse</b><span>You run forward on your own. Hold to stop, keep holding to back up. Hold and slide to turn on the spot</span></div></li>
       <li><div class="g">↔</div><div><b>Swipe: turn</b><span>Left or right anywhere on screen</span></div></li>
-      <li><div class="g">⇆</div><div><b>Swipe on your head: dodge</b><span>Two dodges, then a quick reload</span></div></li>
+      <li><div class="g">⇆</div><div><b>Double-tap a screen edge: dodge that way</b><span>Two dodges, then a quick reload. Tap the clock for the map and menu</span></div></li>
       <li><div class="g">↓</div><div><b>Swipe down: grab</b><span>The block you grab becomes your active block</span></div></li>
       <li><div class="g">↑</div><div><b>Swipe up: throw</b><span>Harder swipe, further throw. Red ring = locked on</span></div></li>
     </ul>
@@ -288,13 +294,14 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 
 <div class="sheet" id="pause" hidden>
   <div class="card"><div class="panel">
-    <h2>Paused</h2>
+    <h2 style="margin:0">Menu</h2><p class="rules" style="margin:0 0 8px">The match keeps running.</p>
+    <canvas id="menuMap" style="display:block;width:100%;border-radius:14px;margin-bottom:10px"></canvas>
     <div class="tog"><label for="sBuzz">Vibration</label><input id="sBuzz" type="checkbox"></div>
     <div class="tog"><label for="sSound">Sound effects</label><input id="sSound" type="checkbox"></div>
     <div class="tog"><label for="sMusic">War drums</label><input id="sMusic" type="checkbox"></div>
     <div class="tog"><label for="sAllPowers">All powers (testing: every power + black hole, no streak needed)</label><input id="sAllPowers" type="checkbox"></div>
     <div class="tog"><label for="sClassic">Classic sounds</label><input id="sClassic" type="checkbox"></div>
-    <div style="display:grid;gap:8px;margin-top:6px"><button class="go" id="resumeBtn" style="font-size:24px;padding:14px">RESUME</button><button class="ghost" id="pHow">How to play</button><button class="ghost" id="quitBtn">Quit match</button></div>
+    <div style="display:grid;gap:8px;margin-top:6px"><button class="go" id="resumeBtn" style="font-size:24px;padding:14px">BACK TO THE GAME</button><button class="ghost" id="pHow">How to play</button><button class="ghost" id="quitBtn">Quit match</button></div>
   </div></div>
 </div>
 
@@ -823,39 +830,31 @@ function updateLaunchers(dt, visualOnly = false) {
 }
 
 // ============================================================
-// THE ANIMAL MONUMENT: a huge blocky statue of this world's animal, right in the middle of the map.
-// Same design as the little cows (it IS the cow model, scaled up, with longer legs) so you can double-jump
-// underneath it. The 360° camera sits on its back: the round-start flyover uses it, swallowed players
-// spectate from it, and the Camera menu lets you look around the level from up there.
+// THE CENTRE POLE: a tall flag pole in the middle of the map with a 360° camera on top. The round-start flyover
+// uses the camera, swallowed players spectate from it, and the Camera menu lets you look around the level from it.
+// (A giant animal statue stood here for a day; Ali preferred the pole.)
 // ============================================================
-const MON_SCALE = 6, MON_LEG = 2.3;
-const MONUMENT = { g: null, top: 0, under: 0, animal: 'cow', cam: V(0, 0, 0) };
+const POLE_H = 15;
+const MONUMENT = { g: null, top: POLE_H, under: 0, cam: V(0, POLE_H + 1.6, 0) };
 {
-  const g = makeAnimal('cow'); g.userData.monument = true;
-  // longer legs so there's room to run and double-jump underneath; the body keeps its proportions
-  for (const l of g.userData.legs) l.scale.y = MON_LEG;
-  g.scale.setScalar(MON_SCALE); g.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(g);
-  g.position.y = -box.min.y; g.rotation.y = Math.PI / 2; g.updateMatrixWorld(true); // hooves on the grass, facing along the map
-  box.setFromObject(g);
-  // stone: dull grey-white body with charcoal patches, like a weathered statue (vertex colours stay, just desaturated)
-  g.traverse(o => { if (o.isMesh && o.material && o.material.vertexColors) { o.material = o.material.clone(); o.material.color.set('#cfd3d8'); o.castShadow = true; o.receiveShadow = true; } });
-  if (g.userData.face) g.userData.face.visible = false;
-  MONUMENT.g = g; MONUMENT.top = box.max.y; MONUMENT.under = box.min.y;
-  // colliders: one box per leg and one for the body (+ head), all fixed
-  const legW = .3 * MON_SCALE, legH = (.36 * MON_LEG + .1) * MON_SCALE;
-  for (const l of g.userData.legs) { const w = new THREE.Vector3(); l.getWorldPosition(w); const c = world.createCollider(RAPIER.ColliderDesc.cuboid(legW / 2, legH / 2, legW / 2).setTranslation(w.x, w.y - legH / 2, w.z).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); }
-  // body + head collider from the merged body geometry (legs excluded), in world space
-  g.geometry.computeBoundingBox(); const bb = g.geometry.boundingBox.clone().applyMatrix4(g.matrixWorld);
-  MONUMENT.under = bb.min.y;
-  { const sz = bb.getSize(new THREE.Vector3()), ce = bb.getCenter(new THREE.Vector3()); const c = world.createCollider(RAPIER.ColliderDesc.cuboid(sz.x / 2, sz.y / 2, sz.z / 2).setTranslation(ce.x, ce.y, ce.z).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); }
-  // a little stone plinth ring around each hoof so the statue reads as built, not dropped
-  const plinth = new LiteMat({ color: NIGHT ? 0x6d7893 : 0x9a9ea6 });
-  for (const l of g.userData.legs) { const w = new THREE.Vector3(); l.getWorldPosition(w); const m = new THREE.Mesh(new THREE.BoxGeometry(legW + 1.2, .4, legW + 1.2), plinth); m.position.set(w.x, .2, w.z); m.receiveShadow = true; scene.add(m); }
-  // the 360 camera: a small black box with a lens on the highest point of the back
-  const camBox = new THREE.Mesh(new THREE.BoxGeometry(.9, .7, .9), new LiteMat({ color: 0x15171c })); camBox.position.set(-1.2, box.max.y + .35, 0); scene.add(camBox);
-  const lens = new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, .3, 12).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x5cc0ff })); lens.position.set(-1.2, box.max.y + .4, .5); scene.add(lens);
-  MONUMENT.cam.set(-1.2, box.max.y + 2.4, 0); // the eye sits a little above the lens so you don't see the statue's own back
+  const g = new THREE.Group(); MONUMENT.g = g;
+  const stone = new LiteMat({ color: NIGHT ? 0x6d7893 : 0x9a9ea6 }), steel = new LiteMat({ color: NIGHT ? 0xb8c6e6 : 0xd8dbe2 });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(3, .7, 3), stone); base.position.y = .35; base.receiveShadow = base.castShadow = true; g.add(base);
+  const step = new THREE.Mesh(new THREE.BoxGeometry(1.6, .5, 1.6), stone); step.position.y = .95; step.castShadow = true; g.add(step);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.22, .3, POLE_H - 1.2, 10), steel); pole.position.y = 1.2 + (POLE_H - 1.2) / 2; pole.castShadow = true; g.add(pole);
+  // the camera: black box with a blue lens and a little red light
+  const camBox = new THREE.Mesh(new THREE.BoxGeometry(.9, .7, .9), new LiteMat({ color: 0x15171c })); camBox.position.set(0, POLE_H + .35, 0); g.add(camBox);
+  const lens = new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, .3, 12).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x5cc0ff })); lens.position.set(0, POLE_H + .4, .5); g.add(lens);
+  const led = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3b3b })); led.position.set(.3, POLE_H + .75, 0); g.add(led); MONUMENT.led = led;
+  // a yellow Nymbo pennant just under the camera
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.2), new LiteMat({ color: 0xffd400, side: THREE.DoubleSide })); flag.position.set(1.15, POLE_H - .9, 0); flag.castShadow = true; g.add(flag); MONUMENT.flag = flag;
+  scene.add(g);
+  for (const [w, h, y] of [[3, .7, .35], [1.6, .5, .95]]) { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, h / 2, w / 2).setTranslation(0, y, 0).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); }
+  { const c = world.createCollider(RAPIER.ColliderDesc.cylinder((POLE_H - 1.2) / 2, .28).setTranslation(0, 1.2 + (POLE_H - 1.2) / 2, 0)); byCollider.set(c.handle, { type: 'static' }); }
+}
+function updatePole(dt, t) { // the pennant ripples, the camera light blinks
+  const f = MONUMENT.flag; if (f) { f.rotation.y = Math.sin(t / 700) * .25; f.position.x = 1.15 * Math.cos(f.rotation.y); f.position.z = -1.15 * Math.sin(f.rotation.y); }
+  if (MONUMENT.led) MONUMENT.led.visible = Math.floor(t / 600) % 2 === 0;
 }
 
 // ============================================================
@@ -885,6 +884,8 @@ const ICON = {
   freeze: g => { for (let i = 0; i < 3; i++) { g.save(); g.translate(64, 64); g.rotate(i * Math.PI / 3); g.beginPath(); g.moveTo(0, -40); g.lineTo(0, 40); g.moveTo(-12, -30); g.lineTo(0, -18); g.lineTo(12, -30); g.moveTo(-12, 30); g.lineTo(0, 18); g.lineTo(12, 30); g.stroke(); g.restore(); } },
   // simple crosshair
   homing: g => { g.lineWidth = 7; g.beginPath(); g.arc(64, 64, 30, 0, 7); g.stroke(); g.beginPath(); g.moveTo(64, 20); g.lineTo(64, 46); g.moveTo(64, 82); g.lineTo(64, 108); g.moveTo(20, 64); g.lineTo(46, 64); g.moveTo(82, 64); g.lineTo(108, 64); g.stroke(); },
+  // warp: a spiral (you go where it lands)
+  warp: g => { g.lineWidth = 8; g.lineCap = 'round'; g.beginPath(); for (let a = 0; a < Math.PI * 5; a += .15) { const r = 4 + a * 7.5; const x = 64 + Math.cos(a) * r, y = 64 + Math.sin(a) * r; a ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); },
   flag: g => { g.beginPath(); g.moveTo(42, 104); g.lineTo(42, 26); g.stroke(); g.beginPath(); g.moveTo(46, 28); g.lineTo(96, 42); g.lineTo(46, 60); g.closePath(); g.fill(); },
 };
 // plain boxes with a clear logo: black bomb, icy blue-white freeze, glowing purple homing
@@ -893,25 +894,26 @@ const KIND_COL = {
   bomb: ['#2b2d33', '#0b0b0e', 0xffb347, '#f4f4f4', 'rgba(255,255,255,.18)'],
   freeze: ['#f4fbff', '#a9d6f2', 0xbfe6ff, '#2f86c4', 'rgba(47,134,196,.35)'],
   homing: ['#b26bff', '#5a14b8', 0xb36bff, '#ffffff', 'rgba(255,255,255,.45)'],
+  warp: ['#ff6ad5', '#8a0fb8', 0xff7ae0, '#ffffff', 'rgba(255,255,255,.5)'], // your one start block: throw it and you appear where it lands
 };
 const kindMat = {}, coreMat = {};
 // power blocks are see-through "jelly glass" boxes: a tinted shell with a solid logo, and a solid little core inside
-const GLASS = { bomb: [.62, '#16171c'], freeze: [.5, '#e8f7ff'], homing: [.55, '#7a2be0'] };
+const GLASS = { bomb: [.62, '#16171c'], freeze: [.5, '#e8f7ff'], homing: [.55, '#7a2be0'], warp: [.5, '#ff4fd0'] };
 for (const k in KIND_COL) {
   const [a, b, glow, ink, frame] = KIND_COL[k], t = iconTex(a, b, ICON[k], ink, k === 'bomb' ? 'rgba(255,255,255,.55)' : k === 'freeze' ? 'rgba(47,134,196,.8)' : 'rgba(255,255,255,.8)', GLASS[k][0]);
   kindMat[k] = new LiteMat({ map: t, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    emissive: k === 'homing' ? 0x6a2bc0 : k === 'freeze' ? 0x9fcfee : 0x000000, emissiveMap: t, emissiveIntensity: k === 'bomb' ? 0 : .35 });
-  coreMat[k] = new LiteMat({ color: GLASS[k][1], emissive: k === 'freeze' ? 0x5aa8d8 : k === 'homing' ? 0x5a14b8 : 0x000000, emissiveIntensity: .4 });
+    emissive: k === 'homing' ? 0x6a2bc0 : k === 'warp' ? 0xc02aa0 : k === 'freeze' ? 0x9fcfee : 0x000000, emissiveMap: t, emissiveIntensity: k === 'bomb' ? 0 : .35 });
+  coreMat[k] = new LiteMat({ color: GLASS[k][1], emissive: k === 'freeze' ? 0x5aa8d8 : k === 'homing' ? 0x5a14b8 : k === 'warp' ? 0xff2ac0 : 0x000000, emissiveIntensity: .4 });
 }
 const coreGeo = new RoundedBoxGeometry(1, 1, 1, 1, .12);
 function decoratePower(e) { const c = new THREE.Mesh(coreGeo, coreMat[e.kind]); c.scale.setScalar(.42); c.rotation.set(.6, .6, 0); e.mesh.add(c); e.core = c; e.mesh.renderOrder = 2; }
 function pulseHalos(t) { const s = .42 + .03 * Math.sin(t / 220); for (const e of blocks) if (e.core && !e.dead) { e.core.rotation.y = t / 900 + e.id; e.core.scale.setScalar(s); } }
 const flagMats = {};
 const flagMat = col => flagMats[col] || (flagMats[col] = (() => { const c = new THREE.Color(col), d = c.clone().multiplyScalar(.55); const t = iconTex(col, '#' + d.getHexString(), ICON.flag); return new LiteMat({ map: t, emissive: col, emissiveMap: t, emissiveIntensity: .7, roughness: .4 }); })());
-const KIND_CSS = { bomb: 'linear-gradient(135deg,#2b2d33,#0b0b0e)', freeze: 'linear-gradient(135deg,#f4fbff,#a9d6f2)', homing: 'linear-gradient(135deg,#b26bff,#5a14b8)' };
+const KIND_CSS = { bomb: 'linear-gradient(135deg,#2b2d33,#0b0b0e)', freeze: 'linear-gradient(135deg,#f4fbff,#a9d6f2)', homing: 'linear-gradient(135deg,#b26bff,#5a14b8)', warp: 'linear-gradient(135deg,#ff6ad5,#8a0fb8)' };
 const iceOverlayMat = new LiteMat({ color: 0xaef4ff, transparent: true, opacity: .45, roughness: .05, emissive: 0x3ccfff, emissiveIntensity: .4, depthWrite: false });
 
-const isPower = k => k === 'bomb' || k === 'freeze' || k === 'homing';
+const isPower = k => k === 'bomb' || k === 'freeze' || k === 'homing' || k === 'warp';
 function newBlock(kind, pos, o = {}) {
   const dims = o.dims ? o.dims.clone() : V(1, 1, 1).multiplyScalar(o.size || 1);
   const e = { id: nextId++, kind, dims, size: Math.max(dims.x, dims.y, dims.z), rad: (dims.x + dims.y + dims.z) / 6,
@@ -2055,6 +2057,7 @@ Object.assign(SFX_REAL, {
   hit: R3('hit', () => { pl('hit', .95); pl('clonk', .35, .8, .01); }),
   ko: R3('ko', () => pl('ko', .7)),
   land: R3('land', () => pl('land', .5)),
+  grab_warp: R3('grab_homing', () => pl('grab_homing', .7, 1.15)),
   drums_soft: R3('drums_soft', () => playClip('drums_soft')), drums_mid: R3('drums_mid', () => playClip('drums_mid')), drums_hard: R3('drums_hard', () => playClip('drums_hard')), // Sound-lab previews
   shield: R3('clonk', () => { for (let i = 0; i < 5; i++) pl(i % 2 ? 'clonk' : 'land', .55, rr(.8, 1.1), i * .05); pl('clonk_big', .6, .9, .22); }), // a ring of blocks thumping down around you
   jump: R3('jump', () => pl('jump', .45)),
@@ -2742,11 +2745,23 @@ function bowl(e, dt, t, lv, sp) {
     if (b.kind === 'animal' && b.upright) { b.body.setEnabledRotations(true, true, true, true); b.upright = false; }
   }
 }
+// WARP: the thrower appears where the block landed (a big single-use escape / attack: over a wall, out of a fight, onto a flag)
+function warpTo(r, p) {
+  fxBurst(p, 0xff7ae0, 1.6, .4); fxDebris(p, 0xffb0ee, 18, 6); sfx('portal', p);
+  if (!r || r.state !== 'play') return;
+  const from = rPos(r); fxBurst(from, 0xff7ae0, 1.4, .35); fxBeam(from, 0xff7ae0);
+  const hit = world.castRay(new RAPIER.Ray({ x: p.x, y: p.y + 6, z: p.z }, { x: 0, y: -1, z: 0 }), 40, true, undefined, undefined, undefined, r.body);
+  const y = hit ? p.y + 6 - hit.toi : p.y;
+  r.body.setTranslation({ x: p.x, y: y + 1.05, z: p.z }, true); r.body.setLinvel({ x: 0, y: 2, z: 0 }, true); r.ghostT = Math.max(r.ghostT, .6);
+  fxBeam(V(p.x, y, p.z), 0xff7ae0);
+  if (r.isPlayer) { snapCamera = true; toast('WARPED'); buzz('lock'); shake = Math.max(shake, .3); }
+}
 function detonate(e) {
   if (e.dead || !e.body) return;
   const t = e.body.translation(), p = V(t.x, t.y, t.z), team = e.thrower ? e.thrower.team : null;
   if (e.kind === 'bomb') explode(p, team, e.thrower);
   else if (e.kind === 'freeze') freezeArea(p, team, e.thrower);
+  else if (e.kind === 'warp') warpTo(e.thrower, p);
   else { fxBurst(p, 0xb36bff, 1.2, .3); fxDebris(p, 0xc58bff, 14, 5); sfx('hit', p); }
   consumePower(e);
 }
@@ -3155,6 +3170,8 @@ function updateAI(r, dt) {
 // ============================================================
 let stopHeld = 0; const REVERSE_AFTER = .7, REVERSE_SPEED = RUN * .55; // hold stop ~0.7s, then reverse at about half speed
 let gest = null, btnStop = false, snapCamera = true, showReload = false;
+const DODGE_ZONE = .17; let lastTap = { zone: 0, t: 0 }; // outer 17% of the screen on each side = dodge strips
+function flashZone(z, soft) { const el = $(z < 0 ? 'dzL' : 'dzR'); el.classList.remove('hit', 'soft'); void el.offsetWidth; el.classList.add(soft ? 'soft' : 'hit'); }
 const keys = {};
 const trailC = $('trail'), tctx = trailC.getContext('2d'), pts = [];
 // only your robot's head starts a dodge; any other sideways swipe turns
@@ -3183,9 +3200,7 @@ stage.addEventListener('pointermove', e => {
   (gest.all || (gest.all = [[gest.x0, gest.y0, gest.t0]])).push([gest.x, gest.y, e.timeStamp || t]);
   pts.push([gest.x, gest.y, t]);
   const dx = gest.x - gest.x0, dy = gest.y - gest.y0, dist = Math.hypot(dx, dy);
-  if (gest.mode === 'pending' && gest.onHead && Math.abs(dx) > 22 && Math.abs(dx) > Math.abs(dy) * 1.8) {
-    gest.mode = 'dodged'; if (playerDodge(Math.sign(dx))) toast(dx > 0 ? 'DODGE ⇢' : '⇠ DODGE');
-  } else if (gest.mode === 'pending' && dist > 14 && !(gest.onHead && Math.abs(dx) > Math.abs(dy) * 1.8 && Math.abs(dy) < 22)) {
+  if (gest.mode === 'pending' && dist > 14) {
     gest.mode = (dy < 0 ? -dy > Math.abs(dx) * .55 : dy > Math.abs(dx) * .8) ? 'vertical' : 'turn';
     gest.turnFrom = gest.x;
   } else if (gest.mode === 'hold' && Math.abs(dx) > 8) { gest.mode = 'holdturn'; gest.turnFrom = gest.x; }
@@ -3216,7 +3231,13 @@ function endGesture(e) {
   const g = gest; gest = null;
   const dt = e.timeStamp - g.t0, dx = g.x - g.x0, dy = g.y - g.y0, dist = Math.hypot(dx, dy);
   if (SPEC.on) return;
-  if ((g.mode === 'pending' || (g.mode === 'hold' && !g.held)) && dt < 220 && dist < 14) { playerJump(); return; }
+  if ((g.mode === 'pending' || (g.mode === 'hold' && !g.held)) && dt < 220 && dist < 14) {
+    // DODGE = a quick double tap near the left or right edge of the screen (the edge strips). A single tap anywhere still jumps.
+    const zone = g.x0 < innerWidth * DODGE_ZONE ? -1 : g.x0 > innerWidth * (1 - DODGE_ZONE) ? 1 : 0, tnow = now();
+    if (zone && lastTap.zone === zone && tnow - lastTap.t < 320) { lastTap = { zone: 0, t: 0 }; if (playerDodge(zone)) { toast(zone > 0 ? 'DODGE ⇢' : '⇠ DODGE'); flashZone(zone); } return; }
+    lastTap = { zone, t: tnow }; if (zone) flashZone(zone, true);
+    playerJump(); return;
+  }
   if (g.mode === 'vertical') {
     if (dy < -30) {
       playerThrow(swipePower(g));
@@ -3240,7 +3261,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyE' || e.code === 'ArrowDown') playerGrab();
   if (e.code === 'KeyW' || e.code === 'ArrowUp') playerThrow(.55);
   if (e.code === 'KeyQ') playerDodge(-1); if (e.code === 'KeyR') playerDodge(1);
-  if (e.code === 'Escape') pauseGame();
+  if (e.code === 'Escape') { if (match.menu) $('resumeBtn').click(); else pauseGame(); }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -3441,7 +3462,7 @@ function buildHud() {
   }
 }
 // draws one block as a little 3D (isometric) piece, in its real shape and colour, like the next-piece box in Tetris
-const PIECE_COL = { bomb: '#2b2d33', freeze: '#d6eefb', homing: '#9a4bf0' };
+const PIECE_COL = { bomb: '#2b2d33', freeze: '#d6eefb', homing: '#9a4bf0', warp: '#ff5fd2' };
 function drawPiece(cv, e, size) {
   const dpr = Math.min(2, devicePixelRatio || 1), S = Math.round(size * dpr); if (cv.width !== S) { cv.width = cv.height = S; }
   const g = cv.getContext('2d'); g.clearRect(0, 0, S, S); if (!e) return;
@@ -3480,9 +3501,9 @@ function renderHud(force) {
   if (sig !== renderHud.sig) {
     renderHud.sig = sig;
     const sw = e => e ? (e.kind === 'animal' ? 'background:#f2f2ee;box-shadow:inset 0 0 0 3px #2b2b2b' : e.kind === 'flag' ? `background:${'#' + e.color.getHexString()};box-shadow:inset 0 0 0 2px #fff` : isPower(e.kind) ? `background:${KIND_CSS[e.kind]}` : `background:#${e.color.getHexString()}`) : 'opacity:.18;background:#fff';
-    if ((st[0] && st[0].id) !== renderHud.top) { renderHud.top = st[0] && st[0].id; const b = $('aNowBox'); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
-    drawPiece($('aNow'), st[0], 56); drawPiece($('aN1'), st[1], 38); drawPiece($('aN2'), st[2], 28); drawPiece($('aN3'), st[3], 20);
-    $('cnt').firstChild.textContent = st.length;
+    if ((st[0] && st[0].id) !== renderHud.top) { renderHud.top = st[0] && st[0].id; const b = $('aNowBox'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+    drawPiece($('aNow'), st[0], 42); drawPiece($('aN1'), st[1], 46); drawPiece($('aN2'), st[2], 46); drawPiece($('aN3'), st[3], 46);
+    $('aNowBox').classList.toggle('has', !!st[0]);
   }
   // reload spinner by your robot's head, only after you tried to dodge while reloading
   if (P.charges > 0 || P.state !== 'play') showReload = false;
@@ -3706,7 +3727,8 @@ const NUKE_VAPOR = 4, NUKE_R = 7, NUKE_KO = 10, AIR_R = 5.2, DARK_T = 10, SLOW_T
 const PW = { cool: {}, strikes: [], darkT: 0, dark: 0, slowT: 0, invisT: 0, tornado: null, pick: null, tokens: 0, holeReady: false }; // tokens: kill-streak power charges (max 3)
 const hemi = scene.children.find(o => o.isHemisphereLight);
 const LIGHT0 = { hemi: hemi ? hemi.intensity : 1, sun: sun.intensity, bg: scene.background, fog: scene.fog.color.clone() };
-const pwTray = $('pwr'), pickEl = $('pick'), pickCv = $('pickCv'), pickG = pickCv.getContext('2d'), flashEl = $('flash');
+const pwTray = $('pwr'), pickEl = $('pick'), flashEl = $('flash'); let pickCv = $('pickCv'), pickG = pickCv.getContext('2d');
+const pickCv0 = pickCv, pickG0 = pickG;
 // ---- how you get powers ----
 // Default: kill streaks only. 5 / 8 / 10 KOs in a row each roll you a RANDOM power (Mario-Kart style roulette: the icons flash
 // past and slowly settle on one). You can hold 3. 30 in a row = the black hole. Settings → "All powers" gives everyone every
@@ -3780,6 +3802,14 @@ function openPicker(p) {
   $('pickTitle').style.color = p.col; sfx('ui'); drawPicker();
 }
 function closePicker() { PW.pick = null; pickEl.hidden = true; }
+// the live map inside the clock menu (read-only): same drawing, different canvas
+function drawMenuMap() {
+  const cv = $('menuMap'); if (!cv || $('pause').hidden) return;
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio), w = r.width || 300, h = Math.min(innerHeight * .38, w * MX / MZ);
+  if (cv.style.height !== h + 'px' || cv.style.width !== w + 'px') { cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.width = w * dpr; cv.height = h * dpr; }
+  pickCv = cv; pickG = cv.getContext('2d'); const hov = pickHover; pickHover = null;
+  try { drawPicker(true); } finally { pickCv = pickCv0; pickG = pickG0; pickHover = hov; }
+}
 $('pickX').onclick = e => { e.stopPropagation(); closePicker(); };
 const pickAt = e => { const r = pickCv.getBoundingClientRect(), X = mapXf(), w = X.from((e.clientX - r.left) / r.width * X.W, (e.clientY - r.top) / r.height * X.H); return V(w.x, 0, w.z); };
 let pickDown = false;
@@ -3827,8 +3857,8 @@ function mapHead(g, x, y, r, col, team, state, me) {
   if (state === 'flag') { g.strokeStyle = '#10141f'; g.lineWidth = r * .14; g.beginPath(); g.moveTo(w * .3, -h / 2); g.lineTo(w * .3, -h / 2 - r * 1.6); g.stroke(); g.fillStyle = '#ffe14a'; g.beginPath(); g.moveTo(w * .3, -h / 2 - r * 1.6); g.lineTo(w * .3 + r * 1.1, -h / 2 - r * 1.25); g.lineTo(w * .3, -h / 2 - r * .9); g.fill(); g.stroke(); }
   g.restore();
 }
-function drawPicker() {
-  if (!PW.pick) return;
+function drawPicker(force) {
+  if (!PW.pick && !force) return;
   const g = pickG, X = mapXf(), { W, H, s } = X, U = pickCv.width / (parseFloat(pickCv.style.width) || pickCv.width); // U = one screen pixel: icons stay big on sharp phones
   g.drawImage(parchment(W, H), 0, 0);
   const [ax, ay] = X.to(MX, -MZ), [bx, by] = X.to(-MX, MZ), x0 = Math.min(ax, bx), y0 = Math.min(ay, by), x1 = Math.max(ax, bx), y1 = Math.max(ay, by);
@@ -4087,7 +4117,7 @@ shieldBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventD
 shieldBtn.addEventListener('click', e => { e.stopPropagation(); playerShield(); });
 function updateShield(dt) {
   if (SHIELD.cool > 0) SHIELD.cool = Math.max(0, SHIELD.cool - dt);
-  const k = SHIELD.cool / SHIELD_CD; shieldBtn.style.setProperty('--k', k); shieldBtn.classList.toggle('ready', k === 0 && !!P && P.stack.some(e => e.kind !== 'flag' && e.kind !== 'animal'));
+  const k = SHIELD.cool / SHIELD_CD; shieldBtn.style.setProperty('--k', k); const have = !!P && P.stack.some(e => e.kind !== 'flag' && e.kind !== 'animal'); shieldBtn.classList.toggle('ready', k === 0 && have); shieldBtn.classList.toggle('show', have || SHIELD.cool > 0); // appears once you're carrying something
 }
 
 // ============================================================
@@ -4099,7 +4129,7 @@ function updateShield(dt) {
 //    from the 360° camera on the monument's back. If every enemy is swallowed before the clock runs out, your team wins.
 // ============================================================
 const STREAK_TIERS = [5, 8, 10], BH_AT = 30, MAX_TOKENS = 3;
-const BH = { on: false, team: null, t: 0, R: 0, g: null, pos: V(0, 0, 0), spin: 0 };
+const BH = { on: false, team: null, t: 0, R: 0, g: null, pos: V(0, 0, 0), spin: 0, eaten: 0, lastTeam: null }; // eaten: everything swallowed so far — it feeds the hole
 const SPEC = { on: false, yaw: 0, pitch: -.25 }; // the 360 camera on the monument
 function onStreak(by, victim) {
   victim.streak = 0;
@@ -4125,7 +4155,7 @@ function bhMesh() {
 }
 function startBlackHole(team) {
   if (BH.on) return;
-  BH.on = true; BH.team = team; BH.t = 0; BH.R = 12; BH.pos.set(0, MONUMENT.top + 9, 0);
+  BH.on = true; BH.team = team; BH.t = 0; BH.R = 40; BH.eaten = 0; BH.won = false; BH.pos.set(0, MONUMENT.top + 7, 0);
   BH.g = bhMesh(); BH.g.position.copy(BH.pos); BH.g.scale.setScalar(.01); scene.add(BH.g);
   sfx('nuke', BH.pos); mixDuck(.6, .8); shake = Math.max(shake, 1); bigToast('BLACK HOLE', team === 'blue' ? 'blue' : 'red');
   netEv(['bh', team]);
@@ -4135,20 +4165,21 @@ function updateBlackHole(dt) {
   if (!BH.on) return;
   BH.t += dt; BH.spin += dt;
   const g = BH.g; if (g) {
-    const s = Math.min(1, BH.t / 1.5), pulse = 1 + Math.sin(BH.t * 6) * .04; g.scale.setScalar(s * pulse * (1 + Math.min(1.2, BH.t / 60)));
+    const s = Math.min(1, BH.t / 1.5), pulse = 1 + Math.sin(BH.t * 6) * .04; g.scale.setScalar(s * pulse * Math.min(2.4, Math.pow(1.004, BH.eaten)));
     g.children.forEach(c => { if (c.userData.spd) c.rotation.z += c.userData.spd * dt; });
   }
   if (NET && NET.client) return; // the host runs the physics below
-  BH.R = Math.min(220, 12 + BH.t * 3.4); // reaches the whole map in about a minute
+  // strong from the first second, and every block or robot it eats makes it reach further and pull harder (exponential)
+  const feed = Math.pow(1.004, BH.eaten); BH.R = Math.min(230, 40 * feed + BH.t * .6); const grip = Math.min(3, feed);
   const H = BH.pos;
   // robots: pulled, then swallowed
   for (const r of robots) {
     if (r.state !== 'play') { if (r.state === 'out') continue; r.pull = null; continue; }
     const p = rPos(r), dx = H.x - p.x, dy = H.y - p.y, dz = H.z - p.z, d = Math.hypot(dx, dy, dz), dxz = Math.hypot(dx, dz);
     if (d > BH.R) { r.pull = null; continue; }
-    const k = 1 - d / BH.R, s = 8 + 22 * k * k;
+    const k = 1 - d / BH.R, s = (9 + 22 * k * k) * grip;
     r.pull = V(dx / d * s, dxz < 9 ? 9 + 20 * k : 0, dz / d * s); // lifted off the ground only when right under it
-    if (d < 3.2 || dxz < 4.5) swallow(r); // under the monument counts: there's no escaping from there
+    if (d < 3.2 || dxz < 3.5) swallow(r); // right under the pole: there's no escaping from there
   }
   // blocks: anchored ones near the hole come loose (a few per frame), loose ones get pulled, the closest vanish
   const near = BH.R * .5; let loosened = 0;
@@ -4157,21 +4188,26 @@ function updateBlackHole(dt) {
     const t = e.body.translation(), dx = H.x - t.x, dy = H.y - t.y, dz = H.z - t.z, d = Math.hypot(dx, dy, dz);
     if (e.anchored) { if (d < near && loosened < 6 && ((bhLoosen++) % 3 === 0)) { unanchor(e); loosened++; } continue; }
     if (d > BH.R) continue;
-    if (d < 4.5) { fxBurst(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(e); netEv(['bhx', e.id]); continue; }
-    const k = 1 - d / BH.R, m = e.body.mass(), s = (8 + 22 * k * k) * dt;
+    if (d < 4.5) { fxBurst(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(e); BH.eaten++; netEv(['bhx', e.id]); continue; }
+    const k = 1 - d / BH.R, m = e.body.mass(), s = (8 + 22 * k * k) * grip * dt;
     e.body.applyImpulse({ x: dx / d * s * m, y: (dy / d * s + G * dt * .9) * m, z: dz / d * s * m }, true); // nearly weightless, drifting in
     if (e.body.isSleeping()) e.body.wakeUp();
   }
-  // everyone on the other team gone? the hole's team wins on the spot
-  const enemy = other(BH.team);
-  if (!BH.won && match.state === 'play' && robots.filter(r => r.team === enemy).every(r => r.state === 'out')) { BH.won = true; score[BH.team] = Math.max(score[BH.team], score[enemy] + 1); netEv(['bhwin', BH.team]); bigToast('SWALLOWED THEM ALL', BH.team === 'blue' ? 'blue' : 'red'); setTimeout(endMatch, 900); }
+  // WIN RULES while the hole is open: 4 flags scored = you win on the spot, whatever happens after.
+  // Otherwise the LAST TEAM STANDING wins (any team, not just whoever opened it).
+  if (!BH.won && match.state === 'play') {
+    const four = score.blue >= 4 ? 'blue' : score.red >= 4 ? 'red' : null;
+    const alive = t => robots.some(r => r.team === t && r.state !== 'out');
+    let w = four || (!alive('blue') && alive('red') ? 'red' : !alive('red') && alive('blue') ? 'blue' : (!alive('blue') && !alive('red') ? BH.lastTeam : null));
+    if (w) { BH.won = true; score[w] = Math.max(score[w], score[other(w)] + 1); netEv(['bhwin', w]); bigToast(four ? 'FOUR FLAGS · ' + w.toUpperCase() + ' WINS' : w.toUpperCase() + ' · LAST STANDING', w); setTimeout(endMatch, 900); }
+  }
 }
 function swallow(r) {
   if (r.state === 'out') return;
   const p = rPos(r);
   for (const f of r.stack.filter(x => x.kind === 'flag')) { r.stack = r.stack.filter(x => x !== f); f.holder = null; resetFlag(f); netEv(['ret', f.team]); }
   dropAnimals(r); r.stack.length = 0; refreshHeld(r);
-  r.state = 'out'; r.pull = null; r.streak = 0;
+  r.state = 'out'; r.pull = null; r.streak = 0; BH.eaten += 25; BH.lastTeam = r.team; // a robot feeds it a lot
   r.body.setLinvel({ x: 0, y: 0, z: 0 }, true); r.body.setTranslation({ x: 0, y: -60, z: 0 }, true); r.body.setEnabled(false);
   r.model.g.visible = false;
   fxBurst(p, 0xb36bff, 1.4, .3); sfx('portal', p);
@@ -4213,14 +4249,14 @@ setDiff(S.diff);
 $('playBtn').onclick = () => { audioInit(); startCountdown(); };
 $('howBtn').onclick = () => show('howto');
 document.querySelectorAll('[data-world]').forEach(b => { b.setAttribute('aria-pressed', b.dataset.world === (NIGHT ? 'night' : 'day')); b.onclick = () => { if (b.dataset.world === (NIGHT ? 'night' : 'day')) return; S.world = b.dataset.world; saveS(); document.body.style.transition = 'opacity .25s'; document.body.style.opacity = 0; setTimeout(() => restart(false), 260); }; });
-$('howBack').onclick = () => show(match.state === 'paused' ? 'pause' : 'menu');
-$('pauseBtn').onclick = () => pauseGame();
-$('resumeBtn').onclick = () => { show(null); match.state = 'play'; last = now(); };
+$('howBack').onclick = () => show(match.menu ? 'pause' : 'menu');
+$('mid').onclick = () => pauseGame();
+$('resumeBtn').onclick = () => { show(null); match.menu = false; };
 $('pHow').onclick = () => show('howto');
 $('quitBtn').onclick = () => restart(false);
 $('againBtn').onclick = () => restart(true);
 $('menuBtn').onclick = () => restart(false);
-function pauseGame() { if (match.state !== 'play' || NET) return; closePicker(); match.state = 'paused'; gest = null; show('pause'); } // (no pausing an online match)
+function pauseGame() { if (match.state !== 'play') return; closePicker(); gest = null; match.menu = true; show('pause'); drawMenuMap(); } // the clock menu: map + settings, the match keeps running
 function restart(auto) {
   try {
     if (NET && NET.host && auto) { sessionStorage.setItem('nymbo-rehost', '1'); NET.broadcast(['again']); } // same room, same friends: everyone comes back to the lobby
@@ -4236,6 +4272,7 @@ let wakeLock = null;
 const INTRO_T = 8.2; // flyover length; the last 5 seconds show the countdown
 function startCountdown() {
   netEv(['count']);
+  if (!(NET && NET.client)) for (const r of robots) if (!r.stack.some(e => e.kind === 'warp')) { const w = newBlock('warp', V(rPos(r).x, 2, rPos(r).z), { dims: V(1, 1, 1) }); w.anchored = false; grabBlock(r, w); } // everyone's one start block
   show(null); match.state = 'count'; match.count = INTRO_T; match.lastBeep = 6; match.swooped = false; sfx('intro'); $('hud').hidden = false;
   try { navigator.wakeLock?.request('screen').then(w => wakeLock = w).catch(() => {}); } catch (e) {}
 }
@@ -4371,7 +4408,8 @@ function tick(dt, t = now()) {
   }
   for (const r of robots) syncRobot(r);
   updateFun(dt); updateAmbience(dt);
-  pulseHalos(t); if (match.state !== 'paused') updateIce(dt);
+  pulseHalos(t); updatePole(dt, t); if (match.menu && (tick.mapT = (tick.mapT || 0) + dt) > .5) { tick.mapT = 0; drawMenuMap(); }
+  if (match.state !== 'paused') updateIce(dt);
   updateFx(dt);
   updateCamera(dt);
   if (match.state !== 'paused') { updatePowers(dt); updateShield(dt); }
@@ -4384,7 +4422,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { get MUSIC() { return MUSIC; }, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { pthrow: playerThrow, get MUSIC() { return MUSIC; }, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -5057,7 +5095,7 @@ const loadPendingSfx = async () => { const p = CUSTOM.pendingSfx; if (!p || !AC)
 // ---------------- the menu ----------------
 $('soundLabBtn').onclick = () => { audioInit(); loadPendingSfx().then(soundLabRows); show('soundlab'); };
 $('lookLabBtn').onclick = () => { lookLabRows(); show('looklab'); };
-$('soundLabBack').onclick = $('lookLabBack').onclick = () => show(match.state === 'paused' ? 'pause' : 'menu');
+$('soundLabBack').onclick = $('lookLabBack').onclick = () => show(match.menu ? 'pause' : 'menu');
 $('labExport').onclick = $('labExport2').onclick = exportLabs;
 
 // ============================================================
