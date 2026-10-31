@@ -93,7 +93,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #vig.on.beat{animation:beat .4s ease-out}
 @keyframes beat{0%{opacity:.95}100%{opacity:.45}}
 #pwr{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);bottom:calc(50% + 35px);width:52px;display:flex;flex-direction:column;align-items:center;gap:9px;z-index:7}
-#holeBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);top:calc(50% + 35px);z-index:7;width:52px;height:52px;background:#000;box-shadow:0 0 18px #b36bff}
+#holeBtn{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 118px);z-index:7;width:auto;height:46px;padding:0 16px 0 10px;border-radius:999px;display:flex;align-items:center;gap:8px;background:#000;box-shadow:0 0 18px #b36bff,0 3px 0 rgba(0,0,0,.3);font-family:var(--display);font-size:13px;letter-spacing:.08em;color:var(--c)}
+#holeBtn svg{width:26px;height:26px}#holeBtn i{display:none}
 .pw.rolling{animation:pwroll .12s linear infinite alternate}.pw.landed{animation:pwland .5s cubic-bezier(.2,1.4,.3,1)}
 @keyframes pwroll{from{transform:scale(1) rotate(-4deg)}to{transform:scale(1.08) rotate(4deg)}}
 @keyframes pwland{0%{transform:scale(1.6)}100%{transform:scale(1)}}
@@ -210,7 +211,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div id="vig"></div>
   <div id="thief" hidden><b></b><i></i></div>
   <div id="pwr"></div>
-  <button class="pw" id="holeBtn" hidden style="--c:#b36bff" aria-label="BLACK HOLE"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5c5.2 0 9.5 4.3 9.5 9.5S17.2 21.5 12 21.5 2.5 17.2 2.5 12 6.8 2.5 12 2.5zm0 2A7.5 7.5 0 1 0 12 19.5 7.5 7.5 0 0 0 12 4.5z" opacity=".5"/><path d="M4 12a8 8 0 0 1 8-8v2a6 6 0 0 0-6 6z" opacity=".9"/></svg><i></i></button>
+  <button class="pw" id="holeBtn" hidden style="--c:#b36bff" aria-label="BLACK HOLE"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5c5.2 0 9.5 4.3 9.5 9.5S17.2 21.5 12 21.5 2.5 17.2 2.5 12 6.8 2.5 12 2.5zm0 2A7.5 7.5 0 1 0 12 19.5 7.5 7.5 0 0 0 12 4.5z" opacity=".5"/><path d="M4 12a8 8 0 0 1 8-8v2a6 6 0 0 0-6 6z" opacity=".9"/></svg><span>BLACK HOLE</span><i></i></button>
   <button class="pw" id="shieldBtn" style="--c:#ffd400" aria-label="SHIELD"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v6c0 5.2 3.4 9.6 8 11 4.6-1.4 8-5.8 8-11V5z" opacity=".35"/><path d="M12 4.2 6 6.4v4.6c0 4.1 2.5 7.6 6 8.9 3.5-1.3 6-4.8 6-8.9V6.4z"/></svg><i></i></button>
   <button id="micBtn" hidden>🎤 off</button>
   <div id="flash"></div>
@@ -1454,14 +1455,16 @@ function updateFx(dt) {
 //  lock-on: one crisp tick · you hit someone: two quick taps · you're knocked out: one long heavy buzz
 //  your flag stolen: alarm (three taps) · you grab their flag: heartbeat · your team scores: celebration
 //  frozen: a fast rattle · hands full: two strong pulses · big blasts / angry cow: rumble
-const BUZZ = { lock: 12, hit: [18, 45, 18], ko: [160], stolen: [25, 70, 25, 70, 25], run: [40, 110, 80], score: [30, 40, 30, 40, 30, 40, 160], theyScore: [260],
+const BUZZ = { lock: 12, hit: [40, 30, 70], ko: [90, 40, 220], stolen: [25, 70, 25, 70, 25], run: [40, 110, 80], score: [30, 40, 30, 40, 30, 40, 160], theyScore: [260],
   frozen: [12, 22, 12, 22, 12, 22, 12, 22, 12], full: [260, 90, 260], rumble: [200, 60, 300], blast: [70], cow: [60, 40, 60, 40, 140], win: [30, 40, 30, 40, 30, 40, 220], lose: [300] };
 let buzzUntil = 0;
 const buzz = name => {
   if (!S.buzz) return; const pat = typeof name === 'string' ? BUZZ[name] : name; if (!pat) return;
   const t = performance.now(), len = [].concat(pat).reduce((a, b) => a + b, 0);
-  if (t < buzzUntil && name !== 'lock') return; // never stack buzzes on top of each other
-  buzzUntil = t + len + 120; try { navigator.vibrate && navigator.vibrate(pat); } catch (e) {}
+  const strong = name === 'ko' || name === 'hit' || name === 'rumble'; // knocks always come through, even over a buzz that's still running
+  if (t < buzzUntil && name !== 'lock' && !strong) return; // never stack buzzes on top of each other
+  if (name !== 'lock') buzzUntil = t + len + 120; // (a lock tick never blocks the next buzz)
+  try { navigator.vibrate && navigator.vibrate(pat); } catch (e) {}
 };
 
 // ============================================================
@@ -2932,6 +2935,11 @@ function stickTo(e, B) {
   netEv(['stick', e.id, +t.x.toFixed(2), +t.y.toFixed(2), +t.z.toFixed(2), e.stuck.to ? robots.indexOf(e.stuck.to) : -1]);
 }
 function updateSticky(dt) {
+  if (!(NET && NET.client)) for (const e of blocks) { // a live grenade brushing an enemy robot sticks to them
+    if (e.dead || !e.live || e.stuck || !e.body || !isSticky(e.kind) || e.liveT < .06) continue;
+    const t = e.body.translation(), p = V(t.x, t.y, t.z);
+    for (const r of robots) { if (!hittable(r) || (e.thrower && r.team === e.thrower.team)) continue; if (capsuleDist(r, p) < .5 + e.rad) { stickTo(e, { type: 'robot', ref: r }); break; } }
+  }
   for (let i = STUCK.length - 1; i >= 0; i--) {
     const e = STUCK[i]; if (e.dead || !e.body) { STUCK.splice(i, 1); continue; }
     const s = e.stuck; s.fuse -= dt;
@@ -4259,8 +4267,12 @@ function swallow(r) {
   toast([[r.name.toUpperCase(), r.color], [' WAS SWALLOWED', null]]); netEv(['out', robots.indexOf(r)]);
   if (r.isPlayer) specStart('SWALLOWED · DRAG TO LOOK AROUND');
 }
-function specStart(msg) { SPEC.on = true; SPEC.yaw = Math.atan2(FORT[other(P.team)].x, FORT[other(P.team)].z); SPEC.pitch = -.2; snapCamera = true; if (msg) bigToast(msg, 'red'); }
-function specCamera() { // the 360 camera on the monument's back
+function specStart(msg) { SPEC.on = true; SPEC.orbit = true; SPEC.yaw = Math.atan2(FORT[P.team].x, FORT[P.team].z); SPEC.pitch = -.2; snapCamera = true; if (msg) bigToast(msg, 'red'); } // swallowed: a wide orbit round the whole stage
+function specCamera() { // the 360 camera: on the pole (Camera menu), or a wide orbit round the stage (black-hole spectators)
+  if (SPEC.orbit) { // drag left/right = circle the map, up/down = higher and further
+    const h = clamp(.5 - SPEC.pitch, .15, 1), R = 48 + 40 * h, Y = 14 + 44 * h;
+    camera.position.set(Math.sin(SPEC.yaw) * R, Y, Math.cos(SPEC.yaw) * R); camLook.set(0, 4, 0); camera.lookAt(camLook); return;
+  }
   const c = MONUMENT.cam; camera.position.set(c.x, c.y, c.z);
   const cp = Math.cos(SPEC.pitch); camLook.set(c.x + Math.sin(SPEC.yaw) * cp * 10, c.y + Math.sin(SPEC.pitch) * 10, c.z + Math.cos(SPEC.yaw) * cp * 10);
   camera.lookAt(camLook);
@@ -4578,12 +4590,13 @@ if (NIGHT) {
 // and two ways to look at the level without playing: the 360° camera on the monument, and a slow fly-over.
 // ============================================================
 const INTROS = [
+  { id: 'mix', name: 'Overview → fly-by → drone rise', tip: 'Two seconds of the whole map from above, a low pass along the enemy wall, then the drone lifts and drops in behind you.' },
   { id: 'monument', name: '360° from the monument', tip: 'Starts on the camera on the statue\'s back, turns a full circle over the level, then dives down behind you.' },
   { id: 'overview', name: 'Overview → enemy fort', tip: 'The whole map from above, swings down to the enemy flags, glides backwards to you.' },
   { id: 'drone', name: 'Drone rise', tip: 'Lifts off behind your fort, arcs high over the middle, drops in behind you.' },
   { id: 'flyby', name: 'Low fly-by', tip: 'A fast low pass along the enemy wall, then a wide swing back to your side.' },
 ];
-if (!INTROS.some(i => i.id === S.intro)) S.intro = 'monument';
+if (!INTROS.some(i => i.id === S.intro) || S.intro === 'monument') S.intro = 'mix'; // (default; 'monument' was the old default)
 const CAMV = { preview: null, fly: false }; // menu-time preview / fly-over
 const easeS = x => x * x * (3 - 2 * x);
 // k 0..1 through the flyover. team = whose side we're on. want/look = where the gameplay camera will settle.
@@ -4592,7 +4605,16 @@ function introCam(style, k, team, want, look, baseFov) {
   const F = FORT[team], E = FORT[other(team)], d = V(E.x - F.x, 0, E.z - F.z).normalize(), side = V(-d.z, 0, d.x);
   const Ef = V(E.x, 7, E.z), O = V(0, 2, 0), M = MONUMENT.cam.clone(), WIDE = Math.min(105, baseFov + 40);
   let pos, at, fov = baseFov;
-  if (style === 'overview') {
+  if (style === 'mix') { // 0–.25 overview from above · .25–.62 low fly-by along the enemy wall · .62–1 drone rise and drop-in
+    const top = V(F.x * 1.15 - d.x * 8, 82, F.z * 1.15 - d.z * 8), topEnd = top.clone().lerp(V(-d.x * 10, 86, -d.z * 10), .35);
+    const L0 = V(E.x - d.x * (FORT_RX + 10) + side.x * 30, 6.5, E.z - d.z * (FORT_RX + 10) + side.z * 30), L1 = V(E.x - d.x * (FORT_RX + 10) - side.x * 30, 6.5, E.z - d.z * (FORT_RX + 10) - side.z * 30);
+    const B = V(-d.x * 6 + side.x * 18, 46, -d.z * 6 + side.z * 18);
+    if (k < .25) { const e = easeS(k / .25); pos = top.clone().lerp(topEnd, e); at = O.clone(); }
+    else if (k < .34) { const e = easeS((k - .25) / .09); pos = topEnd.clone().lerp(L0, e); pos.y = topEnd.y + (L0.y - topEnd.y) * Math.sin(e * Math.PI / 2); at = O.clone().lerp(Ef, e); fov = baseFov + 10 * e; } // dive to the start of the pass
+    else if (k < .62) { const e = (k - .34) / .28; pos = L0.clone().lerp(L1, e); at = V(E.x, 7, E.z); fov = baseFov + 14; }
+    else if (k < .8) { const e = easeS((k - .62) / .18); pos = L1.clone().lerp(B, e); pos.y = L1.y + (B.y - L1.y) * Math.sin(e * Math.PI / 2); at = Ef.clone().lerp(O, e); fov = baseFov + 10 + 14 * e; } // the drone lifts
+    else { const e = easeS((k - .8) / .2); pos = B.clone().lerp(want, e); pos.y = B.y + (want.y - B.y) * e * e; at = O.clone().lerp(look, easeS(clamp((e - .4) / .6, 0, 1))); fov = baseFov + 24 * (1 - e); } // and drops in behind you
+  } else if (style === 'overview') {
     const QY = 31, top = V(F.x * 1.15 - d.x * 8, 82, F.z * 1.15 - d.z * 8), Q = V(E.x - d.x * 44, QY, E.z - d.z * 44);
     if (k < .22) { const e = easeS(k / .22); pos = top.clone().lerp(V(-d.x * 10, 86, -d.z * 10), e * .35); at = O.clone(); }
     else if (k < .42) { const e = easeS((k - .22) / .2); const st = top.clone().lerp(V(-d.x * 10, 86, -d.z * 10), .35); pos = st.clone().lerp(Q, e); pos.y = st.y + (QY - st.y) * Math.sin(e * Math.PI / 2); at = O.clone().lerp(Ef, e); fov = baseFov + (WIDE - baseFov) * e; }
@@ -4602,8 +4624,8 @@ function introCam(style, k, team, want, look, baseFov) {
     if (k < .5) { const e = easeS(k / .5); pos = A.clone().lerp(B, e); pos.y = A.y + (B.y - A.y) * Math.sin(e * Math.PI / 2); at = V(F.x, 6, F.z).lerp(Ef, e); fov = baseFov + 18 * e; }
     else { const e = easeS((k - .5) / .5); pos = B.clone().lerp(want, e); pos.y = B.y + (want.y - B.y) * e * e; at = Ef.clone().lerp(look, easeS(clamp((e - .6) / .4, 0, 1))); fov = baseFov + 18 * (1 - e); }
   } else if (style === 'flyby') {
-    const L0 = V(E.x - d.x * 14 + side.x * 34, 5, E.z - d.z * 14 + side.z * 34), L1 = V(E.x - d.x * 14 - side.x * 34, 5, E.z - d.z * 14 - side.z * 34), H = V(-side.x * 30 - d.x * 10, 30, -side.z * 30 - d.z * 10);
-    if (k < .45) { const e = k / .45; pos = L0.clone().lerp(L1, e); at = V(E.x, 6, E.z); fov = baseFov + 10; }
+    const L0 = V(E.x - d.x * (FORT_RX + 10) + side.x * 30, 6.5, E.z - d.z * (FORT_RX + 10) + side.z * 30), L1 = V(E.x - d.x * (FORT_RX + 10) - side.x * 30, 6.5, E.z - d.z * (FORT_RX + 10) - side.z * 30), H = V(-side.x * 30 - d.x * 10, 30, -side.z * 30 - d.z * 10);
+    if (k < .45) { const e = k / .45; pos = L0.clone().lerp(L1, e); at = V(E.x, 7, E.z); fov = baseFov + 14; }
     else if (k < .7) { const e = easeS((k - .45) / .25); pos = L1.clone().lerp(H, e); pos.y = 5 + 25 * Math.sin(e * Math.PI / 2); at = Ef.clone().lerp(O, e); fov = baseFov + 10 + 20 * e; }
     else { const e = easeS((k - .7) / .3); pos = H.clone().lerp(want, e); at = O.clone().lerp(look, e); fov = baseFov + 30 * (1 - e); }
   } else { // monument: on the 360 camera, one full turn starting on your fort, then out and down behind you
@@ -4625,7 +4647,7 @@ function camMenuRows() {
   box.querySelectorAll('[data-prev]').forEach(b => b.onclick = () => camPreview(b.dataset.prev));
 }
 function camPreview(style) { CAMV.preview = { style, t0: now() }; show(null); $('specBack').hidden = false; $('specBack').textContent = '✕ stop preview'; }
-function camLook360() { SPEC.on = true; SPEC.yaw = Math.atan2(FORT.blue.x, FORT.blue.z); SPEC.pitch = -.2; show(null); $('specBack').hidden = false; $('specBack').textContent = '✕ back · drag to look around'; }
+function camLook360() { SPEC.on = true; SPEC.orbit = false; SPEC.yaw = Math.atan2(FORT.blue.x, FORT.blue.z); SPEC.pitch = -.2; show(null); $('specBack').hidden = false; $('specBack').textContent = '✕ back · drag to look around'; }
 function camFlyOver() { CAMV.fly = { t0: now() }; show(null); $('specBack').hidden = false; $('specBack').textContent = '✕ back'; }
 function camStop() { CAMV.preview = null; CAMV.fly = false; if (match.state === 'menu') SPEC.on = false; $('specBack').hidden = true; if (match.state === 'menu') show('cammenu'); }
 $('camBtn').onclick = () => { camMenuRows(); show('cammenu'); };
@@ -4654,7 +4676,7 @@ function menuCamera() {
 
 // test hooks: hold one moment of an intro style, or the 360 camera at a yaw
 function previewAt(style, k) { show(null); SPEC.on = false; CAMV.fly = false; CAMV.preview = { style, t0: now() - k * INTRO_T * 1000, hold: true }; }
-function look360(yaw) { show(null); CAMV.preview = null; SPEC.on = true; SPEC.yaw = yaw; SPEC.pitch = -.2; }
+function look360(yaw) { show(null); CAMV.preview = null; SPEC.on = true; SPEC.orbit = false; SPEC.yaw = yaw; SPEC.pitch = -.2; }
 
 // ============================================================
 // ONLINE PLAY (test version, no game server needed)
