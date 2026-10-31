@@ -916,10 +916,18 @@ const MONUMENT = { g: null, top: POLE_H, under: 0, cam: V(0, POLE_H + 1.6, 0) };
   for (const team of ['blue', 'red']) {
     const F = FORT[team], ang = Math.atan2(F.x, F.z), col = team === 'blue' ? 0x2aa2ff : 0xff4d40;
     const arm = new THREE.Group(); arm.rotation.y = ang; arm.position.y = POLE_H - (team === 'blue' ? 1.3 : 2.9); g.add(arm);
-    const board = new THREE.Mesh(new THREE.BoxGeometry(.8, 1.15, 5), new LiteMat({ color: col })); board.position.z = 2.8; board.castShadow = true; arm.add(board);
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(.95, 1.5, 4), new LiteMat({ color: col })); tip.rotation.x = Math.PI / 2; tip.rotation.y = Math.PI / 4; tip.position.z = 6.05; arm.add(tip);
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(.86, .14, 5), new LiteMat({ color: 0xffffff })); cap.position.set(0, .64, 2.8); arm.add(cap);
-    (MONUMENT.perch = MONUMENT.perch || {})[team] = V(Math.sin(ang) * 4.4, arm.position.y + .71 + .1, Math.cos(ang) * 4.4); // where the egg bird lands on this arrow
+    // slimmer boards (they looked heavy on the pole); the top trim is the team colour, a shade lighter, never white
+    const mat = new LiteMat({ color: col }), trim = new LiteMat({ color: new THREE.Color(col).lerp(new THREE.Color(0xffffff), .25) });
+    const board = new THREE.Mesh(new THREE.BoxGeometry(.55, .75, 5), mat); board.position.z = 2.8; board.castShadow = true; arm.add(board);
+    const tri = new THREE.Shape(); tri.moveTo(-.6, 0); tri.lineTo(.6, 0); tri.lineTo(0, 1.15); tri.closePath();       // a flat arrowhead the board's thickness
+    const tipGeo = new THREE.ExtrudeGeometry(tri, { depth: .55, bevelEnabled: false }); tipGeo.translate(0, 0, -.275);
+    tipGeo.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1)); tipGeo.computeVertexNormals(); // shape up/forward, extrusion across
+    const tip = new THREE.Mesh(tipGeo, mat); tip.position.z = 5.28; tip.castShadow = true; arm.add(tip);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(.6, .1, 5), trim); cap.position.set(0, .42, 2.8); arm.add(cap);
+    // a diagonal brace under the arm: pole, board and brace make a triangle
+    const B0 = V(0, -1.15, .25), B1 = V(0, -.37, 2.3), bl = B0.distanceTo(B1);
+    const brace = new THREE.Mesh(new THREE.BoxGeometry(.14, .14, bl), steel); brace.position.copy(B0).add(B1).multiplyScalar(.5); brace.rotation.x = -Math.atan2(B1.y - B0.y, B1.z - B0.z); brace.castShadow = true; arm.add(brace);
+    (MONUMENT.perch = MONUMENT.perch || {})[team] = V(Math.sin(ang) * 4.4, arm.position.y + .47 + .1, Math.cos(ang) * 4.4); // where the egg bird lands on this arrow
   }
   scene.add(g);
   for (const [w, h, y] of [[3, .7, .35], [1.6, .5, .95]]) { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, h / 2, w / 2).setTranslation(0, y, 0).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); }
@@ -983,7 +991,7 @@ const KIND_COL = {
 };
 const kindMat = {}, coreMat = {};
 // power blocks are see-through "jelly glass" boxes: a tinted shell with a solid logo, and a solid little core inside
-const GLASS = { bomb: [.42, '#16171c'], freeze: [.5, '#e8f7ff'], homing: [.55, '#7a2be0'], warp: [.5, '#ff4fd0'], sticky: [.7, '#4f9a1e'], egg: [.9, '#ffd36b'] };
+const GLASS = { bomb: [.42, '#16171c'], freeze: [.38, '#e8f7ff'], homing: [.42, '#7a2be0'], warp: [.5, '#ff4fd0'], sticky: [.55, '#4f9a1e'], egg: [.9, '#ffd36b'] };
 for (const k in KIND_COL) {
   const [a, b, glow, ink, frame] = KIND_COL[k], t = iconTex(a, b, ICON[k], ink, k === 'bomb' ? 'rgba(255,255,255,.55)' : k === 'freeze' ? 'rgba(47,134,196,.8)' : 'rgba(255,255,255,.8)', GLASS[k][0]);
   kindMat[k] = new LiteMat({ map: t, transparent: true, depthWrite: false, side: THREE.DoubleSide,
@@ -991,49 +999,155 @@ for (const k in KIND_COL) {
   coreMat[k] = new LiteMat({ color: GLASS[k][1], emissive: k === 'freeze' ? 0x5aa8d8 : k === 'homing' ? 0x5a14b8 : k === 'warp' ? 0xff2ac0 : 0x000000, emissiveIntensity: .4 });
 }
 const coreGeo = new RoundedBoxGeometry(1, 1, 1, 1, .12);
-// what you can see inside each glass block: gunpowder in the bomb, water in the ice block, a magnet in the homing block,
-// a spider web in the sticky grenade. The other power blocks keep the small spinning core.
-const INNER = (() => {
-  const powder = (() => { const parts = []; let seed = 7; const rn = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 130; i++) { const g = new THREE.BoxGeometry(.07 + rn() * .06, .05 + rn() * .05, .07 + rn() * .06), r = Math.sqrt(rn()) * .38, a = rn() * 6.28, h = (1 - r / .38) * .34 * rn() + rn() * .05; // a fuller heap, peaked in the middle
-      g.translate(Math.cos(a) * r, -.4 + h, Math.sin(a) * r); g.rotateY(rn() * 3); const c = new THREE.Color().setHSL(.0 + rn() * .03, .75, .2 + rn() * .16), n = g.attributes.position.count, cs = new Float32Array(n * 3); for (let k = 0; k < n; k++) c.toArray(cs, k * 3); g.setAttribute('color', new THREE.BufferAttribute(cs, 3)); parts.push(g); }
-    return new THREE.Mesh(mergeGeometries(parts), new LiteMat({ vertexColors: true })); })();               // a little heap of dark-red grains on the floor of the block
-  const water = (() => { // icy water: pale freezing blue, a frosted surface and chunks of ice floating in it
-    const g = new THREE.Group();
-    const w = new THREE.Mesh(new THREE.BoxGeometry(.84, .5, .84).translate(0, -.21, 0), new THREE.MeshLambertMaterial({ color: 0x8fdcff, transparent: true, opacity: .72, emissive: 0x3a9ad6, emissiveIntensity: .45, depthWrite: false })); w.renderOrder = 3; g.add(w);
-    const frost = new THREE.Mesh(new THREE.BoxGeometry(.84, .04, .84).translate(0, .05, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: .55, emissive: 0xcfefff, emissiveIntensity: .4, depthWrite: false })); frost.renderOrder = 4; g.add(frost);
-    const iceM = new THREE.MeshLambertMaterial({ color: 0xf4fcff, emissive: 0xbfe8ff, emissiveIntensity: .5 });
-    for (const [x, z, s, ry] of [[-.2, -.15, .2, .3], [.18, .12, .16, 1.1], [.05, -.25, .12, .7], [-.22, .22, .14, .2]]) { const c = new THREE.Mesh(new THREE.BoxGeometry(s, s * .7, s), iceM); c.position.set(x, .05, z); c.rotation.set(.3, ry, .2); g.add(c); }
-    return g; })();
-  const magnet = (() => { // (it's a compass now: a dial with a red-and-white needle that keeps hunting about)
-    const g = new THREE.Group(), face = new THREE.Group();
-    const dc = document.createElement('canvas'); dc.width = dc.height = 128; const x = dc.getContext('2d');
-    x.fillStyle = '#f6f2e6'; x.beginPath(); x.arc(64, 64, 62, 0, 7); x.fill(); x.strokeStyle = '#2b2d33'; x.lineWidth = 6; x.stroke();
-    x.lineWidth = 3; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, r0 = i % 4 ? 50 : 42; x.beginPath(); x.moveTo(64 + Math.cos(a) * r0, 64 + Math.sin(a) * r0); x.lineTo(64 + Math.cos(a) * 58, 64 + Math.sin(a) * 58); x.stroke(); }
-    x.fillStyle = '#2b2d33'; x.font = 'bold 22px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; [['N', 64, 24], ['S', 64, 104], ['E', 104, 64], ['W', 24, 64]].forEach(([t, px, py]) => x.fillText(t, px, py));
-    const dial = new THREE.Mesh(new THREE.CylinderGeometry(.33, .33, .05, 28), [new LiteMat({ color: 0xb08a3a }), new LiteMat({ map: new THREE.CanvasTexture(dc) }), new LiteMat({ map: new THREE.CanvasTexture(dc) })]); face.add(dial);
-    const needle = new THREE.Group(), red = new LiteMat({ color: 0xe0281a, emissive: 0x500a06 }), white = new LiteMat({ color: 0xffffff });
-    const nN = new THREE.Mesh(new THREE.ConeGeometry(.055, .24, 4), red); nN.rotation.x = Math.PI / 2; nN.position.z = -.12; needle.add(nN);
-    const nS = new THREE.Mesh(new THREE.ConeGeometry(.055, .24, 4), white); nS.rotation.x = -Math.PI / 2; nS.position.z = .12; needle.add(nS);
-    const pin = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .09, 8), new LiteMat({ color: 0xb08a3a })); needle.add(pin);
-    needle.position.y = .05; face.add(needle); face.rotation.x = .45; g.add(face); needle.name = 'needle'; g.position.y = -.04;
-    return g; })();
-  const web = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.strokeStyle = 'rgba(255,255,255,.92)'; x.lineWidth = 2;
-    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; x.beginPath(); x.moveTo(64, 64); x.lineTo(64 + Math.cos(a) * 64, 64 + Math.sin(a) * 64); x.stroke(); }
-    for (let r = 10; r < 62; r += 9) { x.beginPath(); for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI * 2, rr_ = r + (i % 2) * 2; i ? x.lineTo(64 + Math.cos(a) * rr_, 64 + Math.sin(a) * rr_) : x.moveTo(64 + Math.cos(a) * rr_, 64 + Math.sin(a) * rr_); } x.stroke(); }
-    const t = new THREE.CanvasTexture(c), m = new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false }), g = new THREE.Group();
-    for (const ry of [0, Math.PI / 2]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(.86, .86), m); pl.rotation.y = ry; pl.renderOrder = 3; g.add(pl); } const d = new THREE.Mesh(new THREE.PlaneGeometry(.86, .86), m); d.rotation.x = Math.PI / 2; d.renderOrder = 3; g.add(d); return g; })();
-  return { bomb: powder, freeze: water, homing: magnet, sticky: web };
-})();
-function decoratePower(e) {
-  const inner = INNER[e.kind];
-  if (inner) { const c = inner.clone(); e.mesh.add(c); e.core = c; c.userData.kind = e.kind; e.mesh.renderOrder = 2; return; }
-  const c = new THREE.Mesh(coreGeo, coreMat[e.kind]); c.scale.setScalar(.42); c.rotation.set(.6, .6, 0); c.userData.pulse = true; e.mesh.add(c); e.core = c; e.mesh.renderOrder = 2;
+// what you can see inside each glass block: loose gunpowder in the bomb, sloshing icy water in the freeze block,
+// a gold arrowhead in the homing block that points at the nearest enemy, a spider web strung inside the sticky grenade.
+// The gunpowder and water aren't stuck in place: they feel gravity (and the block being swung or thrown) in the
+// block's own frame, so they slide into the low corner, pour over when the block tumbles and slosh when it lands.
+// Everything sits inside the glass and is drawn before it, so the glass tints it and it reads as being inside.
+const INSIDE = .4;                                 // half-size of the space inside the glass
+const _q = new THREE.Quaternion(), _qi = new THREE.Quaternion(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _wp = new THREE.Vector3();
+// how a block is being moved: world gravity minus its own acceleration, turned into the block's frame
+function feltGravity(o, st, dt) {
+  o.parent.getWorldPosition(_wp); o.parent.getWorldQuaternion(_q);
+  if (!st.pp) { st.pp = _wp.clone(); st.pv = V(); st.acc = V(); }
+  const vel = _v.copy(_wp).sub(st.pp).divideScalar(Math.max(dt, 1e-3)); st.pp.copy(_wp);
+  if (vel.lengthSq() > 900) vel.set(0, 0, 0);                       // teleported (respawn, portal): ignore the jump
+  const acc = _v2.copy(vel).sub(st.pv).divideScalar(Math.max(dt, 1e-3)); st.pv.copy(vel);
+  if (acc.length() > 40) acc.setLength(40);
+  st.acc.lerp(acc, .35);
+  const g = (st.g || (st.g = V())).set(0, -9.8, 0).sub(st.acc);
+  if (g.lengthSq() < .01) g.set(0, -.1, 0);
+  return g.applyQuaternion(_qi.copy(_q).invert());                 // in the block's own frame
 }
-function pulseHalos(t) { const s = .42 + .03 * Math.sin(t / 220); for (const e of blocks) if (e.core && !e.dead) { const c = e.core;
-  if (c.userData.pulse) { c.rotation.y = t / 900 + e.id; c.scale.setScalar(s); }
-  else if (c.userData.kind === 'homing') { const nd = c.userData.nd || (c.userData.nd = c.getObjectByName('needle')); if (nd) nd.rotation.y = Math.sin(t / 700 + e.id) * 1.4 + Math.sin(t / 170 + e.id * 3) * .25; } // the compass needle keeps hunting about
-  else if (c.userData.kind === 'freeze') { c.scale.y = 1 + .05 * Math.sin(t / 260 + e.id); } } }               // the water sloshes
+const POWDER_N = 64, POWDER_D = .072;
+const powderGeo = new THREE.BoxGeometry(1, 1, 1);
+const powderMat = new LiteMat({ color: 0xffffff });
+function makePowder() {
+  const m = new THREE.InstancedMesh(powderGeo, powderMat, POWDER_N); m.frustumCulled = false; m.renderOrder = 1;
+  let seed = 7; const rn = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const p = new Float32Array(POWDER_N * 3), v = new Float32Array(POWDER_N * 3), rot = [], sc = [];
+  for (let i = 0; i < POWDER_N; i++) {
+    const r = Math.sqrt(rn()) * .34, a = rn() * 6.28; p[i * 3] = Math.cos(a) * r; p[i * 3 + 1] = -INSIDE + .04 + rn() * .12; p[i * 3 + 2] = Math.sin(a) * r;
+    rot.push(new THREE.Quaternion().setFromEuler(new THREE.Euler(rn() * 3, rn() * 3, rn() * 3))); sc.push(V(.06 + rn() * .045, .045 + rn() * .04, .06 + rn() * .045));
+    m.setColorAt(i, new THREE.Color().setHSL(rn() * .03, .75, .18 + rn() * .16));
+  }
+  const st = { sleepT: 0, lastG: V() }, M = new THREE.Matrix4();
+  const draw = () => { for (let i = 0; i < POWDER_N; i++) { M.compose(_v.set(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]), rot[i], sc[i]); m.setMatrixAt(i, M); } m.instanceMatrix.needsUpdate = true; };
+  draw();
+  m.userData.upd = (dt) => {
+    const g = feltGravity(m, st, dt).multiplyScalar(.7);
+    if (g.distanceTo(st.lastG) > .3) st.sleepT = 0; st.lastG.copy(g);
+    if (st.sleepT > .4) return;                                      // settled and nothing's moving it: rest
+    const B = INSIDE - .035, D = POWDER_D, D2 = D * D, h = Math.min(dt, .04) / 2; let fast = 0;
+    for (let s = 0; s < 2; s++) {
+      for (let i = 0; i < POWDER_N; i++) { const k = i * 3;
+        v[k] += g.x * h; v[k + 1] += g.y * h; v[k + 2] += g.z * h; v[k] *= .985; v[k + 1] *= .985; v[k + 2] *= .985;
+        for (let c = 0; c < 3; c++) { p[k + c] += v[k + c] * h;
+          if (p[k + c] < -B || p[k + c] > B) { p[k + c] = p[k + c] < 0 ? -B : B; v[k + c] *= -.15; for (let o = 1; o < 3; o++) v[k + (c + o) % 3] *= .8; } } } // hit a wall: stop and drag a little
+      for (let i = 0; i < POWDER_N; i++) for (let j = i + 1; j < POWDER_N; j++) {                          // grains push each other apart, so they heap up
+        const dx = p[j * 3] - p[i * 3], dy = p[j * 3 + 1] - p[i * 3 + 1], dz = p[j * 3 + 2] - p[i * 3 + 2], d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 >= D2 || d2 < 1e-9) continue; const d = Math.sqrt(d2), f = (D - d) / d * .5;
+        p[i * 3] -= dx * f; p[i * 3 + 1] -= dy * f; p[i * 3 + 2] -= dz * f; p[j * 3] += dx * f; p[j * 3 + 1] += dy * f; p[j * 3 + 2] += dz * f; }
+    }
+    for (let i = 0; i < POWDER_N * 3; i++) fast = Math.max(fast, Math.abs(v[i]));
+    st.sleepT = fast < .05 ? st.sleepT + dt : 0;
+    draw();
+  };
+  return m;
+}
+// (the water writes depth, so the glass's far side and the shadow blob behind it can't paint over it)
+// the water is the inside of the box cut by a flat surface through the middle: the box is exactly half full
+// whichever way it's turned, and the surface springs towards level, so it sloshes when the block moves
+const waterSideMat = new THREE.MeshLambertMaterial({ color: 0x1a9cff, transparent: true, opacity: .9, emissive: 0x0a6fd8, emissiveIntensity: .8, depthWrite: true, side: THREE.DoubleSide });
+const waterTopMat = new THREE.MeshLambertMaterial({ color: 0x8fd8ff, transparent: true, opacity: .92, emissive: 0x4fb8ff, emissiveIntensity: .7, depthWrite: true, side: THREE.DoubleSide });
+const iceChunkMat = new THREE.MeshLambertMaterial({ color: 0xf4fcff, emissive: 0xbfe8ff, emissiveIntensity: .5 });
+const BOX_FACES = (() => { const h = INSIDE - .02, f = [];
+  for (let ax = 0; ax < 3; ax++) for (const s of [-1, 1]) { const u = (ax + 1) % 3, w = (ax + 2) % 3, q = [];
+    for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const pt = [0, 0, 0]; pt[ax] = s * h; pt[u] = a * h; pt[w] = b * h; q.push(V(...pt)); }
+    const n = [0, 0, 0]; n[ax] = s; f.push({ q, n: V(...n) }); }
+  return f; })();
+function makeWater() {
+  const g = new THREE.Group();
+  const mk = (n, mat) => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); const me = new THREE.Mesh(geo, mat); me.frustumCulled = false; me.renderOrder = 1; g.add(me); return me; };
+  const side = mk(108, waterSideMat), top = mk(24, waterTopMat);
+  const chunks = [[-.15, -.1, .17, .3], [.14, .12, .13, 1.1], [.04, -.2, .1, .7]].map(([a, b, s, ry]) => { const c = new THREE.Mesh(new THREE.BoxGeometry(s, s * .7, s), iceChunkMat); c.userData.uv = [a, b, ry]; c.renderOrder = 1; g.add(c); return c; });
+  const st = {}, n = V(0, 1, 0), nv = V(), last = V(9, 9, 9), basisU = V(), basisW = V(), tq = new THREE.Quaternion();
+  const build = () => {
+    const sp = side.geometry.attributes.position.array, sn = side.geometry.attributes.normal.array; let si = 0;
+    const cut = [];
+    for (const f of BOX_FACES) { const poly = [];
+      for (let i = 0; i < 4; i++) { const A = f.q[i], Bq = f.q[(i + 1) % 4], da = A.dot(n), db = Bq.dot(n);
+        if (da <= 0) poly.push(A); if ((da <= 0) !== (db <= 0)) { const P = A.clone().lerp(Bq, da / (da - db)); poly.push(P); cut.push(P); } }
+      for (let i = 1; i + 1 < poly.length; i++) for (const P of [poly[0], poly[i], poly[i + 1]]) { sp[si] = P.x; sp[si + 1] = P.y; sp[si + 2] = P.z; sn[si] = f.n.x; sn[si + 1] = f.n.y; sn[si + 2] = f.n.z; si += 3; } }
+    side.geometry.setDrawRange(0, si / 3); side.geometry.attributes.position.needsUpdate = side.geometry.attributes.normal.needsUpdate = true;
+    // the surface: the cut points, sorted round the middle
+    basisU.set(1, 0, 0); if (Math.abs(n.x) > .9) basisU.set(0, 0, 1); basisU.sub(_v.copy(n).multiplyScalar(basisU.dot(n))).normalize(); basisW.crossVectors(n, basisU);
+    cut.sort((A, Bq) => Math.atan2(A.dot(basisW), A.dot(basisU)) - Math.atan2(Bq.dot(basisW), Bq.dot(basisU)));
+    const pts = cut.filter((P, i) => !i || P.distanceToSquared(cut[i - 1]) > 1e-8);
+    const tp = top.geometry.attributes.position.array, tn = top.geometry.attributes.normal.array; let ti = 0;
+    for (let i = 1; i + 1 < pts.length && ti < 72; i++) for (const P of [pts[0], pts[i], pts[i + 1]]) { tp[ti] = P.x; tp[ti + 1] = P.y; tp[ti + 2] = P.z; tn[ti] = n.x; tn[ti + 1] = n.y; tn[ti + 2] = n.z; ti += 3; }
+    top.geometry.setDrawRange(0, ti / 3); top.geometry.attributes.position.needsUpdate = top.geometry.attributes.normal.needsUpdate = true;
+    tq.setFromUnitVectors(_v.set(0, 1, 0), n);                         // the ice floats on the surface
+    for (const c of chunks) { const [a, b, ry] = c.userData.uv; c.position.copy(basisU).multiplyScalar(a).addScaledVector(basisW, b).addScaledVector(n, .02);
+      for (const k of ['x', 'y', 'z']) c.position[k] = clamp(c.position[k], -INSIDE + .08, INSIDE - .08);
+      c.quaternion.copy(tq).multiply(_q.setFromAxisAngle(_v.set(0, 1, 0), ry)); }
+  };
+  build();
+  g.userData.upd = (dt) => {
+    const up = feltGravity(g, st, dt).negate().normalize();
+    if (!st.init) { n.copy(up); st.init = true; }
+    const h = Math.min(dt, .05);
+    nv.addScaledVector(_v.copy(up).sub(n), 70 * h).multiplyScalar(Math.max(0, 1 - 5 * h)); // springs towards level, wobbles a bit
+    n.addScaledVector(nv, h).normalize();
+    if (n.distanceToSquared(last) > 1e-6) { last.copy(n); build(); }
+  };
+  return g;
+}
+// the homing block: a gold arrowhead (gold sits nicely against the purple glass) that turns to point at the nearest enemy
+const arrowGeo = (() => { const s = new THREE.Shape(); s.moveTo(0, .3); s.lineTo(.2, -.2); s.lineTo(0, -.08); s.lineTo(-.2, -.2); s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, { depth: .12, bevelEnabled: true, bevelThickness: .03, bevelSize: .025, bevelSegments: 2 });
+  g.translate(0, 0, -.06); g.rotateX(Math.PI / 2); const g2 = g.clone().rotateZ(Math.PI / 2); // two fins crossed, like a dart, so it reads from any side
+  const m = mergeGeometries([g.toNonIndexed(), g2.toNonIndexed()]); m.computeVertexNormals(); return m; })(); // tip along +z
+const arrowMat = new LiteMat({ color: 0xffe066, emissive: 0xffb300, emissiveIntensity: 1.1, roughness: .3 }); // glows so it shines through the purple glass
+function makeArrow() {
+  const m = new THREE.Mesh(arrowGeo, arrowMat); m.renderOrder = 1; const tq = new THREE.Quaternion(), ep = V(); let spin = 0;
+  m.userData.upd = (dt, team) => {
+    m.parent.getWorldPosition(_wp); let best = null, bd = 1e9;
+    if (team) for (const r of robots) { if (r.team === team || r.state !== 'play' || !r.body) continue; const t = r.body.translation(), d = (t.x - _wp.x) ** 2 + (t.y - _wp.y) ** 2 + (t.z - _wp.z) ** 2; if (d < bd) { bd = d; best = t; } }
+    if (best) { ep.set(best.x, best.y + .6, best.z).sub(_wp); if (ep.lengthSq() < 1e-4) return;
+      m.parent.getWorldQuaternion(_q); ep.applyQuaternion(_q.invert()).normalize(); tq.setFromUnitVectors(_v.set(0, 0, 1), ep); }
+    else { spin += dt * 1.5; tq.setFromAxisAngle(_v.set(0, 1, 0), spin); }   // nobody to point at: it idly turns
+    m.quaternion.slerp(tq, 1 - Math.exp(-8 * dt));
+  };
+  return m;
+}
+// the sticky grenade: a real web strung inside the box, an orb web on a slanted plane plus anchor threads to the corners
+const webGeo = (() => { const parts = [], th = .011;
+  const strand = (A, Bq) => { const d = Bq.clone().sub(A), L = d.length(); const g = new THREE.BoxGeometry(th, th, L); const o = new THREE.Object3D(); o.position.copy(A).add(Bq).multiplyScalar(.5); o.lookAt(_v.copy(Bq)); o.updateMatrix(); g.applyMatrix4(o.matrix); parts.push(g); };
+  const h = INSIDE - .03, hub = V(.03, .02, -.02);
+  const u = V(1, -1, 0).normalize(), w = V(0, 0, 1);                  // the web's plane runs corner to corner across the box
+  const R = 10, rad = [];
+  for (let i = 0; i < R; i++) { const a = i / R * Math.PI * 2 + .2, dir = u.clone().multiplyScalar(Math.cos(a)).addScaledVector(w, Math.sin(a));
+    let L = 9; for (const k of ['x', 'y', 'z']) if (Math.abs(dir[k]) > 1e-4) L = Math.min(L, (h - Math.sign(dir[k]) * hub[k]) / Math.abs(dir[k]));
+    rad.push({ dir, L: L * (.92 + .08 * Math.sin(i * 3.1)) }); strand(hub, hub.clone().addScaledVector(dir, L)); }
+  for (const f of [.2, .36, .52, .68, .84]) for (let i = 0; i < R; i++) { const A = rad[i], Bq = rad[(i + 1) % R], wob = 1 + .06 * Math.sin(i * 5 + f * 20);
+    strand(hub.clone().addScaledVector(A.dir, A.L * f * wob), hub.clone().addScaledVector(Bq.dir, Bq.L * f)); }
+  for (const c of [[-1, -1, -1], [1, 1, 1], [1, 1, -1], [-1, -1, 1]]) { const C = V(...c).multiplyScalar(h); strand(hub.clone().lerp(C, .15), C); }
+  return mergeGeometries(parts); })();
+const webMat = new LiteMat({ color: 0xf2f6ff, emissive: 0x9aa6b8, emissiveIntensity: .35 });
+const makeWeb = () => { const m = new THREE.Mesh(webGeo, webMat); m.renderOrder = 1; return m; };
+const INNER = { bomb: makePowder, freeze: makeWater, homing: makeArrow, sticky: makeWeb };
+function makeInner(kind) { if (INNER[kind]) return INNER[kind]();
+  const c = new THREE.Mesh(coreGeo, coreMat[kind]); c.scale.setScalar(.42); c.rotation.set(.6, .6, 0); c.userData.pulse = true; return c; }
+function decoratePower(e) { const c = makeInner(e.kind); c.userData.kind = e.kind; e.mesh.add(c); e.core = c; e.mesh.renderOrder = 2; }
+let haloLast = 0;
+function pulseHalos(t) { const dt = clamp((t - (haloLast || t)) / 1000, 0, .05); haloLast = t; const s = .42 + .03 * Math.sin(t / 220);
+  let myTeam = null; try { myTeam = P ? P.team : null; } catch (_) {}
+  for (const e of blocks) if (e.core && !e.dead && e.mesh && e.mesh.visible) { const c = e.core;
+    if (c.userData.pulse) { c.rotation.y = t / 900 + e.id; c.scale.setScalar(s); }
+    else if (c.userData.upd && !(e.frozenT > 0)) c.userData.upd(dt, (e.thrower && e.thrower.team) || myTeam); } // frozen in time: the insides stop too
+  for (const r of robots) { const h = r.model && r.model.held, c = h && h.userData.inner;    // and the one riding on a robot's head
+    if (c && h.visible && c.userData.upd && !(r.frozenT > 0)) c.userData.upd(dt, r.team); } }
 const flagMats = {};
 const flagMat = col => flagMats[col] || (flagMats[col] = (() => { const c = new THREE.Color(col), d = c.clone().multiplyScalar(.55); const t = iconTex(col, '#' + d.getHexString(), ICON.flag); return new LiteMat({ map: t, emissive: col, emissiveMap: t, emissiveIntensity: .7, roughness: .4 }); })());
 const KIND_CSS = { bomb: 'linear-gradient(135deg,#2b2d33,#0b0b0e)', freeze: 'linear-gradient(135deg,#f4fbff,#a9d6f2)', homing: 'linear-gradient(135deg,#b26bff,#5a14b8)', warp: 'linear-gradient(135deg,#ff6ad5,#8a0fb8)', sticky: 'linear-gradient(135deg,#9be24a,#2e6b12)', egg: 'linear-gradient(135deg,#fff6dc,#e8cf9a)' };
@@ -2498,7 +2612,7 @@ function refreshHeld(r) {
   else h.material = e.kind === 'flag' ? flagMat('#' + e.color.getHexString()) : kindMat[e.kind];
   // what's inside a power block (gunpowder, water, magnet, web) shows on your head as well
   if (h.userData.innerKind !== e.kind) { if (h.userData.inner) { h.remove(h.userData.inner); h.userData.inner = null; } h.userData.innerKind = e.kind;
-    if (isPower(e.kind)) { const src = INNER[e.kind]; const c = src ? src.clone() : new THREE.Mesh(coreGeo, coreMat[e.kind]); if (!src) { c.scale.setScalar(.42); c.rotation.set(.6, .6, 0); } h.add(c); h.userData.inner = c; h.renderOrder = 2; } }
+    if (isPower(e.kind)) { const c = makeInner(e.kind); h.add(c); h.userData.inner = c; h.renderOrder = 2; } }
 }
 // picking up: the new block becomes your active block; the rest move back one place
 function grabBlock(r, e) {
