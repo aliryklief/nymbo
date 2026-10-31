@@ -21,17 +21,17 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #trail{position:fixed;inset:0;pointer-events:none}
 .hud{position:fixed;pointer-events:none}
 /* top bar */
-#top{top:calc(env(safe-area-inset-top,0px) + 8px);left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));display:flex;justify-content:center;align-items:center;gap:6px}
+#top{top:calc(env(safe-area-inset-top,0px) + 8px);left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));display:flex;justify-content:center;align-items:center;gap:clamp(6px,2vw,12px)}
 #pauseBtn{pointer-events:auto;flex:none;width:28px;height:28px;margin-right:2px;padding:0;border-radius:11px;border:1.5px solid var(--line);background:var(--panel);color:#fff;font:700 13px var(--body);letter-spacing:.06em;cursor:pointer}
-.heads{display:flex;gap:3px}
-.head{width:22px;height:21px;border-radius:8px;padding:1px;flex:none;background:var(--panel);border:1.5px solid color-mix(in srgb,var(--c) 70%,transparent);transition:opacity .2s}
+.heads{display:flex;gap:clamp(3px,1vw,6px);flex:1;justify-content:flex-end}.heads#teamR{justify-content:flex-start}
+.head{width:clamp(22px,6.5vw,40px);height:clamp(21px,6.2vw,38px);border-radius:clamp(8px,2.4vw,13px);padding:1px;flex:none;background:var(--panel);border:1.5px solid color-mix(in srgb,var(--c) 70%,transparent);transition:opacity .2s}
 .head svg{width:100%;height:100%;display:block}
 .head.me{box-shadow:0 0 0 2px var(--yellow)}
 .head.dim{opacity:.5}
 #mid{pointer-events:auto;cursor:pointer;color:#fff;font:inherit;display:flex;align-items:center;gap:6px;background:var(--panel);border:2px solid var(--ink2);border-radius:12px;padding:3px 8px;flex:none}
-#mid b{font-family:var(--display);font-weight:400;font-size:17px;line-height:1;font-variant-numeric:tabular-nums;min-width:12px;text-align:center}
+#mid b{font-family:var(--display);font-weight:400;font-size:clamp(17px,4.6vw,26px);line-height:1;font-variant-numeric:tabular-nums;min-width:12px;text-align:center}
 #sB{color:#5cc0ff}#sR{color:#ff6a5a}
-#timer{font-family:var(--display);font-size:17px;line-height:1;font-variant-numeric:tabular-nums;min-width:46px;text-align:center}
+#timer{font-family:var(--display);font-size:clamp(17px,4.6vw,26px);line-height:1;font-variant-numeric:tabular-nums;min-width:46px;text-align:center}
 #timer.low{color:var(--yellow)}
 /* LEFT = what you carry, RIGHT = what you can fire. Mirror images: the block in your hands sits level with the shield
    button (both on the 50% line), the next blocks stack upwards on the left exactly like earned powers stack upwards on the
@@ -76,7 +76,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #edge{inset:0;transition:box-shadow .2s}
 #edge.on{box-shadow:inset 0 0 90px 10px rgba(255,212,0,.45)}
 #feed{top:calc(env(safe-area-inset-top,0px) + 50px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;width:min(92vw,520px);pointer-events:none}
-#feed .fl{font-family:var(--display);font-size:12px;letter-spacing:.06em;white-space:nowrap;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.6),0 0 8px rgba(0,0,0,.5);opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s}
+#feed .fl{font-family:var(--display);font-size:12px;letter-spacing:.06em;white-space:nowrap;color:#f3e9c8;text-shadow:0 1px 0 rgba(0,0,0,.6),0 0 8px rgba(0,0,0,.5);opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s}
 #feed .fl.in{opacity:1;transform:none}
 #feed .fl[data-age="1"]{opacity:.6;font-size:13px}#feed .fl[data-age="2"]{opacity:.32;font-size:12px}
 #feed .fl.out{opacity:0 !important;transform:translateY(-10px);transition:opacity .6s,transform .6s}
@@ -259,6 +259,8 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 <div class="sheet" id="looklab" hidden>
   <div class="card" style="width:min(560px,100%)">
     <div class="panel"><h2>Look lab</h2><p class="rules" style="margin:0 0 8px">The textures the game draws with. Upload an image to replace one (square images, 64 to 512 pixels, work best). Kept on this device; export to send.</p>
+      <div class="lbl" style="margin:10px 0 6px">VISUALS</div>
+      <div class="tog"><label for="sAoe">Blast sphere (shows the area a bomb / freeze / nuke covers)</label><input id="sAoe" type="checkbox"></div>
       <div id="lookList"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport2">Export my replacements</button><button class="ghost" id="lookLabBack">Back</button></div></div>
   </div>
@@ -298,7 +300,6 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <canvas id="menuMap" style="display:block;width:100%;border-radius:14px;margin-bottom:10px"></canvas>
     <div class="tog"><label for="sBuzz">Vibration</label><input id="sBuzz" type="checkbox"></div>
     <div class="tog"><label for="sSound">Sound effects</label><input id="sSound" type="checkbox"></div>
-    <div class="tog"><label for="sMusic">War drums</label><input id="sMusic" type="checkbox"></div>
     <div class="tog"><label for="sAllPowers">All powers (testing: every power + black hole, no streak needed)</label><input id="sAllPowers" type="checkbox"></div>
     <div class="tog"><label for="sClassic">Classic sounds</label><input id="sClassic" type="checkbox"></div>
     <div style="display:grid;gap:8px;margin-top:6px"><button class="go" id="resumeBtn" style="font-size:24px;padding:14px">BACK TO THE GAME</button><button class="ghost" id="pHow">How to play</button><button class="ghost" id="quitBtn">Quit match</button></div>
@@ -317,7 +318,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 <div id="loading">NYMBO</div>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/","rapier":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/rapier.es.js"}}</script>
-<script>window.NYMBO_FILES=["alert", "alert_2", "alert_3", "amb_bed", "amb_birds", "amb_grass", "amb_night", "amb_night_2", "amb_night_3", "amb_trees", "amb_wind", "amb_wind_2", "amb_wind_3", "baa1", "baa2", "baa3", "baa4", "baa5", "baa6", "baa7", "baa8", "baa9", "beep", "blackout", "blackout_2", "blackout_3", "boom", "boom1", "boom2", "boom_2", "boom_3", "boom_big", "boom_big_2", "boom_big_3", "boom_tail", "boom_tail_2", "boost", "boost_2", "boost_3", "catch", "catch_2", "catch_3", "cheer", "chimes", "chirp_blue", "chirp_blue_2", "chirp_blue_3", "chirp_red", "chirp_red_2", "chirp_red_3", "clonk", "clonk1", "clonk2", "clonk3", "clonk_2", "clonk_3", "clonk_big", "clonk_big_2", "clonk_big_3", "cloth", "confirm", "crow", "crow_2", "crow_3", "crumble", "crumble1", "crumble2", "crumble_2", "crumble_3", "defeat", "defeat_2", "denied", "denied_2", "denied_3", "dodge", "dodge_2", "dodge_3", "drums_hard", "drums_hard_2", "drums_hard_3", "drums_mid", "drums_mid_2", "drums_mid_3", "drums_soft", "drums_soft_2", "drums_soft_3", "flagDrop", "flagDrop_2", "flagDrop_3", "flagGrab", "flagGrab_2", "flagGrab_3", "flagdrop", "freeze", "freeze_2", "freeze_3", "full", "full_2", "full_3", "glock", "go", "go_2", "go_3", "gong", "grab", "grab1", "grab2", "grab3", "grab_2", "grab_3", "grab_bomb", "grab_bomb_2", "grab_bomb_3", "grab_freeze", "grab_freeze_2", "grab_freeze_3", "grab_homing", "grab_homing_2", "heart", "hit", "hit1", "hit2", "hit3", "hit_2", "hit_3", "hole", "hoof", "hoof_2", "hoof_3", "ice_crack", "ice_crack_2", "ice_crack_3", "impact_stone", "impact_stone_2", "impact_stone_3", "impact_wood", "impact_wood_2", "impact_wood_3", "intro", "intro_2", "intro_3", "invis", "invis_2", "invis_3", "jet", "jet_2", "jump", "jump2", "jump_2", "jump_3", "ko", "ko_2", "ko_3", "land", "land2", "land_2", "land_3", "lightsOn", "lightsOn_2", "lightsOn_3", "lock", "lose", "lose_2", "lose_3", "moo1", "moo2", "moo3", "moo4", "moo5", "nuke", "nuke_rumble", "pad", "pad_2", "pad_3", "plop", "pop", "portal", "portal_2", "portal_3", "portal_hum", "powerdown", "powerup", "reload", "reload_2", "reload_3", "repair", "repair_2", "repair_3", "respawn", "respawn_2", "respawn_3", "roll", "score", "score_2", "score_3", "servo", "servo_2", "servo_3", "shatter", "shatter1", "shatter2", "shatter_2", "shatter_3", "siren", "slide", "slide_2", "slowmo", "slowmo_2", "streak", "streak_2", "streak_3", "swoop", "throw", "throw1", "throw2", "throw3", "throw_2", "throw_3", "tick", "tornado", "track_1_lenient", "track_1_medium", "track_1_strict", "track_2_lenient", "track_2_medium", "track_2_strict", "track_3_lenient", "track_3_medium", "track_3_strict", "track_4_lenient", "track_4_medium", "track_4_strict", "tramp", "ui", "v2_alert", "v2_amb_bed", "v2_amb_grass", "v2_amb_trees", "v2_baa1", "v2_baa2", "v2_baa3", "v2_baa4", "v2_baa5", "v2_baa6", "v2_baa7", "v2_baa8", "v2_baa9", "v2_boom1", "v2_boom2", "v2_boom_tail", "v2_cheer", "v2_chimes", "v2_clonk1", "v2_clonk2", "v2_clonk3", "v2_clonk_big", "v2_cloth", "v2_confirm", "v2_crumble1", "v2_crumble2", "v2_denied", "v2_dodge", "v2_flagdrop", "v2_freeze", "v2_full", "v2_glock", "v2_gong", "v2_grab1", "v2_grab2", "v2_grab3", "v2_grab_bomb", "v2_grab_freeze", "v2_grab_homing", "v2_heart", "v2_hit1", "v2_hit2", "v2_hit3", "v2_hoof", "v2_ice_crack", "v2_impact_stone", "v2_impact_wood", "v2_jump", "v2_jump2", "v2_ko", "v2_land", "v2_land2", "v2_lock", "v2_moo1", "v2_moo2", "v2_moo3", "v2_moo4", "v2_moo5", "v2_nuke_rumble", "v2_plop", "v2_pop", "v2_portal", "v2_powerdown", "v2_powerup", "v2_reload", "v2_respawn", "v2_roll", "v2_shatter1", "v2_shatter2", "v2_siren", "v2_throw1", "v2_throw2", "v2_throw3", "v2_tick", "v2_tramp", "v2_ui", "v2_v_cow", "v2_v_dark", "v2_v_frozen", "v2_v_gotit", "v2_v_ice", "v2_v_invis", "v2_v_nuke", "v2_v_oops", "v2_v_ouch", "v2_v_returned", "v2_v_run", "v2_v_scored", "v2_v_slow", "v2_v_stolen", "v2_v_theyscored", "v2_v_tornado", "v2_v_visible", "v2_vjump1", "v2_vjump2", "v2_vjump3", "v2_whoosh_big", "v2_whoosh_long", "v_cow", "v_dark", "v_frozen", "v_gotit", "v_ice", "v_invis", "v_nuke", "v_oops", "v_ouch", "v_returned", "v_run", "v_scored", "v_slow", "v_stolen", "v_theyscored", "v_tornado", "v_visible", "visible", "visible_2", "vjump1", "vjump2", "vjump3", "whoosh_big", "whoosh_big_2", "whoosh_big_3", "whoosh_long", "win", "win_2"]</script>
+<script>window.NYMBO_FILES=["alert", "alert_2", "alert_3", "amb_bed", "amb_birds", "amb_grass", "amb_night", "amb_night_2", "amb_night_3", "amb_trees", "amb_wind", "amb_wind_2", "amb_wind_3", "baa1", "baa2", "baa3", "baa4", "baa5", "baa6", "baa7", "baa8", "baa9", "beep", "blackout", "blackout_2", "blackout_3", "boom", "boom1", "boom2", "boom_2", "boom_3", "boom_big", "boom_big_2", "boom_big_3", "boom_tail", "boom_tail_2", "boost", "boost_2", "boost_3", "catch", "catch_2", "catch_3", "cheer", "chimes", "chirp_blue", "chirp_blue_2", "chirp_blue_3", "chirp_red", "chirp_red_2", "chirp_red_3", "clonk", "clonk1", "clonk2", "clonk3", "clonk_2", "clonk_3", "clonk_big", "clonk_big_2", "clonk_big_3", "cloth", "confirm", "crow", "crow_2", "crow_3", "crumble", "crumble1", "crumble2", "crumble_2", "crumble_3", "defeat", "defeat_2", "denied", "denied_2", "denied_3", "dodge", "dodge_2", "dodge_3", "flagDrop", "flagDrop_2", "flagDrop_3", "flagGrab", "flagGrab_2", "flagGrab_3", "flagdrop", "freeze", "freeze_2", "freeze_3", "full", "full_2", "full_3", "glock", "go", "go_2", "go_3", "gong", "grab", "grab1", "grab2", "grab3", "grab_2", "grab_3", "grab_bomb", "grab_bomb_2", "grab_bomb_3", "grab_freeze", "grab_freeze_2", "grab_freeze_3", "grab_homing", "grab_homing_2", "heart", "hit", "hit1", "hit2", "hit3", "hit_2", "hit_3", "hole", "hoof", "hoof_2", "hoof_3", "ice_crack", "ice_crack_2", "ice_crack_3", "impact_stone", "impact_stone_2", "impact_stone_3", "impact_wood", "impact_wood_2", "impact_wood_3", "intro", "intro_2", "intro_3", "invis", "invis_2", "invis_3", "jet", "jet_2", "jump", "jump2", "jump_2", "jump_3", "ko", "ko_2", "ko_3", "land", "land2", "land_2", "land_3", "lightsOn", "lightsOn_2", "lightsOn_3", "lock", "lose", "lose_2", "lose_3", "moo1", "moo2", "moo3", "moo4", "moo5", "nuke", "nuke_rumble", "pad", "pad_2", "pad_3", "plop", "pop", "portal", "portal_2", "portal_3", "portal_hum", "powerdown", "powerup", "reload", "reload_2", "reload_3", "repair", "repair_2", "repair_3", "respawn", "respawn_2", "respawn_3", "roll", "score", "score_2", "score_3", "servo", "servo_2", "servo_3", "shatter", "shatter1", "shatter2", "shatter_2", "shatter_3", "siren", "slide", "slide_2", "slowmo", "slowmo_2", "streak", "streak_2", "streak_3", "swoop", "throw", "throw1", "throw2", "throw3", "throw_2", "throw_3", "tick", "tornado", "tramp", "ui", "v2_alert", "v2_amb_bed", "v2_amb_grass", "v2_amb_trees", "v2_baa1", "v2_baa2", "v2_baa3", "v2_baa4", "v2_baa5", "v2_baa6", "v2_baa7", "v2_baa8", "v2_baa9", "v2_boom1", "v2_boom2", "v2_boom_tail", "v2_cheer", "v2_chimes", "v2_clonk1", "v2_clonk2", "v2_clonk3", "v2_clonk_big", "v2_cloth", "v2_confirm", "v2_crumble1", "v2_crumble2", "v2_denied", "v2_dodge", "v2_flagdrop", "v2_freeze", "v2_full", "v2_glock", "v2_gong", "v2_grab1", "v2_grab2", "v2_grab3", "v2_grab_bomb", "v2_grab_freeze", "v2_grab_homing", "v2_heart", "v2_hit1", "v2_hit2", "v2_hit3", "v2_hoof", "v2_ice_crack", "v2_impact_stone", "v2_impact_wood", "v2_jump", "v2_jump2", "v2_ko", "v2_land", "v2_land2", "v2_lock", "v2_moo1", "v2_moo2", "v2_moo3", "v2_moo4", "v2_moo5", "v2_nuke_rumble", "v2_plop", "v2_pop", "v2_portal", "v2_powerdown", "v2_powerup", "v2_reload", "v2_respawn", "v2_roll", "v2_shatter1", "v2_shatter2", "v2_siren", "v2_throw1", "v2_throw2", "v2_throw3", "v2_tick", "v2_tramp", "v2_ui", "v2_v_cow", "v2_v_dark", "v2_v_frozen", "v2_v_gotit", "v2_v_ice", "v2_v_invis", "v2_v_nuke", "v2_v_oops", "v2_v_ouch", "v2_v_returned", "v2_v_run", "v2_v_scored", "v2_v_slow", "v2_v_stolen", "v2_v_theyscored", "v2_v_tornado", "v2_v_visible", "v2_vjump1", "v2_vjump2", "v2_vjump3", "v2_whoosh_big", "v2_whoosh_long", "v_cow", "v_dark", "v_frozen", "v_gotit", "v_ice", "v_invis", "v_nuke", "v_oops", "v_ouch", "v_returned", "v_run", "v_scored", "v_slow", "v_stolen", "v_theyscored", "v_tornado", "v_visible", "visible", "visible_2", "vjump1", "vjump2", "vjump3", "whoosh_big", "whoosh_big_2", "whoosh_big_3", "whoosh_long", "win", "win_2"]</script>
 <script type="module">
 // ============================================================
 // NYMBO · match test build
@@ -370,7 +371,7 @@ const MAX_AMMO = 15;
 const MATCH_TIME = 300;            // 5 minutes
 const WIN_FLAGS = 4;
 const RAG_TIME = 3, GHOST_TIME = 3, FREEZE_TIME = 3, PORTAL_COOL = 3;
-const BOMB_R = 9.1, FREEZE_R = 4.2, FREEZE_R0 = FREEZE_R;  // bigger bomb blast
+const BOMB_R = 9.1, BOMB_R0 = BOMB_R, FREEZE_R = 4.2, FREEZE_R0 = FREEZE_R;  // bigger bomb blast
 const DODGE_RELOAD = 1.0;          // two dodges, then about the time of four quick swipes to reload
 
 const TEAMS = {
@@ -528,7 +529,7 @@ const clearAt = (x, z, pad = 0) => keepClear.every(k => Math.hypot(x - k.x, z - 
 // trees are made of real blocks now (built in the blocks file, asleep until something hits them)
 const TREES = [];
 function tree(x, z, h) {
-  TREES.push({ x, z, h });
+  TREES.push({ x, z, h, birds: rnd() < .3 }); // about a third of the trees have a nest (the easter-egg birds)
   staticBoxes.push({ x0: x - 1.5, y0: 0, z0: z - 1.5, x1: x + 1.5, y1: h + 3, z1: z + 1.5, foot: true }); // keeps other scenery and animals clear
 }
 // trees: two groves on the flanks give cover for sneaking round, plus a few loners. The middle stays open.
@@ -734,7 +735,7 @@ const tramp = (() => {
   const m = document.createElement('canvas'); m.width = m.height = 256; const h = m.getContext('2d');
   h.fillStyle = '#121317'; h.fillRect(0, 0, 256, 256); // a circle in a circle: yellow ring, yellow dot in the middle
   h.strokeStyle = '#ffd21f'; h.lineWidth = 16; h.beginPath(); h.arc(128, 128, 78, 0, 7); h.stroke(); h.fillStyle = '#ffd21f'; h.beginPath(); h.arc(128, 128, 30, 0, 7); h.fill();
-  const matTex = new THREE.CanvasTexture(m); matTex.colorSpace = THREE.SRGBColorSpace;
+  const matTex = new THREE.CanvasTexture(m); matTex.colorSpace = THREE.SRGBColorSpace; matTex.userData.cv = m;
   const pts = []; for (let i = 0; i <= 60; i++) { const a = i / 60 * Math.PI * 2 * 5; pts.push(V(Math.cos(a) * .09, i / 60 * .32, Math.sin(a) * .09)); }
   return { rim: new LiteMat({ map: rimTex }), mat: new LiteMat({ map: matTex }), steel: new LiteMat({ color: 0xb8bec9 }), base: new LiteMat({ color: 0x2a2c33 }),
     rimGeo: new THREE.TorusGeometry(1.5, .17, 10, 40).rotateX(Math.PI / 2), matGeo: new THREE.CylinderGeometry(1.42, 1.42, .04, 40),
@@ -795,8 +796,15 @@ function speedStrip(x, z, dx, dz, team) {
 }
 for (const t of TRAMP_SPOTS) trampoline(t.x, t.z);
 for (const [s, team] of [[1, 'blue'], [-1, 'red']]) speedStrip(-s * 21, s * 42, s, 0, team); // mirrored (point-symmetric): blue panel on our side, red on theirs
+// the mat's rings slide inwards and shrink (it's pulling you in): same look, just alive
+function animateMat(t) {
+  const cv = tramp.mat.map.userData.cv, h = cv.getContext('2d'), ph = (t / 1400) % 1;
+  h.fillStyle = '#121317'; h.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 3; i++) { const k = ((ph + i / 3) % 1), r = 118 - k * 88, a = Math.min(1, k * 3) * (1 - k * .55); h.strokeStyle = `rgba(255,210,31,${a.toFixed(2)})`; h.lineWidth = 16 - k * 7; h.beginPath(); h.arc(128, 128, r, 0, 7); h.stroke(); }
+  h.fillStyle = '#ffd21f'; h.beginPath(); h.arc(128, 128, 30, 0, 7); h.fill(); tramp.mat.map.needsUpdate = true;
+}
 function updateLaunchers(dt, visualOnly = false) {
-  const t = now();
+  const t = now(); if ((updateLaunchers.f = (updateLaunchers.f || 0) + 1) % 2 === 0) animateMat(t); // every other frame is plenty
   for (const S of STRIPS) for (const c of S.chevs) { // a light wave chasing from the back chevron to the front one
     const ph = ((t / 900 - c.i / CHEV_N) % 1 + 1) % 1, k = Math.pow(Math.max(0, 1 - ph * 2.6), 1.5);
     c.m.material.color.copy(S.dim).lerp(S.lit, .2 + .8 * k); c.glow.material.opacity = .12 + .7 * k;
@@ -884,6 +892,9 @@ const ICON = {
   freeze: g => { for (let i = 0; i < 3; i++) { g.save(); g.translate(64, 64); g.rotate(i * Math.PI / 3); g.beginPath(); g.moveTo(0, -40); g.lineTo(0, 40); g.moveTo(-12, -30); g.lineTo(0, -18); g.lineTo(12, -30); g.moveTo(-12, 30); g.lineTo(0, 18); g.lineTo(12, 30); g.stroke(); g.restore(); } },
   // simple crosshair
   homing: g => { g.lineWidth = 7; g.beginPath(); g.arc(64, 64, 30, 0, 7); g.stroke(); g.beginPath(); g.moveTo(64, 20); g.lineTo(64, 46); g.moveTo(64, 82); g.lineTo(64, 108); g.moveTo(20, 64); g.lineTo(46, 64); g.moveTo(82, 64); g.lineTo(108, 64); g.stroke(); },
+  // sticky grenade: a ring-pull pin; egg: speckles
+  sticky: g => { g.lineWidth = 9; g.beginPath(); g.arc(64, 50, 22, 0, 7); g.stroke(); g.fillRect(54, 70, 20, 40); g.fillRect(44, 104, 40, 10); },
+  egg: g => { for (let i = 0; i < 14; i++) { const a = i * 2.4, r = 14 + (i * 37) % 40; g.beginPath(); g.arc(64 + Math.cos(a) * r, 64 + Math.sin(a) * r * 1.2, 4 + (i % 3) * 2, 0, 7); g.fill(); } },
   // warp: a spiral (you go where it lands)
   warp: g => { g.lineWidth = 8; g.lineCap = 'round'; g.beginPath(); for (let a = 0; a < Math.PI * 5; a += .15) { const r = 4 + a * 7.5; const x = 64 + Math.cos(a) * r, y = 64 + Math.sin(a) * r; a ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); },
   flag: g => { g.beginPath(); g.moveTo(42, 104); g.lineTo(42, 26); g.stroke(); g.beginPath(); g.moveTo(46, 28); g.lineTo(96, 42); g.lineTo(46, 60); g.closePath(); g.fill(); },
@@ -894,11 +905,13 @@ const KIND_COL = {
   bomb: ['#2b2d33', '#0b0b0e', 0xffb347, '#f4f4f4', 'rgba(255,255,255,.18)'],
   freeze: ['#f4fbff', '#a9d6f2', 0xbfe6ff, '#2f86c4', 'rgba(47,134,196,.35)'],
   homing: ['#b26bff', '#5a14b8', 0xb36bff, '#ffffff', 'rgba(255,255,255,.45)'],
-  warp: ['#ff6ad5', '#8a0fb8', 0xff7ae0, '#ffffff', 'rgba(255,255,255,.5)'], // your one start block: throw it and you appear where it lands
+  warp: ['#ff6ad5', '#8a0fb8', 0xff7ae0, '#ffffff', 'rgba(255,255,255,.5)'],
+  sticky: ['#9be24a', '#2e6b12', 0xc8ff5a, '#1a2a0c', 'rgba(0,0,0,.35)'], // your one start block: sticks where it lands (on a robot too), bang 2.5 s later
+  egg: ['#fff6dc', '#e8cf9a', 0xfff0b0, '#9a7b4a', 'rgba(120,90,40,.4)'],     // the easter egg: dropped by a bird when a tree falls, bang 5 s later
 };
 const kindMat = {}, coreMat = {};
 // power blocks are see-through "jelly glass" boxes: a tinted shell with a solid logo, and a solid little core inside
-const GLASS = { bomb: [.62, '#16171c'], freeze: [.5, '#e8f7ff'], homing: [.55, '#7a2be0'], warp: [.5, '#ff4fd0'] };
+const GLASS = { bomb: [.62, '#16171c'], freeze: [.5, '#e8f7ff'], homing: [.55, '#7a2be0'], warp: [.5, '#ff4fd0'], sticky: [.7, '#4f9a1e'], egg: [.9, '#ffd36b'] };
 for (const k in KIND_COL) {
   const [a, b, glow, ink, frame] = KIND_COL[k], t = iconTex(a, b, ICON[k], ink, k === 'bomb' ? 'rgba(255,255,255,.55)' : k === 'freeze' ? 'rgba(47,134,196,.8)' : 'rgba(255,255,255,.8)', GLASS[k][0]);
   kindMat[k] = new LiteMat({ map: t, transparent: true, depthWrite: false, side: THREE.DoubleSide,
@@ -910,10 +923,11 @@ function decoratePower(e) { const c = new THREE.Mesh(coreGeo, coreMat[e.kind]); 
 function pulseHalos(t) { const s = .42 + .03 * Math.sin(t / 220); for (const e of blocks) if (e.core && !e.dead) { e.core.rotation.y = t / 900 + e.id; e.core.scale.setScalar(s); } }
 const flagMats = {};
 const flagMat = col => flagMats[col] || (flagMats[col] = (() => { const c = new THREE.Color(col), d = c.clone().multiplyScalar(.55); const t = iconTex(col, '#' + d.getHexString(), ICON.flag); return new LiteMat({ map: t, emissive: col, emissiveMap: t, emissiveIntensity: .7, roughness: .4 }); })());
-const KIND_CSS = { bomb: 'linear-gradient(135deg,#2b2d33,#0b0b0e)', freeze: 'linear-gradient(135deg,#f4fbff,#a9d6f2)', homing: 'linear-gradient(135deg,#b26bff,#5a14b8)', warp: 'linear-gradient(135deg,#ff6ad5,#8a0fb8)' };
+const KIND_CSS = { bomb: 'linear-gradient(135deg,#2b2d33,#0b0b0e)', freeze: 'linear-gradient(135deg,#f4fbff,#a9d6f2)', homing: 'linear-gradient(135deg,#b26bff,#5a14b8)', warp: 'linear-gradient(135deg,#ff6ad5,#8a0fb8)', sticky: 'linear-gradient(135deg,#9be24a,#2e6b12)', egg: 'linear-gradient(135deg,#fff6dc,#e8cf9a)' };
 const iceOverlayMat = new LiteMat({ color: 0xaef4ff, transparent: true, opacity: .45, roughness: .05, emissive: 0x3ccfff, emissiveIntensity: .4, depthWrite: false });
 
-const isPower = k => k === 'bomb' || k === 'freeze' || k === 'homing' || k === 'warp';
+const isPower = k => k === 'bomb' || k === 'freeze' || k === 'homing' || k === 'warp' || k === 'sticky' || k === 'egg';
+const isSticky = k => k === 'sticky' || k === 'egg';
 function newBlock(kind, pos, o = {}) {
   const dims = o.dims ? o.dims.clone() : V(1, 1, 1).multiplyScalar(o.size || 1);
   const e = { id: nextId++, kind, dims, size: Math.max(dims.x, dims.y, dims.z), rad: (dims.x + dims.y + dims.z) / 6,
@@ -1189,7 +1203,7 @@ function thawBlock(e) {
 // ---------- per-frame block update ----------
 const RUBBLE_T = 16; // seconds a loose piece lies still before it fades
 function updateBlocks(dt) {
-  impactBudget = 2;
+  impactBudget = 1;
   for (let i = respawnQ.length - 1; i >= 0; i--) { const q = respawnQ[i]; q.t -= dt; if (q.t <= 0) { respawnQ.splice(i, 1); if (!q.s.e) fillSlot(q.s, true); } }
   for (const e of blocks) {
     if (e.dead || !e.body) continue;
@@ -1217,7 +1231,7 @@ function updateBlocks(dt) {
     // clonk! blocks that hit something hard make a sound sized by the block (a few per frame at most)
     { const lv = e.body.linvel(), sp = Math.hypot(lv.x, lv.y, lv.z);
       // only real hits: a thrown block landing, or something big falling hard close to you (no settling rubble)
-      if (!e.holder && sp < e.ps * .45 && impactBudget > 0 && e.kind !== 'animal' && (e.live ? e.ps > 4 : e.ps > 8.5) && (!P || rPos(P).distanceTo(V(t.x, t.y, t.z)) < (e.live ? 34 : 18))) { impactBudget--; sfx('impact', V(t.x, t.y, t.z), e.dims.x * e.dims.y * e.dims.z); }
+      if (!e.holder && sp < e.ps * .45 && impactBudget > 0 && e.kind !== 'animal' && (e.live ? e.ps > 4 : e.ps > 8.5) && (!P || rPos(P).distanceTo(V(t.x, t.y, t.z)) < (e.live ? 26 : 12))) { impactBudget--; sfx('impact', V(t.x, t.y, t.z), e.dims.x * e.dims.y * e.dims.z); }
       e.ps = sp; }
     const r = e.body.rotation(); e.drawn = true;
     // draw between the previous and current physics step for smooth motion
@@ -1381,7 +1395,9 @@ function flashLight() {}
 const fxList = [];
 const sphereGeo = new THREE.SphereGeometry(1, 20, 14);
 const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 20, 1, true);
+if (S.aoe === undefined) S.aoe = false; // the big see-through blast sphere (area of effect); off by default, toggle in the Look lab
 function fxBurst(pos, color, radius, life = .45) {
+  if (radius > 2.2 && !S.aoe) { flashLight(pos, color, 60, radius * 4, life * 1.3); return; } // big blasts: keep the light flash, skip the sphere
   const m = new THREE.Mesh(sphereGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending }));
   m.position.copy(pos); m.scale.setScalar(.2); scene.add(m);
   fxList.push({ m, t: 0, life, kind: 'burst', radius });
@@ -1457,9 +1473,9 @@ function audioInit() {
   try {
     AC = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     // master chain: gentle "glue" compressor, then a fast limiter so loud moments never crackle
-    const lim = AC.createDynamicsCompressor(); lim.threshold.value = -2; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = .002; lim.release.value = .1; lim.connect(AC.destination);
+    const lim = AC.createDynamicsCompressor(); lim.threshold.value = -6; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = .003; lim.release.value = .16; lim.connect(AC.destination); // softer knee + headroom: no crackle on phone speakers
     const glue = AC.createDynamicsCompressor(); glue.threshold.value = -20; glue.knee.value = 12; glue.ratio.value = 2.5; glue.attack.value = .012; glue.release.value = .25; glue.connect(lim);
-    master = AC.createGain(); master.gain.value = .85; master.connect(glue);
+    master = AC.createGain(); master.gain.value = .72; master.connect(glue);
     verb = AC.createConvolver(); verb.buffer = makeIR(1.7); const vg = AC.createGain(); vg.gain.value = .5; verb.connect(vg); vg.connect(master);
     field = AC.createConvolver(); field.buffer = makeFieldIR(); const fg = AC.createGain(); fg.gain.value = .8; field.connect(fg); fg.connect(master);
     noiseBuf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
@@ -1665,7 +1681,7 @@ function sfx(name, pos, arg) {
     const lx = listenerAt.x, ly = listenerAt.y, lz = listenerAt.z, d = Math.hypot(pos.x - lx, pos.y - ly, pos.z - lz);
     if (d > 58) return;
     const far = clamp(d / 45, 0, 1); g.gain.value = 1 - clamp((d - 40) / 18, 0, 1);
-    const pn = AC.createPanner(); pn.panningModel = 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 5; pn.rolloffFactor = 1.1; pn.maxDistance = 80;
+    const pn = AC.createPanner(); pn.panningModel = 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 4; pn.rolloffFactor = 1.5; pn.maxDistance = 80; // far-off things fade faster: less clutter
     if (pn.positionX) { pn.positionX.value = pos.x; pn.positionY.value = pos.y; pn.positionZ.value = pos.z; } else pn.setPosition(pos.x, pos.y, pos.z);
     let tail = g;
     if (far > .08) { const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 17000 - far * 14000; tail.connect(lp); tail = lp; }
@@ -1719,7 +1735,6 @@ function updateAmbience(dt) {
   placeListener();
   if (typeof updateMood === 'function') updateMood(dt); // happy / anxious / scary soundscape
   if (typeof updateMix === 'function') updateMix(dt);
-  if (typeof updateMusic === 'function') updateMusic(dt);
   const t = AC.currentTime, on = S.sound ? (match.state === 'menu' ? .6 : 1) : 0;
   ambBus.gain.setTargetAtTime(on * .6, t, .8);
   if (typeof updateAmbienceReal === 'function') updateAmbienceReal(dt);
@@ -2015,9 +2030,9 @@ function updateMood(dt) {
   mood.spook -= dt; if (W.scary > .3 && mood.spook <= 0) { mood.spook = rr(6, 13); spookyThing(.5 + W.scary * .7); }
   if (playing) {
     mood.chat = (mood.chat ?? rr(2, 4)) - dt;
-    if (mood.chat <= 0) { mood.chat = rr(2.5, 6); const near = robots.filter(o => o !== P && o.state === 'play' && rPos(o).distanceTo(rPos(P)) < 26); if (near.length) robotChatter(near[Math.floor(rnd() * near.length)], 1); }
+    if (mood.chat <= 0) { mood.chat = rr(6, 12); const near = robots.filter(o => o !== P && o.state === 'play' && rPos(o).distanceTo(rPos(P)) < 14); if (near.length) robotChatter(near[Math.floor(rnd() * near.length)], 1); }
     for (const o of robots) { if (o.state !== 'play') continue; const d = Math.abs(angDiff(o.lastYawS ?? o.yaw, o.yaw)); o.lastYawS = o.yaw; o.servoT = (o.servoT || 0) - dt;
-      if (d > dt * 4.5 && o.servoT <= 0 && rPos(o).distanceTo(rPos(P)) < 18) { o.servoT = rr(.8, 1.6); servoWhir(o, o === P ? .6 : .9); } } // a quick servo whirr on sharp turns
+      if (d > dt * 4.5 && o.servoT <= 0 && rPos(o).distanceTo(rPos(P)) < 10) { o.servoT = rr(1.5, 3); servoWhir(o, o === P ? .6 : .9); } } // a quick servo whirr on sharp turns
   }
 }
 
@@ -2032,7 +2047,7 @@ const V3 = ['clonk', 'clonk_big', 'crumble', 'throw', 'catch', 'grab', 'grab_bom
   'freeze', 'shatter', 'ice_crack', 'slide', 'boom', 'boom_big', 'boom_tail', 'nuke', 'siren', 'jet', 'tornado', 'blackout', 'lightsOn', 'slowmo', 'invis', 'visible', 'whoosh_big', 'whoosh_long',
   'portal', 'portal_hum', 'pad', 'boost', 'repair', 'hole', 'amb_wind', 'amb_trees', 'amb_birds', 'amb_night', 'crow',
   'flagGrab', 'flagDrop', 'alert', 'score', 'lose', 'streak', 'win', 'defeat', 'beep', 'go', 'tick', 'heart', 'intro', 'lock', 'ui', 'swoop',
-  , 'drums_soft', 'drums_mid', 'drums_hard'];
+  ];
 { const have = window.NYMBO_SOUNDS ? new Set(Object.keys(NYMBO_SOUNDS)) : window.NYMBO_FILES ? new Set(NYMBO_FILES) : null; // only ask for takes that exist
   for (const n of V3) for (const s of ['', '_2', '_3']) if ((!have || have.has(n + s)) && !SOUND_FILES.includes(n + s)) SOUND_FILES.push(n + s); }
 Object.assign(LOOPS, { amb_wind: { start: 0, len: 7.9 }, amb_night: { start: 0, len: 7.9 }, amb_birds: { start: 0, len: 7.9 }, amb_trees: { start: 0, len: 7.9 }, portal_hum: { start: 0, len: 7.9 }, slide: { start: .1, len: 5 } });
@@ -2057,8 +2072,7 @@ Object.assign(SFX_REAL, {
   hit: R3('hit', () => { pl('hit', .95); pl('clonk', .35, .8, .01); }),
   ko: R3('ko', () => pl('ko', .7)),
   land: R3('land', () => pl('land', .5)),
-  grab_warp: R3('grab_homing', () => pl('grab_homing', .7, 1.15)),
-  drums_soft: R3('drums_soft', () => playClip('drums_soft')), drums_mid: R3('drums_mid', () => playClip('drums_mid')), drums_hard: R3('drums_hard', () => playClip('drums_hard')), soundtrack: R3('drums_mid', () => playClip('soundtrack')), // Sound-lab previews
+  grab_warp: R3('grab_homing', () => pl('grab_homing', .7, 1.15)), grab_sticky: R3('grab_bomb', () => pl('grab_bomb', .8, 1.1)), grab_egg: R3('grab_bomb', () => pl('grab_bomb', .8, 1.3)),
   shield: R3('clonk', () => { for (let i = 0; i < 5; i++) pl(i % 2 ? 'clonk' : 'land', .55, rr(.8, 1.1), i * .05); pl('clonk_big', .6, .9, .22); }), // a ring of blocks thumping down around you
   jump: R3('jump', () => pl('jump', .45)),
   vjump: R3('jump', second => pl('jump', .5, second ? 1.18 : 1)),
@@ -2099,8 +2113,8 @@ Object.assign(SFX_REAL, {
   streak: R3('streak', () => pl('streak', .8, 1, 0, false)),
   win: R3('win', () => pl('win', .9, 1, 0, false)),
   defeat: R3('defeat', () => pl('defeat', .85, 1, 0, false)),
-  beep: R3('beep', () => pl('beep', .5, 1, 0, false)),
-  go: R3('go', () => pl('go', .9, 1, 0, false)),
+  beep: R3('beep', () => { const pv = PV; PV = 1; try { play('beep', .5, 1, 0, false); } finally { PV = pv; } }), // the countdown: always the same beep (no random take, no pitch wobble)
+  go: R3('go', () => { const pv = PV; PV = 1; try { play('go', .9, 1, 0, false); } finally { PV = pv; } }),
   motif: R3('go', () => pl('go', .9, 1, 0, false)),
   tick: R3('tick', () => pl('tick', .5, 1, 0, false)),
   heart: R3('heart', () => pl('heart', 1, 1, 0, false)),
@@ -2130,17 +2144,18 @@ updateAmbienceReal = function (dt) {
     const pn = AC.createPanner(); pn.panningModel = 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 5; pn.rolloffFactor = 1.3; pn.connect(ambR.bus); ambR.treePan = pn;
     ambR.g.trees = loopSrc('amb_trees', pn, 0);
     ambR.g.bed = loopSrc(bedName, ambR.bus, 0);
-    if (BUF.amb_birds) ambR.g.birds = loopSrc('amb_birds', ambR.bus, 0);
+    if (BUF.amb_birds) { const bp = AC.createPanner(); bp.panningModel = 'HRTF'; bp.distanceModel = 'inverse'; bp.refDistance = 3; bp.rolloffFactor = 1.6; bp.connect(ambR.bus); ambR.birdPan = bp; ambR.g.birds = loopSrc('amb_birds', bp, 0); } // the birds live in the nearest tree
   }
   if (!ambR.started) return;
   const live = match.state !== 'menu';
   ambR.g.bed.gain.setTargetAtTime(live ? .16 : .1, t, 1.5);
-  if (ambR.g.birds) ambR.g.birds.gain.setTargetAtTime(mood && live && !NIGHT ? .12 * mood.w.happy : 0, t, 1.2);
   let nt = null, nd = 1e9; for (const tr of TREES) { const d = Math.hypot(tr.x - listenerAt.x, tr.z - listenerAt.z); if (d < nd) { nd = d; nt = tr; } }
+  // chirping comes from the trees: walk up to one and you hear it clearly, further off it's just a hint
+  if (ambR.g.birds) { if (nt) setPos(ambR.birdPan, { x: nt.x, y: nt.h + 1.2, z: nt.z }); const near = nt ? clamp((14 - nd) / 9, 0, 1) : 0; ambR.g.birds.gain.setTargetAtTime(live && !NIGHT ? .05 + .55 * near : 0, t, .6); }
   if (nt && !ambR.busy) setPos(ambR.treePan, { x: nt.x, y: nt.h + 1.5, z: nt.z });
   ambR.rustle -= dt;
   if (ambR.rustle <= 0) {
-    ambR.rustle = rr(7, 16);
+    ambR.rustle = rr(12, 24);
     if (nt && nd < 30) { const v = rr(.3, .7), hold = rr(1.2, 2.8), g = ambR.g.trees.gain; ambR.busy = true; g.cancelScheduledValues(t); g.setTargetAtTime(v, t, .6); g.setTargetAtTime(0, t + hold, .8); setTimeout(() => { ambR.busy = false; }, (hold + 3) * 1000); }
   }
 };
@@ -2166,8 +2181,8 @@ function mixInit() {
   const world = AC.createGain(); world.gain.value = 1;
   // bass enhancer: take the lows, soft-clip them (makes harmonics a small speaker CAN play), blend a little back in
   const bl = AC.createBiquadFilter(); bl.type = 'lowpass'; bl.frequency.value = 160; bl.Q.value = .7;
-  const sh = AC.createWaveShaper(); const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(x * 3.2) * .9; } sh.curve = curve; sh.oversample = '2x';
-  const bh = AC.createBiquadFilter(); bh.type = 'highpass'; bh.frequency.value = 90; const bg = AC.createGain(); bg.gain.value = .35;
+  const sh = AC.createWaveShaper(); const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(x * 1.5) * .9; } sh.curve = curve; sh.oversample = '4x'; // gentler drive: it was making deep sounds (the cows) grainy
+  const bh = AC.createBiquadFilter(); bh.type = 'highpass'; bh.frequency.value = 90; const bg = AC.createGain(); bg.gain.value = .16;
   world.connect(lp); lp.connect(duck); duck.connect(master);
   world.connect(bl); bl.connect(sh); sh.connect(bh); bh.connect(bg); bg.connect(duck);
   const ring = AC.createOscillator(), ringG = AC.createGain(); ring.frequency.value = 3600; ringG.gain.value = 0; ring.connect(ringG); ringG.connect(master); ring.start(); // the ear-ring after a KO
@@ -2226,100 +2241,6 @@ function updateMix(dt) {
 function stopIncoming(e, w) { const t = AC.currentTime; w.g.gain.setTargetAtTime(0, t, .04); try { w.s.stop(t + .25); } catch (x) {} MIX.incoming.delete(e); }
 
 // ============================================================
-// WAR DRUMS: the only "music" in Nymbo. Leather drums (djembe, congas, bongos, toms) that start slow and soft when
-// the round begins and get faster and wilder as the match heats up. Three loops (soft / mid / hard) crossfade by an
-// intensity score built from: time left, flags being carried, enemies near you, recent knockouts, the black hole.
-// Toggle in the pause menu (Settings → War drums). Preview each loop in the Sound lab under "Music".
-// ============================================================
-const MUSIC = { on: false, tier: 0, want: 0, srcs: {}, gains: {}, master: null, hold: 0, heat: 0, lastKO: -99 };
-const MUSIC_TIERS = ['drums_soft', 'drums_mid', 'drums_hard'], MUSIC_VOL = .32;
-if (S.music === undefined) S.music = true;
-function musicFile(tier) { // the loop that's in use for this tier (Sound lab pick, or the default)
-  const base = MUSIC_TIERS[tier], c = CHOICE.sfx[base]; let n = base;
-  if (c && /^ai(\d)$/.test(c)) { const k = +c.slice(2); n = k > 1 ? base + '_' + k : base; }
-  return BUF[n] ? n : (BUF[base] ? base : null);
-}
-function musicStart() {
-  if (!AC || MUSIC.on) return;
-  const tr = chosenTrack();
-  if (tr) { // one of Ali's tracks, looped whole
-    if (!BUF[tr]) { if (!MUSIC.waiting) { MUSIC.waiting = true; loadTrack(tr).then(() => { MUSIC.waiting = false; }).catch(() => { MUSIC.waiting = false; CHOICE.sfx.soundtrack = 'ai'; toast('TRACK NOT FOUND · DRUMS INSTEAD'); }); } return; }
-    MUSIC.master = AC.createGain(); MUSIC.master.gain.value = 0; MUSIC.master.connect(master);
-    const s = AC.createBufferSource(); s.buffer = BUF[tr]; s.loop = true; const g = AC.createGain(); g.gain.value = 1; s.connect(g); g.connect(MUSIC.master); s.start(AC.currentTime + .05); MUSIC.srcs[0] = s; MUSIC.gains[0] = g;
-    MUSIC.on = true; MUSIC.tier = 0; MUSIC.master.gain.setTargetAtTime(S.music ? MUSIC_VOL * 1.25 : 0, AC.currentTime, 1.2); return;
-  }
-  MUSIC.master = AC.createGain(); MUSIC.master.gain.value = 0; MUSIC.master.connect(master);
-  const t0 = AC.currentTime + .05; let any = false;
-  MUSIC_TIERS.forEach((base, i) => {
-    const n = musicFile(i); if (!n) return; any = true;
-    const s = AC.createBufferSource(); s.buffer = BUF[n]; s.loop = true; const g = AC.createGain(); g.gain.value = i === 0 ? 1 : 0;
-    s.connect(g); g.connect(MUSIC.master); s.start(t0); MUSIC.srcs[i] = s; MUSIC.gains[i] = g;
-  });
-  if (!any) { MUSIC.master.disconnect(); MUSIC.master = null; return; }
-  MUSIC.on = true; MUSIC.tier = 0; MUSIC.master.gain.setTargetAtTime(S.music ? MUSIC_VOL : 0, AC.currentTime, 1.2);
-}
-function musicStop(fade = 1.5) {
-  if (!MUSIC.on) return; MUSIC.on = false;
-  const m = MUSIC.master, srcs = Object.values(MUSIC.srcs); m.gain.setTargetAtTime(0, AC.currentTime, fade / 3);
-  setTimeout(() => { srcs.forEach(s => { try { s.stop(); } catch (e) {} }); try { m.disconnect(); } catch (e) {} }, fade * 1000 + 200);
-  MUSIC.srcs = {}; MUSIC.gains = {}; MUSIC.master = null;
-}
-function musicRestart() { if (MUSIC.on) { musicStop(.3); setTimeout(musicStart, 400); } } // after a Sound-lab pick
-function musicHeat() { // 0..1 how crazy things are
-  if (!P) return 0;
-  const left = match.time, total = MATCH_TIME, prog = 1 - clamp(left / total, 0, 1);
-  let h = .15 + prog * .35;                                             // the clock alone carries you from calm to tense
-  const me = rPos(P); let near = 0; for (const r of robots) if (r.team !== P.team && r.state === 'play' && rPos(r).distanceTo(me) < 14) near++;
-  h += Math.min(.3, near * .12);                                        // enemies around you
-  if (robots.some(r => r.state === 'play' && r.stack[0] && r.stack[0].kind === 'flag')) h += .22; // a flag is on the move
-  if (P.stack[0] && P.stack[0].kind === 'flag') h += .15;               // YOU have it
-  h += Math.max(0, .25 - (now() / 1000 - MUSIC.lastKO) * .06);          // a knockout in the last few seconds
-  if (left < 30) h += .2; if (BH.on) h = 1;
-  return clamp(h, 0, 1);
-}
-function updateMusic(dt) {
-  if (!AC) return;
-  const playing = match.state === 'play' && !(NET && NET.client && !NET.started);
-  if (playing && !MUSIC.on && S.music) musicStart();
-  if (!playing && MUSIC.on && match.state !== 'paused') musicStop();
-  if (!MUSIC.on) return;
-  if (MUSIC.master) MUSIC.master.gain.setTargetAtTime(S.music ? MUSIC_VOL * (match.state === 'paused' ? .4 : 1) : 0, AC.currentTime, .4);
-  MUSIC.heat += (musicHeat() - MUSIC.heat) * Math.min(1, dt * .5); // slow to rise, slow to fall
-  const h = MUSIC.heat, want = h < .42 ? 0 : h < .74 ? 1 : 2;
-  MUSIC.hold -= dt;
-  if (chosenTrack()) return; // a whole track plays as it is
-  if (want !== MUSIC.tier && MUSIC.hold <= 0 && (want > MUSIC.tier || h < [0, .34, .64][MUSIC.tier])) { // hysteresis so it doesn't flap
-    MUSIC.tier = want; MUSIC.hold = 6;
-    for (const i in MUSIC.gains) MUSIC.gains[i].gain.setTargetAtTime(+i === want ? 1 : 0, AC.currentTime, .9);
-  }
-}
-// knockouts feed the heat
-{ const o = onStreak; onStreak = function (by, victim) { MUSIC.lastKO = now() / 1000; return o(by, victim); }; }
-// Sound-lab preview of a loop: 8 seconds of the take in use, one at a time
-let clipSrc = null;
-function playClip(base) {
-  if (clipSrc) { try { clipSrc.stop(); } catch (e) {} clipSrc = null; }
-  if (base === 'soundtrack') { const tr = chosenTrack(); if (!tr) base = 'drums_mid'; else { if (!BUF[tr]) { toast('LOADING TRACK…'); loadTrack(tr).then(() => playClip('soundtrack')).catch(() => toast('TRACK NOT FOUND')); return; } base = tr; } }
-  const i = MUSIC_TIERS.indexOf(base), n = i >= 0 ? musicFile(i) : base; if (!n || !BUF[n]) return;
-  const s = AC.createBufferSource(); s.buffer = BUF[n]; const g = AC.createGain(); g.gain.value = MUSIC_VOL * 1.6; s.connect(g); g.connect(master);
-  const L = /^track_/.test(n) ? 20 : 8; s.start(); s.stop(AC.currentTime + L); g.gain.setTargetAtTime(0, AC.currentTime + L - 1, .3); clipSrc = s;
-  if (MUSIC.on && MUSIC.master) { MUSIC.master.gain.setTargetAtTime(0, AC.currentTime, .3); setTimeout(() => { if (MUSIC.on && MUSIC.master) MUSIC.master.gain.setTargetAtTime(MUSIC_VOL, AC.currentTime, .6); }, 8200); }
-}
-
-// ---- Ali's own tracks (edited down to drums + vocals), streamed from the website when picked, not preloaded ----
-const TRACKS = (window.NYMBO_FILES || []).filter(n => /^track_/.test(n)).sort();
-const TRACK_LABEL = n => { const m = n.match(/^track_(\d+)_(\w+)$/); return m ? `Track ${m[1]} · ${m[2]}` : n; };
-const trackLoading = {};
-function loadTrack(n) {
-  if (BUF[n]) return Promise.resolve(BUF[n]);
-  if (trackLoading[n]) return trackLoading[n];
-  const urls = ['sounds/' + n + '.mp3', 'https://aliryklief.github.io/nymbo/sounds/' + n + '.mp3'];
-  const tryUrl = i => fetch(urls[i]).then(r => r.ok ? r.arrayBuffer() : Promise.reject()).catch(e => i + 1 < urls.length ? tryUrl(i + 1) : Promise.reject(e));
-  return trackLoading[n] = tryUrl(0).then(a => new Promise((ok, no) => AC.decodeAudioData(a, ok, no))).then(b => (BUF[n] = b)).finally(() => { delete trackLoading[n]; });
-}
-const chosenTrack = () => { const c = CHOICE.sfx.soundtrack; return c && c.startsWith('track:') ? c.slice(6) : null; };
-
-// ============================================================
 // ROBOTS: round robots (refs 6/7), legs never move. Physics capsule bodies.
 // Hit = ragdoll 3s, then respawn near your flags, see-through for 3s.
 // ============================================================
@@ -2343,9 +2264,11 @@ const ballTexs = {};
 function ballTex(color) { // player colour (a touch lighter than the body) with six white stripes running pole to pole
   if (ballTexs[color]) return ballTexs[color];
   const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d');
-  g.fillStyle = '#' + new THREE.Color(color).lerp(new THREE.Color('#ffffff'), .22).getHexString(); g.fillRect(0, 0, 256, 128);
-  g.fillStyle = 'rgba(0,0,0,.10)'; for (let k = 0; k < 6; k += 2) g.fillRect(k * 256 / 6, 0, 256 / 6, 128); // every other panel a shade darker
-  g.fillStyle = 'rgba(255,255,255,.92)'; for (let k = 0; k < 6; k++) g.fillRect(k * 256 / 6 - 3, 0, 6, 128);
+  // the ball is the robot's own colour (a shade lighter), with DARKER stripes of the same colour — no white, so it reads as part of the robot
+  const base = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), .12), dark = new THREE.Color(color).lerp(new THREE.Color('#000000'), .42);
+  g.fillStyle = '#' + base.getHexString(); g.fillRect(0, 0, 256, 128);
+  g.fillStyle = 'rgba(0,0,0,.08)'; for (let k = 0; k < 6; k += 2) g.fillRect(k * 256 / 6, 0, 256 / 6, 128); // every other panel a shade darker
+  g.fillStyle = '#' + dark.getHexString(); for (let k = 0; k < 6; k++) g.fillRect(k * 256 / 6 - 4, 0, 8, 128);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return ballTexs[color] = t;
 }
 function robotModel(color, happy) {
@@ -2361,6 +2284,10 @@ function robotModel(color, happy) {
   const mats = [body, dark, ballMat];
   const ball = new THREE.Group(); ball.position.y = -.58; g.add(ball);
   add(RB.ball, ballMat, 0, 0, 0, ball, true);
+  // fixed hub caps on both sides (the poles): a dark disc with a colour button, they don't roll with the ball — like the early robot sheet
+  const hub = new THREE.Group(); hub.position.y = -.58; g.add(hub);
+  const capGeo = RB.cap || (RB.cap = new THREE.CylinderGeometry(.17, .17, .05, 20).rotateZ(Math.PI / 2)), dotGeo = RB.dot || (RB.dot = new THREE.CylinderGeometry(.08, .08, .06, 16).rotateZ(Math.PI / 2));
+  for (const sx of [-1, 1]) { add(capGeo, dark, sx * .36, 0, 0, hub); add(dotGeo, body, sx * .385, 0, 0, hub); }
   // (the old team-colour disc under the ball is gone: it floated in the air under you when you jumped, looking like a stray shadow)
 
   const torso = new THREE.Group(); g.add(torso);
@@ -2383,7 +2310,7 @@ function robotModel(color, happy) {
   const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 })); blob.renderOrder = 1; scene.add(blob);
   const ice = new THREE.Mesh(new RoundedBoxGeometry(1.45, 2.3, 1.35, 2, .14), iceOverlayMat); ice.visible = false; g.add(ice);
   scene.add(g);
-  return { blob, g, torso, ball, arms, sq: 0, sqv: 0, pr: 0, prv: 0, held, heldPlainMat: held.material, eyesN, eyesF, eyesX, ice, mats, step: 0 };
+  return { blob, g, torso, ball, hub, arms, sq: 0, sqv: 0, pr: 0, prv: 0, held, heldPlainMat: held.material, eyesN, eyesF, eyesX, ice, mats, step: 0 };
 }
 // your spot is inside your fort, right beside your own flag's tower (towards the middle of the fort)
 function flagSpot(team, i) {
@@ -2428,7 +2355,7 @@ function refreshHeld(r) {
 }
 // picking up: the new block becomes your active block; the rest move back one place
 function grabBlock(r, e) {
-  if (!e || e.dead || e.holder || !canAct(r)) return false;
+  if (!e || e.dead || e.holder || e.stuck || !canAct(r)) return false;
   if (r.stack.length >= MAX_AMMO && e.kind !== 'flag') return false;
   if (r.stack[0] && r.stack[0].kind === 'flag') return false;           // carrying a flag: hands are full
   if (e.kind === 'flag' && e.team === r.team) return false;
@@ -2449,7 +2376,7 @@ function grabbable(r, maxD = 2.6, groundOnly = false, ok = null) {
   for (const e of blocks) {
     if (e.dead || !e.body || e.holder) continue;
     if (e.kind === 'flag' && e.team === r.team) continue;
-    if (e.rage) continue; // you can't grab a charging animal
+    if (e.rage || e.stuck) continue; // you can't grab a charging animal, or a grenade that's already stuck and ticking
     if (ok && !ok(e)) continue;
     const t = e.body.translation(), dx = t.x - p.x, dz = t.z - p.z, d = Math.hypot(dx, dz), dy = t.y - (p.y - .95);
     if (d > maxD || dy < -1.2 || dy > 2.5) continue;
@@ -2527,7 +2454,7 @@ function ragdoll(r, dir, by, power = 1) {
   r.body.applyTorqueImpulse({ x: rr(-1, 1) * m * .6, y: rr(-1, 1) * m * .3, z: rr(-1, 1) * m * .6 }, true);
   r.model.eyesN.visible = false; r.model.eyesX.visible = true;
   r.stats.kos++; if (by) by.stats.hits++; onStreak(by, r);
-  if (by) { toast(`${by.name.toUpperCase()} KNOCKED OUT ${r.name.toUpperCase()}`, by.color); netEv(['kof', robots.indexOf(by), robots.indexOf(r)]); }
+  if (by) { toast([[by.name.toUpperCase(), by.color], [' KNOCKED OUT ', null], [r.name.toUpperCase(), r.color]]); netEv(['kof', robots.indexOf(by), robots.indexOf(r)]); }
   sfx('hit', rPos(r)); if (r.isPlayer) { mixKO(); buzz('ko'); shake = Math.max(shake, .6); sfx('ko'); }
   else if (by && by.isPlayer) { buzz('hit'); if (shattered) shake = Math.max(shake, .35); }
   onKO(r, by, shattered, hadFlag);
@@ -2653,13 +2580,15 @@ function syncRobot(r) {
   m.prv += (-120 * m.pr - 11 * m.prv) * dt; m.pr += m.prv * dt;
   const s = clamp(m.sq, -.45, .35);
   m.ball.scale.set(1 - s * .55, 1 + s, 1 - s * .55);
-  m.ball.position.y = -.58 + s * .37;
+  m.ball.position.y = -.58 + s * .37; m.hub.position.y = m.ball.position.y; m.hub.scale.copy(m.ball.scale);
   m.torso.position.y = s * .74 + m.pr;
   m.torso.scale.set(1 - m.pr * .5, 1 + m.pr * .6, 1 - m.pr * .5);
   if (r.state === 'play') { const focus = r.carryUp > 0; m.eyesN.visible = !focus; m.eyesF.visible = focus; m.eyesX.visible = false; }
   else { m.eyesN.visible = m.eyesF.visible = false; m.eyesX.visible = true; }
   if (r.heldAnimal && r.stack[0] === r.heldAnimal) { const a = r.heldAnimal.mesh; a.visible = r.state === 'play'; a.position.set(t.x + Math.sin(now() / 37) * .04, t.y + (r.heldAnimal.animal === 'cow' ? 1.86 : 1.98), t.z); a.rotation.order = 'YXZ'; a.rotation.set(Math.PI + Math.sin(now() / 61) * .08, r.yaw + Math.PI / 2, Math.sin(now() / 53) * .12); /* upside down on your head, legs kicking at the sky */ animateLegs(r.heldAnimal, 'held'); } // wriggling to get loose
-  const carry = r.stack.length > 0;
+  // knocked out: you dropped what you were holding, so you lie there empty-handed (the next block comes back up when you respawn)
+  m.held.visible = !!r.stack[0] && !r.heldAnimal && r.state === 'play';
+  const carry = r.stack.length > 0 && r.state === 'play';
   m.arms.forEach((a, i) => {
     const s = i ? 1 : -1, tz = carry ? s * 2.7 : s * .12, tx = r.carryUp > 0 && i === 1 ? -2.2 : 0;
     a.rotation.z += (tz - a.rotation.z) * .25; a.rotation.x += (tx - a.rotation.x) * .3;
@@ -2672,7 +2601,8 @@ function syncRobot(r) {
 const score = { blue: 0, red: 0 };
 let match = { state: 'menu', time: MATCH_TIME, count: 0 };
 
-function explode(pos, team, by) {
+function explode(pos, team, by, scale = 1) {
+  const BOMB_R = BOMB_R0 * scale;
   fxBurst(pos, 0xff8a2a, BOMB_R * .8, .5); fxDebris(pos, 0xffa040, 30, 11); fxDebris(pos, 0x3a3d48, 14, 9); sfx('boom', pos); if (P && P.body) mixDuck(clamp(1 - pos.distanceTo(rPos(P)) / 30, 0, .6), .15);
   if (P && P.body) shake = Math.max(shake, Math.max(0, 1.1 - pos.distanceTo(rPos(P)) / 16));
   if (P && P.body && pos.distanceTo(rPos(P)) < 9) buzz('blast'); // only when it's close to you
@@ -2784,6 +2714,7 @@ function detonate(e) {
   if (e.kind === 'bomb') explode(p, team, e.thrower);
   else if (e.kind === 'freeze') freezeArea(p, team, e.thrower);
   else if (e.kind === 'warp') warpTo(e.thrower, p);
+  else if (isSticky(e.kind)) explode(p, team, e.thrower, e.kind === 'egg' ? .8 : 1);
   else { fxBurst(p, 0xb36bff, 1.2, .3); fxDebris(p, 0xc58bff, 14, 5); sfx('hit', p); }
   consumePower(e);
 }
@@ -2850,6 +2781,7 @@ function handleContacts() {
       if (B && B.type === 'robot' && e.kind === 'homing' && !hittable(B.ref)) continue; // glances off see-through / knocked-out robots and keeps hunting
       if (B && B.type === 'block' && B.ref.holder) continue;
       if (e.kind === 'homing' && e.target && e.liveT < 3.5 && (!B || B.type === 'static')) continue; // homing skims the floor while chasing
+      if (isSticky(e.kind)) { stickTo(e, B); continue; } // grenades and eggs don't go off on contact: they stick, then the fuse runs
       if (B && B.type === 'robot' && e.kind !== 'freeze' && e.thrower && B.ref.team !== e.thrower.team) { const lv = e.body.linvel(); ragdoll(B.ref, V(lv.x, 0, lv.z), e.thrower); } // a direct hit always counts
       detonate(e);
     }
@@ -2861,7 +2793,7 @@ function onFlagTaken(f, r) {
   netEv(['flag', f.team, robots.indexOf(r)]);
   if (f.team === P.team) { bigToast('FLAG STOLEN!', 'red'); buzz('stolen'); sfx('alert'); }
   else if (r.isPlayer) { bigToast('RUN!', 'blue'); sfx('flagGrab'); }
-  toast(`${r.name.toUpperCase()} GRABBED THE ${f.team.toUpperCase()} FLAG`, r.color);
+  toast([[r.name.toUpperCase(), r.color], [' GRABBED THE ', null], [f.team.toUpperCase() + ' FLAG', teamCol(f.team)]]);
 }
 function updateFlags() {
   for (const team of ['blue', 'red']) for (const f of FLAGS[team]) {
@@ -2974,6 +2906,68 @@ function updateHoles(dt) {
 }
 
 // ============================================================
+// STICKY THINGS + THE BIRDS
+//  sticky grenade (your one start block): sticks to whatever it hits first, a robot included, and goes off 2.5 s later.
+//  egg bomb: once in a while a tree that comes down had a nest in it. The birds burst out, one of them drops an egg
+//  on its way, the egg sticks where it lands and goes off 5 s later. Rare, on purpose.
+// ============================================================
+const STUCK = []; // { e, to (robot|null), off, fuse }
+function stickTo(e, B) {
+  if (e.stuck) return;
+  const t = e.body.translation(), p = V(t.x, t.y, t.z);
+  e.stuck = { to: B && B.type === 'robot' ? B.ref : null, off: null, fuse: e.kind === 'egg' ? 5 : 2.5, beep: 0 };
+  e.live = false; e.rolled = null;
+  if (e.stuck.to) { const c = rPos(e.stuck.to); e.stuck.off = p.clone().sub(c); if (e.stuck.off.length() > 1.1) e.stuck.off.setLength(1.1); if (e.stuck.to.isPlayer) { toast('GRENADE STUCK ON YOU!'); buzz('frozen'); } }
+  dropBody(e); const was = e.anchored; e.anchored = true; makeBody(e, p, null); e.anchored = was; e.fixedBody = true; // a fixed body where it landed
+  e.body.setBodyType(RAPIER.RigidBodyType.Fixed, true);
+  STUCK.push(e); sfx('catch', p); fxBurst(p, KIND_COL[e.kind][2], .5, .15);
+  netEv(['stick', e.id, +t.x.toFixed(2), +t.y.toFixed(2), +t.z.toFixed(2), e.stuck.to ? robots.indexOf(e.stuck.to) : -1]);
+}
+function updateSticky(dt) {
+  for (let i = STUCK.length - 1; i >= 0; i--) {
+    const e = STUCK[i]; if (e.dead || !e.body) { STUCK.splice(i, 1); continue; }
+    const s = e.stuck; s.fuse -= dt;
+    if (s.to) { // ride along on the robot (dead robot: fall where it was)
+      if (s.to.state === 'play' || s.to.state === 'rag') { const c = rPos(s.to), p = c.clone().add(s.off); e.body.setTranslation({ x: p.x, y: p.y, z: p.z }, true); }
+    }
+    s.beep -= dt; if (s.beep <= 0) { s.beep = Math.max(.12, s.fuse * .28); sfx('tick', V(e.body.translation().x, e.body.translation().y, e.body.translation().z)); if (e.core) e.core.scale.setScalar(.6); }
+    if (s.fuse <= 0) { STUCK.splice(i, 1); if (!(NET && NET.client)) detonate(e); }
+  }
+}
+// ---- birds ----
+const BIRDS = []; let birdCool = 0;
+const birdMat = new LiteMat({ color: 0x3b3f4a }), birdWingMat = new LiteMat({ color: 0xe9ecf2, side: THREE.DoubleSide });
+function birdMesh() {
+  const g = new THREE.Group(); const body = new THREE.Mesh(new THREE.BoxGeometry(.28, .2, .42), birdMat); g.add(body);
+  const beak = new THREE.Mesh(new THREE.BoxGeometry(.08, .08, .14), new LiteMat({ color: 0xffb020 })); beak.position.set(0, 0, .26); g.add(beak);
+  const wl = new THREE.Mesh(new THREE.BoxGeometry(.5, .03, .3), birdWingMat); wl.position.x = -.3; const wr = wl.clone(); wr.position.x = .3; g.add(wl); g.add(wr);
+  g.userData.wings = [wl, wr]; return g;
+}
+function treeFell(tr) { // called when a tree block comes loose; maybe the nest wakes up
+  if (!tr.birds || tr.flown || birdCool > 0) return; tr.flown = true; birdCool = 25; // (clients draw the birds too; only the host drops the egg)
+  const n = 3 + Math.floor(rnd() * 3), egg = Math.floor(rnd() * n);
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * Math.PI * 2, g = birdMesh(); g.position.set(tr.x + rr(-.6, .6), tr.h + 1.2, tr.z + rr(-.6, .6)); scene.add(g);
+    BIRDS.push({ g, dir: V(Math.sin(a), 0, Math.cos(a)), t: 0, life: rr(3.2, 4.2), egg: i === egg, dropAt: rr(.9, 1.6), sp: rr(5, 7), ph: rnd() * 6 });
+  }
+  sfx('crow', V(tr.x, tr.h, tr.z)); if (P) toast('BIRDS!');
+  netEv(['birds', tr.x, tr.z, tr.h]);
+}
+function updateBirds(dt) {
+  birdCool -= dt;
+  for (let i = BIRDS.length - 1; i >= 0; i--) {
+    const b = BIRDS[i]; b.t += dt; const g = b.g, k = b.t / b.life;
+    g.position.addScaledVector(b.dir, b.sp * dt); g.position.y += (2.2 + k * 3) * dt; g.lookAt(g.position.clone().add(b.dir).setY(g.position.y + .2));
+    const f = Math.sin(b.t * 22 + b.ph) * .9; for (const [j, w] of g.userData.wings.entries()) w.rotation.z = j ? -f : f;
+    if (b.egg && b.t >= b.dropAt && !(NET && NET.client)) { b.egg = false; const e = newBlock('egg', g.position.clone().setY(g.position.y - .4), { dims: V(.8, 1, .8) }); e.anchored = false; e.live = true; e.liveT = .1; e.thrower = null; e.body.setLinvel({ x: b.dir.x * 2, y: -1, z: b.dir.z * 2 }, true); sfx('pop', g.position); }
+    if (k > .75) g.scale.setScalar(Math.max(.01, 1 - (k - .75) / .25)); // fades into the sky
+    if (b.t >= b.life) { scene.remove(g); BIRDS.splice(i, 1); }
+  }
+}
+// a tree block coming loose = that tree is falling
+{ const u0 = unanchor; unanchor = function (e) { const was = e.anchored; u0(e); if (was && e.kind === 'tree' && e.body) { const t = e.body.translation(); let best = null, bd = 9; for (const tr of TREES) { const d = Math.hypot(tr.x - t.x, tr.z - t.z); if (d < bd) { bd = d; best = tr; } } if (best && bd < 2.5) treeFell(best); } }; }
+
+// ============================================================
 // BOTS: same rules as you (same speed cap, same throws, same physics). No cheating, no walking through walls.
 // Roles: attack (steal flags / knock towers), mid (power blocks, fights), defend (guards, returns flags)
 // ============================================================
@@ -2998,7 +2992,7 @@ const flagPos = f => { if (f.holder) return rPos(f.holder); const t = f.body ? f
 function pickAmmo(r, p, preferPower) {
   let best = null, bs = Infinity;
   for (const e of blocks) {
-    if (e.dead || !e.body || e.holder || e.kind === 'flag' || e.kind === 'animal' || e.frozenT > 0) continue;
+    if (e.dead || !e.body || e.holder || e.stuck || e.kind === 'flag' || e.kind === 'animal' || e.frozenT > 0) continue;
     if (e.kind === 'fort' && e.team === r.team) continue; // don't take your own fort apart
     const t = e.body.translation(); if (t.y > 2.6) continue;
     const s = Math.hypot(t.x - p.x, t.z - p.z) - (isPower(e.kind) && e.kind !== 'homing' ? (preferPower ? 14 : 6) : 0); // bots don't hunt the rare homing blocks
@@ -3190,7 +3184,7 @@ function updateAI(r, dt) {
 // ============================================================
 // INPUT (your swipes) and the minimal HUD
 // ============================================================
-let stopHeld = 0; const REVERSE_AFTER = .7, REVERSE_SPEED = RUN * .55; // hold stop ~0.7s, then reverse at about half speed
+let stopHeld = 0; const REVERSE_AFTER = .35, REVERSE_SPEED = RUN; // hold stop ~0.35s, then reverse at full speed
 let gest = null, btnStop = false, snapCamera = true, showReload = false;
 const DODGE_ZONE = .17; let lastTap = { zone: 0, t: 0 }; // outer 17% of the screen on each side = dodge strips
 function flashZone(z, soft) { const el = $(z < 0 ? 'dzL' : 'dzR'); el.classList.remove('hit', 'soft'); void el.offsetWidth; el.classList.add(soft ? 'soft' : 'hit'); }
@@ -3256,9 +3250,12 @@ function endGesture(e) {
   if ((g.mode === 'pending' || (g.mode === 'hold' && !g.held)) && dt < 220 && dist < 14) {
     // DODGE = a quick double tap near the left or right edge of the screen (the edge strips). A single tap anywhere still jumps.
     const zone = g.x0 < innerWidth * DODGE_ZONE ? -1 : g.x0 > innerWidth * (1 - DODGE_ZONE) ? 1 : 0, tnow = now();
-    if (zone && lastTap.zone === zone && tnow - lastTap.t < 320) { lastTap = { zone: 0, t: 0 }; if (playerDodge(zone)) { toast(zone > 0 ? 'DODGE ⇢' : '⇠ DODGE'); flashZone(zone); } return; }
-    lastTap = { zone, t: tnow }; if (zone) flashZone(zone, true);
-    playerJump(); return;
+    if (zone) { // edge strips never jump: first tap arms, second tap (within .35 s) dodges
+      if (lastTap.zone === zone && tnow - lastTap.t < 350) { lastTap = { zone: 0, t: 0 }; if (playerDodge(zone)) { toast(zone > 0 ? 'DODGE ⇢' : '⇠ DODGE'); flashZone(zone); } }
+      else { lastTap = { zone, t: tnow }; flashZone(zone, true); }
+      return;
+    }
+    lastTap = { zone: 0, t: 0 }; playerJump(); return;
   }
   if (g.mode === 'vertical') {
     if (dy < -30) {
@@ -3292,14 +3289,14 @@ function playerDodge(dir) { if (NET && NET.client) { if (!canAct(P)) return fals
 // the block you'd get if you swiped down now gets a glowing outline (red if your hands are full)
 const hlGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1));
 const hl = new THREE.LineSegments(hlGeo, new THREE.LineBasicMaterial({ color: 0xffe14a, transparent: true }));
-hl.renderOrder = 10; hl.visible = false; scene.add(hl);
+hl.renderOrder = -1; hl.visible = false; scene.add(hl); // drawn BEFORE robots (even see-through ones), so it never paints over a player
 // glow hugging the real shape: a slightly bigger copy drawn inside-out (only its rim shows round the edges)
 const hullMat = new THREE.MeshBasicMaterial({ color: 0xffe14a, side: THREE.BackSide, transparent: true, opacity: 1, depthWrite: false });
-const hlHull = new THREE.Mesh(boxGeo, hullMat); hlHull.visible = false; hlHull.renderOrder = 9; scene.add(hlHull);
+const hlHull = new THREE.Mesh(boxGeo, hullMat); hlHull.visible = false; hlHull.renderOrder = -1; scene.add(hlHull);
 let hlFrame = 0, hlE = null, hlAnimal = null;
 function animalHull(e) { // built once per animal: the body and each leg get their own inside-out shell
   const m = e.mesh; if (m.userData.hull) return m.userData.hull;
-  const parts = [], add = (src, k) => { const h = new THREE.Mesh(src.geometry, hullMat); h.scale.setScalar(k); h.renderOrder = 9; src.add(h); parts.push(h); };
+  const parts = [], add = (src, k) => { const h = new THREE.Mesh(src.geometry, hullMat); h.scale.setScalar(k); h.renderOrder = -1; src.add(h); parts.push(h); };
   add(m, 1.09); for (const l of m.userData.legs) add(l, 1.3);
   return (m.userData.hull = parts);
 }
@@ -3451,8 +3448,12 @@ const toastEl = $('toast'); let toastTimer;
 // the event feed under the clock: newest line at the bottom, older ones drift up and fade, three at most
 // (like the globe feed on Calcali). Pass a colour to tint the line, e.g. the robot's colour.
 const feedEl = $('feed');
+const teamCol = t => t === 'blue' ? '#5cc0ff' : '#ff6a5a';
+// feed lines can carry colours: pass an array of [text, colour|null] parts, or a plain string (optionally with one colour)
 function toast(s, col) {
-  const el = document.createElement('div'); el.className = 'fl'; el.textContent = s; if (col) el.style.color = col;
+  const el = document.createElement('div'); el.className = 'fl';
+  if (Array.isArray(s)) { for (const [txt, c] of s) { const sp = document.createElement('span'); sp.textContent = txt; if (c) sp.style.color = c; el.appendChild(sp); } }
+  else { el.textContent = s; if (col) el.style.color = col; }
   feedEl.appendChild(el); void el.offsetWidth; el.classList.add('in');
   const rows = [...feedEl.children]; while (rows.length > 3) rows.shift().remove();
   rows.slice(-3).forEach((r, i, a) => { r.dataset.age = a.length - 1 - i; });
@@ -3484,7 +3485,7 @@ function buildHud() {
   }
 }
 // draws one block as a little 3D (isometric) piece, in its real shape and colour, like the next-piece box in Tetris
-const PIECE_COL = { bomb: '#2b2d33', freeze: '#d6eefb', homing: '#9a4bf0', warp: '#ff5fd2' };
+const PIECE_COL = { bomb: '#2b2d33', freeze: '#d6eefb', homing: '#9a4bf0', warp: '#ff5fd2', sticky: '#8fd63f', egg: '#fff0c8' };
 function drawPiece(cv, e, size) {
   const dpr = Math.min(2, devicePixelRatio || 1), S = Math.round(size * dpr); if (cv.width !== S) { cv.width = cv.height = S; }
   const g = cv.getContext('2d'); g.clearRect(0, 0, S, S); if (!e) return;
@@ -3960,17 +3961,17 @@ function drawPicker(force) {
 // ---------- strikes falling from the sky ----------
 const nukeShell = new THREE.Mesh(cubeGeo, kindMat.bomb), iceShell = new THREE.Mesh(cubeGeo, kindMat.freeze);
 const warnGeo = new THREE.RingGeometry(.92, 1, 64);
-function dropFromSky(at, kind, fall, R, onLand) {
+function dropFromSky(at, kind, fall, R, onLand, delay = 0) { // delay: the warning ring shows, the shell only appears when its turn comes
   const shell = (kind === 'nuke' ? nukeShell : iceShell).clone(); shell.scale.setScalar(kind === 'nuke' ? 2.6 : 1.4); scene.add(shell);
   const ring = new THREE.Mesh(warnGeo, new THREE.MeshBasicMaterial({ color: kind === 'nuke' ? 0xff3b2a : 0x8fdcff, transparent: true, opacity: .8, depthWrite: false, side: THREE.DoubleSide }));
   ring.rotation.x = -Math.PI / 2; ring.position.set(at.x, .06, at.z); ring.scale.setScalar(R); scene.add(ring);
   const fill = new THREE.Mesh(iceGeo, new THREE.MeshBasicMaterial({ color: ring.material.color, transparent: true, opacity: .15, depthWrite: false }));
   fill.rotation.x = -Math.PI / 2; fill.position.set(at.x, .05, at.z); fill.scale.setScalar(R); scene.add(fill);
-  PW.strikes.push({ at, kind, t: 0, fall, shell, ring, fill, onLand, whistled: false });
+  shell.visible = delay <= 0; PW.strikes.push({ at, kind, t: 0, fall, shell, ring, fill, onLand, whistled: false, delay });
 }
 function updateStrikes(dt) {
   for (let i = PW.strikes.length - 1; i >= 0; i--) {
-    const S_ = PW.strikes[i]; S_.t += dt; const k = clamp(S_.t / S_.fall, 0, 1);
+    const S_ = PW.strikes[i]; S_.t += dt; if (S_.t < S_.delay) { S_.ring.material.opacity = .25 + .15 * Math.sin(S_.t * 6); continue; } S_.shell.visible = true; const k = clamp((S_.t - S_.delay) / S_.fall, 0, 1);
     S_.shell.position.set(S_.at.x, 70 * (1 - k * k) + 1, S_.at.z); S_.shell.rotation.y += dt * 3;
     S_.ring.material.opacity = .5 + .4 * Math.sin(S_.t * (8 + k * 14)); S_.fill.material.opacity = .1 + .15 * k;
     if (!S_.whistled && k > .45) { S_.whistled = true; sfx('whistle', S_.at); }
@@ -4014,9 +4015,14 @@ function nukeBlast(pos) {
     if (Math.hypot(fp.x - pos.x, fp.z - pos.z) < NUKE_KO) { fxBurst(V(fp.x, fp.y, fp.z), f.color.getHex(), 1.5, .4); resetFlag(f); }
   }
 }
+// ICE STRIKE: two waves of mortar rounds walking along a line, one after another (0.28 s apart), the second wave
+// coming back the other way a moment later, a little to the side. Each round freezes a smaller circle; everyone in it, your side too.
 function airStrikeAt(at) {
   sfx('jet'); bigToast('ICE STRIKE', 'blue');
-  zonesFor({ pick: 3 }, at).forEach((z, i) => dropFromSky(z, 'ice', 1.9 + i * .35, AIR_R, p => freezeArea(p.clone().setY(.6), null, P, AIR_R) /* freezes everyone, your side too */));
+  const d = stripDir(), side = V(-d.z, 0, d.x), N = 5, step = AIR_R * 1.05, R = AIR_R * .72;
+  const wave = (t0, dir, off) => { for (let i = 0; i < N; i++) { const z = at.clone().addScaledVector(d, dir * (i - (N - 1) / 2) * step).addScaledVector(side, off); dropFromSky(z, 'ice', 1.1, R, p => freezeArea(p.clone().setY(.6), null, P, R), t0 + i * .28); } };
+  wave(.6, 1, 0); wave(.6 + N * .28 + 1.1, -1, AIR_R * .8);
+  setTimeout(() => sfx('jet'), (N * .28 + 1.1) * 1000); // the second pass flies in
 }
 // ---------- tornado ----------
 const twGeo = new THREE.CylinderGeometry(1, .25, 1, 18, 1, true);
@@ -4192,27 +4198,31 @@ function updateBlackHole(dt) {
   }
   if (NET && NET.client) return; // the host runs the physics below
   // strong from the first second, and every block or robot it eats makes it reach further and pull harder (exponential)
-  const feed = Math.pow(1.004, BH.eaten); BH.R = Math.min(230, 40 * feed + BH.t * .6); const grip = Math.min(3, feed);
+  // gentle for the first seconds, then the pull doubles every ~3.5 s: by 20 s nothing on the map can hold on.
+  // The suction is a spiral: things swing round the pole as they come in.
+  BH.R = 230; const grip = .12 * Math.exp(BH.t * .2); // 0.12 → ~6.5 at 20 s
+  const swirl = (x, z, d) => { const a = .9 * Math.min(1, d / 30); return { x: x + (-z) * a, z: z + x * a }; }; // a spiral: sideways far out, straight in close up
+  const eatR = 3.2 + Math.max(0, BH.t - 18) * 1.2; // after ~18 s the mouth itself widens so nothing can hide
   const H = BH.pos;
   // robots: pulled, then swallowed
   for (const r of robots) {
     if (r.state !== 'play') { if (r.state === 'out') continue; r.pull = null; continue; }
     const p = rPos(r), dx = H.x - p.x, dy = H.y - p.y, dz = H.z - p.z, d = Math.hypot(dx, dy, dz), dxz = Math.hypot(dx, dz);
     if (d > BH.R) { r.pull = null; continue; }
-    const k = 1 - d / BH.R, s = (9 + 22 * k * k) * grip;
-    r.pull = V(dx / d * s, dxz < 9 ? 9 + 20 * k : 0, dz / d * s); // lifted off the ground only when right under it
-    if (d < 3.2 || dxz < 3.5) swallow(r); // right under the pole: there's no escaping from there
+    const k = 1 - d / BH.R, s = Math.min(40, (4 + 10 * k) * grip), sw = swirl(dx / d, dz / d, dxz);
+    r.pull = V(sw.x * s, dxz < 9 ? Math.min(30, (4 + 8 * k) * grip) : 0, sw.z * s); // lifted off the ground only when right under it
+    if (d < eatR || dxz < eatR + .3) swallow(r); // right under the pole: there's no escaping from there
   }
   // blocks: anchored ones near the hole come loose (a few per frame), loose ones get pulled, the closest vanish
-  const near = BH.R * .5; let loosened = 0;
+  const near = Math.min(230, 10 + 220 * Math.pow(BH.t / 20, 2)); let loosened = 0; // the hole's grip on the forts spreads outwards over 20 s
   for (const e of blocks) {
     if (e.dead || e.holder || !e.body || e.kind === 'flag' || e.kind === 'animal') continue;
     const t = e.body.translation(), dx = H.x - t.x, dy = H.y - t.y, dz = H.z - t.z, d = Math.hypot(dx, dy, dz);
-    if (e.anchored) { if (d < near && loosened < 6 && ((bhLoosen++) % 3 === 0)) { unanchor(e); loosened++; } continue; }
+    if (e.anchored) { if (d < near && loosened < (BH.t < 8 ? 2 : 10) && ((bhLoosen++) % 2 === 0)) { unanchor(e); loosened++; } continue; }
     if (d > BH.R) continue;
-    if (d < 4.5) { fxBurst(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(e); BH.eaten++; netEv(['bhx', e.id]); continue; }
-    const k = 1 - d / BH.R, m = e.body.mass(), s = (8 + 22 * k * k) * grip * dt;
-    e.body.applyImpulse({ x: dx / d * s * m, y: (dy / d * s + G * dt * .9) * m, z: dz / d * s * m }, true); // nearly weightless, drifting in
+    if (d < eatR + 1.3) { fxBurst(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(e); BH.eaten++; netEv(['bhx', e.id]); continue; }
+    const k = 1 - d / BH.R, m = e.body.mass(), s = Math.min(45, (4 + 10 * k) * grip) * dt, sw = swirl(dx / d, dz / d, Math.hypot(dx, dz));
+    e.body.applyImpulse({ x: sw.x * s * m, y: (dy / d * s + G * dt * Math.min(.95, grip * .3)) * m, z: sw.z * s * m }, true); // weight fades as the pull grows: they drift up and spiral in
     if (e.body.isSleeping()) e.body.wakeUp();
   }
   // WIN RULES while the hole is open: 4 flags scored = you win on the spot, whatever happens after.
@@ -4233,7 +4243,7 @@ function swallow(r) {
   r.body.setLinvel({ x: 0, y: 0, z: 0 }, true); r.body.setTranslation({ x: 0, y: -60, z: 0 }, true); r.body.setEnabled(false);
   r.model.g.visible = false;
   fxBurst(p, 0xb36bff, 1.4, .3); sfx('portal', p);
-  toast(`${r.name.toUpperCase()} WAS SWALLOWED`, r.color); netEv(['out', robots.indexOf(r)]);
+  toast([[r.name.toUpperCase(), r.color], [' WAS SWALLOWED', null]]); netEv(['out', robots.indexOf(r)]);
   if (r.isPlayer) specStart('SWALLOWED · DRAG TO LOOK AROUND');
 }
 function specStart(msg) { SPEC.on = true; SPEC.yaw = Math.atan2(FORT[other(P.team)].x, FORT[other(P.team)].z); SPEC.pitch = -.2; snapCamera = true; if (msg) bigToast(msg, 'red'); }
@@ -4288,13 +4298,13 @@ function restart(auto) {
   setTimeout(() => location.reload(), NET && NET.host && auto ? 300 : 0);
 }
 const bindRange = (id, key, fmt) => { const el = $(id), v = $(id + 'V'); el.value = S[key]; const sh = () => v.textContent = fmt(S[key]); sh(); el.oninput = () => { S[key] = +el.value; sh(); saveS(); }; };
-for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sMusic', 'music'], ['sAllPowers', 'allPowers'], ['sClassic', 'classic']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
+for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 'allPowers'], ['sClassic', 'classic'], ['sAoe', 'aoe']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
 
 let wakeLock = null;
 const INTRO_T = 8.2; // flyover length; the last 5 seconds show the countdown
 function startCountdown() {
   netEv(['count']);
-  if (!(NET && NET.client)) for (const r of robots) if (!r.stack.some(e => e.kind === 'warp')) { const w = newBlock('warp', V(rPos(r).x, 2, rPos(r).z), { dims: V(1, 1, 1) }); w.anchored = false; grabBlock(r, w); } // everyone's one start block
+  if (!(NET && NET.client)) for (const r of robots) if (!r.stack.some(e => e.kind === 'sticky')) { const w = newBlock('sticky', V(rPos(r).x, 2, rPos(r).z), { dims: V(1, 1, 1) }); w.anchored = false; grabBlock(r, w); } // everyone's one start block: a sticky grenade
   show(null); match.state = 'count'; match.count = INTRO_T; match.lastBeep = 6; match.swooped = false; sfx('intro'); $('hud').hidden = false;
   try { navigator.wakeLock?.request('screen').then(w => wakeLock = w).catch(() => {}); } catch (e) {}
 }
@@ -4419,7 +4429,7 @@ function tick(dt, t = now()) {
     if (n === 3) acc = 0;
     renderAlpha = clamp(acc / world.timestep, 0, 1);
     updateBlocks(dt);
-    if (active) { updateProjectiles(dt); updateFlags(); updateRepair(dt); updateLaunchers(dt); updateHoles(dt); }
+    if (active) { updateProjectiles(dt); updateFlags(); updateRepair(dt); updateLaunchers(dt); updateHoles(dt); updateSticky(dt); updateBirds(dt); }
     updateAnimals(dt);
     portalCool = Math.max(0, portalCool - dt);
     for (const Q of PORTALS) {
@@ -4430,7 +4440,7 @@ function tick(dt, t = now()) {
   }
   for (const r of robots) syncRobot(r);
   updateFun(dt); updateAmbience(dt);
-  pulseHalos(t); updatePole(dt, t); if (match.menu && (tick.mapT = (tick.mapT || 0) + dt) > .5) { tick.mapT = 0; drawMenuMap(); }
+  pulseHalos(t); updatePole(dt, t); if (match.menu) drawMenuMap();
   if (match.state !== 'paused') updateIce(dt);
   updateFx(dt);
   updateCamera(dt);
@@ -4444,7 +4454,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { pthrow: playerThrow, get MUSIC() { return MUSIC; }, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -4834,14 +4844,16 @@ function clientEv(e) {
   else if (k === 'hole') { setHole(e[1], e[2], !!e[3]); NET.pits = true; }
   else if (k === 'tramp') { const Pd = PADS[e[1]]; if (Pd) { Pd.broken = !!e[2]; Pd.g.visible = !e[2]; if (!e[2]) Pd.grow = 0; } }
   else if (k === 'wool') woolHeap(V(e[1], 0, e[2]));
-  else if (k === 'flag') { if (e[1] === P.team) { bigToast('FLAG STOLEN!', 'red'); buzz('stolen'); sfx('alert'); } else if (e[2] === robots.indexOf(P)) { bigToast('RUN!', 'blue'); sfx('flagGrab'); } const rr_ = robots[e[2]]; if (rr_) toast(`${rr_.name.toUpperCase()} GRABBED THE ${String(e[1]).toUpperCase()} FLAG`, rr_.color); }
-  else if (k === 'kof') { const a = robots[e[1]], v = robots[e[2]]; if (a && v) toast(`${a.name.toUpperCase()} KNOCKED OUT ${v.name.toUpperCase()}`, a.color); }
+  else if (k === 'flag') { if (e[1] === P.team) { bigToast('FLAG STOLEN!', 'red'); buzz('stolen'); sfx('alert'); } else if (e[2] === robots.indexOf(P)) { bigToast('RUN!', 'blue'); sfx('flagGrab'); } const rr_ = robots[e[2]]; if (rr_) toast([[rr_.name.toUpperCase(), rr_.color], [' GRABBED THE ', null], [String(e[1]).toUpperCase() + ' FLAG', teamCol(e[1])]]); }
+  else if (k === 'kof') { const a = robots[e[1]], v = robots[e[2]]; if (a && v) toast([[a.name.toUpperCase(), a.color], [' KNOCKED OUT ', null], [v.name.toUpperCase(), v.color]]); }
   else if (k === 'ret') { if (e[1] === P.team) toast('FLAG RETURNED'); }
   else if (k === 'score') { const g = GATES[e[1]]; g.flash = 1; buzz(e[1] === P.team ? 'score' : 'theyScore'); sfx(e[1] === P.team ? 'score' : 'lose'); bigToast(e[1] === 'blue' ? 'BLUE SCORES!' : 'RED SCORES!', e[1]); }
   else if (k === 'end') { setTimeout(() => endMatch(), 150); }
   else if (k === 'bh') startBlackHole(e[1]);
+  else if (k === 'stick') { const b = blockById(e[1]); if (b && !b.stuck) { b.live = false; b.stuck = { to: e[5] >= 0 ? robots[e[5]] : null, off: null, fuse: b.kind === 'egg' ? 5 : 2.5, beep: 0 }; if (b.stuck.to) { b.stuck.off = V(e[2], e[3], e[4]).sub(rPos(b.stuck.to)); } dropBody(b); makeBody(b, V(e[2], e[3], e[4]), null); b.body.setBodyType(RAPIER.RigidBodyType.Fixed, true); STUCK.push(b); sfx('catch', V(e[2], e[3], e[4])); } }
+  else if (k === 'birds') { const tr = TREES.find(t => Math.hypot(t.x - e[1], t.z - e[2]) < .5); if (tr) { tr.birds = true; tr.flown = false; birdCool = 0; treeFell(tr); } }
   else if (k === 'bhx') { const b = blockById(e[1]); if (b && !b.dead) { const t = b.body ? b.body.translation() : null; if (t) fxBurst0(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(b); } }
-  else if (k === 'out') { const r = robots[e[1]]; if (r) { r.state = 'out'; r.model.g.visible = false; toast(`${r.name.toUpperCase()} WAS SWALLOWED`, r.color); if (r === P) specStart('SWALLOWED · DRAG TO LOOK AROUND'); } }
+  else if (k === 'out') { const r = robots[e[1]]; if (r) { r.state = 'out'; r.model.g.visible = false; toast([[r.name.toUpperCase(), r.color], [' WAS SWALLOWED', null]]); if (r === P) specStart('SWALLOWED · DRAG TO LOOK AROUND'); } }
   else if (k === 'bhwin') { score[e[1]] = Math.max(score[e[1]], score[other(e[1])] + 1); bigToast('SWALLOWED THEM ALL', e[1] === 'blue' ? 'blue' : 'red'); }
   else if (k === 'count') { if (match.state === 'menu') startCountdown(); }
   else if (k === 'toast') toast(e[1]);
@@ -4992,8 +5004,7 @@ const LAB_DB = { open: () => new Promise((ok, no) => { const r = indexedDB.open(
   all: async store => { try { const db = await LAB_DB.open(); return await new Promise(ok => { const out = {}, c = db.transaction(store).objectStore(store).openCursor(); c.onsuccess = () => { const cur = c.result; if (!cur) return ok(out); out[cur.key] = cur.value; cur.continue(); }; c.onerror = () => ok(out); }); } catch (e) { return {}; } } };
 // ---------------- SOUND LAB ----------------
 const SFX_GROUPS = {
-  'Music: what plays in the match': ['soundtrack'],
-  'Dynamic war drums (soft → mid → hard as the match heats up) and the start horn': ['drums_soft', 'drums_mid', 'drums_hard', 'intro'],
+  'Round start': ['intro'],
   'Blocks': ['impact', 'crumble', 'throw', 'catch', 'grab', 'grab_bomb', 'grab_freeze', 'grab_homing'],
   'Robots': ['hit', 'ko', 'land', 'jump', 'jump2', 'dodge', 'respawn', 'reload', 'denied', 'full'],
   'Ice': ['freeze', 'shatter'],
@@ -5026,7 +5037,7 @@ async function addCustomSfx(name, file) {
 function playCustom(u) { const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = u.buf; s.playbackRate.value = PV; g.gain.value = .9; s.connect(g); out(g, true); s.start(T0(0)); }
 function sfxChoices(n) {
   const o = [];
-  if (n === 'soundtrack') { o.push(['ai', 'Dynamic war drums']); for (const t of TRACKS) o.push(['track:' + t, TRACK_LABEL(t)]); return o; } const takes = [n, n + '_2', n + '_3'].filter(k => BUF[k]).length;
+  const takes = [n, n + '_2', n + '_3'].filter(k => BUF[k]).length;
   if (SFX_REAL[n] && SFX_REAL[n] !== SFX_V2[n]) { if (takes > 1) { o.push(['ai', 'New (random take)']); for (let k = 1; k <= takes; k++) o.push(['ai' + k, 'New take ' + k]); } else o.push(['ai', 'New']); }
   if (SFX_V2[n]) o.push(['v2', 'Previous set']);
   if (SFX_SYNTH[n]) o.push(['synth', 'Classic']);
@@ -5044,7 +5055,7 @@ function soundLabRows() {
       row.querySelectorAll('.chip[data-id]').forEach(ch => {
         const id = ch.dataset.id;
         ch.querySelector('.cp').onclick = () => { audioInit(); const was = CHOICE.sfx[n]; CHOICE.sfx[n] = id; sfx(n, null, 2); CHOICE.sfx[n] = was; }; // preview without switching
-        ch.querySelector('.cu').onclick = () => { CHOICE.sfx[n] = id; saveChoice(); audioInit(); sfx(n, null, 2); soundLabRows(); if (n.startsWith('drums_') || n === 'soundtrack') musicRestart(); };
+        ch.querySelector('.cu').onclick = () => { CHOICE.sfx[n] = id; saveChoice(); audioInit(); sfx(n, null, 2); soundLabRows(); };
       });
       row.querySelector('input').onchange = async e => { const f = e.target.files[0]; if (!f) return; audioInit(); try { const i = await addCustomSfx(n, f); CHOICE.sfx[n] = 'custom:' + i; saveChoice(); toast('NOW USING ' + f.name.toUpperCase()); } catch (x) { toast("COULDN'T READ THAT FILE"); } soundLabRows(); };
       box.appendChild(row);
