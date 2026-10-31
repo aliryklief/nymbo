@@ -5091,18 +5091,21 @@ function startReplay() {
   if (REPLAY.on || REPLAY.frames.length < 8 || match.state !== 'play') return;
   $('replayBtn').hidden = true; REPLAY.pendingAt = 0;
   REPLAY.on = true; REPLAY.play = REPLAY.frames.slice(); REPLAY.to = REPLAY.play[REPLAY.play.length - 1].t; REPLAY.from = Math.max(REPLAY.play[0].t, REPLAY.koAt - 2.7);
-  REPLAY.at = REPLAY.from; REPLAY.last = now(); $('replayTag').hidden = false; gest = null;
+  REPLAY.at = REPLAY.from; REPLAY.last = now(); REPLAY.drawAt = 0; REPLAY.kp = null; REPLAY.sideSgn = 0; $('replayTag').hidden = false; gest = null;
 }
 function stopReplay() { if (!REPLAY.on) return; REPLAY.on = false; REPLAY.play = null; $('replayTag').hidden = true; snapCamera = true; }
 // borrow the recorded positions for one picture, then hand the live ones back
 function drawReplay() {
-  const n = now(); REPLAY.at += (n - REPLAY.last) / 1000 * REPLAY_SPEED; REPLAY.last = n;
+  const n = now(); REPLAY.at += (n - REPLAY.last) / 1000 * (REPLAY.speed || REPLAY_SPEED); REPLAY.last = n;
   if (REPLAY.at >= REPLAY.to || match.state !== 'play') { stopReplay(); return false; }
   const F = REPLAY.play; let i = 0; while (i < F.length - 2 && F[i + 1].t < REPLAY.at) i++;
   const A = F[i], B = F[i + 1] || A, k = B.t > A.t ? clamp((REPLAY.at - A.t) / (B.t - A.t), 0, 1) : 0;
   const saved = [];
-  robots.forEach((r, j) => { const g = r.model.g, a = A.rob[j], b = B.rob[j]; if (!a) return; saved.push([g, g.position.clone(), g.quaternion.clone(), g.visible, r.model.eyesX.visible, r.model.eyesN.visible]);
-    g.position.set(a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k); g.quaternion.set(a[3], a[4], a[5], a[6]).slerp(_rpQ.set(b[3], b[4], b[5], b[6]), k); g.visible = !!a[7]; r.model.eyesX.visible = !!a[8]; r.model.eyesN.visible = !a[8]; });
+  // a robot that jumped a long way between two recorded moments (respawn, portal) snaps instead of sliding across the map
+  const lerpPos = (a, b, out) => { const far = Math.abs(b[0] - a[0]) + Math.abs(b[2] - a[2]) > 4, kk = far ? (k < .5 ? 0 : 1) : k; return out.set(a[0] + (b[0] - a[0]) * kk, a[1] + (b[1] - a[1]) * kk, a[2] + (b[2] - a[2]) * kk); };
+  robots.forEach((r, j) => { const g = r.model.g, a = A.rob[j], b = B.rob[j]; if (!a) return; saved.push([g, g.position.clone(), g.quaternion.clone(), g.visible, r.model.eyesX.visible, r.model.eyesN.visible, r.model.blob.visible]);
+    lerpPos(a, b, g.position); g.quaternion.set(a[3], a[4], a[5], a[6]).slerp(_rpQ.set(b[3], b[4], b[5], b[6]), k); g.visible = !!a[7]; r.model.eyesX.visible = !!a[8]; r.model.eyesN.visible = !a[8];
+    r.model.blob.visible = false; }); // the ground shadows belong to the live positions: hide them for the replay picture
   const savedB = []; let touchedIM = false;
   for (const [e, d] of (k < .5 ? A : B).blk) {
     if (e.inst >= 0) { plainIM.getMatrixAt(e.inst, _rpM); savedB.push([e, Float32Array.from(_rpM.elements)]); _rpM.fromArray(d); plainIM.setMatrixAt(e.inst, _rpM); touchedIM = true; }
@@ -5111,20 +5114,48 @@ function drawReplay() {
   if (touchedIM) plainIM.instanceMatrix.needsUpdate = true;
   // the camera: just behind the robot that knocked you out, looking where it was looking (towards you). Nobody to blame
   // (a fall, your own grenade, a cow)? A slow circle round where you went down.
-  const vi = robots.indexOf(REPLAY.victim), v = vi >= 0 ? A.rob[vi] : null, vp = v ? V(v[0], v[1], v[2]) : rPos(P);
+  // the replay has its own camera position and aim (the normal follow camera keeps running underneath and would drag it
+  // back towards your knocked-out robot); the live camera is put back after the picture
+  const liveCam = camera.position.clone(), liveQ = camera.quaternion.clone(), liveLook = camLook.clone();
+  const RC = REPLAY.cam || (REPLAY.cam = { pos: V(), look: V() });
+  const dt = clamp((n - (REPLAY.drawAt || n)) / 1000, 0, .1); REPLAY.drawAt = n; const ease = r => 1 - Math.exp(-r * dt); // smoothing that's the same at any frame rate
+  const vi = robots.indexOf(REPLAY.victim), vp = vi >= 0 && A.rob[vi] ? lerpPos(A.rob[vi], B.rob[vi], V()) : rPos(P);
   const ki = REPLAY.killer ? robots.indexOf(REPLAY.killer) : -1;
-  if (ki >= 0) { const a = A.rob[ki], b = B.rob[ki], kp = V(a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k), q = _rpQ.set(a[3], a[4], a[5], a[6]);
-    const fwd = V(0, 0, -1).applyQuaternion(q).setY(0); if (fwd.lengthSq() < .01) fwd.set(vp.x - kp.x, 0, vp.z - kp.z); fwd.normalize();
-    const portrait = innerWidth < innerHeight, want = kp.clone().addScaledVector(fwd, portrait ? -8.4 : -7.4).setY(Math.max(kp.y - .95, 0) + (portrait ? 6.3 : 4.8));
-    const look = kp.clone().addScaledVector(fwd, 8).lerp(vp, .45).setY(.8);
-    if (!REPLAY.camInit) { REPLAY.camInit = true; camera.position.copy(want); camLook.copy(look); }
-    camera.position.lerp(want, .2); camLook.lerp(look, .25); }
-  else { const a = (REPLAY.at - REPLAY.from) * .5; camera.position.set(vp.x + Math.sin(a) * 9, vp.y + 5, vp.z + Math.cos(a) * 9); camLook.copy(vp); }
-  camera.lookAt(camLook);
+  if (ki >= 0 && A.rob[ki]) { const a = A.rob[ki], kp = lerpPos(a, B.rob[ki], V()), q = _rpQ.set(a[3], a[4], a[5], a[6]);
+    // look along the line from the killer to you, so both of you are always in the shot (if you're right on top of
+    // each other, use the way the killer is facing: a robot model faces +z after its turn)
+    const fwd = V(vp.x - kp.x, 0, vp.z - kp.z), gap = fwd.length();
+    if (gap < 1) fwd.set(0, 0, 1).applyQuaternion(q).setY(0); fwd.normalize();
+    const jump = REPLAY.kp && REPLAY.kp.distanceTo(kp) > 4; REPLAY.kp = kp.clone();          // killer teleported: cut, don't swoop
+    if (!REPLAY.camInit || !REPLAY.dir || jump) REPLAY.dir = fwd.clone(); else REPLAY.dir.lerp(fwd, ease(4)).normalize(); // turn smoothly, no whipping round
+    const d = REPLAY.dir, portrait = innerWidth < innerHeight, back = (portrait ? 6.5 : 5.5) + Math.min(gap, 20) * .15;
+    // over the killer's shoulder so it doesn't hide you. Which shoulder: whichever has a clear view of you and no wall
+    // in the way (checked a few times a second, and it only swaps when the other side is clearly better)
+    const camAt = sgn => { const w = kp.clone().addScaledVector(d, -back).addScaledVector(V(-d.z, 0, d.x), 2.2 * sgn).setY(Math.max(kp.y - .95, 0) + (portrait ? 5.4 : 4.2));
+      const head = V(kp.x, kp.y + .8, kp.z), dd = w.clone().sub(head), L = dd.length(); dd.divideScalar(L);
+      probeRay.origin = { x: head.x, y: head.y, z: head.z }; probeRay.dir = { x: dd.x, y: dd.y, z: dd.z };
+      const h = world.castRay(probeRay, L, true, undefined, undefined, REPLAY.killer.col, undefined, rayPred);
+      if (h) w.copy(head).addScaledVector(dd, Math.max(2.3, h.toi - .4));   // a wall behind: pull the camera in front of it
+      let score = h ? -2 : 0;
+      const tv = V(vp.x, vp.y + .3, vp.z).sub(w), Lv = tv.length(); tv.divideScalar(Lv);       // can it see you?
+      probeRay.origin = { x: w.x, y: w.y, z: w.z }; probeRay.dir = { x: tv.x, y: tv.y, z: tv.z };
+      if (Lv > 1.5 && world.castRay(probeRay, Lv - 1, true, undefined, undefined, undefined, undefined, rayPred)) score -= 3;
+      for (const sd of [1, -1]) { const sv = V(-d.z, 0, d.x).multiplyScalar(sd); probeRay.dir = { x: sv.x, y: 0, z: sv.z };    // a wall right beside it
+        if (world.castRay(probeRay, 2.2, true, undefined, undefined, undefined, undefined, rayPred)) score -= 1; }
+      return { w, score }; };
+    if (!REPLAY.camInit || jump || !REPLAY.sideSgn || n - (REPLAY.sideAt || 0) > 300) { REPLAY.sideAt = n;
+      const cur = REPLAY.sideSgn || 1, A1 = camAt(cur), A2 = camAt(-cur); REPLAY.sideSgn = A2.score > A1.score + .5 ? -cur : cur; }
+    const side = V(-d.z, 0, d.x).multiplyScalar(REPLAY.sideSgn), want = camAt(REPLAY.sideSgn).w;
+    const look = kp.clone().lerp(vp, gap > 14 ? .6 : .5).addScaledVector(side, -.6).setY(Math.max(.8, (kp.y + vp.y) / 2 - .4));
+    if (!REPLAY.camInit || jump) { REPLAY.camInit = true; RC.pos.copy(want); RC.look.copy(look); }
+    RC.pos.lerp(want, ease(10)); RC.look.lerp(look, ease(12)); }
+  else { const a = (REPLAY.at - REPLAY.from) * .5; RC.pos.set(vp.x + Math.sin(a) * 9, vp.y + 5, vp.z + Math.cos(a) * 9); RC.look.copy(vp); }
+  camera.position.copy(RC.pos); camera.lookAt(RC.look);
   renderer.render(scene, camera);
+  camera.position.copy(liveCam); camera.quaternion.copy(liveQ); camLook.copy(liveLook);
   // put the live picture back
-  for (const [g, p, q, vis, ex, en] of saved) { g.position.copy(p); g.quaternion.copy(q); g.visible = vis; }
-  robots.forEach((r, j) => { const s = saved[j]; if (s) { r.model.eyesX.visible = s[4]; r.model.eyesN.visible = s[5]; } });
+  for (const [g, p, q, vis] of saved) { g.position.copy(p); g.quaternion.copy(q); g.visible = vis; }
+  robots.forEach((r, j) => { const s = saved[j]; if (s) { r.model.eyesX.visible = s[4]; r.model.eyesN.visible = s[5]; r.model.blob.visible = s[6]; } });
   for (const [e, d] of savedB) { if (e.inst >= 0) { _rpM.fromArray(d); plainIM.setMatrixAt(e.inst, _rpM); } else { const ms = e.mesh; ms.position.set(d[0], d[1], d[2]); ms.quaternion.set(d[3], d[4], d[5], d[6]); ms.visible = !!d[7]; } }
   if (touchedIM) plainIM.instanceMatrix.needsUpdate = true;
   return true;
