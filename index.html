@@ -99,6 +99,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 @keyframes pwland{0%{transform:scale(1.6)}100%{transform:scale(1)}}
 #shieldBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);top:50%;transform:translateY(-50%);z-index:7;width:52px;height:52px;opacity:0;transition:opacity .35s;pointer-events:none}
 #shieldBtn.show{opacity:1;pointer-events:auto}
+#shieldBtn{border-color:rgba(255,255,255,.35);color:#fff}#shieldBtn.ready{border-color:var(--yellow);color:var(--yellow)} /* same ring language as the block slot opposite: dim when idle, yellow when live */
 .pw{pointer-events:auto;position:relative;width:46px;height:46px;border-radius:50%;border:2.5px solid var(--c);background:rgba(10,14,26,.62);color:var(--c);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 rgba(0,0,0,.3);touch-action:none;-webkit-tap-highlight-color:transparent}
 .pw svg{width:24px;height:24px;position:relative;z-index:1}
 .pw i{position:absolute;inset:-2px;border-radius:50%;background:conic-gradient(rgba(0,0,0,.62) calc(var(--k,0)*360deg),transparent 0)}
@@ -210,7 +211,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div id="thief" hidden><b></b><i></i></div>
   <div id="pwr"></div>
   <button class="pw" id="holeBtn" hidden style="--c:#b36bff" aria-label="BLACK HOLE"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5c5.2 0 9.5 4.3 9.5 9.5S17.2 21.5 12 21.5 2.5 17.2 2.5 12 6.8 2.5 12 2.5zm0 2A7.5 7.5 0 1 0 12 19.5 7.5 7.5 0 0 0 12 4.5z" opacity=".5"/><path d="M4 12a8 8 0 0 1 8-8v2a6 6 0 0 0-6 6z" opacity=".9"/></svg><i></i></button>
-  <button class="pw" id="shieldBtn" style="--c:#ffffff" aria-label="SHIELD"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v6c0 5.2 3.4 9.6 8 11 4.6-1.4 8-5.8 8-11V5z" opacity=".35"/><path d="M12 4.2 6 6.4v4.6c0 4.1 2.5 7.6 6 8.9 3.5-1.3 6-4.8 6-8.9V6.4z"/></svg><i></i></button>
+  <button class="pw" id="shieldBtn" style="--c:#ffd400" aria-label="SHIELD"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v6c0 5.2 3.4 9.6 8 11 4.6-1.4 8-5.8 8-11V5z" opacity=".35"/><path d="M12 4.2 6 6.4v4.6c0 4.1 2.5 7.6 6 8.9 3.5-1.3 6-4.8 6-8.9V6.4z"/></svg><i></i></button>
   <button id="micBtn" hidden>🎤 off</button>
   <div id="flash"></div>
   <div class="hud" id="count" hidden>3</div>
@@ -3218,8 +3219,8 @@ stage.addEventListener('pointermove', e => {
   const dx = gest.x - gest.x0, dy = gest.y - gest.y0, dist = Math.hypot(dx, dy);
   if (gest.mode === 'pending' && dist > 14) {
     gest.mode = (dy < 0 ? -dy > Math.abs(dx) * .55 : dy > Math.abs(dx) * .8) ? 'vertical' : 'turn';
-    gest.turnFrom = gest.x;
-  } else if (gest.mode === 'hold' && Math.abs(dx) > 8) { gest.mode = 'holdturn'; gest.turnFrom = gest.x; }
+    gest.turnFrom = gest.x; gest.lastTx = gest.x0; gest.lastTt = t; // (counts from where the finger first landed, so edge-to-edge is the full 180°)
+  } else if (gest.mode === 'hold' && Math.abs(dx) > 8) { gest.mode = 'holdturn'; gest.turnFrom = gest.x; gest.lastTx = gest.x; gest.lastTt = t; }
   // act DURING the stroke, not when the finger lifts: a swipe down grabs the moment it's clearly a swipe down,
   // a swipe up throws as soon as the flick has peaked (or run far). Sideways swipes anywhere turn; only a swipe on your robot's head dodges.
   if (gest.mode === 'vertical' && dy > 30) { gest.mode = 'done'; playerGrab(); }
@@ -3228,7 +3229,12 @@ stage.addEventListener('pointermove', e => {
     gest.peak = Math.max(gest.peak || 0, vNow);
     if (-dy > innerHeight * .22 || (gest.peak > .6 && vNow < gest.peak * .5) || t - gest.t0 > 260) { gest.mode = 'done'; playerThrow(swipePower(gest)); }
   }
-  if (gest.mode === 'turn' || gest.mode === 'holdturn') P.yawT = gest.yawStart - (gest.x - gest.turnFrom) * S.turn / 1000;
+  // TURNING: edge to edge of the screen = exactly a half turn (180°), whatever the phone. A quick flick turns up to 30% more.
+  if (gest.mode === 'turn' || gest.mode === 'holdturn') {
+    const px = gest.lastTx ?? gest.turnFrom, step = gest.x - px, dtm = Math.max(1, t - (gest.lastTt ?? t)); gest.lastTx = gest.x; gest.lastTt = t;
+    const v = Math.abs(step) / dtm * 390 / innerWidth, gain = 1 + clamp((v - 1.2) / 2.5, 0, .3);
+    P.yawT -= step / innerWidth * Math.PI * gain;
+  }
 });
 // how hard you swiped: the fastest 70ms stretch of the whole stroke (screen-size independent).
 // Using the peak instead of the moment you let go makes the same swipe give the same distance.
