@@ -848,7 +848,7 @@ function speedStrip(x, z, dx, dz, team) {
   staticBoxes.push({ x0: Math.min(x, x + dir.x * 8) - 2.5, y0: 0, z0: Math.min(z, z + dir.z * 8) - 2.5, x1: Math.max(x, x + dir.x * 8) + 2.5, y1: .1, z1: Math.max(z, z + dir.z * 8) + 2.5, foot: true });
 }
 for (const t of TRAMP_SPOTS) trampoline(t.x, t.z);
-for (const [s, team] of [[1, 'blue'], [-1, 'red']]) speedStrip(-s * 21, s * 42, s, 0, team); // mirrored (point-symmetric): blue panel on our side, red on theirs
+for (const [s, team] of [[1, 'blue'], [-1, 'red']]) speedStrip(-s * 13, s * 42, s, 0, team); // mirrored (point-symmetric): blue panel on our side, red on theirs
 // the mat's rings slide inwards and shrink (it's pulling you in): same look, just alive
 function animateMat(t) {
   const cv = tramp.mat.map.userData.cv, h = cv.getContext('2d'), ph = (t / 1400) % 1;
@@ -900,7 +900,7 @@ function updateLaunchers(dt, visualOnly = false) {
 // uses the camera, swallowed players spectate from it, and the Camera menu lets you look around the level from it.
 // (A giant animal statue stood here for a day; Ali preferred the pole.)
 // ============================================================
-const POLE_H = 15;
+const POLE_H = 10;
 const MONUMENT = { g: null, top: POLE_H, under: 0, cam: V(0, POLE_H + 1.6, 0) };
 {
   const g = new THREE.Group(); MONUMENT.g = g;
@@ -915,10 +915,10 @@ const MONUMENT = { g: null, top: POLE_H, under: 0, cam: V(0, POLE_H + 1.6, 0) };
   // two signpost arrows under the camera: BLUE points at the blue fort, RED at the red one
   for (const team of ['blue', 'red']) {
     const F = FORT[team], ang = Math.atan2(F.x, F.z), col = team === 'blue' ? 0x2aa2ff : 0xff4d40;
-    const arm = new THREE.Group(); arm.rotation.y = ang; arm.position.y = POLE_H - (team === 'blue' ? 1.1 : 2.2); g.add(arm);
-    const board = new THREE.Mesh(new THREE.BoxGeometry(.5, .7, 3.2), new LiteMat({ color: col })); board.position.z = 1.9; board.castShadow = true; arm.add(board);
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(.55, .9, 4), new LiteMat({ color: col })); tip.rotation.x = Math.PI / 2; tip.rotation.y = Math.PI / 4; tip.position.z = 3.9; arm.add(tip);
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(.56, .12, 3.2), new LiteMat({ color: 0xffffff })); cap.position.set(0, .41, 1.9); arm.add(cap);
+    const arm = new THREE.Group(); arm.rotation.y = ang; arm.position.y = POLE_H - (team === 'blue' ? 1.3 : 2.9); g.add(arm);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(.8, 1.15, 5), new LiteMat({ color: col })); board.position.z = 2.8; board.castShadow = true; arm.add(board);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(.95, 1.5, 4), new LiteMat({ color: col })); tip.rotation.x = Math.PI / 2; tip.rotation.y = Math.PI / 4; tip.position.z = 6.05; arm.add(tip);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(.86, .14, 5), new LiteMat({ color: 0xffffff })); cap.position.set(0, .64, 2.8); arm.add(cap);
   }
   scene.add(g);
   for (const [w, h, y] of [[3, .7, .35], [1.6, .5, .95]]) { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, h / 2, w / 2).setTranslation(0, y, 0).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); }
@@ -982,7 +982,7 @@ const KIND_COL = {
 };
 const kindMat = {}, coreMat = {};
 // power blocks are see-through "jelly glass" boxes: a tinted shell with a solid logo, and a solid little core inside
-const GLASS = { bomb: [.62, '#16171c'], freeze: [.5, '#e8f7ff'], homing: [.55, '#7a2be0'], warp: [.5, '#ff4fd0'], sticky: [.7, '#4f9a1e'], egg: [.9, '#ffd36b'] };
+const GLASS = { bomb: [.42, '#16171c'], freeze: [.5, '#e8f7ff'], homing: [.55, '#7a2be0'], warp: [.5, '#ff4fd0'], sticky: [.7, '#4f9a1e'], egg: [.9, '#ffd36b'] };
 for (const k in KIND_COL) {
   const [a, b, glow, ink, frame] = KIND_COL[k], t = iconTex(a, b, ICON[k], ink, k === 'bomb' ? 'rgba(255,255,255,.55)' : k === 'freeze' ? 'rgba(47,134,196,.8)' : 'rgba(255,255,255,.8)', GLASS[k][0]);
   kindMat[k] = new LiteMat({ map: t, transparent: true, depthWrite: false, side: THREE.DoubleSide,
@@ -990,8 +990,34 @@ for (const k in KIND_COL) {
   coreMat[k] = new LiteMat({ color: GLASS[k][1], emissive: k === 'freeze' ? 0x5aa8d8 : k === 'homing' ? 0x5a14b8 : k === 'warp' ? 0xff2ac0 : 0x000000, emissiveIntensity: .4 });
 }
 const coreGeo = new RoundedBoxGeometry(1, 1, 1, 1, .12);
-function decoratePower(e) { const c = new THREE.Mesh(coreGeo, coreMat[e.kind]); c.scale.setScalar(.42); c.rotation.set(.6, .6, 0); e.mesh.add(c); e.core = c; e.mesh.renderOrder = 2; }
-function pulseHalos(t) { const s = .42 + .03 * Math.sin(t / 220); for (const e of blocks) if (e.core && !e.dead) { e.core.rotation.y = t / 900 + e.id; e.core.scale.setScalar(s); } }
+// what you can see inside each glass block: gunpowder in the bomb, water in the ice block, a magnet in the homing block,
+// a spider web in the sticky grenade. The other power blocks keep the small spinning core.
+const INNER = (() => {
+  const powder = (() => { const parts = []; let seed = 7; const rn = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 46; i++) { const g = new THREE.BoxGeometry(.07 + rn() * .06, .05 + rn() * .05, .07 + rn() * .06), r = Math.sqrt(rn()) * .36, a = rn() * 6.28, h = (1 - r / .36) * .16 * rn();
+      g.translate(Math.cos(a) * r, -.4 + h, Math.sin(a) * r); g.rotateY(rn() * 3); const c = new THREE.Color().setHSL(.0 + rn() * .03, .75, .2 + rn() * .16), n = g.attributes.position.count, cs = new Float32Array(n * 3); for (let k = 0; k < n; k++) c.toArray(cs, k * 3); g.setAttribute('color', new THREE.BufferAttribute(cs, 3)); parts.push(g); }
+    return new THREE.Mesh(mergeGeometries(parts), new LiteMat({ vertexColors: true })); })();               // a little heap of dark-red grains on the floor of the block
+  const water = new THREE.Mesh(new THREE.BoxGeometry(.84, .5, .84).translate(0, -.21, 0), new THREE.MeshLambertMaterial({ color: 0x1f8fe0, transparent: true, opacity: .78, emissive: 0x0a4a8c, emissiveIntensity: .55, depthWrite: false })); water.renderOrder = 3; // drawn after the frosty glass so it reads clearly
+  const magnet = (() => { const g = new THREE.Group(), red = new LiteMat({ color: 0xe0281a }), steel = new LiteMat({ color: 0xdfe4ea });
+    g.add(new THREE.Mesh(new THREE.TorusGeometry(.17, .07, 8, 18, Math.PI).rotateZ(Math.PI), red));
+    for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(.14, .16, .14), red); leg.position.set(sx * .17, .08, 0); g.add(leg); const tip = new THREE.Mesh(new THREE.BoxGeometry(.145, .09, .145), steel); tip.position.set(sx * .17, .2, 0); g.add(tip); }
+    g.position.y = -.02; return g; })();
+  const web = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.strokeStyle = 'rgba(255,255,255,.92)'; x.lineWidth = 2;
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; x.beginPath(); x.moveTo(64, 64); x.lineTo(64 + Math.cos(a) * 64, 64 + Math.sin(a) * 64); x.stroke(); }
+    for (let r = 10; r < 62; r += 9) { x.beginPath(); for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI * 2, rr_ = r + (i % 2) * 2; i ? x.lineTo(64 + Math.cos(a) * rr_, 64 + Math.sin(a) * rr_) : x.moveTo(64 + Math.cos(a) * rr_, 64 + Math.sin(a) * rr_); } x.stroke(); }
+    const t = new THREE.CanvasTexture(c), m = new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false }), g = new THREE.Group();
+    for (const ry of [0, Math.PI / 2]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(.86, .86), m); pl.rotation.y = ry; pl.renderOrder = 3; g.add(pl); } const d = new THREE.Mesh(new THREE.PlaneGeometry(.86, .86), m); d.rotation.x = Math.PI / 2; d.renderOrder = 3; g.add(d); return g; })();
+  return { bomb: powder, freeze: water, homing: magnet, sticky: web };
+})();
+function decoratePower(e) {
+  const inner = INNER[e.kind];
+  if (inner) { const c = inner.clone(); e.mesh.add(c); e.core = c; c.userData.kind = e.kind; e.mesh.renderOrder = 2; return; }
+  const c = new THREE.Mesh(coreGeo, coreMat[e.kind]); c.scale.setScalar(.42); c.rotation.set(.6, .6, 0); c.userData.pulse = true; e.mesh.add(c); e.core = c; e.mesh.renderOrder = 2;
+}
+function pulseHalos(t) { const s = .42 + .03 * Math.sin(t / 220); for (const e of blocks) if (e.core && !e.dead) { const c = e.core;
+  if (c.userData.pulse) { c.rotation.y = t / 900 + e.id; c.scale.setScalar(s); }
+  else if (c.userData.kind === 'homing') c.rotation.y = t / 600 + e.id;                                     // the magnet turns slowly
+  else if (c.userData.kind === 'freeze') { c.scale.y = 1 + .05 * Math.sin(t / 260 + e.id); } } }               // the water sloshes
 const flagMats = {};
 const flagMat = col => flagMats[col] || (flagMats[col] = (() => { const c = new THREE.Color(col), d = c.clone().multiplyScalar(.55); const t = iconTex(col, '#' + d.getHexString(), ICON.flag); return new LiteMat({ map: t, emissive: col, emissiveMap: t, emissiveIntensity: .7, roughness: .4 }); })());
 const KIND_CSS = { bomb: 'linear-gradient(135deg,#2b2d33,#0b0b0e)', freeze: 'linear-gradient(135deg,#f4fbff,#a9d6f2)', homing: 'linear-gradient(135deg,#b26bff,#5a14b8)', warp: 'linear-gradient(135deg,#ff6ad5,#8a0fb8)', sticky: 'linear-gradient(135deg,#9be24a,#2e6b12)', egg: 'linear-gradient(135deg,#fff6dc,#e8cf9a)' };
@@ -2839,19 +2865,19 @@ function updateProjectiles(dt) {
     if (e.liveT > 4) { e.live = false; continue; }
     // homing: proper pursuit with a turn limit (a sharp dodge still beats it). If it overshoots its target, or the
     // target goes down, it picks the next enemy ahead of it that it can still reach while it's in the air.
-    if (e.kind === 'homing' && e.liveT < 3.5) {
+    if (e.kind === 'homing' && e.liveT < 2.4) { // (weaker: shorter chase, gentler turns, only re-targets someone close and in front)
       const vel = V(lv.x, lv.y, lv.z), sp0 = 19;
       const ahead = o => { const c = rPos(o), to = V(c.x - t.x, c.y - t.y, c.z - t.z), d = to.length(); return { d, cos: to.dot(vel) / (d * vel.length() || 1) }; };
       const team = e.thrower && e.thrower.team;
       if (!e.target || !hittable(e.target) || ahead(e.target).cos < .1) {
         let best = null, bs = Infinity;
-        for (const o of robots) { if (o.team === team || !hittable(o)) continue; const a = ahead(o); if (a.cos > .35 && a.d < 22) { const sc = a.d * (1.6 - a.cos); if (sc < bs) { bs = sc; best = o; } } }
+        for (const o of robots) { if (o.team === team || !hittable(o)) continue; const a = ahead(o); if (a.cos > .7 && a.d < 12) { const sc = a.d * (1.6 - a.cos); if (sc < bs) { bs = sc; best = o; } } }
         if (best !== e.target) e.target = best;
       }
       if (e.target) {
         const c = rPos(e.target), d = Math.hypot(c.x - t.x, c.z - t.z), lead = c.clone().addScaledVector(e.target.vel, d / sp0 * .8);
         const want = V(lead.x - t.x, lead.y + .2 - t.y, lead.z - t.z).normalize();
-        const cur = vel.clone().normalize(), ang = Math.acos(clamp(cur.dot(want), -1, 1)), maxTurn = 4.2 * dt;
+        const cur = vel.clone().normalize(), ang = Math.acos(clamp(cur.dot(want), -1, 1)), maxTurn = 2.8 * dt;
         const nd = ang <= maxTurn ? want : cur.clone().lerp(want, maxTurn / ang).normalize();
         if (t.y < 1 && nd.y < 0) nd.y = .05; // skim, don't dive into the ground
         e.body.setLinvel(nd.multiplyScalar(sp0), true);
@@ -2883,7 +2909,7 @@ function handleContacts() {
       if (B && B.type === 'robot' && (B.ref === e.thrower || B.ref.team === (e.thrower && e.thrower.team))) continue; // don't go off in your own hands
       if (B && B.type === 'robot' && e.kind === 'homing' && !hittable(B.ref)) continue; // glances off see-through / knocked-out robots and keeps hunting
       if (B && B.type === 'block' && B.ref.holder) continue;
-      if (e.kind === 'homing' && e.target && e.liveT < 3.5 && (!B || B.type === 'static')) continue; // homing skims the floor while chasing
+      if (e.kind === 'homing' && e.target && e.liveT < 2.4 && (!B || B.type === 'static')) continue; // homing skims the floor while chasing
       if (isSticky(e.kind)) { stickTo(e, B); continue; } // grenades and eggs don't go off on contact: they stick, then the fuse runs
       if (B && B.type === 'robot' && e.kind !== 'freeze' && e.thrower && B.ref.team !== e.thrower.team) { const lv = e.body.linvel(); ragdoll(B.ref, V(lv.x, 0, lv.z), e.thrower); } // a direct hit always counts
       detonate(e);
@@ -3038,7 +3064,7 @@ function updateSticky(dt) {
     if (s.to) { // ride along on the robot (dead robot: fall where it was)
       if (s.to.state === 'play' || s.to.state === 'rag') { const c = rPos(s.to), p = c.clone().add(s.off); e.body.setTranslation({ x: p.x, y: p.y, z: p.z }, true); }
     }
-    s.beep -= dt; if (s.beep <= 0) { s.beep = Math.max(.12, s.fuse * .28); sfx('tick', V(e.body.translation().x, e.body.translation().y, e.body.translation().z)); if (e.core) e.core.scale.setScalar(.6); }
+    s.beep -= dt; if (s.beep <= 0) { s.beep = Math.max(.12, s.fuse * .28); sfx('tick', V(e.body.translation().x, e.body.translation().y, e.body.translation().z)); if (e.core && e.core.userData.pulse) e.core.scale.setScalar(.6); }
     if (s.fuse <= 0) { STUCK.splice(i, 1); if (!(NET && NET.client)) detonate(e); }
   }
 }
@@ -3798,7 +3824,7 @@ function updateRage(a, dt) {
   // and anyone in its way goes flying: the victim, team-mates, enemies, everybody
   for (const r of robots) {
     if (!hittable(r) || R.hit.has(r)) continue;
-    if (capsuleDist(r, p) < 1.45) {
+    if (capsuleDist(r, p.clone().addScaledVector(dir, 1.0)) < 1.25 || capsuleDist(r, p) < 1.75) { // its head reaches you before its body can simply shove you along
       R.hit.add(r); ragdoll(r, dir.clone().add(V(0, 0, 0)), null, 2.2); shake = Math.max(shake, r.isPlayer ? .8 : .3);
       koPop(rPos(r), r === tg ? 'TRAMPLED!' : 'KO!', '#ff6a4a', r === tg);
     }
