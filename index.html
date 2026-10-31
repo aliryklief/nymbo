@@ -3553,7 +3553,9 @@ const headState = r => r.state === 'rag' ? 'ko' : r.stack[0] && r.stack[0].kind 
 function buildHud() {
   for (const team of ['blue', 'red']) {
     const el = $(team === 'blue' ? 'teamB' : 'teamR'); el.innerHTML = '';
-    for (const r of robots.filter(o => o.team === team)) {
+    // same order as the towers: the team colour on the outside, the light shade next to the clock (blue: blue·lime·violet·cyan | clock | orange·pink·gold·red)
+    const order = team === 'blue' ? [0, 2, 3, 1] : [1, 3, 2, 0], mine = robots.filter(o => o.team === team);
+    for (const r of order.map(i => mine[i]).filter(Boolean)) {
       const d = document.createElement('div'); d.className = 'head' + (r.isPlayer ? ' me' : ''); d.style.setProperty('--c', r.color);
       d.innerHTML = headSVG(r, 'ok'); r.hudEl = d; r.hudState = 'ok'; el.appendChild(d);
     }
