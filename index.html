@@ -5068,18 +5068,45 @@ function look360(yaw) { show(null); CAMV.preview = null; SPEC.on = true; SPEC.or
 // ============================================================
 const REPLAY = { on: false, frames: [], killer: null, victim: null, t0: 0, from: 0, to: 0, at: 0, pendingAt: 0, recAt: 0, lastKiller: null, offerT: 0 };
 const REC_KEEP = 4.2, REC_EVERY = 1 / 30, REPLAY_SPEED = .8;
-const _rpM = new THREE.Matrix4(), _rpP = new THREE.Vector3(), _rpQ = new THREE.Quaternion(), _rpS = new THREE.Vector3();
+const _rpQ2 = new THREE.Quaternion(), _rpM = new THREE.Matrix4(), _rpP = new THREE.Vector3(), _rpQ = new THREE.Quaternion(), _rpS = new THREE.Vector3();
+// each robot: where it is and which way it faces, plus its pose (the rolling ball, squash and stretch, lean, arms,
+// what face it's pulling, the block on its head) and its soft ground shadow, so it moves in the replay like it did live
+function robotPose(r) { const m = r.model, g = m.g, b = m.ball, tr = m.torso, bl = m.blob;
+  return [g.position.x, g.position.y, g.position.z, g.quaternion.x, g.quaternion.y, g.quaternion.z, g.quaternion.w, g.visible ? 1 : 0, m.eyesX.visible ? 2 : m.eyesF.visible ? 1 : 0,
+    b.rotation.x, b.scale.x, b.scale.y, b.position.y, tr.rotation.x, tr.position.y, tr.scale.x, tr.scale.y,
+    m.arms[0].rotation.z, m.arms[0].rotation.x, m.arms[1].rotation.z, m.arms[1].rotation.x, m.held.visible ? 1 : 0,
+    bl.position.x, bl.position.y, bl.position.z, bl.scale.x, bl.material.opacity, bl.visible ? 1 : 0]; }
+function applyPose(r, a, b, k, kp) { const m = r.model, g = m.g, L = (i, kk = k) => a[i] + (b[i] - a[i]) * kk;
+  g.position.set(L(0, kp), L(1, kp), L(2, kp)); g.quaternion.set(a[3], a[4], a[5], a[6]).slerp(_rpQ.set(b[3], b[4], b[5], b[6]), k); g.visible = !!a[7];
+  const eye = k < .5 ? a[8] : b[8]; m.eyesN.visible = eye === 0; m.eyesF.visible = eye === 1; m.eyesX.visible = eye === 2;
+  m.ball.rotation.x = L(9); m.ball.scale.set(L(10), L(11), L(10)); m.ball.position.y = L(12); m.hub.position.y = m.ball.position.y; m.hub.scale.copy(m.ball.scale);
+  m.torso.rotation.x = L(13); m.torso.position.y = L(14); m.torso.scale.set(L(15), L(16), L(15));
+  m.arms[0].rotation.z = L(17); m.arms[0].rotation.x = L(18); m.arms[1].rotation.z = L(19); m.arms[1].rotation.x = L(20); m.held.visible = !!(k < .5 ? a[21] : b[21]);
+  m.blob.position.set(L(22, kp), L(23, kp), L(24, kp)); m.blob.scale.setScalar(L(25)); m.blob.material.opacity = L(26); m.blob.visible = !!a[27]; }
 function recordFrame() {
   const t = now() / 1000; if (t - REPLAY.recAt < REC_EVERY) return; REPLAY.recAt = t;
-  const rob = robots.map(r => { const g = r.model.g; return [g.position.x, g.position.y, g.position.z, g.quaternion.x, g.quaternion.y, g.quaternion.z, g.quaternion.w, g.visible ? 1 : 0, r.model.eyesX.visible ? 1 : 0]; });
-  const me = P ? P.model.g.position : null, blk = [];
+  const rob = robots.map(robotPose);
+  const me = P ? P.model.g.position : null, blk = new Map();
   if (me) for (const e of blocks) {
-    if (e.dead || e.anchored || e.holder) continue;
-    if (e.inst >= 0) { plainIM.getMatrixAt(e.inst, _rpM); const x = _rpM.elements[12], z = _rpM.elements[14]; if ((x - me.x) ** 2 + (z - me.z) ** 2 > 900) continue; blk.push([e, Float32Array.from(_rpM.elements)]); }
-    else if (e.mesh) { const p = e.mesh.position; if ((p.x - me.x) ** 2 + (p.z - me.z) ** 2 > 900) continue; blk.push([e, [p.x, p.y, p.z, e.mesh.quaternion.x, e.mesh.quaternion.y, e.mesh.quaternion.z, e.mesh.quaternion.w, e.mesh.visible ? 1 : 0]]); }
+    if (e.dead || e.anchored || (e.holder && e.kind !== 'animal')) continue; // (a cow on someone's head is its own mesh, so it's recorded too)
+    if (e.inst >= 0) { plainIM.getMatrixAt(e.inst, _rpM); const x = _rpM.elements[12], z = _rpM.elements[14]; if ((x - me.x) ** 2 + (z - me.z) ** 2 > 900) continue;
+      _rpM.decompose(_rpP, _rpQ, _rpS); blk.set(e, [_rpP.x, _rpP.y, _rpP.z, _rpQ.x, _rpQ.y, _rpQ.z, _rpQ.w, _rpS.x, _rpS.y, _rpS.z]); }
+    else if (e.mesh) { const ms = e.mesh, p = ms.position; if ((p.x - me.x) ** 2 + (p.z - me.z) ** 2 > 900) continue;
+      blk.set(e, [p.x, p.y, p.z, ms.quaternion.x, ms.quaternion.y, ms.quaternion.z, ms.quaternion.w, ms.scale.x, ms.scale.y, ms.scale.z, ms.visible ? 1 : 0]); }
   }
   REPLAY.frames.push({ t, rob, blk });
   while (REPLAY.frames.length && t - REPLAY.frames[0].t > REC_KEEP) REPLAY.frames.shift();
+  while (REPLAY.events.length && t - REPLAY.events[0].t > REC_KEEP) REPLAY.events.shift();
+}
+// the sparks, bursts, debris and sounds are recorded too (when, what and where) and happen again in the replay
+REPLAY.events = [];
+for (const name of ['fxBurst', 'fxBeam', 'fxDebris', 'fxTrail', 'sfx']) {
+  const orig = { fxBurst, fxBeam, fxDebris, fxTrail, sfx }[name];
+  const wrapped = function (...args) {
+    if (!REPLAY.firing && match.state === 'play' && (name !== 'sfx' || (args[1] && args[1].isVector3))) REPLAY.events.push({ t: now() / 1000, name, args: args.map(x => x && x.clone ? x.clone() : x) });
+    return orig.apply(this, args); };
+  if (name === 'fxBurst') fxBurst = wrapped; else if (name === 'fxBeam') fxBeam = wrapped; else if (name === 'fxDebris') fxDebris = wrapped; else if (name === 'fxTrail') fxTrail = wrapped; else sfx = wrapped;
+  REPLAY['orig_' + name] = orig;
 }
 // you went down: who did it (if anyone), then the replay starts a moment later (or the button shows)
 function onPlayerKO(by) {
@@ -5090,26 +5117,29 @@ function onPlayerKO(by) {
 function startReplay() {
   if (REPLAY.on || REPLAY.frames.length < 8 || match.state !== 'play') return;
   $('replayBtn').hidden = true; REPLAY.pendingAt = 0;
-  REPLAY.on = true; REPLAY.play = REPLAY.frames.slice(); REPLAY.to = REPLAY.play[REPLAY.play.length - 1].t; REPLAY.from = Math.max(REPLAY.play[0].t, REPLAY.koAt - 2.7);
-  REPLAY.at = REPLAY.from; REPLAY.last = now(); REPLAY.drawAt = 0; REPLAY.kp = null; REPLAY.sideSgn = 0; $('replayTag').hidden = false; gest = null;
+  REPLAY.on = true; REPLAY.play = REPLAY.frames.slice(); REPLAY.evs = REPLAY.events.slice(); REPLAY.to = REPLAY.play[REPLAY.play.length - 1].t; REPLAY.from = Math.max(REPLAY.play[0].t, REPLAY.koAt - 2.7);
+  REPLAY.at = REPLAY.from; REPLAY.evAt = REPLAY.from; REPLAY.last = now(); REPLAY.drawAt = 0; REPLAY.kp = null; REPLAY.sideSgn = 0; $('replayTag').hidden = false; gest = null;
 }
 function stopReplay() { if (!REPLAY.on) return; REPLAY.on = false; REPLAY.play = null; $('replayTag').hidden = true; snapCamera = true; }
 // borrow the recorded positions for one picture, then hand the live ones back
 function drawReplay() {
   const n = now(); REPLAY.at += (n - REPLAY.last) / 1000 * (REPLAY.speed || REPLAY_SPEED); REPLAY.last = n;
   if (REPLAY.at >= REPLAY.to || match.state !== 'play') { stopReplay(); return false; }
+  if (REPLAY.evs) { REPLAY.firing = true; // sparks and sounds that happened between the last picture and this one
+    for (const ev of REPLAY.evs) if (ev.t > REPLAY.evAt && ev.t <= REPLAY.at) try { REPLAY['orig_' + ev.name](...ev.args.map(x => x && x.clone ? x.clone() : x)); } catch (_) {}
+    REPLAY.firing = false; REPLAY.evAt = REPLAY.at; }
   const F = REPLAY.play; let i = 0; while (i < F.length - 2 && F[i + 1].t < REPLAY.at) i++;
   const A = F[i], B = F[i + 1] || A, k = B.t > A.t ? clamp((REPLAY.at - A.t) / (B.t - A.t), 0, 1) : 0;
   const saved = [];
   // a robot that jumped a long way between two recorded moments (respawn, portal) snaps instead of sliding across the map
   const lerpPos = (a, b, out) => { const far = Math.abs(b[0] - a[0]) + Math.abs(b[2] - a[2]) > 4, kk = far ? (k < .5 ? 0 : 1) : k; return out.set(a[0] + (b[0] - a[0]) * kk, a[1] + (b[1] - a[1]) * kk, a[2] + (b[2] - a[2]) * kk); };
-  robots.forEach((r, j) => { const g = r.model.g, a = A.rob[j], b = B.rob[j]; if (!a) return; saved.push([g, g.position.clone(), g.quaternion.clone(), g.visible, r.model.eyesX.visible, r.model.eyesN.visible, r.model.blob.visible]);
-    lerpPos(a, b, g.position); g.quaternion.set(a[3], a[4], a[5], a[6]).slerp(_rpQ.set(b[3], b[4], b[5], b[6]), k); g.visible = !!a[7]; r.model.eyesX.visible = !!a[8]; r.model.eyesN.visible = !a[8];
-    r.model.blob.visible = false; }); // the ground shadows belong to the live positions: hide them for the replay picture
+  robots.forEach((r, j) => { const a = A.rob[j], b = B.rob[j] || a; if (!a) return; saved[j] = robotPose(r);
+    const far = Math.abs(b[0] - a[0]) + Math.abs(b[2] - a[2]) > 4; applyPose(r, a, b, k, far ? (k < .5 ? 0 : 1) : k); });
   const savedB = []; let touchedIM = false;
-  for (const [e, d] of (k < .5 ? A : B).blk) {
-    if (e.inst >= 0) { plainIM.getMatrixAt(e.inst, _rpM); savedB.push([e, Float32Array.from(_rpM.elements)]); _rpM.fromArray(d); plainIM.setMatrixAt(e.inst, _rpM); touchedIM = true; }
-    else if (e.mesh) { const ms = e.mesh; savedB.push([e, [ms.position.x, ms.position.y, ms.position.z, ms.quaternion.x, ms.quaternion.y, ms.quaternion.z, ms.quaternion.w, ms.visible ? 1 : 0]]); ms.position.set(d[0], d[1], d[2]); ms.quaternion.set(d[3], d[4], d[5], d[6]); ms.visible = !!d[7]; }
+  for (const [e, d0] of A.blk) { const d1 = B.blk.get(e) || d0, far = Math.abs(d1[0] - d0[0]) + Math.abs(d1[2] - d0[2]) > 4, kk = far ? (k < .5 ? 0 : 1) : k;
+    _rpP.set(d0[0] + (d1[0] - d0[0]) * kk, d0[1] + (d1[1] - d0[1]) * kk, d0[2] + (d1[2] - d0[2]) * kk); _rpQ.set(d0[3], d0[4], d0[5], d0[6]).slerp(_rpQ2.set(d1[3], d1[4], d1[5], d1[6]), kk); _rpS.set(d0[7], d0[8], d0[9]);
+    if (e.inst >= 0) { plainIM.getMatrixAt(e.inst, _rpM); savedB.push([e, Float32Array.from(_rpM.elements)]); _rpM.compose(_rpP, _rpQ, _rpS); plainIM.setMatrixAt(e.inst, _rpM); touchedIM = true; }
+    else if (e.mesh) { const ms = e.mesh; savedB.push([e, [ms.position.x, ms.position.y, ms.position.z, ms.quaternion.x, ms.quaternion.y, ms.quaternion.z, ms.quaternion.w, ms.visible ? 1 : 0]]); ms.position.copy(_rpP); ms.quaternion.copy(_rpQ); ms.visible = !!d0[10]; }
   }
   if (touchedIM) plainIM.instanceMatrix.needsUpdate = true;
   // the camera: just behind the robot that knocked you out, looking where it was looking (towards you). Nobody to blame
@@ -5154,8 +5184,7 @@ function drawReplay() {
   renderer.render(scene, camera);
   camera.position.copy(liveCam); camera.quaternion.copy(liveQ); camLook.copy(liveLook);
   // put the live picture back
-  for (const [g, p, q, vis] of saved) { g.position.copy(p); g.quaternion.copy(q); g.visible = vis; }
-  robots.forEach((r, j) => { const s = saved[j]; if (s) { r.model.eyesX.visible = s[4]; r.model.eyesN.visible = s[5]; r.model.blob.visible = s[6]; } });
+  robots.forEach((r, j) => { const s = saved[j]; if (s) applyPose(r, s, s, 0, 0); });
   for (const [e, d] of savedB) { if (e.inst >= 0) { _rpM.fromArray(d); plainIM.setMatrixAt(e.inst, _rpM); } else { const ms = e.mesh; ms.position.set(d[0], d[1], d[2]); ms.quaternion.set(d[3], d[4], d[5], d[6]); ms.visible = !!d[7]; } }
   if (touchedIM) plainIM.instanceMatrix.needsUpdate = true;
   return true;
