@@ -894,7 +894,14 @@ const ICON = {
   // simple crosshair
   homing: g => { g.lineWidth = 7; g.beginPath(); g.arc(64, 64, 30, 0, 7); g.stroke(); g.beginPath(); g.moveTo(64, 20); g.lineTo(64, 46); g.moveTo(64, 82); g.lineTo(64, 108); g.moveTo(20, 64); g.lineTo(46, 64); g.moveTo(82, 64); g.lineTo(108, 64); g.stroke(); },
   // sticky grenade: a ring-pull pin; egg: speckles
-  sticky: g => { g.lineWidth = 9; g.beginPath(); g.arc(64, 50, 22, 0, 7); g.stroke(); g.fillRect(54, 70, 20, 40); g.fillRect(44, 104, 40, 10); },
+  // sticky: a grenade going off — pineapple body, cap and lever, burst spikes all round
+  sticky: g => {
+    g.lineWidth = 6; g.lineCap = 'round';
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + .3, r0 = 44 + (i % 2) * 6, r1 = r0 + 12 + (i % 2) * 6; g.beginPath(); g.moveTo(64 + Math.cos(a) * r0, 68 + Math.sin(a) * r0); g.lineTo(64 + Math.cos(a) * r1, 68 + Math.sin(a) * r1); g.stroke(); }
+    g.beginPath(); g.ellipse(64, 74, 22, 27, 0, 0, 7); g.fill();                           // body
+    g.fillRect(55, 36, 18, 12); g.fillRect(70, 30, 20, 7);                                 // cap + lever
+    g.save(); g.globalCompositeOperation = 'destination-out'; g.lineWidth = 3; for (const y of [62, 76, 90]) { g.beginPath(); g.moveTo(44, y); g.lineTo(84, y); g.stroke(); } for (const x of [54, 64, 74]) { g.beginPath(); g.moveTo(x, 50); g.lineTo(x, 98); g.stroke(); } g.restore(); // the grooves
+  },
   egg: g => { for (let i = 0; i < 14; i++) { const a = i * 2.4, r = 14 + (i * 37) % 40; g.beginPath(); g.arc(64 + Math.cos(a) * r, 64 + Math.sin(a) * r * 1.2, 4 + (i % 3) * 2, 0, 7); g.fill(); } },
   // warp: a spiral (you go where it lands)
   warp: g => { g.lineWidth = 8; g.lineCap = 'round'; g.beginPath(); for (let a = 0; a < Math.PI * 5; a += .15) { const r = 4 + a * 7.5; const x = 64 + Math.cos(a) * r, y = 64 + Math.sin(a) * r; a ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); },
