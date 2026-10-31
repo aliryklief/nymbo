@@ -472,8 +472,10 @@ function buildChunk(i, j) {
 }
 const cellData = new Uint8Array(GW * GD * 4).fill(255);
 // each half of the field is tinted a touch towards its team (blue side cooler, red side warmer) so you always know which way is home
-function sideTint(cx) { const x = cx - MX + .5, k = clamp(x / MX, -1, 1) * (FORT.blue.x < 0 ? 1 : -1); // k<0 = blue side
-  return k < 0 ? [255 + 95 * k | 0, 255 + 40 * k | 0, 255] : [255, 255 - 40 * k | 0, 255 - 95 * k | 0]; } // cool blue side / warm red side, strongest at the forts, meeting in the middle
+function sideTint(cx) { // two flat tones (not a gradient, which you can't read standing on it): the blue half is cool, the red half warm,
+  // blending only across the few cells either side of the centre line, so a glance up tells you which half you're on
+  const x = cx - MX + .5, side = clamp(x / 4, -1, 1) * (FORT.blue.x < 0 ? 1 : -1); // side<0 = blue
+  const k = Math.abs(side); return side < 0 ? [255 - 70 * k | 0, 255 - 26 * k | 0, 255] : [255, 255 - 26 * k | 0, 255 - 70 * k | 0]; }
 for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const [r, g, b] = sideTint(cx), i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; }
 const cellTex = new THREE.DataTexture(cellData, GW, GD, THREE.RGBAFormat); cellTex.magFilter = cellTex.minFilter = THREE.NearestFilter; cellTex.needsUpdate = true;
 function setCell(cx, cz, r, g, b, a) { if (cx < 0 || cz < 0 || cx >= GW || cz >= GD) return; const i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; cellData[i + 3] = a; cellTex.needsUpdate = true; }
