@@ -308,7 +308,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <div class="tog"><label for="sAllPowers">All powers (testing: every power + black hole, no streak needed)</label><input id="sAllPowers" type="checkbox"></div>
     <div class="tog"><label for="sClassic">Classic sounds</label><input id="sClassic" type="checkbox"></div>
     <div class="tog"><label for="sFps">Show FPS (frames per second, and what the game is spending its time on)</label><input id="sFps" type="checkbox"></div>
-    <div style="display:grid;gap:8px;margin-top:6px"><button class="go" id="resumeBtn" style="font-size:24px;padding:14px">BACK TO THE GAME</button><button class="ghost" id="pHow">How to play</button><button class="ghost" id="quitBtn">Quit match</button></div>
+    <div style="display:grid;gap:8px;margin-top:6px"><button class="go" id="resumeBtn" style="font-size:24px;padding:14px">BACK TO THE GAME</button><button class="ghost" id="pHow">How to play</button><button class="ghost" id="quitBtn">Quit match</button><button class="ghost" id="resetBtn" style="font-size:12px;padding:8px">Reset all my settings on this phone</button></div>
   </div></div>
 </div>
 
@@ -342,8 +342,13 @@ class LiteMat extends THREE.MeshLambertMaterial {
 
 // ---------------- settings ----------------
 const DEF = { turn: 6.5, zoneH: 16, lock: 1.2, trail: true, buzz: true, sound: true, classic: false, diff: 'normal' };
+// one-time wipe of everything saved on this phone (settings, sound/look picks, uploads), so the game's own defaults apply.
+// Bump SETTINGS_V whenever that's wanted again.
+const SETTINGS_V = '2';
+try { if (localStorage.getItem('nymbo-settings-v') !== SETTINGS_V) { for (const k of ['nymbo-match', 'nymbo-choice']) localStorage.removeItem(k); try { indexedDB.deleteDatabase('nymbo-labs'); } catch (e) {} localStorage.setItem('nymbo-settings-v', SETTINGS_V); } } catch (e) {}
 const S = { ...DEF };
 try { Object.assign(S, JSON.parse(localStorage.getItem('nymbo-match') || '{}')); } catch (e) {}
+function resetSettings() { try { for (const k of ['nymbo-match', 'nymbo-choice', 'nymbo-settings-v']) localStorage.removeItem(k); indexedDB.deleteDatabase('nymbo-labs'); } catch (e) {} location.reload(); }
 // the game is one system: camera speed, dodge area and lock-on are the same for everyone
 Object.assign(S, { turn: 6.5, zoneH: 16, lock: 1.2, trail: false });
 const NIGHT = S.world === 'night'; // "Aurora night" world look, picked on the home screen (applied in 09b_night.js)
@@ -4410,6 +4415,7 @@ $('mid').onclick = () => pauseGame();
 $('resumeBtn').onclick = () => { show(null); match.menu = false; };
 $('pHow').onclick = () => show('howto');
 $('quitBtn').onclick = () => restart(false);
+$('resetBtn').onclick = () => { if (confirm('Reset every setting, sound pick, look pick and upload saved on this phone?')) resetSettings(); };
 $('againBtn').onclick = () => restart(true);
 $('menuBtn').onclick = () => restart(false);
 function pauseGame() { if (match.state !== 'play') return; closePicker(); gest = null; match.menu = true; show('pause'); drawMenuMap(); } // the clock menu: map + settings, the match keeps running
