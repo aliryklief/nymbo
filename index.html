@@ -472,11 +472,17 @@ function buildChunk(i, j) {
 }
 const cellData = new Uint8Array(GW * GD * 4).fill(255);
 // each half of the field is tinted a touch towards its team (blue side cooler, red side warmer) so you always know which way is home
-function sideTint(cx) { // two flat tones (not a gradient, which you can't read standing on it): the blue half is cool, the red half warm,
-  // blending only across the few cells either side of the centre line, so a glance up tells you which half you're on
-  const x = cx - MX + .5, side = clamp(x / 4, -1, 1) * (FORT.blue.x < 0 ? 1 : -1); // side<0 = blue
-  const k = Math.abs(side); return side < 0 ? [255 - 70 * k | 0, 255 - 26 * k | 0, 255] : [255, 255 - 26 * k | 0, 255 - 70 * k | 0]; }
-for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const [r, g, b] = sideTint(cx), i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; }
+// two grasses: the field is split DIAGONALLY along the line between the two portals, blue's half cool, red's half warm,
+// blending over a few cells at the seam. Pastures and the stone pads keep their own look.
+const PASTURE_C = PORTAL_SPOTS.map(p => { const L = Math.hypot(p.x, p.z); return { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; });
+const SPLIT = (() => { const A = PORTAL_SPOTS[0], B = PORTAL_SPOTS[1], dx = B.x - A.x, dz = B.z - A.z, L = Math.hypot(dx, dz); const nx = -dz / L, nz = dx / L; const sgn = Math.sign(FORT.blue.x * nx + FORT.blue.z * nz) || 1; return { nx: nx * sgn, nz: nz * sgn }; })(); // (x,z)·n > 0 = blue side
+function sideTint(cx, cz) {
+  const x = cx - MX + .5, z = (cz ?? 0) - MZ + .5;
+  if (PASTURE_C.some(pa => Math.hypot(x - pa.x, z - pa.z) < 7.5 + 1.4)) return [255, 255, 255]; // (the pastures: 7.5 radius, 8.5 in from each portal)
+  const side = clamp((x * SPLIT.nx + z * SPLIT.nz) / 3, -1, 1), k = Math.abs(side);
+  return side > 0 ? [255 - 70 * k | 0, 255 - 26 * k | 0, 255] : [255, 255 - 26 * k | 0, 255 - 70 * k | 0];
+}
+for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const [r, g, b] = sideTint(cx, cz), i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; }
 const cellTex = new THREE.DataTexture(cellData, GW, GD, THREE.RGBAFormat); cellTex.magFilter = cellTex.minFilter = THREE.NearestFilter; cellTex.needsUpdate = true;
 function setCell(cx, cz, r, g, b, a) { if (cx < 0 || cz < 0 || cx >= GW || cz >= GD) return; const i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; cellData[i + 3] = a; cellTex.needsUpdate = true; }
 function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a hole where a cell's alpha is 0
@@ -2898,7 +2904,7 @@ const frozenCount = new Map(); // ground square -> how many ice patches cover it
 function frostCells(cells, on) {
   for (const [x, z] of cells) { const [cx, cz] = cellOf(x, z), k = cx + ',' + cz; if (HOLES.has(k)) continue;
     const n = Math.max(0, (frozenCount.get(k) || 0) + (on ? 1 : -1)); frozenCount.set(k, n);
-    if (n > 0) setCell(cx, cz, 170, 215, 255, 255); else setCell(cx, cz, ...sideTint(cx), 255); }
+    if (n > 0) setCell(cx, cz, 170, 215, 255, 255); else setCell(cx, cz, ...sideTint(cx, cz), 255); }
 }
 function holeAllowed(x, z) {
   if (Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 4 && Math.abs(z - F.z) < FORT_RZ + 4)) return false;
@@ -2927,7 +2933,7 @@ function rebuildPits() {
 }
 function setHole(cx, cz, on) {
   const k = cx + ',' + cz; if (on === HOLES.has(k)) return; netEv(['hole', cx, cz, on ? 1 : 0]);
-  if (on) { HOLES.add(k); setCell(cx, cz, 255, 255, 255, 0); } else { HOLES.delete(k); setCell(cx, cz, ...sideTint(cx), 255); frozenCount.delete(k); }
+  if (on) { HOLES.add(k); setCell(cx, cz, 255, 255, 255, 0); } else { HOLES.delete(k); setCell(cx, cz, ...sideTint(cx, cz), 255); frozenCount.delete(k); }
   buildChunk(Math.floor(cx / GCH), Math.floor(cz / GCH));
 }
 function breakStage(pos, rad) {
