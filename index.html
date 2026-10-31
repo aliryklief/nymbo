@@ -995,14 +995,29 @@ const coreGeo = new RoundedBoxGeometry(1, 1, 1, 1, .12);
 // a spider web in the sticky grenade. The other power blocks keep the small spinning core.
 const INNER = (() => {
   const powder = (() => { const parts = []; let seed = 7; const rn = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 46; i++) { const g = new THREE.BoxGeometry(.07 + rn() * .06, .05 + rn() * .05, .07 + rn() * .06), r = Math.sqrt(rn()) * .36, a = rn() * 6.28, h = (1 - r / .36) * .16 * rn();
+    for (let i = 0; i < 130; i++) { const g = new THREE.BoxGeometry(.07 + rn() * .06, .05 + rn() * .05, .07 + rn() * .06), r = Math.sqrt(rn()) * .38, a = rn() * 6.28, h = (1 - r / .38) * .34 * rn() + rn() * .05; // a fuller heap, peaked in the middle
       g.translate(Math.cos(a) * r, -.4 + h, Math.sin(a) * r); g.rotateY(rn() * 3); const c = new THREE.Color().setHSL(.0 + rn() * .03, .75, .2 + rn() * .16), n = g.attributes.position.count, cs = new Float32Array(n * 3); for (let k = 0; k < n; k++) c.toArray(cs, k * 3); g.setAttribute('color', new THREE.BufferAttribute(cs, 3)); parts.push(g); }
     return new THREE.Mesh(mergeGeometries(parts), new LiteMat({ vertexColors: true })); })();               // a little heap of dark-red grains on the floor of the block
-  const water = new THREE.Mesh(new THREE.BoxGeometry(.84, .5, .84).translate(0, -.21, 0), new THREE.MeshLambertMaterial({ color: 0x1f8fe0, transparent: true, opacity: .78, emissive: 0x0a4a8c, emissiveIntensity: .55, depthWrite: false })); water.renderOrder = 3; // drawn after the frosty glass so it reads clearly
-  const magnet = (() => { const g = new THREE.Group(), red = new LiteMat({ color: 0xe0281a }), steel = new LiteMat({ color: 0xdfe4ea });
-    g.add(new THREE.Mesh(new THREE.TorusGeometry(.17, .07, 8, 18, Math.PI).rotateZ(Math.PI), red));
-    for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(.14, .16, .14), red); leg.position.set(sx * .17, .08, 0); g.add(leg); const tip = new THREE.Mesh(new THREE.BoxGeometry(.145, .09, .145), steel); tip.position.set(sx * .17, .2, 0); g.add(tip); }
-    g.position.y = -.02; return g; })();
+  const water = (() => { // icy water: pale freezing blue, a frosted surface and chunks of ice floating in it
+    const g = new THREE.Group();
+    const w = new THREE.Mesh(new THREE.BoxGeometry(.84, .5, .84).translate(0, -.21, 0), new THREE.MeshLambertMaterial({ color: 0x8fdcff, transparent: true, opacity: .72, emissive: 0x3a9ad6, emissiveIntensity: .45, depthWrite: false })); w.renderOrder = 3; g.add(w);
+    const frost = new THREE.Mesh(new THREE.BoxGeometry(.84, .04, .84).translate(0, .05, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: .55, emissive: 0xcfefff, emissiveIntensity: .4, depthWrite: false })); frost.renderOrder = 4; g.add(frost);
+    const iceM = new THREE.MeshLambertMaterial({ color: 0xf4fcff, emissive: 0xbfe8ff, emissiveIntensity: .5 });
+    for (const [x, z, s, ry] of [[-.2, -.15, .2, .3], [.18, .12, .16, 1.1], [.05, -.25, .12, .7], [-.22, .22, .14, .2]]) { const c = new THREE.Mesh(new THREE.BoxGeometry(s, s * .7, s), iceM); c.position.set(x, .05, z); c.rotation.set(.3, ry, .2); g.add(c); }
+    return g; })();
+  const magnet = (() => { // (it's a compass now: a dial with a red-and-white needle that keeps hunting about)
+    const g = new THREE.Group(), face = new THREE.Group();
+    const dc = document.createElement('canvas'); dc.width = dc.height = 128; const x = dc.getContext('2d');
+    x.fillStyle = '#f6f2e6'; x.beginPath(); x.arc(64, 64, 62, 0, 7); x.fill(); x.strokeStyle = '#2b2d33'; x.lineWidth = 6; x.stroke();
+    x.lineWidth = 3; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, r0 = i % 4 ? 50 : 42; x.beginPath(); x.moveTo(64 + Math.cos(a) * r0, 64 + Math.sin(a) * r0); x.lineTo(64 + Math.cos(a) * 58, 64 + Math.sin(a) * 58); x.stroke(); }
+    x.fillStyle = '#2b2d33'; x.font = 'bold 22px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; [['N', 64, 24], ['S', 64, 104], ['E', 104, 64], ['W', 24, 64]].forEach(([t, px, py]) => x.fillText(t, px, py));
+    const dial = new THREE.Mesh(new THREE.CylinderGeometry(.33, .33, .05, 28), [new LiteMat({ color: 0xb08a3a }), new LiteMat({ map: new THREE.CanvasTexture(dc) }), new LiteMat({ map: new THREE.CanvasTexture(dc) })]); face.add(dial);
+    const needle = new THREE.Group(), red = new LiteMat({ color: 0xe0281a, emissive: 0x500a06 }), white = new LiteMat({ color: 0xffffff });
+    const nN = new THREE.Mesh(new THREE.ConeGeometry(.055, .24, 4), red); nN.rotation.x = Math.PI / 2; nN.position.z = -.12; needle.add(nN);
+    const nS = new THREE.Mesh(new THREE.ConeGeometry(.055, .24, 4), white); nS.rotation.x = -Math.PI / 2; nS.position.z = .12; needle.add(nS);
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .09, 8), new LiteMat({ color: 0xb08a3a })); needle.add(pin);
+    needle.position.y = .05; face.add(needle); face.rotation.x = .45; g.add(face); needle.name = 'needle'; g.position.y = -.04;
+    return g; })();
   const web = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.strokeStyle = 'rgba(255,255,255,.92)'; x.lineWidth = 2;
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; x.beginPath(); x.moveTo(64, 64); x.lineTo(64 + Math.cos(a) * 64, 64 + Math.sin(a) * 64); x.stroke(); }
     for (let r = 10; r < 62; r += 9) { x.beginPath(); for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI * 2, rr_ = r + (i % 2) * 2; i ? x.lineTo(64 + Math.cos(a) * rr_, 64 + Math.sin(a) * rr_) : x.moveTo(64 + Math.cos(a) * rr_, 64 + Math.sin(a) * rr_); } x.stroke(); }
@@ -1017,7 +1032,7 @@ function decoratePower(e) {
 }
 function pulseHalos(t) { const s = .42 + .03 * Math.sin(t / 220); for (const e of blocks) if (e.core && !e.dead) { const c = e.core;
   if (c.userData.pulse) { c.rotation.y = t / 900 + e.id; c.scale.setScalar(s); }
-  else if (c.userData.kind === 'homing') c.rotation.y = t / 600 + e.id;                                     // the magnet turns slowly
+  else if (c.userData.kind === 'homing') { const nd = c.userData.nd || (c.userData.nd = c.getObjectByName('needle')); if (nd) nd.rotation.y = Math.sin(t / 700 + e.id) * 1.4 + Math.sin(t / 170 + e.id * 3) * .25; } // the compass needle keeps hunting about
   else if (c.userData.kind === 'freeze') { c.scale.y = 1 + .05 * Math.sin(t / 260 + e.id); } } }               // the water sloshes
 const flagMats = {};
 const flagMat = col => flagMats[col] || (flagMats[col] = (() => { const c = new THREE.Color(col), d = c.clone().multiplyScalar(.55); const t = iconTex(col, '#' + d.getHexString(), ICON.flag); return new LiteMat({ map: t, emissive: col, emissiveMap: t, emissiveIntensity: .7, roughness: .4 }); })());
@@ -2481,6 +2496,9 @@ function refreshHeld(r) {
   h.scale.copy(e.dims).multiplyScalar(.82); { const m = Math.max(h.scale.x, h.scale.y, h.scale.z); if (m > 1.25) h.scale.multiplyScalar(1.25 / m); } // big blocks shrink on your head so they don't block your view
   if (e.inst >= 0) { h.material = r.model.heldPlainMat; h.material.color.copy(e.color); }
   else h.material = e.kind === 'flag' ? flagMat('#' + e.color.getHexString()) : kindMat[e.kind];
+  // what's inside a power block (gunpowder, water, magnet, web) shows on your head as well
+  if (h.userData.innerKind !== e.kind) { if (h.userData.inner) { h.remove(h.userData.inner); h.userData.inner = null; } h.userData.innerKind = e.kind;
+    if (isPower(e.kind)) { const src = INNER[e.kind]; const c = src ? src.clone() : new THREE.Mesh(coreGeo, coreMat[e.kind]); if (!src) { c.scale.setScalar(.42); c.rotation.set(.6, .6, 0); } h.add(c); h.userData.inner = c; h.renderOrder = 2; } }
 }
 // picking up: the new block becomes your active block; the rest move back one place
 function grabBlock(r, e) {
