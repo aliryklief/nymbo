@@ -264,6 +264,8 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <div class="panel"><h2>Look lab</h2><p class="rules" style="margin:0 0 8px">The textures the game draws with. Upload an image to replace one (square images, 64 to 512 pixels, work best). Kept on this device; export to send.</p>
       <div class="lbl" style="margin:10px 0 6px">VISUALS</div>
       <div class="tog"><label for="sAoe">Blast sphere (shows the area a bomb / freeze / nuke covers)</label><input id="sAoe" type="checkbox"></div>
+      <div class="lbl" style="margin:10px 0 6px">FLOOR</div>
+      <div class="seg"><button data-floor="mosaic">Soft mosaic</button><button data-floor="lava">Grass &amp; lava</button><button data-floor="classic">Classic grass</button></div>
       <div id="lookList"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport2">Export my replacements</button><button class="ghost" id="lookLabBack">Back</button></div></div>
   </div>
@@ -478,24 +480,37 @@ const PASTURE_C = PORTAL_SPOTS.map(p => { const L = Math.hypot(p.x, p.z); return
 const SPLIT = (() => { const A = PORTAL_SPOTS[0], B = PORTAL_SPOTS[1], dx = B.x - A.x, dz = B.z - A.z, L = Math.hypot(dx, dz); const nx = -dz / L, nz = dx / L; const sgn = Math.sign(FORT.blue.x * nx + FORT.blue.z * nz) || 1; return { nx: nx * sgn, nz: nz * sgn }; })(); // (x,z)·n > 0 = blue side
 // the floor runs through Ali's palette from deep green (blue's end) through yellow to deep red (red's end), in diagonal
 // bands that wave rather than run straight, and every cell is nudged a step up or down at random so it reads as a mosaic
-const FLOOR_PAL = ['#1A9850', '#66BD63', '#A6D96A', '#D9EF8B', '#FFFFBF', '#FEE08B', '#FDAE61', '#F46D43', '#D73027', '#A50026'].map(h => new THREE.Color(h));
+if (!['mosaic', 'lava', 'classic'].includes(S.floor)) S.floor = 'mosaic'; // 'mosaic' (soft green→yellow→red), 'lava' (grass one side, lava the other), 'classic' (plain grass). Look lab → Floor
+const desat = (h, k) => { const c = new THREE.Color(h), g = (c.r + c.g + c.b) / 3; return c.lerp(new THREE.Color(g, g, g), k); };
+const FLOOR_PALS = {
+  mosaic: ['#1A9850', '#66BD63', '#A6D96A', '#D9EF8B', '#FFFFBF', '#FEE08B', '#FDAE61', '#F46D43', '#D73027', '#A50026'].map(h => desat(h, .5)), // Ali's palette, half the saturation
+  lava: ['#2a1a16', '#3d1d14', '#5a2410', '#7c2e0d', '#a63f0c', '#cc5410', '#e86f16', '#ff8f1e'].map(h => new THREE.Color(h)),            // basalt → glowing orange
+};
 const cellJit = []; { let seed = 1234567; const rn = () => (seed = (seed * 48271) % 2147483647) / 2147483647; for (let i = 0; i < GW * GD; i++) cellJit.push(rn()); } // its own fixed random sequence (identical on every phone)
 function sideTint(cx, cz) {
   const x = cx - MX + .5, z = (cz ?? 0) - MZ + .5;
+  if (S.floor === 'classic') return [255, 255, 255]; // the original: plain grass everywhere
   if (PASTURE_C.some(pa => Math.hypot(x - pa.x, z - pa.z) < 7.5 + 1.4)) return [255, 255, 255]; // the pastures keep plain grass
   const along = x * SPLIT.nz - z * SPLIT.nx, across = x * SPLIT.nx + z * SPLIT.nz;
   const wave = 7 * Math.sin(along * .11 + .8) + 4 * Math.sin(along * .27 + 2.1) + 2 * Math.sin(along * .61 + .3) + 3 * Math.sin(across * .23 + along * .09);
+  const j = cellJit[(cz ?? 0) * GW + cx] || .5, c255 = c => [c.r * 255 | 0, c.g * 255 | 0, c.b * 255 | 0];
+  if (S.floor === 'lava') { // blue's half is grass; across a scorched, ashy edge the red half is a lava field, brightest deep inside
+    const t = (-(across + wave)) / 60 + (j - .5) * .22; // -1 grass end … +1 lava end
+    if (t < -.06) return [255, 255, 255];
+    if (t < .1) { const k = (t + .06) / .16; return c255(new THREE.Color('#8f8c6e').lerp(new THREE.Color('#3b2a24'), k)); } // ash to scorched earth
+    const P_ = FLOOR_PALS.lava, i = Math.round(clamp((t - .1) / .5, 0, 1) * (P_.length - 1)); return c255(P_[i]); // glowing within a few blocks of the scorched edge
+  }
   let t = clamp((-(across + wave)) / 60, -1, 1); // -1 = deep in blue's half (green end) … +1 = deep in red's half
-  const j = cellJit[(cz ?? 0) * GW + cx] || .5; t += (j - .5) * .3; // each cell wanders up to a step and a half
-  const i = Math.round(clamp((t + 1) / 2, 0, 1) * (FLOOR_PAL.length - 1)), c = FLOOR_PAL[i];
-  return [c.r * 255 | 0, c.g * 255 | 0, c.b * 255 | 0];
+  t += (j - .5) * .3; // each cell wanders up to a step and a half
+  const P_ = FLOOR_PALS.mosaic, i = Math.round(clamp((t + 1) / 2, 0, 1) * (P_.length - 1)); return c255(P_[i]);
 }
+function paintFloor() { for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const i = ((GD - 1 - cz) * GW + cx) * 4; if (cellData[i + 3] === 0 || (cellData[i] === 170 && cellData[i + 1] === 215)) continue; const [r, g, b] = sideTint(cx, cz); cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; } if (typeof cellTex !== 'undefined') cellTex.needsUpdate = true; }
 for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const [r, g, b] = sideTint(cx, cz), i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; }
 const cellTex = new THREE.DataTexture(cellData, GW, GD, THREE.RGBAFormat); cellTex.magFilter = cellTex.minFilter = THREE.NearestFilter; cellTex.needsUpdate = true;
 function setCell(cx, cz, r, g, b, a) { if (cx < 0 || cz < 0 || cx >= GW || cz >= GD) return; const i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; cellData[i + 3] = a; cellTex.needsUpdate = true; }
 function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a hole where a cell's alpha is 0
   mat.onBeforeCompile = sh => { sh.uniforms.cellTex = { value: cellTex }; sh.uniforms.cellRep = { value: new THREE.Vector2(MX, MZ) };
-    sh.fragmentShader = 'uniform sampler2D cellTex; uniform vec2 cellRep;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n  vec4 cc = texture2D(cellTex, vMapUv / cellRep); if (cc.a < .5) discard; float st = clamp(length(vec3(1.0) - cc.rgb) * 2.2, 0.0, 1.0); vec3 d = diffuseColor.rgb; float lum = dot(d, vec3(.3, .59, .11)); diffuseColor.rgb = mix(d, cc.rgb * lum * 1.9, st); // a tinted cell takes that colour, keeping the checker light/dark pattern; white = plain grass'); };
+    sh.fragmentShader = 'uniform sampler2D cellTex; uniform vec2 cellRep;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n  vec4 cc = texture2D(cellTex, vMapUv / cellRep); if (cc.a < .5) discard; float st = clamp(length(vec3(1.0) - cc.rgb) * 2.2, 0.0, 1.0); vec3 d = diffuseColor.rgb; float lum = dot(d, vec3(.3, .59, .11)); diffuseColor.rgb = mix(d, cc.rgb * lum * 1.9, st); // a tinted cell takes that colour, keeping the checker light/dark pattern; white = plain grass\n  float hotc = clamp((cc.r - cc.g * 1.6) * 2.0, 0.0, 1.0); totalEmissiveRadiance += cc.rgb * hotc * .35; // lava cells glow'); };
   mat.customProgramCacheKey = () => 'groundcells';
 }
 // ground slab: grass checker on top, dirt + stone block faces on the sides
@@ -4388,6 +4403,7 @@ document.querySelectorAll('[data-diff]').forEach(b => b.onclick = () => setDiff(
 setDiff(S.diff);
 $('playBtn').onclick = () => { audioInit(); startCountdown(); };
 $('howBtn').onclick = () => show('howto');
+document.querySelectorAll('[data-floor]').forEach(b => { b.setAttribute('aria-pressed', b.dataset.floor === S.floor); b.onclick = () => { S.floor = b.dataset.floor; saveS(); paintFloor(); document.querySelectorAll('[data-floor]').forEach(x => x.setAttribute('aria-pressed', x.dataset.floor === S.floor)); }; });
 document.querySelectorAll('[data-world]').forEach(b => { b.setAttribute('aria-pressed', b.dataset.world === (NIGHT ? 'night' : 'day')); b.onclick = () => { if (b.dataset.world === (NIGHT ? 'night' : 'day')) return; S.world = b.dataset.world; saveS(); document.body.style.transition = 'opacity .25s'; document.body.style.opacity = 0; setTimeout(() => restart(false), 260); }; });
 $('howBack').onclick = () => show(match.menu ? 'pause' : 'menu');
 $('mid').onclick = () => pauseGame();
@@ -4564,7 +4580,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
