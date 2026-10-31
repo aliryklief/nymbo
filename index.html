@@ -4492,11 +4492,11 @@ function updateShield(dt) {
 // KILL STREAKS + THE BLACK HOLE
 //  Kill streak = knockouts in a row without being knocked out yourself. Everyone has the same ladder:
 //    5 KOs → 1 power token · 8 → a 2nd · 10 → a 3rd (you can bank at most 3). A token is spent on any power button.
-//    30 KOs without dying → the BLACK HOLE: it opens above the animal monument in the middle of the map and swallows
+//    15 KOs without dying → the BLACK HOLE: it opens above the animal monument in the middle of the map and swallows
 //    everything, robots and blocks, pulling harder and from further away as time goes on. Swallowed players watch
 //    from the 360° camera on the monument's back. If every enemy is swallowed before the clock runs out, your team wins.
 // ============================================================
-const STREAK_TIERS = [5, 8, 10], BH_AT = 30, MAX_TOKENS = 3;
+const STREAK_TIERS = [5, 8, 10], BH_AT = 15, MAX_TOKENS = 3;
 const BH = { on: false, team: null, t: 0, R: 0, g: null, pos: V(0, 0, 0), spin: 0, eaten: 0, lastTeam: null }; // eaten: everything swallowed so far — it feeds the hole
 const SPEC = { on: false, yaw: 0, pitch: -.25 }; // the 360 camera on the monument
 function onStreak(by, victim) {
