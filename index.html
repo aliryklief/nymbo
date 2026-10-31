@@ -265,7 +265,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
       <div class="lbl" style="margin:10px 0 6px">VISUALS</div>
       <div class="tog"><label for="sAoe">Blast sphere (shows the area a bomb / freeze / nuke covers)</label><input id="sAoe" type="checkbox"></div>
       <div class="lbl" style="margin:10px 0 6px">FLOOR</div>
-      <div class="seg"><button data-floor="mosaic">Soft mosaic</button><button data-floor="lava">Grass &amp; lava</button><button data-floor="classic">Classic grass</button></div>
+      <div class="seg"><button data-floor="classic">Classic grass</button><button data-floor="mosaic">Soft mosaic</button><button data-floor="lava">Grass &amp; lava</button></div>
       <div id="lookList"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport2">Export my replacements</button><button class="ghost" id="lookLabBack">Back</button></div></div>
   </div>
@@ -344,7 +344,7 @@ class LiteMat extends THREE.MeshLambertMaterial {
 const DEF = { turn: 6.5, zoneH: 16, lock: 1.2, trail: true, buzz: true, sound: true, classic: false, diff: 'normal' };
 // one-time wipe of everything saved on this phone (settings, sound/look picks, uploads), so the game's own defaults apply.
 // Bump SETTINGS_V whenever that's wanted again.
-const SETTINGS_V = '2';
+const SETTINGS_V = '3';
 try { if (localStorage.getItem('nymbo-settings-v') !== SETTINGS_V) { for (const k of ['nymbo-match', 'nymbo-choice']) localStorage.removeItem(k); try { indexedDB.deleteDatabase('nymbo-labs'); } catch (e) {} localStorage.setItem('nymbo-settings-v', SETTINGS_V); } } catch (e) {}
 const S = { ...DEF };
 try { Object.assign(S, JSON.parse(localStorage.getItem('nymbo-match') || '{}')); } catch (e) {}
@@ -485,7 +485,7 @@ const PASTURE_C = PORTAL_SPOTS.map(p => { const L = Math.hypot(p.x, p.z); return
 const SPLIT = (() => { const A = PORTAL_SPOTS[0], B = PORTAL_SPOTS[1], dx = B.x - A.x, dz = B.z - A.z, L = Math.hypot(dx, dz); const nx = -dz / L, nz = dx / L; const sgn = Math.sign(FORT.blue.x * nx + FORT.blue.z * nz) || 1; return { nx: nx * sgn, nz: nz * sgn }; })(); // (x,z)·n > 0 = blue side
 // the floor runs through Ali's palette from deep green (blue's end) through yellow to deep red (red's end), in diagonal
 // bands that wave rather than run straight, and every cell is nudged a step up or down at random so it reads as a mosaic
-if (!['mosaic', 'lava', 'classic'].includes(S.floor)) S.floor = 'mosaic'; // 'mosaic' (soft green→yellow→red), 'lava' (grass one side, lava the other), 'classic' (plain grass). Look lab → Floor
+if (!['mosaic', 'lava', 'classic'].includes(S.floor)) S.floor = 'classic'; // 'mosaic' (soft green→yellow→red), 'lava' (grass one side, lava the other), 'classic' (plain grass). Look lab → Floor
 const desat = (h, k) => { const c = new THREE.Color(h), g = (c.r + c.g + c.b) / 3; return c.lerp(new THREE.Color(g, g, g), k); };
 const FLOOR_PALS = {
   mosaic: ['#1A9850', '#66BD63', '#A6D96A', '#D9EF8B', '#FFFFBF', '#FEE08B', '#FDAE61', '#F46D43', '#D73027', '#A50026'].map(h => desat(h, .5)), // Ali's palette, half the saturation
@@ -1054,7 +1054,7 @@ function destroyBlock(e) { dropBody(e); hideBlock(e); e.dead = true; e.live = fa
 
 // ---------- forts: faded team colours, walls, four flag towers ----------
 const FLAGS = { blue: [], red: [] };
-const fadeCol = c => '#' + new THREE.Color(c).lerp(new THREE.Color('#c4c7ce'), .55).getHexString();
+const fadeCol = c => '#' + new THREE.Color(c).lerp(new THREE.Color('#c4c7ce'), .45).getHexString(); // fort bricks: a bit more colour than before, still faded enough that the robots pop against them
 const TOWER_H = 12; // flags high up: you can spot them from anywhere on the map
 // Big brick forts (Toblo scale): 2-thick, 3-high outer walls of 2x1 bricks laid in a staggered pattern,
 // a doorway in the middle of each side, two inner wall pieces, and four tall towers carrying the flags.
