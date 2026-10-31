@@ -2620,7 +2620,7 @@ function grabBlock(r, e) {
   if (r.stack.length >= MAX_AMMO && e.kind !== 'flag') return false;
   if (r.stack[0] && r.stack[0].kind === 'flag') return false;           // carrying a flag: hands are full
   if (e.kind === 'flag' && e.team === r.team) return false;
-  if (e.kind === 'animal') { if (e.animal !== 'cow') e.heldT = 0; e.angerWarned = false; e.voiceT = .6; } // a cow keeps whatever anger it still has
+  if (e.kind === 'animal') { e.angerWarned = false; e.voiceT = .6; } // cows and sheep both keep whatever anger they still have
   if (e.live && e.thrower && e.thrower.team !== r.team) { sfx('catch', rPos(r)); r.caught = true; } // caught it out of the air!
   if (e.frozenT > 0) thawBlock(e);
   if (e.anchored) { const t = e.body.translation(); unanchorAround(V(t.x, t.y, t.z), 1.2, e); e.anchored = false; } // pulling a block out loosens its neighbours
@@ -4035,6 +4035,7 @@ const woolGeo = new RoundedBoxGeometry(1, 1, 1, 2, .3), woolMat = new LiteMat({ 
 function sheepLoose(a, r) {
   const p = rPos(r); woolHeap(p); dropAnimals(r);
   a.wander.speed = 3.2; a.wander.t = 3; a.wander.dir = r.yaw + Math.PI + rr(-.6, .6); // ...and it bolts away
+  a.heldT = ANGER_AT - .3; // still upset: it calms down slowly, and whoever grabs it soon gets a burst almost straight away
   sfx('poof', p);
   if (r.isPlayer) { toast('BAA! WOOL EVERYWHERE'); }
 }
