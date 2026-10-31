@@ -57,6 +57,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 .dz.soft{background:linear-gradient(90deg,rgba(255,255,255,.14),transparent)}#dzR.soft{background:linear-gradient(270deg,rgba(255,255,255,.14),transparent)}
 .dz.hit{animation:dzhit .35s ease-out}
 @keyframes dzhit{0%{background:rgba(120,255,140,.45)}100%{background:rgba(120,255,140,0)}}
+#fps{left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 84px);font:600 11px/1.3 var(--body);color:#ffd400;background:rgba(0,0,0,.45);padding:4px 8px;border-radius:8px;white-space:pre;text-align:center}
 #micBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:8;padding:8px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--panel);color:#fff;font:600 12px/1 var(--body);letter-spacing:.08em}
 #micBtn.on,#lobbyMic.on{background:#1f8f4a;border-color:#4be08a}
 #micBtn.busy{opacity:.6}
@@ -214,6 +215,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <button class="pw" id="holeBtn" hidden style="--c:#b36bff" aria-label="BLACK HOLE"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5c5.2 0 9.5 4.3 9.5 9.5S17.2 21.5 12 21.5 2.5 17.2 2.5 12 6.8 2.5 12 2.5zm0 2A7.5 7.5 0 1 0 12 19.5 7.5 7.5 0 0 0 12 4.5z" opacity=".5"/><path d="M4 12a8 8 0 0 1 8-8v2a6 6 0 0 0-6 6z" opacity=".9"/></svg><span>BLACK HOLE</span><i></i></button>
   <button id="micBtn" hidden>🎤 off</button>
   <div id="flash"></div>
+  <div class="hud" id="fps" hidden></div>
   <div class="hud" id="count" hidden>3</div>
   <div class="warn" id="wl"></div><div class="warn" id="wr"></div><div class="warn" id="wt"></div><div class="warn" id="wb"></div>
   <div id="lbtns"><div class="lbtn" id="bStop">STOP</div><div class="lbtn" id="bJump">JUMP</div><div class="lbtn" id="bGrab">GRAB</div><div class="lbtn" id="bThrow">THROW</div></div>
@@ -303,6 +305,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <div class="tog"><label for="sSound">Sound effects</label><input id="sSound" type="checkbox"></div>
     <div class="tog"><label for="sAllPowers">All powers (testing: every power + black hole, no streak needed)</label><input id="sAllPowers" type="checkbox"></div>
     <div class="tog"><label for="sClassic">Classic sounds</label><input id="sClassic" type="checkbox"></div>
+    <div class="tog"><label for="sFps">Show FPS (frames per second, and what the game is spending its time on)</label><input id="sFps" type="checkbox"></div>
     <div style="display:grid;gap:8px;margin-top:6px"><button class="go" id="resumeBtn" style="font-size:24px;padding:14px">BACK TO THE GAME</button><button class="ghost" id="pHow">How to play</button><button class="ghost" id="quitBtn">Quit match</button></div>
   </div></div>
 </div>
@@ -470,7 +473,7 @@ function buildChunk(i, j) {
 const cellData = new Uint8Array(GW * GD * 4).fill(255);
 // each half of the field is tinted a touch towards its team (blue side cooler, red side warmer) so you always know which way is home
 function sideTint(cx) { const x = cx - MX + .5, k = clamp(x / MX, -1, 1) * (FORT.blue.x < 0 ? 1 : -1); // k<0 = blue side
-  return k < 0 ? [255 + 24 * k | 0, 255 + 10 * k | 0, 255] : [255, 255 - 12 * k | 0, 255 - 26 * k | 0]; }
+  return k < 0 ? [255 + 95 * k | 0, 255 + 40 * k | 0, 255] : [255, 255 - 40 * k | 0, 255 - 95 * k | 0]; } // cool blue side / warm red side, strongest at the forts, meeting in the middle
 for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const [r, g, b] = sideTint(cx), i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; }
 const cellTex = new THREE.DataTexture(cellData, GW, GD, THREE.RGBAFormat); cellTex.magFilter = cellTex.minFilter = THREE.NearestFilter; cellTex.needsUpdate = true;
 function setCell(cx, cz, r, g, b, a) { if (cx < 0 || cz < 0 || cx >= GW || cz >= GD) return; const i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; cellData[i + 3] = a; cellTex.needsUpdate = true; }
@@ -4381,7 +4384,7 @@ function restart(auto) {
   setTimeout(() => location.reload(), NET && NET.host && auto ? 300 : 0);
 }
 const bindRange = (id, key, fmt) => { const el = $(id), v = $(id + 'V'); el.value = S[key]; const sh = () => v.textContent = fmt(S[key]); sh(); el.oninput = () => { S[key] = +el.value; sh(); saveS(); }; };
-for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 'allPowers'], ['sClassic', 'classic'], ['sAoe', 'aoe']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
+for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 'allPowers'], ['sClassic', 'classic'], ['sAoe', 'aoe'], ['sFps', 'fps']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
 
 let wakeLock = null;
 const INTRO_T = 8.2; // flyover length; the last 5 seconds show the countdown
@@ -4458,7 +4461,7 @@ let last = now(), acc = 0, renderAlpha = 1;
 function snapPrev() {
   for (const r of robots) { const t = r.body.translation(); r.pt = { x: t.x, y: t.y, z: t.z }; }
   for (const e of blocks) if (e.body && !e.dead && !e.anchored && !e.body.isSleeping()) { const t = e.body.translation(), q = e.body.rotation(); e.pt = { x: t.x, y: t.y, z: t.z }; e.pq = { x: q.x, y: q.y, z: q.z, w: q.w }; }
-} const perf = { sum: 0, n: 0, level: 0 };
+} const perf = { sum: 0, n: 0, level: 0 }; const fpsStat = { n: 0, sim: 0, draw: 0, raw: 0, t0: 0 };
 // a robot that ends up right against the camera lens would be cut open by it (you'd see the blocks behind
 // through the cut), so robots that close are simply left out of that one frame
 const camHidden = [];
@@ -4484,10 +4487,12 @@ function frame() {
     }
     perf.sum = 0; perf.n = 0;
   }
-  tick(dt, t);
+  const t1 = performance.now(); tick(dt, t); const t2 = performance.now();
   if (match.state !== 'menu') { placeCross(); placeHighlight(); updateWarnings(); renderHud(); }
   drawTrail();
-  drawScene();
+  drawScene(); const t3 = performance.now();
+  { const F = fpsStat; F.n++; F.sim += t2 - t1; F.draw += t3 - t2; F.raw += raw; // the readout (Settings → Show FPS)
+    if (t - F.t0 > 500) { const el = $('fps'); el.hidden = !S.fps; if (S.fps) el.textContent = `${Math.round(F.n / F.raw)} fps · sim ${(F.sim / F.n).toFixed(1)} ms · draw ${(F.draw / F.n).toFixed(1)} ms · frame ${(F.raw / F.n * 1000).toFixed(1)} ms\n${renderer.getPixelRatio().toFixed(2)}x · shadows ${sun.castShadow ? 'on' : 'off'} · q${perf.level}`; F.t0 = t; F.n = 0; F.sim = 0; F.draw = 0; F.raw = 0; } }
   requestAnimationFrame(frame);
 }
 let lastDt = 1 / 60;
@@ -4537,7 +4542,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
