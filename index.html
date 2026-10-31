@@ -443,6 +443,9 @@ sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
 Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 110 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.025;
 scene.add(sun, sun.target);
+// the sun's own axes (as its shadow camera sees them), used to keep the shadow map snapped to whole texels
+const SUN_OFF = new THREE.Vector3(-20, 40, 16), _sunP = new THREE.Vector3();
+const SUN_AX = (() => { const z = SUN_OFF.clone().normalize(), x = new THREE.Vector3(0, 1, 0).cross(z).normalize(), y = z.clone().cross(x); return { x, y }; })();
 
 // ---------------- physics ----------------
 const world = new RAPIER.World({ x: 0, y: -G, z: 0 });
@@ -4745,8 +4748,12 @@ function updateCamera(dt) {
   camera.position.lerp(want, Math.min(1, dt * 9)); camLook.lerp(look, Math.min(1, dt * 12));
   if (shake > 0) { camera.position.x += rr(-1, 1) * shake * .35; camera.position.y += rr(-1, 1) * shake * .35; shake = Math.max(0, shake - dt * 2.2); }
   camera.lookAt(camLook);
-  { const tx = 52 / 1024, sx = Math.round(p.x / tx) * tx, sz = Math.round(p.z / tx) * tx; // snap to shadow texels so shadows don't shimmer/crawl as you move
-    sun.position.set(sx - 20, 40, sz + 16); sun.target.position.set(sx, 0, sz); }
+  // snap the shadow area to whole shadow texels so shadow edges don't shimmer/crawl as you move. The sun shines in at an
+  // angle, so the snapping has to happen along the sun's own sideways/up directions, not the map's x and z
+  { const tx = (sun.shadow.camera.right - sun.shadow.camera.left) / sun.shadow.mapSize.width;
+    const a = SUN_AX.x.dot(_sunP.set(p.x, 0, p.z)), b = SUN_AX.y.dot(_sunP);
+    _sunP.addScaledVector(SUN_AX.x, Math.round(a / tx) * tx - a).addScaledVector(SUN_AX.y, Math.round(b / tx) * tx - b);
+    sun.target.position.copy(_sunP); sun.position.copy(_sunP).add(SUN_OFF); }
 }
 
 // ---------------- loop ----------------
