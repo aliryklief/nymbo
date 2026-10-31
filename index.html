@@ -1176,6 +1176,28 @@ function unanchor(e) {
   const t = e.body.translation(), r = e.body.rotation();
   e.anchored = false; ANCH.dirty = true; if (e.kind === 'fort' || e.kind === 'tree' || e.kind === 'prop') e.loose = true; dropBody(e); makeBody(e, V(t.x, t.y, t.z), new THREE.Quaternion(r.x, r.y, r.z, r.w));
 }
+// Nothing floats: a few blocks each frame get checked for something under them (the ground, another block, a robot).
+// Locked tower/wall blocks with nothing left underneath come loose and fall; resting blocks and flags that fell
+// asleep on a block that has since gone (thrown, blasted, swallowed, repaired away) get woken so they drop too.
+const supRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }); let supI = 0;
+function hasSupport(e) {
+  const t = e.body.translation(), hy = e.anchored ? e.dims.y / 2 : e.size * .75, ix = Math.max(0, e.dims.x / 2 - .12), iz = Math.max(0, e.dims.z / 2 - .12);
+  for (const [dx, dz] of [[0, 0], [-ix, -iz], [ix, -iz], [-ix, iz], [ix, iz]]) {
+    supRay.origin.x = t.x + dx; supRay.origin.y = t.y; supRay.origin.z = t.z + dz;
+    if (world.castRay(supRay, hy + .2, true, undefined, undefined, undefined, e.body)) return true;
+  }
+  return false;
+}
+function checkSupport() {
+  const n = blocks.length; if (!n) return;
+  for (let k = 0; k < Math.min(40, n); k++) {
+    const e = blocks[supI = (supI + 1) % n];
+    if (e.dead || !e.body || e.holder || e.live || e.stuck || e.fixedBody || e.frozenT > 0 || e.kind === 'animal' || e.kind === 'tree' || e.kind === 'prop') continue;
+    const t = e.body.translation(); if (t.y - e.dims.y / 2 < .3) continue; // sitting on the ground
+    if (e.anchored) { if (!hasSupport(e)) unanchor(e); }
+    else if (e.body.isSleeping() && !hasSupport(e)) e.body.wakeUp();
+  }
+}
 // locked blocks never move, so they're kept in a grid of 2x2 squares: "which locked blocks are near here?" only looks
 // at a few squares instead of every block (this used to loop over ~1500 blocks many times per frame)
 const ANCH = { map: new Map(), dirty: true, at: 0 };
@@ -4789,7 +4811,7 @@ function tick(dt, t = now()) {
     if (n === 3) acc = 0;
     renderAlpha = clamp(acc / world.timestep, 0, 1);
     updateBlocks(dt);
-    if (active) { updateProjectiles(dt); updateFlags(); updateRepair(dt); updateLaunchers(dt); updateHoles(dt); updateSticky(dt); updateBirds(dt); updateGas(dt); }
+    if (active) { checkSupport(); updateProjectiles(dt); updateFlags(); updateRepair(dt); updateLaunchers(dt); updateHoles(dt); updateSticky(dt); updateBirds(dt); updateGas(dt); }
     updateAnimals(dt);
     portalCool = Math.max(0, portalCool - dt);
     for (const Q of PORTALS) {
