@@ -37,8 +37,11 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
    button (both on the 50% line), the next blocks stack upwards on the left exactly like earned powers stack upwards on the
    right, each step smaller and fainter. The bottom half of the screen stays clear for moving and seeing players. */
 #ammo{left:calc(env(safe-area-inset-left,0px) + 8px);top:50%;transform:translateY(-50%);width:52px;display:flex;flex-direction:column;align-items:center}
-#aNowBox{position:relative;width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);background:rgba(10,14,26,.62);display:grid;place-items:center;box-shadow:0 3px 0 rgba(0,0,0,.3);transition:border-color .2s,box-shadow .2s}
+#aNowBox{pointer-events:auto}
+#aNowBox{position:relative;width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);background:rgba(10,14,26,.62);display:grid;place-items:center;box-shadow:0 3px 0 rgba(0,0,0,.3);transition:border-color .2s,box-shadow .2s;touch-action:none;-webkit-tap-highlight-color:transparent}
 #aNowBox.has{border-color:var(--yellow);box-shadow:0 3px 0 rgba(0,0,0,.3),0 0 12px var(--yellow)}
+#aNowBox:after{content:"";position:absolute;inset:-2.5px;border-radius:50%;background:conic-gradient(rgba(10,14,26,.78) calc(var(--k,0)*360deg),transparent 0);pointer-events:none} /* the shield recharging */
+#aNowBox.cool{border-color:rgba(255,255,255,.35);box-shadow:0 3px 0 rgba(0,0,0,.3)}
 #aNow{width:42px;height:42px;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
 #aNowBox.bump{animation:apop .22s ease-out}
 @keyframes apop{0%{transform:scale(.82)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
@@ -92,15 +95,12 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #vig.on{opacity:.45}#vig.on.hot{box-shadow:inset 0 0 46px 5px rgba(255,30,30,.7)}
 #vig.on.beat{animation:beat .4s ease-out}
 @keyframes beat{0%{opacity:.95}100%{opacity:.45}}
-#pwr{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);bottom:calc(50% + 35px);width:52px;display:flex;flex-direction:column;align-items:center;gap:9px;z-index:7}
-#holeBtn{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 118px);z-index:7;width:auto;height:46px;padding:0 16px 0 10px;border-radius:999px;display:flex;align-items:center;gap:8px;background:#000;box-shadow:0 0 18px #b36bff,0 3px 0 rgba(0,0,0,.3);font-family:var(--display);font-size:13px;letter-spacing:.08em;color:var(--c)}
+#pwr{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);bottom:calc(50% - 26px);width:52px;display:flex;flex-direction:column;align-items:center;gap:9px;z-index:7}
+#holeBtn{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 190px);z-index:7;width:auto;height:46px;padding:0 16px 0 10px;border-radius:999px;display:flex;align-items:center;gap:8px;background:#000;box-shadow:0 0 18px #b36bff,0 3px 0 rgba(0,0,0,.3);font-family:var(--display);font-size:13px;letter-spacing:.08em;color:var(--c)}
 #holeBtn svg{width:26px;height:26px}#holeBtn i{display:none}
 .pw.rolling{animation:pwroll .12s linear infinite alternate}.pw.landed{animation:pwland .5s cubic-bezier(.2,1.4,.3,1)}
 @keyframes pwroll{from{transform:scale(1) rotate(-4deg)}to{transform:scale(1.08) rotate(4deg)}}
 @keyframes pwland{0%{transform:scale(1.6)}100%{transform:scale(1)}}
-#shieldBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 8px);top:50%;transform:translateY(-50%);z-index:7;width:52px;height:52px;opacity:0;transition:opacity .35s;pointer-events:none}
-#shieldBtn.show{opacity:1;pointer-events:auto}
-#shieldBtn{border-color:rgba(255,255,255,.35);color:#fff}#shieldBtn.ready{border-color:var(--yellow);color:var(--yellow)} /* same ring language as the block slot opposite: dim when idle, yellow when live */
 .pw{pointer-events:auto;position:relative;width:46px;height:46px;border-radius:50%;border:2.5px solid var(--c);background:rgba(10,14,26,.62);color:var(--c);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 rgba(0,0,0,.3);touch-action:none;-webkit-tap-highlight-color:transparent}
 .pw svg{width:24px;height:24px;position:relative;z-index:1}
 .pw i{position:absolute;inset:-2px;border-radius:50%;background:conic-gradient(rgba(0,0,0,.62) calc(var(--k,0)*360deg),transparent 0)}
@@ -212,7 +212,6 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div id="thief" hidden><b></b><i></i></div>
   <div id="pwr"></div>
   <button class="pw" id="holeBtn" hidden style="--c:#b36bff" aria-label="BLACK HOLE"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5c5.2 0 9.5 4.3 9.5 9.5S17.2 21.5 12 21.5 2.5 17.2 2.5 12 6.8 2.5 12 2.5zm0 2A7.5 7.5 0 1 0 12 19.5 7.5 7.5 0 0 0 12 4.5z" opacity=".5"/><path d="M4 12a8 8 0 0 1 8-8v2a6 6 0 0 0-6 6z" opacity=".9"/></svg><span>BLACK HOLE</span><i></i></button>
-  <button class="pw" id="shieldBtn" style="--c:#ffd400" aria-label="SHIELD"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v6c0 5.2 3.4 9.6 8 11 4.6-1.4 8-5.8 8-11V5z" opacity=".35"/><path d="M12 4.2 6 6.4v4.6c0 4.1 2.5 7.6 6 8.9 3.5-1.3 6-4.8 6-8.9V6.4z"/></svg><i></i></button>
   <button id="micBtn" hidden>🎤 off</button>
   <div id="flash"></div>
   <div class="hud" id="count" hidden>3</div>
@@ -469,6 +468,10 @@ function buildChunk(i, j) {
   chunkCols.set(i + ',' + j, list);
 }
 const cellData = new Uint8Array(GW * GD * 4).fill(255);
+// each half of the field is tinted a touch towards its team (blue side cooler, red side warmer) so you always know which way is home
+function sideTint(cx) { const x = cx - MX + .5, k = clamp(x / MX, -1, 1) * (FORT.blue.x < 0 ? 1 : -1); // k<0 = blue side
+  return k < 0 ? [255 + 24 * k | 0, 255 + 10 * k | 0, 255] : [255, 255 - 12 * k | 0, 255 - 26 * k | 0]; }
+for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const [r, g, b] = sideTint(cx), i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; }
 const cellTex = new THREE.DataTexture(cellData, GW, GD, THREE.RGBAFormat); cellTex.magFilter = cellTex.minFilter = THREE.NearestFilter; cellTex.needsUpdate = true;
 function setCell(cx, cz, r, g, b, a) { if (cx < 0 || cz < 0 || cx >= GW || cz >= GD) return; const i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; cellData[i + 3] = a; cellTex.needsUpdate = true; }
 function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a hole where a cell's alpha is 0
@@ -708,10 +711,11 @@ PASTURES.forEach((pa, i) => ['cow', 'cow', 'sheep', 'sheep'].forEach(kind => ANI
   for (const pa of PASTURES) {
     const d = new THREE.Mesh(new THREE.CircleGeometry(PASTURE_R + 1.2, 48).rotateX(-Math.PI / 2), new LiteMat({ map: tx, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
     d.position.set(pa.x, .015, pa.z); d.receiveShadow = true; scene.add(d);
-    const n = 22;
+    const n = 18; // (was 22: a little more room between posts so animals don't wedge)
     for (let k = 0; k < n; k++) {
-      if (k % 11 === 0 || k % 11 === 1) continue; // two wide gaps (gates)
+      if (k % 9 === 0 || k % 9 === 1) continue; // two wide gaps (gates)
       const a = k / n * Math.PI * 2, x = pa.x + Math.cos(a) * (PASTURE_R + .6), z = pa.z + Math.sin(a) * (PASTURE_R + .6);
+      if (PORTALS.some(Q => Math.hypot(x - Q.pos.x, z - Q.pos.z) < 4.5)) continue; // no post standing in the portal's mouth
       const post = new THREE.Mesh(boxGeo, postMat); post.scale.set(.22, .9, .22); post.position.set(x, .45, z); post.castShadow = true; scene.add(post);
       const cap = new THREE.Mesh(boxGeo, capMat); cap.scale.set(.28, .08, .28); cap.position.set(x, .93, z); scene.add(cap);
       const col = world.createCollider(RAPIER.ColliderDesc.cuboid(.11, .45, .11).setTranslation(x, .45, z)); byCollider.set(col.handle, { type: 'static' });
@@ -856,14 +860,19 @@ const MONUMENT = { g: null, top: POLE_H, under: 0, cam: V(0, POLE_H + 1.6, 0) };
   const camBox = new THREE.Mesh(new THREE.BoxGeometry(.9, .7, .9), new LiteMat({ color: 0x15171c })); camBox.position.set(0, POLE_H + .35, 0); g.add(camBox);
   const lens = new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, .3, 12).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x5cc0ff })); lens.position.set(0, POLE_H + .4, .5); g.add(lens);
   const led = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3b3b })); led.position.set(.3, POLE_H + .75, 0); g.add(led); MONUMENT.led = led;
-  // a yellow Nymbo pennant just under the camera
-  const flag = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.2), new LiteMat({ color: 0xffd400, side: THREE.DoubleSide })); flag.position.set(1.15, POLE_H - .9, 0); flag.castShadow = true; g.add(flag); MONUMENT.flag = flag;
+  // two signpost arrows under the camera: BLUE points at the blue fort, RED at the red one
+  for (const team of ['blue', 'red']) {
+    const F = FORT[team], ang = Math.atan2(F.x, F.z), col = team === 'blue' ? 0x2aa2ff : 0xff4d40;
+    const arm = new THREE.Group(); arm.rotation.y = ang; arm.position.y = POLE_H - (team === 'blue' ? 1.1 : 2.2); g.add(arm);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(.5, .7, 3.2), new LiteMat({ color: col })); board.position.z = 1.9; board.castShadow = true; arm.add(board);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(.55, .9, 4), new LiteMat({ color: col })); tip.rotation.x = Math.PI / 2; tip.rotation.y = Math.PI / 4; tip.position.z = 3.9; arm.add(tip);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(.56, .12, 3.2), new LiteMat({ color: 0xffffff })); cap.position.set(0, .41, 1.9); arm.add(cap);
+  }
   scene.add(g);
   for (const [w, h, y] of [[3, .7, .35], [1.6, .5, .95]]) { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, h / 2, w / 2).setTranslation(0, y, 0).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); }
   { const c = world.createCollider(RAPIER.ColliderDesc.cylinder((POLE_H - 1.2) / 2, .28).setTranslation(0, 1.2 + (POLE_H - 1.2) / 2, 0)); byCollider.set(c.handle, { type: 'static' }); }
 }
 function updatePole(dt, t) { // the pennant ripples, the camera light blinks
-  const f = MONUMENT.flag; if (f) { f.rotation.y = Math.sin(t / 700) * .25; f.position.x = 1.15 * Math.cos(f.rotation.y); f.position.z = -1.15 * Math.sin(f.rotation.y); }
   if (MONUMENT.led) MONUMENT.led.visible = Math.floor(t / 600) % 2 === 0;
 }
 
@@ -896,12 +905,13 @@ const ICON = {
   homing: g => { g.lineWidth = 7; g.beginPath(); g.arc(64, 64, 30, 0, 7); g.stroke(); g.beginPath(); g.moveTo(64, 20); g.lineTo(64, 46); g.moveTo(64, 82); g.lineTo(64, 108); g.moveTo(20, 64); g.lineTo(46, 64); g.moveTo(82, 64); g.lineTo(108, 64); g.stroke(); },
   // sticky grenade: a ring-pull pin; egg: speckles
   // sticky: a grenade going off — pineapple body, cap and lever, burst spikes all round
-  sticky: g => {
-    g.lineWidth = 6; g.lineCap = 'round';
-    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + .3, r0 = 44 + (i % 2) * 6, r1 = r0 + 12 + (i % 2) * 6; g.beginPath(); g.moveTo(64 + Math.cos(a) * r0, 68 + Math.sin(a) * r0); g.lineTo(64 + Math.cos(a) * r1, 68 + Math.sin(a) * r1); g.stroke(); }
-    g.beginPath(); g.ellipse(64, 74, 22, 27, 0, 0, 7); g.fill();                           // body
-    g.fillRect(55, 36, 18, 12); g.fillRect(70, 30, 20, 7);                                 // cap + lever
-    g.save(); g.globalCompositeOperation = 'destination-out'; g.lineWidth = 3; for (const y of [62, 76, 90]) { g.beginPath(); g.moveTo(44, y); g.lineTo(84, y); g.stroke(); } for (const x of [54, 64, 74]) { g.beginPath(); g.moveTo(x, 50); g.lineTo(x, 98); g.stroke(); } g.restore(); // the grooves
+  sticky: g => { // a bold classic grenade: rounded body with a 3x3 grid, neck, cap and lever, a few blast ticks
+    g.lineCap = g.lineJoin = 'round';
+    const rr_ = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+    rr_(36, 50, 56, 62, 18); g.fill();                                                     // body
+    g.fillRect(54, 36, 20, 16); rr_(48, 24, 32, 14, 5); g.fill(); g.fillRect(78, 26, 22, 7); // neck, cap, lever
+    g.save(); g.globalCompositeOperation = 'destination-out'; g.lineWidth = 5; for (const y of [70, 91]) { g.beginPath(); g.moveTo(40, y); g.lineTo(88, y); g.stroke(); } for (const x of [54, 73]) { g.beginPath(); g.moveTo(x, 54); g.lineTo(x, 108); g.stroke(); } g.restore();
+    g.lineWidth = 5; for (const [x0, y0, x1, y1] of [[20, 40, 30, 50], [108, 40, 98, 50], [16, 80, 28, 80], [112, 80, 100, 80], [22, 116, 32, 106], [106, 116, 96, 106]]) { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
   },
   egg: g => { for (let i = 0; i < 14; i++) { const a = i * 2.4, r = 14 + (i * 37) % 40; g.beginPath(); g.arc(64 + Math.cos(a) * r, 64 + Math.sin(a) * r * 1.2, 4 + (i % 3) * 2, 0, 7); g.fill(); } },
   // warp: a spiral (you go where it lands)
@@ -1113,7 +1123,9 @@ function updateAnimals(dt) {
       if (!w.lost) { w.lost = true; w.callT = rr(1, 3); }
       const hsp = Math.hypot(lv.x, lv.z); w.stuck = hsp < .5 && w.speed > 1 ? (w.stuck || 0) + dt : 0;
       if (w.side > 0) w.side -= dt; else if (w.stuck > 1.2) { w.side = 1.1; w.sideDir = rnd() < .5 ? -1 : 1; w.stuck = 0; }
-      w.dir = Math.atan2(pa.x - t.x, pa.z - t.z) + Math.sin(now() / 700 + e.id) * .25 + (w.side > 0 ? w.sideDir * 1.4 : 0);
+      let goal = pa; // a portal can be the short way home: walk in one side, pop out next to the pasture on the other
+      for (let i = 0; i < 2; i++) { const A = PORTALS[i], Bq = PORTALS[1 - i], via = Math.hypot(A.pos.x - t.x, A.pos.z - t.z) + Math.hypot(Bq.pos.x - pa.x, Bq.pos.z - pa.z); if (via + 8 < away) goal = A.pos.clone().addScaledVector(A.n, Math.hypot(A.pos.x - t.x, A.pos.z - t.z) > 4 ? 2.5 : -1); }
+      w.dir = Math.atan2(goal.x - t.x, goal.z - t.z) + Math.sin(now() / 700 + e.id) * .25 + (w.side > 0 ? w.sideDir * 1.4 : 0);
       w.speed = away > 18 ? 4.4 : 3.4; w.t = .5;
       w.callT -= dt; if (w.callT <= 0) { w.callT = rr(4, 8); if (P && rPos(P).distanceTo(V(t.x, t.y, t.z)) < 40) sfx(e.animal === 'cow' ? 'moo' : 'baa', V(t.x, t.y, t.z)); }
     } else {
@@ -1479,6 +1491,8 @@ const buzz = name => {
 // Menu / score / bell sounds keep their own little bell room so they stay exactly as they were.
 // ============================================================
 let AC = null, bus = null, master = null, verb = null, field = null, noiseBuf = null, ambBus = null, send = null, PV = 1;
+// screen off / app in the background: everything goes quiet, and comes back when you return
+document.addEventListener('visibilitychange', () => { if (!AC) return; if (document.hidden) { try { AC.suspend(); } catch (e) {} } else { try { AC.resume(); } catch (e) {} } });
 function audioInit() {
   if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
   try {
@@ -2857,7 +2871,7 @@ const frozenCount = new Map(); // ground square -> how many ice patches cover it
 function frostCells(cells, on) {
   for (const [x, z] of cells) { const [cx, cz] = cellOf(x, z), k = cx + ',' + cz; if (HOLES.has(k)) continue;
     const n = Math.max(0, (frozenCount.get(k) || 0) + (on ? 1 : -1)); frozenCount.set(k, n);
-    if (n > 0) setCell(cx, cz, 170, 215, 255, 255); else setCell(cx, cz, 255, 255, 255, 255); }
+    if (n > 0) setCell(cx, cz, 170, 215, 255, 255); else setCell(cx, cz, ...sideTint(cx), 255); }
 }
 function holeAllowed(x, z) {
   if (Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 4 && Math.abs(z - F.z) < FORT_RZ + 4)) return false;
@@ -2886,7 +2900,7 @@ function rebuildPits() {
 }
 function setHole(cx, cz, on) {
   const k = cx + ',' + cz; if (on === HOLES.has(k)) return; netEv(['hole', cx, cz, on ? 1 : 0]);
-  if (on) { HOLES.add(k); setCell(cx, cz, 255, 255, 255, 0); } else { HOLES.delete(k); setCell(cx, cz, 255, 255, 255, 255); frozenCount.delete(k); }
+  if (on) { HOLES.add(k); setCell(cx, cz, 255, 255, 255, 0); } else { HOLES.delete(k); setCell(cx, cz, ...sideTint(cx), 255); frozenCount.delete(k); }
   buildChunk(Math.floor(cx / GCH), Math.floor(cz / GCH));
 }
 function breakStage(pos, rad) {
@@ -3268,11 +3282,11 @@ function endGesture(e) {
   const g = gest; gest = null;
   const dt = e.timeStamp - g.t0, dx = g.x - g.x0, dy = g.y - g.y0, dist = Math.hypot(dx, dy);
   if (SPEC.on) return;
-  if ((g.mode === 'pending' || (g.mode === 'hold' && !g.held)) && dt < 220 && dist < 14) {
+  if ((g.mode === 'pending' || (g.mode === 'hold' && !g.held)) && dt < 320 && dist < 18) { // a tap: up to .32 s, barely moving
     // DODGE = a quick double tap near the left or right edge of the screen (the edge strips). A single tap anywhere still jumps.
     const zone = g.x0 < innerWidth * DODGE_ZONE ? -1 : g.x0 > innerWidth * (1 - DODGE_ZONE) ? 1 : 0, tnow = now();
     if (zone) { // edge strips never jump: first tap arms, second tap (within .35 s) dodges
-      if (lastTap.zone === zone && tnow - lastTap.t < 350) { lastTap = { zone: 0, t: 0 }; if (playerDodge(zone)) { toast(zone > 0 ? 'DODGE ⇢' : '⇠ DODGE'); flashZone(zone); } }
+      if (lastTap.zone === zone && tnow - lastTap.t < 450) { lastTap = { zone: 0, t: 0 }; if (playerDodge(zone)) { toast(zone > 0 ? 'DODGE ⇢' : '⇠ DODGE'); flashZone(zone); } else flashZone(zone, true); } // (no charge left: just the soft flash)
       else { lastTap = { zone, t: tnow }; flashZone(zone, true); }
       return;
     }
@@ -4010,7 +4024,7 @@ function nukeBlast(pos) {
   fxBurst(pos, 0xfff2c0, NUKE_KO * 1.2, 1.1); fxBurst(pos, 0xff6a2a, NUKE_R * 1.1, .9); fxBurst(pos, 0x2b2d33, NUKE_R * .7, 1.4);
   fxDebris(pos, 0xffa040, 70, 22); fxDebris(pos, 0x3a3d48, 50, 16); fxDebris(pos, 0xffe14a, 40, 26);
   PW.smoke = { at: pos.clone(), t: 2.5 };
-  breakTrampolines(pos, NUKE_KO);
+  breakTrampolines(pos, NUKE_KO); breakStage(pos, NUKE_R); // frozen ground under a nuke gives way too, like under a bomb
   for (const e of blocks) {
     if (e.dead || !e.body || e.holder) continue;
     const t = e.body.translation(), dx = t.x - pos.x, dz = t.z - pos.z, dh = Math.hypot(dx, dz);
@@ -4055,12 +4069,12 @@ function startTornado(at) {
   PW.tornado = { pos: at.clone().setY(0), t: TORNADO_T, dir: rnd() * 6.28, g, rings, hit: new Set(), puff: 0, snd: 0 };
   sfx('tornado', at); bigToast('TORNADO', 'blue');
 }
-function endTornado() { const T = PW.tornado; if (!T) return; scene.remove(T.g); PW.tornado = null; }
+function endTornado() { const T = PW.tornado; if (!T) return; scene.remove(T.g); PW.tornado = null; for (const r of robots) if (r.pullTw) { r.pull = null; r.pullTw = false; } }
 function updateTornado(dt) {
   const T = PW.tornado; if (!T) return;
   T.t -= dt; if (T.t <= 0) { endTornado(); return; }
   // wanders about, turning gently, staying on the island
-  T.dir += rr(-1.2, 1.2) * dt; const sp = 2.4, nx = T.pos.x + Math.sin(T.dir) * sp * dt, nz = T.pos.z + Math.cos(T.dir) * sp * dt;
+  T.dir += rr(-1.2, 1.2) * dt; const sp = 1.1, nx = T.pos.x + Math.sin(T.dir) * sp * dt, nz = T.pos.z + Math.cos(T.dir) * sp * dt;
   if (Math.abs(nx) > MX - 6 || Math.abs(nz) > MZ - 6) T.dir = Math.atan2(-T.pos.x, -T.pos.z); else T.pos.set(nx, 0, nz);
   T.g.position.copy(T.pos); const life = clamp(Math.min(T.t, TORNADO_T - T.t) / .7, 0, 1);
   T.rings.forEach((m, i) => { m.rotation.y += dt * (6 + i); m.position.x = Math.sin(now() / 300 + i) * .25 * i; m.scale.x = m.scale.z = (1.3 + i * .85) * (.4 + .6 * life); });
@@ -4074,16 +4088,26 @@ function updateTornado(dt) {
     if (d > TORNADO_R) continue;
     if (e.frozenT > 0) thawBlock(e);
     if (e.kind === 'animal' && e.upright) { e.body.setEnabledRotations(true, true, true, true); e.upright = false; }
-    const m = e.body.mass(), k = (1 - d / TORNADO_R) * life, inv = 1 / (d || 1), up = t.y < 13 ? 34 : -4;
-    const out = t.y > 12 ? 1 : 0; // at the top it gets flung away
-    e.body.applyImpulse({ x: m * dt * ((-dx * inv) * 18 * (1 - out * 3.5) + (-dz * inv) * 30) * k, y: m * dt * up * k, z: m * dt * ((-dz * inv) * 18 * (1 - out * 3.5) + (dx * inv) * 30) * k }, true);
+    // three acts: SUCK IN (pull + lift), TWIRL (hold them circling up in the funnel), then LET GO: the last 2.5 s the funnel
+    // loses its grip and everything it gathered rains back down
+    const age = TORNADO_T - T.t, release = T.t < 2.5 ? clamp(T.t / 2.5, 0, 1) : 1;
+    const m = e.body.mass(), hold = t.y > 6 && t.y < 12 ? 1 : 0, k = (hold ? 1 : (1 - d / TORNADO_R)) * life * release, inv = 1 / (d || 1);
+    const up = t.y < 7 ? 42 : t.y < 12 ? G + (9 - t.y) * 4 : -6; // lifted to the belt, then held there (gravity cancelled, nudged back to 9)
+    const inw = hold ? (d > 3 ? 40 : 4) : 28, tan = hold ? 12 : 10; // pulled in first, spun once it's up in the belt
+    { const lv = e.body.linvel(), hs = Math.hypot(lv.x, lv.z), cap = hold ? 9 : 14; if (hs > cap) e.body.setLinvel({ x: lv.x * cap / hs, y: lv.y, z: lv.z * cap / hs }, true); } // never slung out of the funnel
+    e.body.applyImpulse({ x: m * dt * ((-dx * inv) * inw + (-dz * inv) * tan) * k, y: m * dt * up * k, z: m * dt * ((-dz * inv) * inw + (dx * inv) * tan) * k }, true);
     if (e.kind !== 'animal' && !isPower(e.kind) && t.y > 3) { e.live = true; e.thrower = P; e.liveT = 0; e.assist = null; } // debris it throws out knocks enemies over
   }
+  // robots: the wind drags you towards the funnel and spins you round it; it's the SPEED that gets you — once the twister
+  // has you going fast enough you're knocked out and flung (brushing the edge only tugs at you)
+  const relR = T.t < 2.5 ? clamp(T.t / 2.5, 0, 1) : 1;
   for (const r of robots) {
-    if (!hittable(r) || T.hit.has(r)) continue; // the twister doesn't pick sides (you and your team too)
-    const c = rPos(r); if (Math.hypot(c.x - T.pos.x, c.z - T.pos.z) > 4.2 * life + .5) continue;
-    T.hit.add(r); ragdoll(r, V(-(c.z - T.pos.z), 0, c.x - T.pos.x), P, 2.6); r.body.applyImpulse({ x: 0, y: r.body.mass() * 12, z: 0 }, true); setTimeout(() => T.hit.delete(r), 4000); // can catch them again later
-    koPop(c, 'TWISTED!', '#d9d2c3', true);
+    if (!hittable(r)) continue; // the twister doesn't pick sides (you and your team too)
+    const c = rPos(r), dx = c.x - T.pos.x, dz = c.z - T.pos.z, d = Math.hypot(dx, dz); if (d > TORNADO_R * .8) { if (r.pull && r.pullTw) { r.pull = null; r.pullTw = false; } continue; }
+    const k = (1 - d / (TORNADO_R * .8)) * life * relR, inv = 1 / (d || 1), s = 6 + 16 * k;
+    r.pull = V((-dx * inv * .6 + (-dz * inv)) * s, 0, (-dz * inv * .6 + (dx * inv)) * s); r.pullTw = true; // in and round
+    const v = r.body.linvel(), speed = Math.hypot(v.x, v.z);
+    if (speed > 14 && d < TORNADO_R * .5 && !T.hit.has(r)) { T.hit.add(r); ragdoll(r, V(-dz, 0, dx), P, 2.6); r.body.applyImpulse({ x: 0, y: r.body.mass() * 12, z: 0 }, true); setTimeout(() => T.hit.delete(r), 4000); koPop(c, 'TWISTED!', '#d9d2c3', true); }
   }
 }
 // ---------- invisibility: you fade out; enemy bots can't target you ----------
@@ -4137,7 +4161,7 @@ function updatePowers(dt) {
 // ============================================================
 const SHIELD_CD = 20, SHIELD_R = 1.75;
 const SHIELD = { cool: 0, stopT: 0 }; // stopT: you stand still inside the wall for a moment (swipe/tap to move again)
-const shieldBtn = $('shieldBtn');
+const shieldBtn = $('aNowBox'); // the block-in-hand slot IS the shield button: tap it and everything you carry drops round you
 function shieldFor(r) { // the host (or offline game) builds the ring for any robot
   if (!canAct(r)) return 0;
   const use = r.stack.filter(e => e.kind !== 'flag' && e.kind !== 'animal'); if (!use.length) return 0;
@@ -4163,10 +4187,10 @@ function playerShield() {
   if (shieldFor(P)) toast('SHIELD UP');
 }
 shieldBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); });
-shieldBtn.addEventListener('click', e => { e.stopPropagation(); playerShield(); });
+shieldBtn.addEventListener('pointerup', e => { e.stopPropagation(); playerShield(); });
 function updateShield(dt) {
   if (SHIELD.cool > 0) SHIELD.cool = Math.max(0, SHIELD.cool - dt);
-  const k = SHIELD.cool / SHIELD_CD; shieldBtn.style.setProperty('--k', k); const have = !!P && P.stack.some(e => e.kind !== 'flag' && e.kind !== 'animal'); shieldBtn.classList.toggle('ready', k === 0 && have); shieldBtn.classList.toggle('show', have || SHIELD.cool > 0); // appears once you're carrying something
+  const k = SHIELD.cool / SHIELD_CD; shieldBtn.style.setProperty('--k', k); shieldBtn.classList.toggle('cool', k > 0); // the ring fills back in as the shield recharges
 }
 
 // ============================================================
@@ -4234,16 +4258,28 @@ function updateBlackHole(dt) {
     r.pull = V(sw.x * s, dxz < 9 ? Math.min(30, (4 + 8 * k) * grip) : 0, sw.z * s); // lifted off the ground only when right under it
     if (d < eatR || dxz < eatR + .3) swallow(r); // right under the pole: there's no escaping from there
   }
-  // blocks: anchored ones near the hole come loose (a few per frame), loose ones get pulled, the closest vanish
-  const near = Math.min(230, 10 + 220 * Math.pow(BH.t / 20, 2)); let loosened = 0; // the hole's grip on the forts spreads outwards over 20 s
-  for (const e of blocks) {
-    if (e.dead || e.holder || !e.body || e.kind === 'flag' || e.kind === 'animal') continue;
+  // blocks — kept cheap so the hole never lags the game:
+  //  • loose blocks are pulled (one third of them per frame, in turn), the closest vanish
+  //  • anchored walls aren't turned into hundreds of physics bodies: inside the hole's reach they just get torn off and
+  //    eaten straight away, a handful per frame, nearest first (you see them streak in as bursts)
+  //  • if the loose pile ever gets big, the furthest-in ones are eaten early
+  const near = Math.min(230, 8 + 222 * Math.pow(BH.t / 20, 2)); let torn = 0, loose = 0; const phase = (BH.frame = (BH.frame || 0) + 1) % 3;
+  const fxOk = () => (BH.fxN = (BH.fxN || 0) + 1) % 3 === 0; // one burst for every three eaten (particles cost too)
+  for (let i = 0; i < blocks.length; i++) {
+    const e = blocks[i]; if (e.dead || e.holder || !e.body || e.kind === 'flag' || e.kind === 'animal') continue;
+    if (e.anchored) {
+      if (torn >= (BH.t < 10 ? 3 : 8)) continue;
+      const t = e.ap || e.body.translation(), d = Math.hypot(H.x - t.x, H.y - t.y, H.z - t.z);
+      if (d < near * .55) { if (fxOk()) fxBurst(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(e); BH.eaten++; torn++; netEv(['bhx', e.id]); ANCH.dirty = true; }
+      continue;
+    }
+    loose++;
+    if (i % 3 !== phase) continue;
     const t = e.body.translation(), dx = H.x - t.x, dy = H.y - t.y, dz = H.z - t.z, d = Math.hypot(dx, dy, dz);
-    if (e.anchored) { if (d < near && loosened < (BH.t < 8 ? 2 : 10) && ((bhLoosen++) % 2 === 0)) { unanchor(e); loosened++; } continue; }
     if (d > BH.R) continue;
-    if (d < eatR + 1.3) { fxBurst(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(e); BH.eaten++; netEv(['bhx', e.id]); continue; }
-    const k = 1 - d / BH.R, m = e.body.mass(), s = Math.min(45, (4 + 10 * k) * grip) * dt, sw = swirl(dx / d, dz / d, Math.hypot(dx, dz));
-    e.body.applyImpulse({ x: sw.x * s * m, y: (dy / d * s + G * dt * Math.min(.95, grip * .3)) * m, z: sw.z * s * m }, true); // weight fades as the pull grows: they drift up and spiral in
+    if (d < eatR + 1.3 || (loose > 220 && d < 14)) { if (fxOk()) fxBurst(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(e); BH.eaten++; netEv(['bhx', e.id]); continue; }
+    const k = 1 - d / BH.R, m = e.body.mass(), s = Math.min(45, (4 + 10 * k) * grip) * dt * 3, sw = swirl(dx / d, dz / d, Math.hypot(dx, dz)); // ×3: each block is only pushed every third frame
+    e.body.applyImpulse({ x: sw.x * s * m, y: (dy / d * s + G * dt * 3 * Math.min(.95, grip * .3)) * m, z: sw.z * s * m }, true); // weight fades as the pull grows: they drift up and spiral in
     if (e.body.isSleeping()) e.body.wakeUp();
   }
   // WIN RULES while the hole is open: 4 flags scored = you win on the spot, whatever happens after.
@@ -4405,7 +4441,7 @@ function snapPrev() {
 // through the cut), so robots that close are simply left out of that one frame
 const camHidden = [];
 function drawScene() {
-  for (const r of robots) { const g = r.model.g; if (g.visible && g.position.distanceTo(camera.position) < 1.6) { g.visible = false; camHidden.push(g); } }
+  for (const r of robots) { const g = r.model.g; if (g.visible && g.position.distanceTo(camera.position) < 1.0) { g.visible = false; camHidden.push(g); } }
   renderer.render(scene, camera);
   while (camHidden.length) camHidden.pop().visible = true;
 }
@@ -4479,7 +4515,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -4590,7 +4626,7 @@ if (NIGHT) {
 // and two ways to look at the level without playing: the 360° camera on the monument, and a slow fly-over.
 // ============================================================
 const INTROS = [
-  { id: 'mix', name: 'Overview → fly-by → drone rise', tip: 'Two seconds of the whole map from above, a low pass along the enemy wall, then the drone lifts and drops in behind you.' },
+  { id: 'mix', name: 'Three shots: overview · fly-by · drone', tip: 'Cuts, not flights: two seconds of the map from above, a low pass along the enemy wall, then a drone drop onto your robot.' },
   { id: 'monument', name: '360° from the monument', tip: 'Starts on the camera on the statue\'s back, turns a full circle over the level, then dives down behind you.' },
   { id: 'overview', name: 'Overview → enemy fort', tip: 'The whole map from above, swings down to the enemy flags, glides backwards to you.' },
   { id: 'drone', name: 'Drone rise', tip: 'Lifts off behind your fort, arcs high over the middle, drops in behind you.' },
@@ -4605,15 +4641,13 @@ function introCam(style, k, team, want, look, baseFov) {
   const F = FORT[team], E = FORT[other(team)], d = V(E.x - F.x, 0, E.z - F.z).normalize(), side = V(-d.z, 0, d.x);
   const Ef = V(E.x, 7, E.z), O = V(0, 2, 0), M = MONUMENT.cam.clone(), WIDE = Math.min(105, baseFov + 40);
   let pos, at, fov = baseFov;
-  if (style === 'mix') { // 0–.25 overview from above · .25–.62 low fly-by along the enemy wall · .62–1 drone rise and drop-in
+  if (style === 'mix') { // three SHOTS with hard cuts (no flying between them): overview from above · low pass along the enemy wall · drone drop-in behind you
     const top = V(F.x * 1.15 - d.x * 8, 82, F.z * 1.15 - d.z * 8), topEnd = top.clone().lerp(V(-d.x * 10, 86, -d.z * 10), .35);
     const L0 = V(E.x - d.x * (FORT_RX + 10) + side.x * 30, 6.5, E.z - d.z * (FORT_RX + 10) + side.z * 30), L1 = V(E.x - d.x * (FORT_RX + 10) - side.x * 30, 6.5, E.z - d.z * (FORT_RX + 10) - side.z * 30);
-    const B = V(-d.x * 6 + side.x * 18, 46, -d.z * 6 + side.z * 18);
-    if (k < .25) { const e = easeS(k / .25); pos = top.clone().lerp(topEnd, e); at = O.clone(); }
-    else if (k < .34) { const e = easeS((k - .25) / .09); pos = topEnd.clone().lerp(L0, e); pos.y = topEnd.y + (L0.y - topEnd.y) * Math.sin(e * Math.PI / 2); at = O.clone().lerp(Ef, e); fov = baseFov + 10 * e; } // dive to the start of the pass
-    else if (k < .62) { const e = (k - .34) / .28; pos = L0.clone().lerp(L1, e); at = V(E.x, 7, E.z); fov = baseFov + 14; }
-    else if (k < .8) { const e = easeS((k - .62) / .18); pos = L1.clone().lerp(B, e); pos.y = L1.y + (B.y - L1.y) * Math.sin(e * Math.PI / 2); at = Ef.clone().lerp(O, e); fov = baseFov + 10 + 14 * e; } // the drone lifts
-    else { const e = easeS((k - .8) / .2); pos = B.clone().lerp(want, e); pos.y = B.y + (want.y - B.y) * e * e; at = O.clone().lerp(look, easeS(clamp((e - .4) / .6, 0, 1))); fov = baseFov + 24 * (1 - e); } // and drops in behind you
+    const B = want.clone().addScaledVector(d, -16).addScaledVector(side, 6).setY(want.y + 26);
+    if (k < .26) { const e = k / .26; pos = top.clone().lerp(topEnd, e); at = O.clone(); }                                   // shot 1: a slow drift over the whole map
+    else if (k < .62) { const e = (k - .26) / .36; pos = L0.clone().lerp(L1, e); pos.y = 6.5 + Math.sin(e * Math.PI) * 1.2; at = V(E.x, 7, E.z); fov = baseFov + 14; } // shot 2: steady low pass, flags sliding by
+    else { const e = (k - .62) / .38, ee = 1 - Math.pow(1 - e, 2.2); pos = B.clone().lerp(want, ee); at = V(want.x + (look.x - want.x), 2, want.z + (look.z - want.z)).lerp(look, ee); fov = baseFov + 10 * (1 - ee); } // shot 3: the drone comes down onto you and settles
   } else if (style === 'overview') {
     const QY = 31, top = V(F.x * 1.15 - d.x * 8, 82, F.z * 1.15 - d.z * 8), Q = V(E.x - d.x * 44, QY, E.z - d.z * 44);
     if (k < .22) { const e = easeS(k / .22); pos = top.clone().lerp(V(-d.x * 10, 86, -d.z * 10), e * .35); at = O.clone(); }
@@ -4734,7 +4768,15 @@ async function netHost(retry = 0) {
 function hostMsg(c, m) {
   const N = NET; if (!N) return;
   if (m.t === 'hi') {
-    if (N.started) { c.send(JSON.stringify({ t: 'busy' })); return; }
+    if (N.started) { // mid-match: a player whose phone dropped can come back into THEIR robot (same seat, same name), as long as a bot is still holding it
+      const name = String(m.name || '').slice(0, 12), seat = typeof m.rejoin === 'number' ? m.rejoin : -1;
+      const r = robots[seat]; const taken = N.conns.some(x => x.robot === r);
+      if (!r || taken || r.isPlayer || (r.name !== name && N.list.some(p => p.idx === seat))) { c.send(JSON.stringify({ t: 'busy' })); return; }
+      c.robot = r; c.ready = true; r.remote = true; r.name = name; N.conns.push(c); N.list = N.list.filter(p => p.idx !== seat); N.list.push({ idx: seat, name, conn: c });
+      c.send(JSON.stringify({ t: 'seat', idx: seat, code: N.code, world: NIGHT ? 'night' : 'day' }));
+      c.send(JSON.stringify({ t: 'rejoin', list: N.list.map(p => ({ idx: p.idx, name: p.name })), time: match.time, score }));
+      hostSnap(true); toast(name.toUpperCase() + ' IS BACK'); return;
+    }
     const used = new Set(N.list.map(p => p.idx)), idx = SEATS.find(i => !used.has(i));
     if (idx === undefined) { c.send(JSON.stringify({ t: 'busy' })); return; }
     c.robot = robots[idx]; c.ready = true; N.conns.push(c); N.list.push({ idx, name: String(m.name || 'Player').slice(0, 12), conn: c });
@@ -4762,7 +4804,7 @@ function hostLobbyUpdate() {
 function hostLeave(c) {
   const N = NET; if (!N) return;
   N.conns = N.conns.filter(x => x !== c); N.list = N.list.filter(p => p.conn !== c);
-  if (c.robot) { c.robot.remote = false; c.robot.netIn = null; } // a bot takes over their robot
+  if (c.robot) { c.robot.remote = false; c.robot.netIn = null; } // a bot takes over their robot (and keeps the seat warm for a rejoin)
   if (!N.started) hostLobbyUpdate(); else toast((c.robot ? c.robot.name : 'A player') + ' LEFT · A BOT TAKES OVER');
 }
 function hostStart() {
@@ -4841,21 +4883,28 @@ async function netJoin(code) {
     NET = { client: true, peer, conn, code, me: -1, snaps: 0, off: null, hostT: 0, lastMove: 0, moveT: 0, ack: 0,
       act(a) { if (conn.open) conn.send(JSON.stringify({ t: 'act', a })); },
       move(m) { this.lastMove = m; } };
-    conn.on('open', () => { conn.send(JSON.stringify({ t: 'hi', name: netName() })); netStatus('Connected. Waiting for the host to start…'); });
+    conn.on('open', () => { let rejoin = -1; try { const s = JSON.parse(sessionStorage.getItem('nymbo-seat') || 'null'); if (s && s.code === code && Date.now() - s.t < 180000) rejoin = s.idx; } catch (e) {} conn.send(JSON.stringify({ t: 'hi', name: netName(), rejoin })); netStatus(rejoin >= 0 ? 'Back in the room. Rejoining your robot…' : 'Connected. Waiting for the host to start…'); });
     conn.on('data', d => { if (typeof d === 'string') clientMsg(JSON.parse(d)); else clientSnap(d instanceof ArrayBuffer ? d : d.buffer || d); });
     conn.on('close', () => { if (NET.again || match.state === 'end') { setTimeout(() => location.reload(), 800); return; } toast('LOST THE HOST'); netStatus('The host left. Reconnecting…'); setTimeout(() => location.reload(), 2500); });
   });
 }
 function clientMsg(m) {
   const N = NET;
-  if (m.t === 'busy') { netStatus('That match has already started or is full.'); return; }
+  if (m.t === 'busy') { netStatus('That match has already started or is full (your old seat was taken).'); try { sessionStorage.removeItem('nymbo-seat'); } catch (e) {} return; }
   if (m.t === 'seat') {
     if ((m.world === 'night') !== NIGHT) { // the host plays in the other world: switch to it (the page reloads and re-joins by itself)
       S.world = m.world; saveS(); netStatus(m.world === 'night' ? 'Switching to Aurora night…' : 'Switching to Day…'); N.peer.destroy(); setTimeout(() => location.reload(), 400); return;
     }
-    N.me = m.idx; netStatus('You are in! Waiting for the host to start…'); return;
+    N.me = m.idx; try { sessionStorage.setItem('nymbo-seat', JSON.stringify({ code: N.code, idx: m.idx, t: Date.now() })); } catch (e) {} netStatus('You are in! Waiting for the host to start…'); return;
   }
   if (m.t === 'lobby') { lobbyShow(N.code, m.list, false); netStatus(N.me >= 0 ? 'You are ' + (robots[N.me].team === 'blue' ? 'BLUE' : 'RED') + '. Waiting for the host to start…' : 'Joining…'); return; }
+  if (m.t === 'rejoin') { // straight back into the running match, no intro
+    $('lobby').hidden = true; $('againBtn').textContent = 'WAITING FOR HOST…'; $('againBtn').disabled = true;
+    robots[0].isPlayer = false; P = robots[N.me]; P.isPlayer = true; snapCamera = true;
+    for (const p of m.list) robots[p.idx].name = p.name;
+    if (m.score) Object.assign(score, m.score); match.time = m.time; match.state = 'play'; $('hud').hidden = false; show(null);
+    buildHud(); $('pwr').hidden = true; audioInit(); N.started = true; toast('YOU ARE BACK IN'); return;
+  }
   if (m.t === 'start') {
     $('lobby').hidden = true; $('againBtn').textContent = 'WAITING FOR HOST…'; $('againBtn').disabled = true;
     robots[0].isPlayer = false;
