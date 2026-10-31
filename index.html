@@ -1288,7 +1288,10 @@ function updateBlocks(dt) {
 //    shows them as glowing outlines for 2s, then the original blocks fly home (or a fresh one pops in if it's gone)
 //  - repairs pause while enemies are in or right next to that fort, so raids aren't undone under your nose
 // ============================================================
-const REPAIR = { wait: 20, every: 4.5, warn: 2, group: 4, calm: 4 };
+const REPAIR = { wait: 20, every: 4.5, warn: 2, group: 4, calm: 4, quickWait: 4, quickEvery: 1.6, quickWarn: .9, quickDist: 9 };
+// a QUICK repair: the brick is still lying close to its spot, nobody's holding or throwing it — it hops back after ~4 s instead of 20
+const quickSpot = s => { const e = s.e; if (!e || e.dead || e.holder || e.live || !e.body || e.frozenT > 0) return false; const t = e.body.translation(), v = e.body.linvel(); return Math.hypot(t.x - s.pos.x, t.z - s.pos.z) < REPAIR.quickDist && Math.abs(t.y - s.pos.y) < 6 && Math.hypot(v.x, v.y, v.z) < .6; };
+const waitFor = s => quickSpot(s) ? REPAIR.quickWait : REPAIR.wait;
 const FORT_SPOTS = { blue: [], red: [] };
 {
   const cellMap = new Map(), ck = (x, y, z) => x + ',' + y + ',' + z;
@@ -1341,18 +1344,19 @@ function updateRepair(dt) {
       clearRubble(G.s); bringHome(G.s);
     }
     if (raid || R.calm < REPAIR.calm || R.ghosts.length) continue;
-    R.t -= dt; if (R.t > 0) continue; R.t = REPAIR.every;
-    // pick a small connected group: lowest, longest-missing first, growing to touching spots that will have support
-    const cand = FORT_SPOTS[team].filter(s => s.state === 'missing' && s.missT > REPAIR.wait && !(s.e && s.e.holder));
+    R.t -= dt; if (R.t > 0) continue;
+    // pick a small connected group: quick ones (brick lying right there) first, then lowest, longest-missing
+    const cand = FORT_SPOTS[team].filter(s => s.state === 'missing' && s.missT > waitFor(s) && !(s.e && s.e.holder));
+    R.t = cand.some(quickSpot) ? REPAIR.quickEvery : REPAIR.every;
     if (!cand.length) continue;
-    cand.sort((a, b) => a.y - b.y || b.missT - a.missT);
+    cand.sort((a, b) => (quickSpot(b) - quickSpot(a)) || a.y - b.y || b.missT - a.missT);
     const group = new Set(), queue = [];
     for (const s of cand) if (supported(s, group) && spotFree(s)) { group.add(s); queue.push(s); break; }
     while (queue.length && group.size < REPAIR.group) {
       const s = queue.shift();
       for (const n of [...s.near].sort((a, b) => a.y - b.y)) {
         if (group.size >= REPAIR.group) break;
-        if (group.has(n) || n.state !== 'missing' || n.missT < REPAIR.wait || (n.e && n.e.holder) || !supported(n, group) || !spotFree(n)) continue;
+        if (group.has(n) || n.state !== 'missing' || n.missT < waitFor(n) || (n.e && n.e.holder) || !supported(n, group) || !spotFree(n)) continue;
         group.add(n); queue.push(n);
       }
     }
@@ -1360,7 +1364,7 @@ function updateRepair(dt) {
       s.state = 'warn';
       const mesh = new THREE.Mesh(ghostGeo, ghostMat[team].clone()), lines = new THREE.LineSegments(ghostEdge, ghostLine[team].clone());
       for (const o of [mesh, lines]) { o.position.copy(s.pos); o.scale.copy(s.dims).multiplyScalar(1.02); scene.add(o); }
-      R.ghosts.push({ s, mesh, lines, t: REPAIR.warn });
+      R.ghosts.push({ s, mesh, lines, t: quickSpot(s) ? REPAIR.quickWarn : REPAIR.warn });
     }
   }
   // blocks flying home along a little arc
@@ -2462,6 +2466,7 @@ function dropFlags(r) {
 }
 function ragdoll(r, dir, by, power = 1) {
   if (!hittable(r)) return false;
+  if (by && (by === r || by.team === r.team)) by = null; // knocking yourself (or a team-mate) over is nobody's kill: no streak, no 'hit', no feed line
   const shattered = r.frozenT > 0;  // frozen robots are brittle: the next hit shatters the ice and sends them much further
   const hadFlag = !!(r.stack[0] && r.stack[0].kind === 'flag'); // (a flag carrier drops just the flag)
   if (shattered) { unfreezeRobot(r); power *= 1.7; const q = rPos(r); fxBurst(q, 0xdff4ff, 2.6, .4); fxDebris(q, 0xe8f6ff, 34, 10); fxDebris(q, 0x9fd8ff, 16, 7); sfx('shatter', q); }
