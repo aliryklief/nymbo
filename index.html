@@ -1181,7 +1181,24 @@ for (const h of HUBS) {
   for (let i = kinds.length; i < spots.length; i++) newBlock('stone', V(spots[i][0], .6, spots[i][1]), { dims: ammoDims() });
 }
 for (let i = 0; i < 3; i++) { slotAt(...freeSpot(), 'bomb'); slotAt(...freeSpot(), 'freeze'); } // and a few anywhere on the map
-for (let i = 0; i < 72; i++) { const [x, z] = freeSpot(); newBlock('stone', V(x, .6, z), { dims: ammoDims() }); }
+// the loose ammo isn't scattered about any more: it stands in a dozen tiny stone structures (same block count, ~72) that
+// you have to knock down for blocks — the map starts tidy and calm and turns to rubble as the match goes on
+{
+  const U = (x, y, z, w = 1, h = 1, d = 1) => ({ x, y, z, w, h, d });
+  const SHAPES = [
+    [U(0, 0, 0), U(0, 1, 0), U(0, 2, 0), U(1.2, 0, 0), U(1.2, 1, 0), U(1.2, 2, 0)],                       // two pillars
+    [U(-1, 0, 0), U(1, 0, 0), U(-1, 1, 0), U(1, 1, 0), U(0, 2, 0, 3, 1, 1), U(0, 3, 0)],                   // an arch with a cap
+    [U(-1, 0, 0), U(0, 0, 0), U(1, 0, 0), U(-.5, 1, 0), U(.5, 1, 0), U(0, 2, 0)],                           // a little pyramid
+    [U(-1, 0, 0), U(0, 0, 0), U(1, 0, 0), U(-1, 1, 0), U(0, 1, 0), U(1, 1, 0)],                             // a low wall
+    [U(0, 0, 0), U(0, 1, 0), U(0, 2, 0), U(0, 3, 0), U(-1, 0, 1.2), U(1, 0, 1.2)],                           // a tower with two stones at its feet
+    [U(-1, 0, -1), U(1, 0, -1), U(-1, 0, 1), U(1, 0, 1), U(0, 1, 0, 3, 1, 1), U(0, 1, 0, 1, 1, 3)],          // four legs and a crossed roof
+  ];
+  for (let i = 0; i < 12; i++) {
+    const [x, z] = freeSpot(3), S = SHAPES[i % SHAPES.length], a = Math.floor(rnd() * 4) * Math.PI / 2, c = Math.cos(a), s = Math.sin(a);
+    for (const u of S) { const d = a % Math.PI ? V(u.d, u.h, u.w) : V(u.w, u.h, u.d); newBlock('stone', V(x + u.x * c - u.z * s, u.y + .5, z + u.x * s + u.z * c), { dims: d, anchored: true }); }
+  }
+  ANCH.dirty = true;
+}
 // (everything below is placed on the ground)
 // a few grey blocks just outside each fort so you can start fighting straight away
 for (const t of ['blue', 'red']) { const f = FORT[t], s = t === 'blue' ? 1 : -1; const dz = [-10, -7.5, -5, 5, 7.5, 10]; for (let i = 0; i < 6; i++) newBlock('stone', V(f.x + s * (FORT_RX + 6 + (i % 2) * 2.4), .6, f.z + dz[i]), /* clear lane in front of the door */ { dims: ammoDims(), rot: new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), (i % 2) * Math.PI / 2) }); } // spaced out so they don't spawn inside each other
