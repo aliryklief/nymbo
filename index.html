@@ -919,6 +919,7 @@ const MONUMENT = { g: null, top: POLE_H, under: 0, cam: V(0, POLE_H + 1.6, 0) };
     const board = new THREE.Mesh(new THREE.BoxGeometry(.8, 1.15, 5), new LiteMat({ color: col })); board.position.z = 2.8; board.castShadow = true; arm.add(board);
     const tip = new THREE.Mesh(new THREE.ConeGeometry(.95, 1.5, 4), new LiteMat({ color: col })); tip.rotation.x = Math.PI / 2; tip.rotation.y = Math.PI / 4; tip.position.z = 6.05; arm.add(tip);
     const cap = new THREE.Mesh(new THREE.BoxGeometry(.86, .14, 5), new LiteMat({ color: 0xffffff })); cap.position.set(0, .64, 2.8); arm.add(cap);
+    (MONUMENT.perch = MONUMENT.perch || {})[team] = V(Math.sin(ang) * 4.4, arm.position.y + .71 + .1, Math.cos(ang) * 4.4); // where the egg bird lands on this arrow
   }
   scene.add(g);
   for (const [w, h, y] of [[3, .7, .35], [1.6, .5, .95]]) { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, h / 2, w / 2).setTranslation(0, y, 0).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); }
@@ -3079,21 +3080,42 @@ function birdMesh() {
 }
 function treeFell(tr) { // called when a tree block comes loose; maybe the nest wakes up
   if (!tr.birds || tr.flown || birdCool > 0) return; tr.flown = true; birdCool = 25; // (clients draw the birds too; only the host drops the egg)
-  const n = 3 + Math.floor(rnd() * 3), egg = Math.floor(rnd() * n);
+  return birdsOut(tr, rnd() < .5 ? 'blue' : 'red');
+}
+// the flock scatters; ONE bird carries the egg: it flies over to the centre pole, lands on the blue or red arrow, sits there,
+// and the moment someone comes close it lets the egg go and flies off
+function birdsOut(tr, side) {
+  const n = 3 + Math.floor(rnd() * 3);
   for (let i = 0; i < n; i++) {
     const a = rnd() * Math.PI * 2, g = birdMesh(); g.position.set(tr.x + rr(-.6, .6), tr.h + 1.2, tr.z + rr(-.6, .6)); scene.add(g);
-    BIRDS.push({ g, dir: V(Math.sin(a), 0, Math.cos(a)), t: 0, life: rr(3.2, 4.2), egg: i === egg, dropAt: rr(.9, 1.6), sp: rr(5, 7), ph: rnd() * 6 });
+    const b = { g, dir: V(Math.sin(a), 0, Math.cos(a)), t: 0, life: rr(3.2, 4.2), sp: rr(5, 7), ph: rnd() * 6, mode: 'fly' };
+    if (i === 0) { b.mode = 'toPole'; b.egg = true; b.from = g.position.clone(); b.to = MONUMENT.perch[side].clone(); b.trip = Math.max(1.5, b.from.distanceTo(b.to) / 9); b.sp = 0; }
+    BIRDS.push(b);
   }
   sfx('crow', V(tr.x, tr.h, tr.z)); if (P) toast('BIRDS!');
-  netEv(['birds', tr.x, tr.z, tr.h]);
+  netEv(['birds', tr.x, tr.z, tr.h, side]);
 }
+function birdLeave(b) { for (const [j, w] of b.g.userData.wings.entries()) { w.scale.x = 1; w.position.x = (j ? 1 : -1) * .3; } b.mode = 'fly'; b.t = 0; b.life = rr(3, 3.8); const a = rnd() * Math.PI * 2; b.dir = V(Math.sin(a), 0, Math.cos(a)); b.sp = rr(5, 7); sfx('crow', b.g.position); }
 function updateBirds(dt) {
   birdCool -= dt;
   for (let i = BIRDS.length - 1; i >= 0; i--) {
-    const b = BIRDS[i]; b.t += dt; const g = b.g, k = b.t / b.life;
+    const b = BIRDS[i]; b.t += dt; const g = b.g, wings = g.userData.wings;
+    if (b.mode === 'toPole') { // a swooping flight over to the arrow
+      const k = Math.min(1, b.t / b.trip), e = k * k * (3 - 2 * k), p = b.from.clone().lerp(b.to, e); p.y += Math.sin(k * Math.PI) * 6; const d = b.to.clone().sub(b.from).setY(0).normalize();
+      g.position.copy(p); g.lookAt(p.clone().add(d)); const f = Math.sin(b.t * 22 + b.ph) * .9; wings[0].rotation.z = f; wings[1].rotation.z = -f;
+      if (k >= 1) { b.mode = 'perch'; b.t = 0; b.look = rnd() * 6; }
+      continue;
+    }
+    if (b.mode === 'perch') { // sits on the arrow, wings tucked, looking about; someone comes close (or it gets bored after 40 s) → egg, then off
+      g.position.copy(b.to); g.rotation.set(0, b.look + Math.sin(b.t * 1.7) * .9 + (Math.sin(b.t * 7) > .95 ? .4 : 0), 0); for (const [j, w] of wings.entries()) { w.scale.x = .42; w.position.x = (j ? 1 : -1) * .17; w.rotation.z = (j ? -1 : 1) * 1.2; } // wings folded down at its sides g.position.y += Math.abs(Math.sin(b.t * 5)) * .03;
+      if (NET && NET.client) continue; // (the host decides when it drops)
+      const near = b.t > 1 && robots.some(r => r.state === 'play' && Math.hypot(rPos(r).x - b.to.x, rPos(r).z - b.to.z) < 7);
+      if (near || b.t > 40) { b.egg = false; const e = newBlock('egg', g.position.clone().setY(g.position.y - .5), { dims: V(.8, 1, .8) }); e.anchored = false; e.live = true; e.liveT = .1; e.thrower = null; e.body.setLinvel({ x: 0, y: -1, z: 0 }, true); sfx('pop', g.position); netEv(['birdgo']); birdLeave(b); }
+      continue;
+    }
+    const k = b.t / b.life;
     g.position.addScaledVector(b.dir, b.sp * dt); g.position.y += (2.2 + k * 3) * dt; g.lookAt(g.position.clone().add(b.dir).setY(g.position.y + .2));
-    const f = Math.sin(b.t * 22 + b.ph) * .9; for (const [j, w] of g.userData.wings.entries()) w.rotation.z = j ? -f : f;
-    if (b.egg && b.t >= b.dropAt && !(NET && NET.client)) { b.egg = false; const e = newBlock('egg', g.position.clone().setY(g.position.y - .4), { dims: V(.8, 1, .8) }); e.anchored = false; e.live = true; e.liveT = .1; e.thrower = null; e.body.setLinvel({ x: b.dir.x * 2, y: -1, z: b.dir.z * 2 }, true); sfx('pop', g.position); }
+    const f = Math.sin(b.t * 22 + b.ph) * .9; wings[0].rotation.z = f; wings[1].rotation.z = -f;
     if (k > .75) g.scale.setScalar(Math.max(.01, 1 - (k - .75) / .25)); // fades into the sky
     if (b.t >= b.life) { scene.remove(g); BIRDS.splice(i, 1); }
   }
@@ -5045,7 +5067,8 @@ function clientEv(e) {
   else if (k === 'end') { setTimeout(() => endMatch(), 150); }
   else if (k === 'bh') startBlackHole(e[1]);
   else if (k === 'stick') { const b = blockById(e[1]); if (b && !b.stuck) { b.live = false; b.stuck = { to: e[5] >= 0 ? robots[e[5]] : null, off: null, fuse: b.kind === 'egg' ? 5 : 2.5, beep: 0 }; if (b.stuck.to) { b.stuck.off = V(e[2], e[3], e[4]).sub(rPos(b.stuck.to)); } dropBody(b); makeBody(b, V(e[2], e[3], e[4]), null); b.body.setBodyType(RAPIER.RigidBodyType.Fixed, true); b.col.setSensor(true); STUCK.push(b); sfx('catch', V(e[2], e[3], e[4])); } }
-  else if (k === 'birds') { const tr = TREES.find(t => Math.hypot(t.x - e[1], t.z - e[2]) < .5); if (tr) { tr.birds = true; tr.flown = false; birdCool = 0; treeFell(tr); } }
+  else if (k === 'birds') { const tr = TREES.find(t => Math.hypot(t.x - e[1], t.z - e[2]) < .5); if (tr && !tr.flown) { tr.flown = true; birdsOut(tr, e[4] || 'blue'); } }
+  else if (k === 'birdgo') { for (const b of BIRDS) if (b.mode === 'perch') birdLeave(b); }
   else if (k === 'bhx') { const b = blockById(e[1]); if (b && !b.dead) { const t = b.body ? b.body.translation() : null; if (t) fxBurst0(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(b); } }
   else if (k === 'out') { const r = robots[e[1]]; if (r) { r.state = 'out'; r.model.g.visible = false; toast([[r.name.toUpperCase(), r.color], [' WAS SWALLOWED', null]]); if (r === P) specStart('SWALLOWED · DRAG TO LOOK AROUND'); } }
   else if (k === 'bhwin') { score[e[1]] = Math.max(score[e[1]], score[other(e[1])] + 1); bigToast('SWALLOWED THEM ALL', e[1] === 'blue' ? 'blue' : 'red'); }
