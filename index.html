@@ -58,8 +58,13 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 .dz.hit{animation:dzhit .35s ease-out}
 @keyframes dzhit{0%{background:rgba(120,255,140,.45)}100%{background:rgba(120,255,140,0)}}
 #fps{left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 84px);font:600 11px/1.3 var(--body);color:#ffd400;background:rgba(0,0,0,.45);padding:4px 8px;border-radius:8px;white-space:pre;text-align:center}
-#replayTag{position:fixed;left:calc(env(safe-area-inset-left,0px) + 12px);top:calc(env(safe-area-inset-top,0px) + 56px);z-index:9;display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;border:2px solid var(--ink2);background:rgba(10,14,26,.72);color:#fff;font-family:var(--display);font-size:14px;letter-spacing:.06em}
-#replayTag i{width:10px;height:10px;border-radius:50%;background:#ff3b3b;animation:recdot 1s steps(2) infinite}#replayTag small{font:600 10px var(--body);color:var(--muted);letter-spacing:.04em}
+/* the replay is its own screen: the whole HUD goes and only a REPLAY title sits where the toasts appear */
+#hud.replaying>*:not(#replayTag){visibility:hidden !important}#hud.replaying~#trail,body:has(#hud.replaying) #trail,body:has(#hud.replaying) #pick{visibility:hidden}
+#replayTag{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 22px);transform:translateX(-50%);z-index:9;display:flex;flex-direction:column;align-items:center;gap:2px;padding:0;border:0;background:none;color:#fff;font-family:var(--display);font-size:34px;letter-spacing:.14em;text-shadow:0 3px 0 rgba(0,0,0,.45),0 0 14px rgba(0,0,0,.45);animation:rpIn .45s cubic-bezier(.2,1.6,.4,1) both}
+#replayTag span{display:flex;align-items:center;gap:10px}
+#replayTag i{width:13px;height:13px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 10px #ff3b3b;animation:recdot 1s steps(2) infinite}
+#replayTag small{font:600 11px var(--body);color:rgba(255,255,255,.75);letter-spacing:.08em;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+@keyframes rpIn{from{opacity:0;transform:translate(-50%,10px) scale(.7)}to{opacity:1;transform:translateX(-50%)}}
 @keyframes recdot{50%{opacity:.2}}
 #replayBtn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 28px);z-index:9;width:min(62vw,260px);padding:12px 0 16px;border-radius:16px;border:2.5px solid var(--ink2);background:var(--c4,#ffd400);color:var(--ink2);font-family:var(--display);font-size:18px;letter-spacing:.06em;box-shadow:0 5px 0 var(--ink2);overflow:hidden}
 #replayBtn b{position:absolute;left:0;bottom:0;height:6px;width:calc(var(--k,1)*100%);background:var(--ink2)}
@@ -220,7 +225,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <button class="pw" id="holeBtn" hidden style="--c:#b36bff" aria-label="BLACK HOLE"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5c5.2 0 9.5 4.3 9.5 9.5S17.2 21.5 12 21.5 2.5 17.2 2.5 12 6.8 2.5 12 2.5zm0 2A7.5 7.5 0 1 0 12 19.5 7.5 7.5 0 0 0 12 4.5z" opacity=".5"/><path d="M4 12a8 8 0 0 1 8-8v2a6 6 0 0 0-6 6z" opacity=".9"/></svg><span>BLACK HOLE</span><i></i></button>
   <button id="micBtn" hidden>🎤 off</button>
   <div id="flash"></div>
-  <button id="replayTag" hidden><i></i>REPLAY<small>tap to skip</small></button>
+  <button id="replayTag" hidden><span><i></i>REPLAY</span><small>tap anywhere to skip</small></button>
   <button id="replayBtn" hidden><span>▶ REPLAY</span><b></b></button>
   <div class="hud" id="fps" hidden></div>
   <div class="hud" id="count" hidden>3</div>
@@ -5118,9 +5123,9 @@ function startReplay() {
   if (REPLAY.on || REPLAY.frames.length < 8 || match.state !== 'play') return;
   $('replayBtn').hidden = true; REPLAY.pendingAt = 0;
   REPLAY.on = true; REPLAY.play = REPLAY.frames.slice(); REPLAY.evs = REPLAY.events.slice(); REPLAY.to = REPLAY.play[REPLAY.play.length - 1].t; REPLAY.from = Math.max(REPLAY.play[0].t, REPLAY.koAt - 2.7);
-  REPLAY.at = REPLAY.from; REPLAY.evAt = REPLAY.from; REPLAY.last = now(); REPLAY.drawAt = 0; REPLAY.kp = null; REPLAY.sideSgn = 0; $('replayTag').hidden = false; gest = null;
+  REPLAY.at = REPLAY.from; REPLAY.evAt = REPLAY.from; REPLAY.last = now(); REPLAY.drawAt = 0; REPLAY.kp = null; REPLAY.sideSgn = 0; $('replayTag').hidden = false; $('hud').classList.add('replaying'); gest = null;
 }
-function stopReplay() { if (!REPLAY.on) return; REPLAY.on = false; REPLAY.play = null; $('replayTag').hidden = true; snapCamera = true; }
+function stopReplay() { if (!REPLAY.on) return; REPLAY.on = false; REPLAY.play = null; $('replayTag').hidden = true; $('hud').classList.remove('replaying'); snapCamera = true; }
 // borrow the recorded positions for one picture, then hand the live ones back
 function drawReplay() {
   const n = now(); REPLAY.at += (n - REPLAY.last) / 1000 * (REPLAY.speed || REPLAY_SPEED); REPLAY.last = n;
