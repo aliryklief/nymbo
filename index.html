@@ -1317,8 +1317,8 @@ function updateAnimals(dt) {
   for (const e of blocks) {
     if (e.kind !== 'animal' || e.dead || !e.body || e.holder || e.frozenT > 0) continue;
     if (e.rage) { updateRage(e, dt); continue; }
-    if (e.heldT > 0) { // an angry cow takes a while to calm down; whoever lifts it next inherits what's left
-      e.heldT = Math.max(0, e.heldT - dt * .55); const k = clamp((e.heldT - 6) / 4, 0, 1);
+    if (e.heldT > 0) { // an angry cow takes ages to calm down (about two minutes from fuming); whoever lifts it next inherits what's left
+      e.heldT = Math.max(0, e.heldT - dt * .08); const k = clamp((e.heldT - 6) / 4, 0, 1);
       e.mesh.material.emissive.setRGB(k * .55, 0, 0); e.mesh.userData.face.visible = e.heldT > 7.5;
     }
     const lv = e.body.linvel(), sp = Math.hypot(lv.x, lv.y, lv.z), w = e.wander, t = e.body.translation();
