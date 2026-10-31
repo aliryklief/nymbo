@@ -3042,15 +3042,12 @@ stage.addEventListener('pointermove', e => {
     gest.turnFrom = gest.x;
   } else if (gest.mode === 'hold' && Math.abs(dx) > 8) { gest.mode = 'holdturn'; gest.turnFrom = gest.x; }
   // act DURING the stroke, not when the finger lifts: a swipe down grabs the moment it's clearly a swipe down,
-  // a swipe up throws as soon as the flick has peaked (or run far), a fast sideways flick anywhere dodges.
+  // a swipe up throws as soon as the flick has peaked (or run far). Sideways swipes anywhere turn; only a swipe on your robot's head dodges.
   if (gest.mode === 'vertical' && dy > 30) { gest.mode = 'done'; playerGrab(); }
   else if (gest.mode === 'vertical' && dy < -30) {
     const vNow = gest.samples.length > 1 ? (gest.samples[0][1] - gest.y) / Math.max(1, t - gest.samples[0][2]) : 0;
     gest.peak = Math.max(gest.peak || 0, vNow);
     if (-dy > innerHeight * .22 || (gest.peak > .6 && vNow < gest.peak * .5) || t - gest.t0 > 260) { gest.mode = 'done'; playerThrow(swipePower(gest)); }
-  } else if (gest.mode === 'turn' && !gest.onHead && t - gest.t0 < 200 && Math.abs(dx) > 36 && Math.abs(dx) > Math.abs(dy) * 1.8) {
-    const vx = Math.abs(dx) / Math.max(1, t - gest.t0) * 390 / innerWidth;
-    if (vx > 1.0) { gest.mode = 'dodged'; P.yawT = gest.yawStart; if (playerDodge(Math.sign(dx))) toast(dx > 0 ? 'DODGE ⇢' : '⇠ DODGE'); }
   }
   if (gest.mode === 'turn' || gest.mode === 'holdturn') P.yawT = gest.yawStart - (gest.x - gest.turnFrom) * S.turn / 1000;
 });
