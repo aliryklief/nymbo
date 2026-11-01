@@ -45,6 +45,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #aNow{width:42px;height:42px;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
 #aNowBox.bump{animation:apop .22s ease-out}
 @keyframes apop{0%{transform:scale(.82)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
+#aNext{transition:opacity .5s}#hud.intro #aNext{opacity:0;transition:none}
 #aNext{position:fixed;left:calc(env(safe-area-inset-left,0px) + 8px);bottom:calc(50% + 35px);width:52px;display:flex;flex-direction:column;align-items:center;gap:9px}
 #aNext canvas{display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
 #aN1{width:46px;height:46px;opacity:.85}
@@ -5202,6 +5203,7 @@ function drawReplay() {
   }; }
 // the REPLAY button (replay off) and its bar; skipping a replay with a tap
 function updateReplayUI(dt) {
+  { const intro = match.state === 'count', h = $('hud'); if (h.classList.contains('intro') !== intro) h.classList.toggle('intro', intro); } // the round-start camera intro: no next-blocks column yet
   const btn = $('replayBtn');
   if (!btn.hidden) { REPLAY.offerT -= dt; btn.style.setProperty('--k', clamp(REPLAY.offerT / RAG_TIME, 0, 1)); if (REPLAY.offerT <= 0 || (P && P.state === 'play') || match.state !== 'play') btn.hidden = true; }
 }
