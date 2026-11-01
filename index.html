@@ -4708,7 +4708,16 @@ for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 
 
 let wakeLock = null;
 const INTRO_T = 8.2; // flyover length; the last 5 seconds show the countdown
+// offline games: you start as a random robot on a random team (any of the 8 seats), not always blue
+function pickRandomSeat() {
+  const seat = robots[Math.floor(Math.random() * robots.length)]; if (seat === P) return;
+  const old = P, role = seat.ai.role;
+  old.isPlayer = false; old.ai.role = role; old.name = 'Blue';            // the blue robot you'd normally be takes over your seat's job
+  seat.isPlayer = true; seat.ai.role = 'player'; seat.ai.goal = seat.ai.target = null; seat.name = 'You';
+  P = seat; snapCamera = true; buildHud();
+}
 function startCountdown() {
+  if (!NET && !match.seatPicked) { match.seatPicked = true; pickRandomSeat(); }
   netEv(['count']);
   if (!(NET && NET.client)) for (const r of robots) if (!r.stack.some(e => e.kind === 'sticky')) { const w = newBlock('sticky', V(rPos(r).x, 2, rPos(r).z), { dims: V(1, 1, 1) }); w.anchored = false; grabBlock(r, w); } // everyone's one start block: a sticky grenade
   show(null); match.state = 'count'; match.count = INTRO_T; match.lastBeep = 6; match.swooped = false; sfx('intro'); $('hud').hidden = false;
