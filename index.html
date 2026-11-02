@@ -5328,6 +5328,98 @@ function updateIsland(dt) {
 { const ump0 = updateMorePowers; updateMorePowers = function (dt) { ump0(dt); updateIsland(dt); }; }
 
 // ============================================================
+// SMARTER BOTS: extra skills layered on top of the basic bot brain, scaled by difficulty.
+//  EASY    as before.
+//  NORMAL  takes a portal when it's a shortcut, now and then catches a block thrown at it, earns hit-streak powers
+//          (5 / 8 / 10 in a row, like you) and uses the simple ones.
+//  HARD    catches throws properly, bowls cows into crowds, blows up or freezes a dog that's after it, steps round
+//          enemy springtraps and won't walk into an armed enemy coop, rides the trampolines when they're on the way,
+//          and uses its streak powers cleverly: the dog, a springtrap on your route home, the coop when you're coming
+//          for its flags, the shovel when you're right next to it, an ice strike or a tornado on a crowd.
+// ============================================================
+const SMART = () => ({ easy: 0, normal: 1, hard: 2 })[S.diff] ?? 1;
+// ---- powers for bots ----
+const BOT_POWERS = { 1: ['dog', 'spring', 'shovel', 'air'], 2: ['dog', 'spring', 'coop', 'shovel', 'air', 'tornado'] };
+{ const os0 = onStreak; onStreak = function (by, victim) {
+    os0(by, victim);
+    if (!by || by.isPlayer || by.remote || NET || by === victim || SMART() < 1) return;
+    if (STREAK_TIERS.includes(by.streak)) { const list = BOT_POWERS[SMART()]; (by.botPw = by.botPw || []).push(list[Math.floor(Math.random() * list.length)]); if (by.botPw.length > 3) by.botPw.shift(); }
+  }; }
+function botAnnounce(r, name) { toast([[r.name.toUpperCase(), r.color], [' USED ', null], [name, r.team === 'blue' ? '#5cc0ff' : '#ff6a5a']]); }
+function botUsePower(r, p) {
+  if (!r.botPw || !r.botPw.length || r.botPwCool > now()) return;
+  const lvl = SMART(), id = r.botPw[0], foes = robots.filter(o => o.team !== r.team && o.state === 'play');
+  if (!foes.length) return;
+  const near = foes.map(o => [o, rPos(o).distanceTo(p)]).sort((a, b) => a[1] - b[1]);
+  const carrier = robots.find(o => o.team !== r.team && o.state === 'play' && o.stack[0] && o.stack[0].kind === 'flag');
+  const crowd = () => { let best = null, bn = 0; for (const [o] of near) { const c = rPos(o), n = foes.filter(q => rPos(q).distanceTo(c) < 6).length; if (n > bn) { bn = n; best = c; } } return { at: best, n: bn }; };
+  let used = false;
+  if (id === 'dog') { sendDog(r, lvl >= 2 && carrier ? carrier : undefined); used = true; botAnnounce(r, 'FETCH!'); }
+  else if (id === 'shovel') { if (near[0][1] < 3 || lvl < 2) { if (near[0][1] < 3.5) { dig(r); used = true; } } }
+  else if (id === 'spring') { // hard: right in the path of whoever's bringing a flag home, else just outside its own fort door
+    let at;
+    if (lvl >= 2 && carrier) { const c = rPos(carrier), F = FORT[carrier.team], d = V(F.x - c.x, 0, F.z - c.z).normalize(); at = c.clone().addScaledVector(d, 9); }
+    else { const F = FORT[r.team], s = Math.sign(-F.x) || 1; at = V(F.x + s * (FORT_RX + 3), 0, F.z + rr(-3, 3)); }
+    placeSpring(at.setY(0), r); used = true; botAnnounce(r, 'A SPRINGTRAP');
+  }
+  else if (id === 'coop') { // when enemies are heading for its fort
+    const F = FORT[r.team], coming = foes.some(o => Math.hypot(rPos(o).x - F.x, rPos(o).z - F.z) < FORT_RX + 14);
+    if (!COOP.on && (coming || lvl < 2)) { startCoop(r); used = true; botAnnounce(r, 'THE CHICKEN COOP'); }
+  }
+  else if (id === 'air' || id === 'tornado') { const c = crowd(); if (c.at && (c.n >= 2 || lvl < 2)) { if (id === 'air') { airStrikeAt(c.at.clone().setY(0)); botAnnounce(r, 'AN ICE STRIKE'); } else { startTornado(c.at.clone().setY(0)); botAnnounce(r, 'A TORNADO'); } used = true; } }
+  if (used) { r.botPw.shift(); r.botPwCool = now() + 4000; }
+  else if (Math.random() < .02) r.botPw.push(r.botPw.shift()); // can't use that one right now: think about the next
+}
+// ---- getting about: portals as shortcuts, trampolines when they're on the way ----
+function routeAim(r, p, goal, lvl) {
+  let best = Math.hypot(goal.x - p.x, goal.z - p.z), aim = null;
+  if (best < 25) return null;
+  for (const Pn of PORTALS) { const Q = PORTALS[1 - Pn.i], via = Math.hypot(Pn.pos.x - p.x, Pn.pos.z - p.z) + Math.hypot(goal.x - Q.pos.x, goal.z - Q.pos.z) + 8;
+    if (via < best) { best = via; const front = (p.x - Pn.pos.x) * Pn.n.x + (p.z - Pn.pos.z) * Pn.n.z; aim = front > 1.2 || Math.hypot(p.x - Pn.pos.x, p.z - Pn.pos.z) < 3 ? Pn.pos.clone() : Pn.pos.clone().addScaledVector(Pn.n, 4); } }
+  if (lvl >= 2 && !aim) for (const Pd of PADS) { // a trampoline roughly on the way, close by: take it
+    if (Pd.broken) continue; const dp = Math.hypot(Pd.x - p.x, Pd.z - p.z); if (dp > 10 || dp < 1.5) continue;
+    const g = V(goal.x - p.x, 0, goal.z - p.z).normalize(), t = V(Pd.x - p.x, 0, Pd.z - p.z).normalize(); if (g.dot(t) > .75 && Math.hypot(goal.x - Pd.x, goal.z - Pd.z) > 22) aim = V(Pd.x, 0, Pd.z);
+  }
+  return aim;
+}
+// ---- dodging hazards (hard): enemy springtraps, an armed enemy coop ----
+function hazardAt(r, x, z) {
+  for (const S_ of SPRINGS) if (!S_.spent && S_.owner && S_.owner.team !== r.team && Math.hypot(x - S_.x, z - S_.z) < 2) return true;
+  if (COOP.on && COOP.team !== r.team && COOP.phase === 'armed' && inOwnFort(COOP.team, V(x, 0, z)) && !(r.stack[0] && r.stack[0].kind === 'flag')) return true;
+  return false;
+}
+// ---- the add-ons, wrapped round the basic brain ----
+{ const ua0 = updateAI; updateAI = function (r, dt) {
+    const lvl = SMART(), ai = r.ai;
+    if (lvl === 0 || !canMove(r)) return ua0(r, dt);
+    const p = rPos(r);
+    // route: swap the goal for a portal / trampoline for this frame
+    let real = null, aim = null; if (ai.goal && r.grounded) { aim = routeAim(r, p, ai.goal, lvl); if (aim) { real = ai.goal; ai.goal = aim; } }
+    ua0(r, dt);
+    if (real && ai.goal === aim) ai.goal = real;
+    // hard: step round hazards
+    if (lvl >= 2 && r.wantSpeed > 0) { const d = r.want; if (hazardAt(r, p.x + d.x * 2.5, p.z + d.z * 2.5)) { for (const a of [.9, -.9, 1.6, -1.6]) { const d2 = d.clone().applyAxisAngle(V(0, 1, 0), a); if (!hazardAt(r, p.x + d2.x * 2.5, p.z + d2.z * 2.5)) { r.want.copy(d2); break; } } } }
+    // catching a block thrown at you (hard: most of the time; normal: sometimes)
+    if (r.stack.length < MAX_AMMO && !(r.stack[0] && r.stack[0].kind === 'flag') && (ai.catchT = (ai.catchT || 0) - dt) <= 0) {
+      for (const e of blocks) { if (!e.live || !e.body || !e.thrower || e.thrower.team === r.team || e.holder) continue;
+        const t = e.body.translation(), lv = e.body.linvel(), rel = V(p.x - t.x, p.y - t.y, p.z - t.z), vv = lv.x * lv.x + lv.y * lv.y + lv.z * lv.z; if (vv < 4) continue;
+        const tca = (rel.x * lv.x + rel.y * lv.y + rel.z * lv.z) / vv; if (tca < 0 || tca > .12) continue;
+        const miss = Math.hypot(t.x + lv.x * tca - p.x, t.y + lv.y * tca - p.y, t.z + lv.z * tca - p.z); if (miss > 1.4) continue;
+        ai.catchT = .5; if (Math.random() < (lvl >= 2 ? .7 : .25)) grabBlock(r, e); break; }
+    }
+    // a dog after me: bomb it or freeze it if I'm holding one (hard)
+    if (lvl >= 2 && r.stack[0] && (r.stack[0].kind === 'bomb' || r.stack[0].kind === 'freeze' || r.stack[0].kind === 'sticky') && ai.cool <= 0) {
+      const D = DOGS.find(d => d.target === r && !d.leaving && d.frozenT <= 0); if (D) { const dp = V(D.x, D.y + .5, D.z); if (dp.distanceTo(p) < 16 && dp.distanceTo(p) > 3) { throwAt(r, dp, (DIFF.hard || {}).tSpeed || 21); ai.cool = 1; } }
+    }
+    // hard: grab a cow or sheep to bowl into a crowd when there are a few enemies together nearby
+    if (lvl >= 2 && !r.stack.length && ai.mode === 'ammo' && (ai.animalT = (ai.animalT || 0) - dt) <= 0) { ai.animalT = 2;
+      const foesNear = robots.filter(o => o.team !== r.team && o.state === 'play' && rPos(o).distanceTo(p) < 18).length;
+      if (foesNear >= 2) { const a = blocks.find(e => e.kind === 'animal' && !e.dead && !e.holder && !e.rage && e.body && e.animal !== 'chicken' && Math.hypot(e.body.translation().x - p.x, e.body.translation().z - p.z) < 2.2); if (a) grabBlock(r, a); } }
+    // powers earned from hit streaks
+    if (lvl >= 1 && r.botPw && r.botPw.length && match.state === 'play' && Math.random() < dt * (lvl >= 2 ? 1.5 : .5)) botUsePower(r, p);
+  }; }
+
+// ============================================================
 // MATCH FLOW + MAIN LOOP
 // ============================================================
 for (const team of ['blue', 'red']) for (let i = 0; i < 4; i++) createRobot(team, i);
