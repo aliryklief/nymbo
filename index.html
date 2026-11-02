@@ -210,6 +210,14 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 #endTitle[data-res=win]{color:#5cc0ff}#endTitle[data-res=lose]{color:#ff6a5a}
 #endScore{display:flex;justify-content:center;align-items:center;gap:14px;font-family:var(--display);font-size:54px}
 #endScore span{opacity:.5;font-size:36px}
+#end{align-content:center;gap:12px}#end .card{width:min(92vw,420px);box-sizing:border-box}
+#endBoard{width:min(92vw,420px);padding:10px 12px;border-radius:18px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.28);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+#endBoard h4{margin:2px 4px 8px;font-family:var(--display);letter-spacing:.08em;font-size:14px;opacity:.9}
+#endBoard table{width:100%;border-collapse:collapse;font:600 13px var(--body)}
+#endBoard th{font:700 10px var(--body);letter-spacing:.08em;opacity:.7;text-align:right;padding:0 6px 4px}#endBoard th:nth-child(2){text-align:left}
+#endBoard td{padding:5px 6px;text-align:right;border-top:1px solid rgba(255,255,255,.12)}#endBoard td:nth-child(2){text-align:left}
+#endBoard td:first-child{width:22px;text-align:center;opacity:.8}#endBoard .dot{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:7px;vertical-align:-1px}
+#endBoard tr.me td{background:rgba(255,216,74,.18)}#endBoard tr.top td:first-child{color:#ffd84a;opacity:1}
 #endStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 #endStats div{background:rgba(12,18,32,.6);border:1.5px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center}
 #endStats b{display:block;font-family:var(--display);font-weight:400;font-size:28px;font-variant-numeric:tabular-nums}
@@ -359,6 +367,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <button class="go" id="againBtn">PLAY AGAIN</button>
     <button class="ghost" id="menuBtn">Menu</button>
   </div>
+  <div id="endBoard"></div>
 </div>
 <div id="loading">NYMBO</div>
 
@@ -5385,6 +5394,10 @@ function endMatch() {
   $('endTitle').dataset.res = res; sfx(res === 'win' ? 'win' : res === 'lose' ? 'defeat' : 'lose');
   $('endScore').innerHTML = `<b style="color:#5cc0ff">${score.blue}</b><span>–</span><b style="color:#ff6a5a">${score.red}</b>`;
   $('endStats').innerHTML = `<div><b>${P.stats.hits}</b><span>Hits</span></div><div><b>${P.stats.flags}</b><span>Flags scored</span></div><div><b>${P.stats.kos}</b><span>Times knocked out</span></div>`;
+  // the scoreboard: everyone, both teams together, most knockouts first (then flags, then fewest times knocked out)
+  { const rows = [...robots].sort((a, b) => (b.stats.hits - a.stats.hits) || (b.stats.flags - a.stats.flags) || (a.stats.kos - b.stats.kos));
+    $('endBoard').innerHTML = '<h4>SCOREBOARD</h4><table><tr><th>#</th><th>PLAYER</th><th>KOS</th><th>FLAGS</th><th>KNOCKED OUT</th></tr>' + rows.map((r, i) =>
+      `<tr class="${r === P ? 'me' : ''}${i === 0 ? ' top' : ''}"><td>${i === 0 ? '★' : i + 1}</td><td><span class="dot" style="background:${r.color}"></span>${String(r.name).replace(/[<>&]/g, '')}</td><td>${r.stats.hits}</td><td>${r.stats.flags}</td><td>${r.stats.kos}</td></tr>`).join('') + '</table>'; }
   setTimeout(() => show('end'), 1200);
   buzz(res === 'win' ? 'win' : 'lose');
 }
