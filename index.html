@@ -713,6 +713,7 @@ function portalCheck(p) { // is point p inside a portal's doorway? returns the p
 
 // ---- animals: blocky cows and sheep near the portals (made pick-up-able in the blocks file) ----
 const legGeo = {};
+const voiceOf = (e, angry) => e.animal === 'cow' ? (angry ? 'mooAngry' : 'moo') : e.animal === 'chicken' ? (angry ? 'squawk' : 'cluck') : (angry ? 'baaAngry' : 'baa');
 function makeAnimal(kind) {
   // body built from boxes, merged into ONE mesh with vertex colours; the four legs are separate so they can kick
   const parts = [], colGeo = (gg, c) => { const col = new THREE.Color(c), n = gg.attributes.position.count, cs = new Float32Array(n * 3); for (let i = 0; i < n; i++) col.toArray(cs, i * 3); gg.setAttribute('color', new THREE.BufferAttribute(cs, 3)); return gg; };
@@ -731,6 +732,15 @@ function makeAnimal(kind) {
     legs = [[-.33, -.55], [.33, -.55], [-.33, .52], [.33, .52]];
     legGeo.cow = legGeo.cow || colGeo(new THREE.BoxGeometry(.3, .36, .3).translate(0, -.18, 0), W);
     legGeo.hoof = legGeo.hoof || colGeo(new THREE.BoxGeometry(.32, .1, .32).translate(0, -.31, 0), K);
+  } else if (kind === 'chicken') {
+    // a plump white hen: red comb and wattle, orange beak, a little tail. (Its legs and wings are added below.)
+    const add2 = (w, h, d, x, y, z, c) => { const gg = new THREE.BoxGeometry(w, h, d); gg.translate(x, y, z); parts.push(colGeo(gg, c)); };
+    add2(.56, .46, .62, 0, -.02, -.02, '#fbfaf4'); add2(.34, .36, .32, 0, .3, .26, '#fbfaf4');      // body, head
+    add2(.1, .14, .22, 0, .52, .26, '#e0281a'); add2(.1, .14, .08, 0, .14, .44, '#e0281a');          // comb, wattle
+    add2(.14, .09, .14, 0, .28, .48, '#ffb300');                                                      // beak
+    add2(.06, .07, .02, -.1, .34, .425, '#1c1c1e'); add2(.06, .07, .02, .1, .34, .425, '#1c1c1e');   // eyes
+    add2(.4, .3, .16, 0, .14, -.36, '#f1efe6');                                                        // tail
+    legs = [];
   } else {
     add(1.0, .85, 1.3, 0, 1.0, 0, '#f4f4f0'); add(.55, .55, .55, 0, 1.15, .82, '#3a3a3f'); add(1.05, .3, 1.35, 0, 1.4, 0, '#fafaf6');
     add(.2, .12, .1, -.33, 1.25, .82, '#3a3a3f'); add(.2, .12, .1, .33, 1.25, .82, '#3a3a3f');
@@ -749,6 +759,13 @@ function makeAnimal(kind) {
       const e = new THREE.Mesh(new THREE.BoxGeometry(.09, .07, .03), eyeM); e.position.set(sx * w * .22, fy - .03, fz + .02); face.add(e);
     }
     face.visible = false; g.add(face); g.userData.face = face; }
+  if (kind === 'chicken') { // two thin orange legs and two wings (they flap like mad when it's carried)
+    const legM = new LiteMat({ color: 0xffa21f }), wingM = new LiteMat({ color: 0xf1efe6 }), lg = new THREE.BoxGeometry(.07, .2, .07).translate(0, -.1, 0), wg = new THREE.BoxGeometry(.06, .3, .4).translate(0, -.13, 0);
+    const L = [];
+    for (const sx of [-1, 1]) { const l = new THREE.Mesh(lg, legM); l.position.set(sx * .12, -.24, 0); g.add(l); L.push(l); }
+    for (const sx of [-1, 1]) { const w = new THREE.Mesh(wg, wingM); w.position.set(sx * .3, .14, -.02); w.castShadow = true; g.add(w); L.push(w); }
+    g.userData.legs = L; g.userData.face = new THREE.Group(); g.userData.face.visible = false; g.scale.setScalar(1.3); scene.add(g); return g;
+  }
   g.userData.legs = legs.map(([x, z]) => { const l = new THREE.Mesh(legGeo[kind], mat); l.position.set(x, .6 - .93, z - .28); l.castShadow = true; if (kind === 'cow') l.add(new THREE.Mesh(legGeo.hoof, mat)); g.add(l); return l; });
   scene.add(g); return g;
 }
@@ -1341,7 +1358,7 @@ function getUp(e, dt) {
     const air = .42, w = Math.min(ang, Math.PI * .9) / air * (up.y < 0 ? .75 : 1); // big flips happen in two hops
     e.body.setLinvel({ x: lv.x + rr(-.6, .6), y: air * G / 2, z: lv.z + rr(-.6, .6) }, true);
     e.body.setAngvel({ x: axis.x * w, y: rr(-.5, .5), z: axis.z * w }, true);
-    if (rnd() < .35 && P) sfx(e.animal === 'cow' ? 'moo' : 'baa', V(lv.x * 0 + e.body.translation().x, 1, e.body.translation().z));
+    if (rnd() < .35 && P) sfx(voiceOf(e), V(lv.x * 0 + e.body.translation().x, 1, e.body.translation().z));
   }
   animateLegs(e, 'held');
   return false;
@@ -1379,9 +1396,9 @@ function updateAnimals(dt) {
       for (let i = 0; i < 2; i++) { const A = PORTALS[i], Bq = PORTALS[1 - i], via = Math.hypot(A.pos.x - t.x, A.pos.z - t.z) + Math.hypot(Bq.pos.x - pa.x, Bq.pos.z - pa.z); if (via + 8 < away) goal = A.pos.clone().addScaledVector(A.n, Math.hypot(A.pos.x - t.x, A.pos.z - t.z) > 4 ? 2.5 : -1); }
       w.dir = Math.atan2(goal.x - t.x, goal.z - t.z) + Math.sin(now() / 700 + e.id) * .25 + (w.side > 0 ? w.sideDir * 1.4 : 0);
       w.speed = away > 18 ? 4.4 : 3.4; w.t = .5;
-      w.callT -= dt; if (w.callT <= 0) { w.callT = rr(4, 8); if (P && rPos(P).distanceTo(V(t.x, t.y, t.z)) < 40) sfx(e.animal === 'cow' ? 'moo' : 'baa', V(t.x, t.y, t.z)); }
+      w.callT -= dt; if (w.callT <= 0) { w.callT = rr(4, 8); if (P && rPos(P).distanceTo(V(t.x, t.y, t.z)) < 40) sfx(voiceOf(e), V(t.x, t.y, t.z)); }
     } else {
-      if (w.lost && away < PASTURE_R - 1) { w.lost = false; w.speed = 0; w.t = rr(2, 4); fxBurst(V(t.x, t.y + 1.2, t.z), 0x7fe07f, 1.2, .5); if (P && rPos(P).distanceTo(V(t.x, t.y, t.z)) < 40) sfx(e.animal === 'cow' ? 'moo' : 'baa', V(t.x, t.y, t.z)); } // home again
+      if (w.lost && away < PASTURE_R - 1) { w.lost = false; w.speed = 0; w.t = rr(2, 4); fxBurst(V(t.x, t.y + 1.2, t.z), 0x7fe07f, 1.2, .5); if (P && rPos(P).distanceTo(V(t.x, t.y, t.z)) < 40) sfx(voiceOf(e), V(t.x, t.y, t.z)); } // home again
       if (w.t <= 0) { w.t = rr(2, 6); w.speed = rnd() < .45 ? 0 : rr(.6, 1.2); w.dir += rr(-1.5, 1.5); } // graze and amble about
       if (away > PASTURE_R - 1.5) w.dir = Math.atan2(pa.x - t.x, pa.z - t.z); // stay inside the fence
     }
@@ -1391,7 +1408,7 @@ function updateAnimals(dt) {
     e.body.setAngvel({ x: 0, y: angDiff(yaw, w.dir) * 2, z: 0 }, w.speed > 0);
     animateLegs(e, 'walk', w.speed);
     e.idleT = (e.idleT ?? rr(2, 12)) - dt; // the odd moo or baa when you're nearby
-    if (e.idleT <= 0) { e.idleT = rr(7, 16); if (P && rPos(P).distanceTo(V(t.x, t.y, t.z)) < 26) sfx(e.animal === 'cow' ? 'moo' : 'baa', V(t.x, t.y, t.z)); }
+    if (e.idleT <= 0) { e.idleT = rr(7, 16); if (P && rPos(P).distanceTo(V(t.x, t.y, t.z)) < 26) sfx(voiceOf(e), V(t.x, t.y, t.z)); }
   }
 }
 // trees: brown trunk blocks and two big leaf slabs; knock the trunk and the whole thing comes down
@@ -1504,6 +1521,7 @@ function updateBlocks(dt) {
     if (t.y < -16) {
       if (e.kind === 'flag') { resetFlag(e); continue; }
       if (isPower(e.kind)) { consumePower(e); continue; }
+      if (e.kind === 'animal' && e.animal === 'chicken') { destroyBlock(e); continue; } // the coop's chickens don't come back
       if (e.kind === 'animal') { const a = ANIMAL_SPOTS[Math.floor(rnd() * ANIMAL_SPOTS.length)]; dropBody(e); makeBody(e, V(a.home.x, 2, a.home.z)); e.body.setEnabledRotations(false, true, false, true); e.upright = true; e.live = false; e.wander.home = a.home.clone(); continue; } // animals never despawn
       dropBody(e); const [x, z] = freeSpot(); makeBody(e, V(x, 3, z)); continue; // grey blocks come back somewhere on the map
     }
@@ -2648,7 +2666,8 @@ function makeRobotBody(r, p) {
   byCollider.set(r.col.handle, { type: 'robot', ref: r });
 }
 const rPos = r => { const t = r.body.translation(); return V(t.x, t.y, t.z); };
-const canAct = r => r.state === 'play' && r.frozenT <= 0;
+const canAct = r => r.state === 'play' && r.frozenT <= 0 && !(r.peckT > 0); // (chickens on you: no grabbing, throwing, jumping or dodging...)
+const canMove = r => r.state === 'play' && r.frozenT <= 0;                   // (...but you can still struggle along)
 const hittable = r => r.state === 'play' && r.ghostT <= 0;
 
 function refreshHeld(r) {
@@ -2707,6 +2726,7 @@ function grabbable(r, maxD = 2.6, groundOnly = false, ok = null) {
 }
 // throwing: active block leaves first. aim = world point; speed = horizontal speed
 function throwAt(r, aim, speed, homingTarget = null) {
+  if (r.peckT > 0) return null;
   const e = r.stack.shift(); if (!e) return null; e.rolled = null;
   if (isSlowed(r)) speed *= .5; // slow-mo: their throws fly at half speed
   e.holder = null;
@@ -2717,7 +2737,7 @@ function throwAt(r, aim, speed, homingTarget = null) {
   const lv = { x: dx / D * speed, y: e.kind === 'homing' && homingTarget ? 4 : vy, z: dz / D * speed };
   makeBody(e, start, null, lv, { x: rr(-8, 8), y: rr(-6, 6), z: rr(-8, 8) });
   e.thrower = r; e.liveT = 0; e.live = e.kind !== 'flag'; e.target = homingTarget; e.atHome = false; e.assist = null;
-  if (e.kind === 'animal') { e.upright = false; e.restT = 0; e.pins = new Set(); e.col.setRestitution(.5); e.col.setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Max); e.col.setFriction(.7); e.body.setAngularDamping(.02); const ax = rightOf(r.yaw); e.body.setAngvel({ x: -ax.x * 6 + rr(-2, 2), y: rr(-2, 2), z: -ax.z * 6 + rr(-2, 2) }, true); e.body.setLinvel({ x: lv.x * .9, y: -2, z: lv.z * .9 }, true); /* slammed down so it bounces along the ground */ sfx(e.animal === 'cow' ? 'moo' : 'baa', start); }
+  if (e.kind === 'animal') { e.upright = false; e.restT = 0; e.pins = new Set(); e.col.setRestitution(.5); e.col.setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Max); e.col.setFriction(.7); e.body.setAngularDamping(.02); const ax = rightOf(r.yaw); e.body.setAngvel({ x: -ax.x * 6 + rr(-2, 2), y: rr(-2, 2), z: -ax.z * 6 + rr(-2, 2) }, true); e.body.setLinvel({ x: lv.x * .9, y: -2, z: lv.z * .9 }, true); /* slammed down so it bounces along the ground */ sfx(voiceOf(e), start); }
   else sfx('throw', start);
   refreshHeld(r); r.carryUp = .3;
   return e;
@@ -2734,7 +2754,7 @@ function dropAnimals(r) {
     r.stack = r.stack.filter(x => x !== a);
     const at = V(p.x + side.x * 1.7, p.y + 1.5, p.z + side.z * 1.7);
     looseAnimal(a, at, r.yaw + Math.PI / 2, { x: side.x * 2, y: 1, z: side.z * 2 });
-    sfx(a.animal === 'cow' ? 'moo' : 'baa', at);
+    sfx(voiceOf(a), at);
   }
   refreshHeld(r);
 }
@@ -2836,7 +2856,7 @@ function updateRobot(r, dt) {
   r.lastVy = lv.y;
   r.yaw += angDiff(r.yaw, r.yawT) * Math.min(1, dt * (r.isPlayer ? 14 : 9));
   if (r.dashT > 0) r.dashT -= dt; else r.dashV *= Math.pow(.001, dt);
-  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
+  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1) * (r.peckT > 0 ? .3 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
   if (r.pull) { des.add(r.pull); } // the black hole's drag
   if (r.boost) { des.add(r.boost); r.boost.multiplyScalar(Math.exp(-1.3 * dt)); if (r.boost.lengthSq() < .3) r.boost = null; } // speed arrows
   if (r.gasT > 0) r.gasT -= dt; // (in the stink cloud: crawling)
@@ -2845,6 +2865,7 @@ function updateRobot(r, dt) {
   let vy = lv.y;
   if (r.jumpReq) {
     r.jumpReq = false;
+    if (r.peckT > 0) { /* chickens all over you: no jumping */ } else
     if (r.grounded) { vy = JUMP_V; r.jumps = 1; r.grounded = false; r.model.sq = -.32; r.model.sqv = 6; if (r.isPlayer) sfx('vjump', rPos(r)); } // push down then spring up
     else if (r.jumps < 2) { vy = JUMP_V; r.jumps = 2; r.model.pr = -.22; r.model.prv = 0; r.model.sq = -.42; r.model.sqv = 4; if (r.isPlayer) sfx('vjump', rPos(r), true); } // presses its weight into the ball mid-air
   }
@@ -3470,7 +3491,7 @@ function decide(r, p, D) {
 }
 function updateAI(r, dt) {
   const ai = r.ai, D = DIFF[S.diff] || DIFF.normal;
-  if (!canAct(r)) { r.wantSpeed = 0; return; }
+  if (!canMove(r)) { r.wantSpeed = 0; return; }
   const p = rPos(r);
   ai.t -= dt; ai.cool -= dt; ai.sideT -= dt;
   if (ai.t <= 0) { ai.t = D.think * rr(.8, 1.2); decide(r, p, D); }
@@ -3737,7 +3758,7 @@ function throwFor(P, power, lineTarget, homingTarget) {
 }
 function updatePlayerControl(dt) {
   if (PW.pick) { P.wantSpeed = 0; return; } // standing still while you pick a spot on the map
-  if (match.state !== 'play' || !canAct(P)) { P.wantSpeed = 0; if (NET && NET.client) NET.move(0); return; }
+  if (match.state !== 'play' || !canMove(P)) { P.wantSpeed = 0; if (NET && NET.client) NET.move(0); return; }
   if (gest && gest.mode === 'pending' && now() - gest.t0 > 120) gest.mode = 'hold'; // a finger that stays put ~0.12s is a stop
   if (SHIELD.stopT > 0) SHIELD.stopT -= dt;
   const stopped = (gest && (gest.mode === 'hold' || gest.mode === 'holdturn')) || btnStop || keys.KeyS || SHIELD.stopT > 0; // after a shield you stand inside your wall for a moment
@@ -3895,7 +3916,7 @@ function drawPiece(cv, e, size) {
   else if (e.kind === 'freeze') { g.strokeStyle = '#2f86c4'; for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; g.beginPath(); g.moveTo(cx - Math.cos(a) * r, cy - Math.sin(a) * r * .6); g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r * .6); g.stroke(); } }
   else if (e.kind === 'homing') { g.strokeStyle = '#fff'; g.beginPath(); g.ellipse(cx, cy, r * .8, r * .5, 0, 0, 7); g.stroke(); g.beginPath(); g.moveTo(cx - r * 1.2, cy); g.lineTo(cx + r * 1.2, cy); g.moveTo(cx, cy - r * .75); g.lineTo(cx, cy + r * .75); g.stroke(); }
   else if (e.kind === 'flag') { g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.beginPath(); g.moveTo(cx - r * .6, cy + r * .7); g.lineTo(cx - r * .6, cy - r * 1.1); g.stroke(); g.beginPath(); g.moveTo(cx - r * .5, cy - r * 1.1); g.lineTo(cx + r * .9, cy - r * .7); g.lineTo(cx - r * .5, cy - r * .3); g.fill(); }
-  else if (anim) { g.fillStyle = '#1c1c1e'; if (e.animal === 'cow') { g.beginPath(); g.ellipse(cx - r * .5, cy, r * .55, r * .35, .4, 0, 7); g.fill(); g.beginPath(); g.ellipse(cx + r * .6, cy + r * .2, r * .35, r * .25, -.3, 0, 7); g.fill(); } else { g.fillStyle = '#3a3a3f'; g.beginPath(); g.ellipse(cx, cy, r * .5, r * .4, 0, 0, 7); g.fill(); } }
+  else if (anim) { g.fillStyle = '#1c1c1e'; if (e.animal === 'cow') { g.beginPath(); g.ellipse(cx - r * .5, cy, r * .55, r * .35, .4, 0, 7); g.fill(); g.beginPath(); g.ellipse(cx + r * .6, cy + r * .2, r * .35, r * .25, -.3, 0, 7); g.fill(); } else if (e.animal === 'chicken') { g.fillStyle = '#e0281a'; g.beginPath(); g.ellipse(cx, cy - r * .55, r * .3, r * .22, 0, 0, 7); g.fill(); g.fillStyle = '#ffb300'; g.beginPath(); g.moveTo(cx + r * .2, cy - r * .1); g.lineTo(cx + r * .7, cy); g.lineTo(cx + r * .2, cy + r * .12); g.fill(); g.fillStyle = '#1c1c1e'; g.beginPath(); g.arc(cx, cy - r * .12, r * .1, 0, 7); g.fill(); } else { g.fillStyle = '#3a3a3f'; g.beginPath(); g.ellipse(cx, cy, r * .5, r * .4, 0, 0, 7); g.fill(); } }
 }
 function renderHud(force) {
   for (const r of robots) {
@@ -4019,17 +4040,18 @@ const ANGER_AT = 10, RAGE_TIME = 10, RAGE_SPEED = RUN * 1.3;
 function updateHeldAnimals(dt) {
   for (const r of robots) for (const a of r.stack) {
     if (a.kind !== 'animal') continue;
-    a.heldT = (a.heldT || 0) + (r.state === 'play' ? dt : 0);
+    a.heldT = (a.heldT || 0) + (r.state === 'play' ? dt * (a.animal === 'chicken' ? .5 : 1) : 0); // a chicken puts up with you for 20 s
     const k = clamp((a.heldT - 6) / 4, 0, 1); // the cow gets redder for the last 4 seconds
     if (a.animal === 'cow') a.mesh.material.emissive.setRGB(k * .55, 0, 0);
-    if (k > 0 && !a.angerWarned && r.isPlayer) { a.angerWarned = true; toast(a.animal === 'cow' ? 'THE COW IS GETTING ANGRY…' : 'THE SHEEP IS GETTING RESTLESS…'); }
+    if (k > 0 && !a.angerWarned && r.isPlayer) { a.angerWarned = true; toast(a.animal === 'cow' ? 'THE COW IS GETTING ANGRY…' : a.animal === 'chicken' ? 'THE CHICKEN IS GETTING CROSS…' : 'THE SHEEP IS GETTING RESTLESS…'); }
     // it hates being carried: loud moos / screaming baas, more and more often
     a.voiceT = (a.voiceT ?? 1) - dt;
-    if (a.voiceT <= 0 && r.stack[0] === a) { a.voiceT = Math.max(.9, rr(2, 2.8) - a.heldT * .12); sfx(a.animal === 'cow' ? 'mooAngry' : 'baaAngry', rPos(r)); }
+    if (a.voiceT <= 0 && r.stack[0] === a) { a.voiceT = Math.max(.9, rr(2, 2.8) - a.heldT * .12); sfx(voiceOf(a, true), rPos(r)); }
     if (a.heldT >= ANGER_AT) { breakLoose(a, r); break; }
   }
 }
 function breakLoose(a, r) {
+  if (a.animal === 'chicken') { chickenTurns(a, r); return; } // (the coop power's chicken: it attacks you, then flies off)
   if (a.animal !== 'cow') { sheepLoose(a, r); return; }
   r.stack = r.stack.filter(x => x !== a); refreshHeld(r);
   const p = rPos(r), f = fwdOf(r.yaw), at = V(p.x + f.x * 1.6, p.y + 1.7, p.z + f.z * 1.6);
@@ -4347,7 +4369,7 @@ function drawPicker(force) {
     for (const z of zonesFor(p, pickHover)) {
       const [zx, zy] = X.to(z.x, z.z);
       if (p.id === 'nuke') { g.strokeStyle = col; g.beginPath(); g.arc(zx, zy, NUKE_KO * s, 0, 7); g.stroke(); g.fillStyle = 'rgba(255,90,42,.35)'; g.beginPath(); g.arc(zx, zy, NUKE_R * s, 0, 7); g.fill(); }
-      else { const R = p.id === 'tornado' ? TORNADO_R : AIR_R; g.strokeStyle = col; g.fillStyle = col + '55'; g.beginPath(); g.arc(zx, zy, R * s, 0, 7); g.fill(); g.stroke(); }
+      else { const R = p.id === 'tornado' ? TORNADO_R : p.id === 'spring' ? 1.6 : AIR_R; g.strokeStyle = col; g.fillStyle = col + '55'; g.beginPath(); g.arc(zx, zy, R * s, 0, 7); g.fill(); g.stroke(); }
     }
     g.setLineDash([]);
   }
@@ -4681,6 +4703,328 @@ function specCamera() { // the 360 camera: on the pole (Camera menu), or a wide 
 const isOut = r => r && r.state === 'out';
 
 // ============================================================
+// THREE MORE KILL-STREAK POWERS (Ali's spec)
+//  FETCH!        a dog picks a random enemy: they light up and a bone appears on their back. The dog runs at 1.2x your
+//                speed, jumps (not as high as a double jump), follows through portals, and never gives up until it has
+//                bitten them (one bite = knocked out), even if they get knocked out by something else first.
+//                Blow it up or freeze it to stop it. Its eyes are two little bones.
+//  SPRINGTRAP    put it anywhere on the map. Whoever steps on it (anyone) is fired outwards, off the edge of the island,
+//                higher than a trampoline, at 45-60 degrees.
+//  CHICKEN COOP  your fort fills with chickens. The first enemy who walks in sets them off: for 10 seconds everyone
+//                inside the walls (you too) is mobbed: arms up, drops what they hold, can only stagger slowly.
+//                Bombs blow chickens up. Afterwards all but two fly off. Those two can be picked up: carrying one lets
+//                you glide when you jump, but after 20 s it turns on you, then flies away. Throw one at someone and it
+//                mobs them instead, then flies off.
+// ============================================================
+Object.assign(SFX_SYNTH, {
+  cluck: () => { for (let i = 0; i < 2; i++) { const t = T0(i * .12), f = rr(620, 760), o = osc('square', f, t, .09), bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 3; o.frequency.exponentialRampToValueAtTime(f * .62, t + .08); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.2, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .09); o.connect(bp); bp.connect(g); out(g); } },
+  squawk: () => { for (let i = 0; i < 4; i++) { const t = T0(i * .09), f = rr(850, 1100), o = osc('sawtooth', f, t, .12), bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 2; o.frequency.exponentialRampToValueAtTime(f * .5, t + .11); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.26, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .12); o.connect(bp); bp.connect(g); out(g); } noiseHit(.35, 'bandpass', 1200, .12, 0, true, 2400, 2); },
+  bark: () => { for (let i = 0; i < 2; i++) { const t = T0(i * .2), f = rr(330, 380), o = osc('sawtooth', f, t, .13), lp = AC.createBiquadFilter(), g = AC.createGain(); lp.type = 'lowpass'; lp.frequency.value = 1600; o.frequency.exponentialRampToValueAtTime(f * .55, t + .12); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.3, t + .015); g.gain.exponentialRampToValueAtTime(.0001, t + .13); o.connect(lp); lp.connect(g); out(g); noiseHit(.08, 'bandpass', 1100, .14, i * .2, true, 700, 2); } },
+  bite: () => { clack(520, .5); thump(150, .55, 0, .12); noiseHit(.12, 'bandpass', 2600, .35, 0, true, 1400, 2); },
+  spring: () => { boing(90, .5, 0, 3.6, .5); whoosh(1.1, .22, 400, 3200, .05, 1); },
+  flap: () => { for (let i = 0; i < 4; i++) noiseHit(.06, 'bandpass', 950, .22, i * .07, false, 600, 2); },
+});
+POWERS.push(
+  { id: 'dog', name: 'FETCH!', col: '#d08a45', cd: 4, icon: '<path d="M5 9.5a2.2 2.2 0 1 1 2.6-3.1l8.8 8.8a2.2 2.2 0 1 1-3.1 2.6 2.2 2.2 0 1 1-2.6-3.1L8.1 12.1A2.2 2.2 0 1 1 5 9.5z"/>' },
+  { id: 'spring', name: 'SPRINGTRAP', col: '#ffcc33', cd: 4, pick: 1, icon: '<path d="M4 20h16v2H4zM6 3h12v2H6z"/><path d="M7 18c8 0 8-2.5 0-2.5s-8-2.5 0-2.5 8-2.5 0-2.5-8-2.5 0-2.5 8-2 0-2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" transform="translate(5 0)"/>' },
+  { id: 'coop', name: 'CHICKEN COOP', col: '#ff6a3d', cd: 4, icon: '<path d="M9 4c1-1.6 3-1.6 3 0 .8-1 2.4-.6 2.2.9C17 5.5 19 8 19 11c0 4-3 7-7 7s-7-3-7-7c0-3 1.8-5.6 4-7z" opacity=".9"/><path d="M19 10l3 1-3 1z"/><circle cx="15" cy="9" r="1.1" fill="#0a0e1a"/><path d="M10 18v3M14 18v3" stroke="currentColor" stroke-width="1.6"/>' },
+);
+for (const p of POWERS) byIdP[p.id] = p;
+renderTray();
+{ const fp0 = firePower; firePower = function (p, at) {
+    if (p.id !== 'dog' && p.id !== 'spring' && p.id !== 'coop') return fp0(p, at);
+    if (match.state !== 'play') { closePicker(); PW.pendingSlot = null; return; }
+    PW.cool[p.id] = p.cd; consumeSlot();
+    if (p.id === 'dog') sendDog(P); else if (p.id === 'spring') placeSpring(at, P); else startCoop(P);
+  }; }
+{ const op0 = openPicker; openPicker = function (p) { op0(p); if (p.id === 'spring') $('pickTitle').textContent = 'TAP WHERE TO PUT THE SPRINGTRAP'; }; }
+const groundAt = (x, z, from = 30) => { probeRay.origin = { x, y: from, z }; probeRay.dir = { x: 0, y: -1, z: 0 }; const h = world.castRay(probeRay, from + 5, true, undefined, undefined, undefined, undefined, rayPred); return h ? from - h.toi : -50; };
+
+// ---------------------------------------------------------------- the dog
+const DOGS = [], DOG_SPEED = RUN * 1.2, DOG_JUMP = Math.sqrt(2 * G * 4.4); // a single jump of ~4.4 blocks: more than one jump, less than two
+const boneTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#1c1c1e'; g.fillRect(4, 4, 56, 56);
+  g.fillStyle = '#fff6dc'; g.translate(32, 32); g.rotate(-.6); g.fillRect(-15, -4, 30, 8); for (const [x, y] of [[-15, -5], [-15, 5], [15, -5], [15, 5]]) { g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+const boneGeo = (() => { const p = [new THREE.BoxGeometry(.62, .13, .13)]; for (const [x, y] of [[-.31, -.08], [-.31, .08], [.31, -.08], [.31, .08]]) p.push(new THREE.SphereGeometry(.1, 8, 6).translate(x, y, 0)); return mergeGeometries(p.map(g => g.toNonIndexed())); })();
+const boneMat = new LiteMat({ color: 0xfff1d0, emissive: 0xffd27a, emissiveIntensity: .35 });
+function dogModel() {
+  const g = new THREE.Group(), fur = new LiteMat({ color: 0xc27a3a }), dark = new LiteMat({ color: 0x6b3e1c }), blk = new LiteMat({ color: 0x1c1c1e });
+  const box = (w, h, d, x, y, z, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = true; g.add(b); return b; };
+  box(.55, .5, 1.05, 0, .72, 0, fur);                        // body
+  const head = new THREE.Group(); head.position.set(0, 1.08, .58); g.add(head);
+  const hb = (w, h, d, x, y, z, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = true; head.add(b); return b; };
+  hb(.5, .46, .46, 0, 0, 0, fur); hb(.3, .22, .28, 0, -.08, .34, dark); hb(.12, .09, .06, 0, -.01, .49, blk); // head, snout, nose
+  hb(.12, .3, .2, -.28, .08, -.05, dark).rotation.z = .25; hb(.12, .3, .2, .28, .08, -.05, dark).rotation.z = -.25; // floppy ears
+  const eyeM = new THREE.MeshBasicMaterial({ map: boneTex }); for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.PlaneGeometry(.17, .17), eyeM); e.position.set(sx * .12, .09, .235); head.add(e); } // its eyes: two bones
+  const tail = box(.1, .1, .4, 0, .95, -.65, fur); tail.rotation.x = .7;
+  const legs = [[-.18, .36], [.18, .36], [-.18, -.36], [.18, -.36]].map(([x, z]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(.15, .5, .15).translate(0, -.25, 0), dark); l.position.set(x, .5, z); l.castShadow = true; g.add(l); return l; });
+  scene.add(g); return { g, legs, tail, head };
+}
+function sendDog(owner) {
+  const foes = robots.filter(r => r.team !== owner.team), live = foes.filter(r => r.state === 'play'), target = (live.length ? live : foes)[Math.floor(Math.random() * (live.length ? live : foes).length)];
+  if (!target) return;
+  const m = dogModel(), p = rPos(owner), side = rightOf(owner.yaw), x = p.x + side.x * 1.5, z = p.z + side.z * 1.5;
+  const bone = new THREE.Mesh(boneGeo, boneMat); bone.position.set(0, .35, -.55); bone.rotation.set(0, Math.PI / 2, .5); target.model.g.add(bone); // on their back
+  const glow = new THREE.Mesh(new THREE.CylinderGeometry(.9, .9, 14, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: .22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  scene.add(glow);
+  const D = { m, x, y: groundAt(x, z, p.y + 2), z, vy: 0, yaw: owner.yaw, target, owner, bone, glow, frozenT: 0, ice: null, barkT: .3, pcool: 0, leaving: 0, grounded: true, sideT: 0, side: 0 };
+  m.g.position.set(D.x, D.y, D.z); DOGS.push(D);
+  fxBurst(V(x, D.y + .6, z), 0xd08a45, 1.4, .3); sfx('bark', V(x, D.y + .6, z));
+  toast([['FETCH! THE DOG IS AFTER ', null], [target.name.toUpperCase(), target.color]]);
+  if (target.isPlayer) { bigToast('A DOG IS AFTER YOU!', 'red'); buzz('lock'); }
+}
+function removeDog(D, how) {
+  const at = V(D.x, D.y + .6, D.z);
+  if (how === 'blast') { fxDebris(at, 0xc27a3a, 22, 8); fxDebris(at, 0x6b3e1c, 10, 6); sfx('poof', at); toast('THE DOG GOT BLOWN UP'); }
+  else if (how) fxBurst(at, 0xd08a45, 1.2, .3);
+  scene.remove(D.m.g); if (D.ice) scene.remove(D.ice); if (D.bone.parent) D.bone.parent.remove(D.bone); scene.remove(D.glow);
+  DOGS.splice(DOGS.indexOf(D), 1);
+}
+const dogRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 });
+const blockedAt = (x, y, z, dx, dz, L) => { dogRay.origin = { x, y, z }; dogRay.dir = { x: dx, y: 0, z: dz }; const h = world.castRay(dogRay, L, true, undefined, undefined, undefined, undefined, rayPred); return h ? h.toi : null; };
+function updateDogs(dt) {
+  for (let i = DOGS.length - 1; i >= 0; i--) {
+    const D = DOGS[i], tg = D.target, t = now() / 1000;
+    D.glow.visible = !D.leaving && tg.state === 'play'; if (D.glow.visible) { const c = rPos(tg); D.glow.position.set(c.x, c.y + 6, c.z); D.glow.material.opacity = .16 + .1 * Math.sin(t * 8); }
+    if (D.frozenT > 0) { D.frozenT -= dt; if (D.frozenT <= 0 && D.ice) { scene.remove(D.ice); D.ice = null; } continue; }
+    if (D.leaving > 0) { // job done: it trots off happily and vanishes
+      D.leaving -= dt; D.x += Math.sin(D.yaw) * DOG_SPEED * .7 * dt; D.z += Math.cos(D.yaw) * DOG_SPEED * .7 * dt; D.m.g.position.set(D.x, D.y, D.z); D.m.tail.rotation.y = Math.sin(t * 25) * .6;
+      if (D.leaving <= 0) removeDog(D, 'poof'); continue;
+    }
+    // where to run: straight at them, or through a portal if that's shorter (same as the angry cow)
+    const g = rPos(tg); let aim = g, best = Math.hypot(g.x - D.x, g.z - D.z);
+    for (const Pn of PORTALS) { const Q = PORTALS[1 - Pn.i], via = Math.hypot(Pn.pos.x - D.x, Pn.pos.z - D.z) + Math.hypot(g.x - Q.pos.x, g.z - Q.pos.z) + 6;
+      if (via < best) { best = via; const front = (D.x - Pn.pos.x) * Pn.n.x + (D.z - Pn.pos.z) * Pn.n.z; aim = front > 1.2 || Math.hypot(D.x - Pn.pos.x, D.z - Pn.pos.z) < 3 ? Pn.pos : Pn.pos.clone().addScaledVector(Pn.n, 4); } }
+    let dx = aim.x - D.x, dz = aim.z - D.z; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+    // a wall in the way: jump it if it's low enough, otherwise run round it
+    const hy = D.y + .4, wall = blockedAt(D.x, hy, D.z, dx, dz, 1.1);
+    if (wall !== null) {
+      if (D.grounded && blockedAt(D.x, D.y + 4.2, D.z, dx, dz, 1.4) === null) { D.vy = DOG_JUMP; D.grounded = false; }
+      else if (D.grounded || wall < .5) { if (D.sideT <= 0) { D.side = Math.random() < .5 ? 1 : -1; D.sideT = .8; }
+        for (const a of [.7, 1.2, 1.7]) { const ca = Math.cos(a * D.side), sa = Math.sin(a * D.side), nx = dx * ca - dz * sa, nz = dx * sa + dz * ca; if (blockedAt(D.x, hy, D.z, nx, nz, 1.1) === null) { dx = nx; dz = nz; break; } } }
+    }
+    if (D.sideT > 0) D.sideT -= dt;
+    const yawT = Math.atan2(dx, dz); D.yaw += angDiff(D.yaw, yawT) * Math.min(1, dt * 12);
+    const step = DOG_SPEED * dt;
+    if (blockedAt(D.x, hy, D.z, Math.sin(D.yaw), Math.cos(D.yaw), .45 + step) === null) { D.x += Math.sin(D.yaw) * step; D.z += Math.cos(D.yaw) * step; }
+    // gravity and the ground under it
+    D.vy -= G * dt; D.y += D.vy * dt;
+    const gy = groundAt(D.x, D.z, D.y + 1.2);
+    if (D.y <= gy && D.vy <= 0) { D.y = gy; D.vy = 0; D.grounded = true; } else if (D.y > gy + .05) D.grounded = false;
+    if (D.y < -16) { removeDog(D, null); continue; } // fell off the island
+    // portals
+    if (D.pcool > 0) D.pcool -= dt; else { const Pn = portalCheck(V(D.x, D.y + .6, D.z)); if (Pn) { const Q = PORTALS[1 - Pn.i], o = Q.pos.clone().addScaledVector(Q.n, 1.6); D.x = o.x; D.z = o.z; D.y = Math.max(0, groundAt(o.x, o.z, 4)); D.vy = 0; D.pcool = .8; D.yaw = Math.atan2(Q.n.x, Q.n.z); fxBurst(Q.pos, 0xb36bff, 1.4, .3); sfx('portal', Q.pos); } }
+    D.m.g.position.set(D.x, D.y, D.z); D.m.g.rotation.y = D.yaw;
+    D.m.legs.forEach((l, k) => { l.rotation.x = D.grounded ? Math.sin(t * 22 + (k === 0 || k === 3 ? 0 : Math.PI)) * .7 : (k < 2 ? -.8 : .8); }); D.m.tail.rotation.y = Math.sin(t * 18) * .5;
+    D.barkT -= dt; if (D.barkT <= 0) { D.barkT = rr(1.2, 2.2); sfx('bark', V(D.x, D.y + .8, D.z)); }
+    // the bite: one and done
+    if (tg.state === 'play' && hittable(tg) && capsuleDist(tg, V(D.x + Math.sin(D.yaw) * .5, D.y + .7, D.z + Math.cos(D.yaw) * .5)) < .95) {
+      const at = rPos(tg); ragdoll(tg, V(Math.sin(D.yaw), 0, Math.cos(D.yaw)), D.owner, 1.6); sfx('bite', at); koPop(at, 'FETCHED!', '#ffd27a', true);
+      if (D.bone.parent) D.bone.parent.remove(D.bone);
+      D.leaving = 2.2; D.yaw += Math.PI;
+    }
+  }
+}
+
+// ---------------------------------------------------------------- the springtrap
+const SPRINGS = [], SPRING_LIFE = 45;
+const stripeTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#ffcc33'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#1c1c1e'; for (let i = -64; i < 128; i += 16) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 8, 0); g.lineTo(i + 8 - 64, 64); g.lineTo(i - 64, 64); g.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+function placeSpring(at, owner) {
+  const y = Math.max(0, groundAt(at.x, at.z)), g = new THREE.Group(); g.position.set(at.x, y, at.z);
+  let out = V(at.x, 0, at.z); if (out.lengthSq() < 4) out.set(Math.random() - .5, 0, Math.random() - .5); out.normalize();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(2, .22, 2), new LiteMat({ color: 0x3a3d48 })); base.position.y = .11; base.receiveShadow = true; g.add(base);
+  const coil = new THREE.Group(); g.add(coil); const coilM = new LiteMat({ color: 0xd8dbe2, roughness: .3 });
+  for (let k = 0; k < 4; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.55, .07, 8, 20), coilM); t.rotation.x = Math.PI / 2; t.position.y = .3 + k * .17; coil.add(t); }
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, .2, 1.8), [new LiteMat({ color: 0x1c1c1e }), new LiteMat({ color: 0x1c1c1e }), new LiteMat({ map: stripeTex }), new LiteMat({ color: 0x1c1c1e }), new LiteMat({ color: 0x1c1c1e }), new LiteMat({ color: 0x1c1c1e })]);
+  top.position.y = .98; top.castShadow = true; g.add(top);
+  const arrow = new THREE.Mesh(new THREE.ConeGeometry(.45, .9, 3), new LiteMat({ color: 0xff3b3b, emissive: 0xff2a2a, emissiveIntensity: .4 })); arrow.rotation.set(Math.PI / 2, 0, 0); arrow.position.y = .14; arrow.scale.set(1, 1, .25);
+  const ar = new THREE.Group(); ar.add(arrow); ar.rotation.y = Math.atan2(out.x, out.z); ar.position.y = .98; g.add(ar); // points the way you'll fly: off the island
+  g.scale.setScalar(.01); scene.add(g);
+  SPRINGS.push({ g, top, coil, ar, x: at.x, y, z: at.z, out, t: SPRING_LIFE, grow: 0, sq: 0, owner, cool: new Map() });
+  fxBurst(V(at.x, y + .8, at.z), 0xffcc33, 1.6, .3); sfx('pop', V(at.x, y + .5, at.z));
+  toast('SPRINGTRAP SET');
+}
+function launchOffMap(r, S_) {
+  const c = rPos(r), d = S_.out, ax = d.x ? ((d.x > 0 ? MX : -MX) - c.x) / d.x : 1e9, az = d.z ? ((d.z > 0 ? MZ : -MZ) - c.z) / d.z : 1e9;
+  const dist = Math.max(4, Math.min(ax, az)) + 14, th = rr(48, 58) * Math.PI / 180;
+  let v = Math.sqrt(G * dist / Math.sin(2 * th)); v = clamp(Math.max(v, 34 / Math.sin(th)), 0, 72); // always higher than a trampoline
+  r.body.setLinvel({ x: d.x * v * Math.cos(th), y: v * Math.sin(th), z: d.z * v * Math.cos(th) }, true);
+  r.jumps = 2; r.grounded = false; r.padT = 2 * v * Math.sin(th) / G + 2; r.model.sq = -.4; r.model.sqv = 8;
+  r.sprung = { by: S_.owner, at: now(), vx: d.x * v * Math.cos(th), vz: d.z * v * Math.cos(th) }; // the flight is a clean arc: no steering out of it
+  if (r.isPlayer) { toast('SPRUNG!'); shake = Math.max(shake, .4); }
+}
+function updateSprings(dt) {
+  for (let i = SPRINGS.length - 1; i >= 0; i--) {
+    const S_ = SPRINGS[i]; S_.t -= dt; S_.grow = Math.min(1, S_.grow + dt * 4);
+    const pop = S_.t < .4 ? Math.max(.01, S_.t / .4) : 1 - Math.pow(1 - S_.grow, 3) * 1.0 + Math.sin(S_.grow * Math.PI) * .15; S_.g.scale.setScalar(Math.max(.01, pop));
+    S_.sq += (0 - S_.sq) * Math.min(1, dt * 10); S_.top.position.y = .98 + S_.sq; S_.ar.position.y = S_.top.position.y; S_.coil.scale.y = (S_.top.position.y - .2) / .78;
+    if (S_.t <= 0) { scene.remove(S_.g); SPRINGS.splice(i, 1); continue; }
+    if (S_.grow < 1) continue;
+    for (const r of robots) {
+      if (r.state !== 'play' || !r.body) continue; const c = rPos(r);
+      if (Math.hypot(c.x - S_.x, c.z - S_.z) > 1.25 || c.y - S_.y > 2.4 || c.y < S_.y) continue;
+      if ((S_.cool.get(r) || 0) > now()) continue; S_.cool.set(r, now() + 800);
+      launchOffMap(r, S_); S_.sq = .9; sfx('spring', V(S_.x, S_.y + 1, S_.z)); fxBurst(V(S_.x, S_.y + 1, S_.z), 0xffcc33, 1.8, .3);
+    }
+  }
+  // flung off the island by someone's springtrap: that counts as their knockout
+  for (const r of robots) if (r.sprung) {
+    if (now() - r.sprung.at > 9000) { r.sprung = null; continue; }
+    if (r.state === 'rag') { const by = r.sprung.by; r.sprung = null;
+      if (by && by.team !== r.team) { r.stats.kos++; by.stats.hits++; onStreak(by, r); toast([[by.name.toUpperCase(), by.color], [' SPRUNG ', null], [r.name.toUpperCase(), r.color]]); } }
+    else if (r.grounded && now() - r.sprung.at > 600) r.sprung = null; // landed on the island after all
+  }
+}
+
+// ---------------------------------------------------------------- chickens
+// a robot being mobbed by chickens: arms up, drops what it's holding, can only stagger along slowly
+function peck(r, t) {
+  if (r.state !== 'play') return;
+  if (!(r.peckT > 0)) { // it's just started: drop whatever you're holding
+    const hadFlag = !!(r.stack[0] && r.stack[0].kind === 'flag'); dropFlags(r);
+    if (!hadFlag) { const e0 = r.stack[0]; if (e0) { r.stack.shift(); const p0 = rPos(r), vel = { x: rr(-2, 2), y: 3, z: rr(-2, 2) };
+      if (e0.kind === 'animal') looseAnimal(e0, V(p0.x, p0.y + 1.6, p0.z), r.yaw + Math.PI / 2, vel); else { e0.holder = null; makeBody(e0, V(p0.x, p0.y + 1.5, p0.z), null, vel, { x: rr(-4, 4), y: rr(-4, 4), z: rr(-4, 4) }); }
+      refreshHeld(r); } }
+    sfx('squawk', rPos(r)); if (r.isPlayer) { buzz('hit'); toast('CHICKENS! GET OUT OF THERE'); }
+  }
+  r.peckT = Math.max(r.peckT || 0, t);
+}
+const deadMesh = () => { const g = new THREE.Group(); g.userData.face = new THREE.Group(); g.material = { emissive: new THREE.Color() }; return g; };
+const ATTACKERS = []; // chickens flapping round someone's head (and then flying off)
+function chickenOn(r, t, mesh) {
+  const m = mesh || makeAnimal('chicken'); m.visible = true;
+  const A = { m, r, t, a: Math.random() * 6.28, off: null, vel: null };
+  ATTACKERS.push(A); peck(r, t); return A;
+}
+function chickenAway(A) { // off it goes, up and out over the edge of the island
+  const p = A.m.position, o = V(p.x, 0, p.z); if (o.lengthSq() < 1) o.set(1, 0, 0); o.normalize();
+  A.r = null; A.vel = V(o.x * 9, 7, o.z * 9); A.t = 4; sfx('flap', p.clone());
+}
+// a carried chicken that has had enough (20 s), or one thrown at someone
+function chickenTurns(a, r) {
+  r.stack = r.stack.filter(x => x !== a); refreshHeld(r); a.holder = null;
+  const m = a.mesh; destroyBlock(a); m.visible = true; a.mesh = deadMesh(); // (the block is gone; its mesh becomes the attacker)
+  chickenOn(r, 4, m);
+  if (r.isPlayer) bigToast('THE CHICKEN TURNED ON YOU!', 'red');
+}
+{ const bowl0 = bowl; bowl = function (e, dt, t, lv, sp) {
+    if (e.animal !== 'chicken') return bowl0(e, dt, t, lv, sp);
+    if ((e.liveT > .3 && sp < 1.5) || e.liveT > 6) { e.live = false; return; }
+    const p = V(t.x, t.y, t.z);
+    for (const r of robots) { if (r === e.thrower || !hittable(r)) continue;
+      if (capsuleDist(r, p) < 1.3) { const m = e.mesh; destroyBlock(e); m.visible = true; e.mesh = deadMesh(); chickenOn(r, 4, m); koPop(rPos(r), 'CHICKENED!', '#ff6a3d'); return; } }
+  }; }
+function updateAttackers(dt) {
+  const t = now() / 1000;
+  for (let i = ATTACKERS.length - 1; i >= 0; i--) {
+    const A = ATTACKERS[i], m = A.m, L = m.userData.legs;
+    if (L) { L[2].rotation.z = -.4 - Math.abs(Math.sin(t * 30 + i)) * 1.1; L[3].rotation.z = .4 + Math.abs(Math.sin(t * 30 + i)) * 1.1; }
+    if (A.r) { // mobbing: flapping round your head, pecking
+      if (A.r.state !== 'play' || A.leave) { chickenAway(A); continue; }
+      A.t -= dt; A.a += dt * 5; const c = rPos(A.r), rad = .75;
+      m.position.set(c.x + Math.cos(A.a) * rad, c.y + 1.15 + Math.abs(Math.sin(t * 9 + i)) * .35, c.z + Math.sin(A.a) * rad);
+      m.lookAt(c.x, m.position.y - .2, c.z); m.rotation.x += Math.sin(t * 24 + i) * .3;
+      if (Math.random() < dt * 6) emit(m.position.clone(), 0xffffff, V(rr(-1, 1), rr(.5, 2), rr(-1, 1)), .1, .6, -3);
+      if (A.t <= 0) chickenAway(A);
+    } else { // flying off
+      A.t -= dt; m.position.addScaledVector(A.vel, dt); A.vel.y += 2 * dt; m.rotation.y = Math.atan2(A.vel.x, A.vel.z); m.rotation.x = -.3;
+      if (A.t <= 0) { scene.remove(m); ATTACKERS.splice(i, 1); }
+    }
+  }
+  for (const r of robots) if (r.peckT > 0) r.peckT -= dt;
+}
+
+// ---------------------------------------------------------------- the coop
+const COOP = { on: false };
+function startCoop(owner) {
+  if (COOP.on) endCoop(true);
+  const F = FORT[owner.team], hens = [];
+  for (let k = 0; k < 8; k++) { const m = makeAnimal('chicken'); const x = F.x + rr(-FORT_RX + 3, FORT_RX - 3), z = F.z + rr(-FORT_RZ + 3, FORT_RZ - 3); m.position.set(x, .32, z); m.rotation.y = Math.random() * 6.28;
+    hens.push({ m, x, z, home: V(x, 0, z), hopT: rr(0, 1), yaw: m.rotation.y, prey: null, dead: false, vy: 0, y: .32 }); }
+  // straw on the ground so it looks like a coop
+  const straw = new THREE.Group(), sm = new LiteMat({ color: 0xe8c86a });
+  for (let k = 0; k < 26; k++) { const s = new THREE.Mesh(new THREE.BoxGeometry(rr(.8, 1.8), .06, rr(.8, 1.8)), sm); s.position.set(F.x + rr(-FORT_RX + 2, FORT_RX - 2), .04, F.z + rr(-FORT_RZ + 2, FORT_RZ - 2)); s.rotation.y = Math.random() * 3; s.receiveShadow = true; straw.add(s); }
+  scene.add(straw);
+  Object.assign(COOP, { on: true, team: owner.team, phase: 'armed', armT: 45, attackT: 0, hens, straw, owner });
+  bigToast('CHICKEN COOP', owner.team === P.team ? 'blue' : 'red'); sfx('squawk', V(F.x, 1, F.z));
+  toast('ANY ENEMY WHO WALKS INTO YOUR FORT GETS MOBBED');
+}
+function endCoop(quiet) {
+  if (!COOP.on) return;
+  const keep = COOP.phase === 'attack' && !quiet ? COOP.hens.filter(h => !h.dead).slice(0, 2) : [];
+  for (const h of COOP.hens) { if (h.dead) continue;
+    if (keep.includes(h)) { scene.remove(h.m); const e = newBlock('animal', V(h.m.position.x, .6, h.m.position.z), { animal: 'chicken', dims: V(.7, .8, .8), color: '#fbfaf4' }); e.anchored = false; e.body.setEnabledRotations(false, true, false, true); e.pasture = V(FORT[COOP.team].x, 0, FORT[COOP.team].z); e.wander.home = e.pasture.clone(); continue; }
+    const A = { m: h.m, r: null, t: 0, a: 0 }; ATTACKERS.push(A); chickenAway(A); }
+  scene.remove(COOP.straw); COOP.on = false; COOP.hens = [];
+}
+function updateCoop(dt) {
+  if (!COOP.on) return;
+  const F = FORT[COOP.team], t = now() / 1000, inside = r => r.state === 'play' && inOwnFort(COOP.team, rPos(r)) && rPos(r).y < 6;
+  if (COOP.phase === 'armed') {
+    COOP.armT -= dt;
+    if (robots.some(r => r.team !== COOP.team && inside(r))) { COOP.phase = 'attack'; COOP.attackT = 10; bigToast('CHICKEN ATTACK!', 'red'); sfx('squawk', V(F.x, 1, F.z)); }
+    else if (COOP.armT <= 0) { endCoop(true); return; }
+  } else {
+    COOP.attackT -= dt;
+    const mobbed = robots.filter(inside); for (const r of mobbed) peck(r, .5); // everyone inside the walls, you included
+    if (COOP.attackT <= 0 || COOP.hens.every(h => h.dead)) { endCoop(false); return; }
+    // hand out the hens: two on each victim, the rest chase whoever's nearest
+    let k = 0; for (const h of COOP.hens) { if (h.dead) continue; h.prey = mobbed.length ? mobbed[Math.floor(k / 2) % mobbed.length] : null; k++; }
+  }
+  for (const h of COOP.hens) {
+    if (h.dead) continue; const m = h.m, L = m.userData.legs;
+    if (h.prey && COOP.phase === 'attack') { // flap round their head
+      const c = rPos(h.prey), a = t * 5 + COOP.hens.indexOf(h) * 1.9;
+      m.position.set(c.x + Math.cos(a) * .8, c.y + 1.1 + Math.abs(Math.sin(t * 9 + h.hopT)) * .4, c.z + Math.sin(a) * .8); m.lookAt(c.x, m.position.y - .2, c.z);
+      if (L) { L[2].rotation.z = -.4 - Math.abs(Math.sin(t * 30 + h.hopT)) * 1.1; L[3].rotation.z = .4 + Math.abs(Math.sin(t * 30 + h.hopT)) * 1.1; }
+      if (Math.random() < dt * 3) emit(m.position.clone(), 0xffffff, V(rr(-1, 1), rr(.5, 2), rr(-1, 1)), .1, .6, -3);
+    } else { // pottering about, pecking at the straw, little hops
+      h.hopT -= dt; if (h.hopT <= 0) { h.hopT = rr(.6, 1.6); h.yaw = Math.atan2(h.home.x - h.x, h.home.z - h.z) + rr(-1.5, 1.5); h.vy = 3; if (Math.random() < .25) sfx('cluck', m.position.clone()); }
+      const sp = COOP.phase === 'attack' ? 4 : 1.2; h.x += Math.sin(h.yaw) * sp * dt; h.z += Math.cos(h.yaw) * sp * dt;
+      h.x = clamp(h.x, F.x - FORT_RX + 2.5, F.x + FORT_RX - 2.5); h.z = clamp(h.z, F.z - FORT_RZ + 2.5, F.z + FORT_RZ - 2.5);
+      h.vy -= 20 * dt; h.y = Math.max(.32, h.y + h.vy * dt);
+      m.position.set(h.x, h.y, h.z); m.rotation.set(0, h.yaw, 0);
+      if (L) { L[0].rotation.x = Math.sin(t * 16) * .5; L[1].rotation.x = -Math.sin(t * 16) * .5; L[2].rotation.z = -.15; L[3].rotation.z = .15; }
+    }
+  }
+}
+
+// ---------------------------------------------------------------- hooks into the rest of the game
+// bombs blow up dogs and chickens; freezing stops the dog
+{ const ex0 = explode; explode = function (pos, team, by, scale = 1) {
+    const R = BOMB_R0 * scale * .75;
+    for (const D of DOGS.slice()) if (!D.leaving && Math.hypot(D.x - pos.x, D.y + .6 - pos.y, D.z - pos.z) < R) removeDog(D, 'blast');
+    if (COOP.on) for (const h of COOP.hens) if (!h.dead && h.m.position.distanceTo(pos) < R) { h.dead = true; scene.remove(h.m); fxDebris(h.m.position.clone(), 0xffffff, 16, 6); fxDebris(h.m.position.clone(), 0xe0281a, 4, 4); }
+    for (const A of ATTACKERS.slice()) if (A.m.position.distanceTo(pos) < R) { scene.remove(A.m); ATTACKERS.splice(ATTACKERS.indexOf(A), 1); fxDebris(A.m.position.clone(), 0xffffff, 12, 6); }
+    for (const e of blocks) if (e.kind === 'animal' && e.animal === 'chicken' && !e.dead && !e.holder && e.body) { const p = e.body.translation(); if (Math.hypot(p.x - pos.x, p.y - pos.y, p.z - pos.z) < R) { fxDebris(V(p.x, p.y, p.z), 0xffffff, 16, 6); destroyBlock(e); } }
+    return ex0(pos, team, by, scale);
+  }; }
+{ const fz0 = freezeArea; freezeArea = function (pos, team, by, R = FREEZE_R0) {
+    for (const D of DOGS) if (!D.leaving && Math.hypot(D.x - pos.x, D.y + .6 - pos.y, D.z - pos.z) < R + .8) { D.frozenT = 5; if (!D.ice) { D.ice = new THREE.Mesh(cubeGeo, iceOverlayMat); D.ice.scale.set(.9, 1.5, 1.6); D.ice.position.set(D.x, D.y + .75, D.z); D.ice.rotation.y = D.yaw; scene.add(D.ice); } }
+    return fz0(pos, team, by, R);
+  }; }
+// mobbed robots: arms up over their heads, flailing. Carrying a chicken: you glide down when you jump
+{ const sync0 = syncRobot; syncRobot = function (r) {
+    sync0(r);
+    if (r.peckT > 0 && r.state === 'play') { const t = now() / 1000; r.model.arms.forEach((a, i) => { const s = i ? 1 : -1; a.rotation.z = s * (2.75 + Math.sin(t * 19 + i * 2) * .3); a.rotation.x = Math.sin(t * 23 + i) * .7; }); r.model.held.visible = false; r.model.g.rotateY(Math.sin(t * 31) * .12); }
+  }; }
+{ const ur0 = updateRobot; updateRobot = function (r, dt) {
+    if (r.peckT > 0 && !r.isPlayer && !r.remote && r.state === 'play') { // bots try to get out from under the chickens
+      const c = rPos(r), F = COOP.on ? FORT[COOP.team] : c, d = V(c.x - F.x, 0, c.z - F.z); if (d.lengthSq() < .1) d.set(1, 0, 0); d.normalize();
+      r.want.copy(d.add(V(rr(-.6, .6), 0, rr(-.6, .6))).normalize()); r.wantSpeed = RUN; r.yawT = Math.atan2(-r.want.x, -r.want.z);
+    }
+    ur0(r, dt);
+    if (r.sprung && r.state === 'play' && r.body && now() - r.sprung.at > 50 && !r.grounded) { const lv = r.body.linvel(); r.body.setLinvel({ x: r.sprung.vx, y: lv.y, z: r.sprung.vz }, true); }
+    const h = r.stack[0];
+    if (h && h.kind === 'animal' && h.animal === 'chicken' && r.state === 'play' && !r.grounded && r.body) { const lv = r.body.linvel(); if (lv.y < -2.4) r.body.setLinvel({ x: lv.x * 1.004, y: -2.4, z: lv.z * 1.004 }, true); } // flapping: a slow, floaty fall
+  }; }
+function updateMorePowers(dt) {
+  if (match.state !== 'play') return;
+  updateDogs(dt); updateSprings(dt); updateAttackers(dt); updateCoop(dt);
+}
+
+// ============================================================
 // MATCH FLOW + MAIN LOOP
 // ============================================================
 for (const team of ['blue', 'red']) for (let i = 0; i < 4; i++) createRobot(team, i);
@@ -4886,7 +5230,7 @@ function tick(dt, t = now()) {
   if (match.state !== 'paused') updateIce(dt);
   updateFx(dt);
   updateCamera(dt);
-  if (match.state !== 'paused') { updatePowers(dt); updateShield(dt); updateReplayUI(dt); }
+  if (match.state !== 'paused') { updatePowers(dt); updateMorePowers(dt); updateShield(dt); updateReplayUI(dt); }
   if (NET && NET.host) NET.hostTick(dt);
 }
 plainIM.instanceColor.needsUpdate = true;
@@ -4896,7 +5240,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { PORTALS, get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -5348,7 +5692,7 @@ function hostStart() {
 // a friend's robot, driven by their phone's controls (same rules as yours)
 function controlRemote(R, dt) {
   const m = R.netIn;
-  if (match.state !== 'play' || !canAct(R) || !m) { R.wantSpeed = 0; return; }
+  if (match.state !== 'play' || !canMove(R) || !m) { R.wantSpeed = 0; return; }
   const f = fwdOf(R.yaw), p = rPos(R), mv = m.m, back = mv < 0;
   const nearEdge = back ? !onIsland(p.x - f.x * 3, p.z - f.z * 3) && onIsland(p.x, p.z) : !onIsland(p.x + f.x * 3, p.z + f.z * 3) && onIsland(p.x, p.z);
   if (R.stack.length === 0) { const e = grabbable(R, 1.5, true, b => (b.kind === 'stone' || b.kind === 'tree' || b.kind === 'prop' || (b.kind === 'fort' && b.team !== R.team)) && !b.anchored); if (e) grabBlock(R, e); }
