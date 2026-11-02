@@ -213,7 +213,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 #end{align-content:center;gap:12px}#end .card{width:min(92vw,420px);box-sizing:border-box}
 #endBoard{width:min(92vw,420px);padding:10px 12px;border-radius:18px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.28);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;box-shadow:0 8px 30px rgba(0,0,0,.25)}
 #endBoard h4{margin:2px 4px 8px;font-family:var(--display);letter-spacing:.08em;font-size:14px;opacity:.9}
-#endBoard table{width:100%;border-collapse:collapse;font:600 13px var(--body)}
+#endBoard table{width:100%;border-collapse:collapse;font:600 13px var(--body)}#endBoard th{white-space:nowrap}
 #endBoard th{font:700 10px var(--body);letter-spacing:.08em;opacity:.7;text-align:right;padding:0 6px 4px}#endBoard th:nth-child(2){text-align:left}
 #endBoard td{padding:5px 6px;text-align:right;border-top:1px solid rgba(255,255,255,.12)}#endBoard td:nth-child(2){text-align:left}
 #endBoard td:first-child{width:22px;text-align:center;opacity:.8}#endBoard .dot{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:7px;vertical-align:-1px}
@@ -4627,7 +4627,7 @@ const SPEC = { on: false, yaw: 0, pitch: -.25 }; // the 360 camera on the monume
 function onStreak(by, victim) {
   victim.streak = 0;
   if (!by || by === victim) return;
-  by.streak = (by.streak || 0) + 1;
+  by.streak = (by.streak || 0) + 1; by.stats.best = Math.max(by.stats.best || 0, by.streak); // (best hit streak, for the scoreboard)
   if (by.isPlayer) {
     if (STREAK_TIERS.includes(by.streak)) { toast(`${by.streak} IN A ROW · POWER!`); rollPower(); }
     else if (by.streak === BH_AT) { PW.holeReady = true; bigToast('BLACK HOLE READY', 'blue'); sfx('streak'); }
@@ -5310,7 +5310,7 @@ function takeStreak(r, e) {
   const p = e.body.translation(), at = V(p.x, p.y, p.z);
   destroyBlock(e); ISLAND.e = null; ISLAND.t = 90;
   fxDebris(at, 0xffc21f, 30, 7); fxDebris(at, 0xffffff, 12, 5); fxBurst(at, 0xffd84a, 2, .4); sfx('streak', at);
-  bigToast('KILLSTREAK!', 'blue'); rollPower();
+  bigToast('HIT STREAK POWER!', 'blue'); rollPower();
 }
 { const gb0 = grabBlock; grabBlock = function (r, e, ...a) {
     if (e && e.kind === 'streak') { if (!r.isPlayer || NET) return false; takeStreak(r, e); return true; } // (bots leave it alone; online play: coming later)
@@ -5323,7 +5323,7 @@ function updateIsland(dt) {
     const e = ISLAND.e; if (e.dead || !e.body || e.body.translation().y < ISLAND.top - 2) { ISLAND.e = null; ISLAND.t = 90; return; } // knocked off or swallowed: it'll be back
     e.mesh.material.emissiveIntensity = .45 + .25 * Math.sin(t * 5);
     if (Math.random() < dt * 8) { const p = e.body.translation(); emit(V(p.x + rr(-.6, .6), p.y + rr(-.4, .6), p.z + rr(-.6, .6)), 0xffe27a, V(0, .8, 0), .12, .7, 0); }
-  } else if (match.state === 'play') { ISLAND.t -= dt; if (ISLAND.t <= 0) { spawnStreakBlock(); toast('A KILLSTREAK BLOCK APPEARED ON THE SKY ISLAND'); } }
+  } else if (match.state === 'play') { ISLAND.t -= dt; if (ISLAND.t <= 0) { spawnStreakBlock(); toast('A HIT STREAK BLOCK APPEARED ON THE SKY ISLAND'); } }
 }
 { const ump0 = updateMorePowers; updateMorePowers = function (dt) { ump0(dt); updateIsland(dt); }; }
 
@@ -5399,11 +5399,11 @@ function endMatch() {
   $('endTitle').textContent = score.blue > score.red ? 'BLUE WINS' : score.blue < score.red ? 'RED WINS' : 'DRAW';
   $('endTitle').dataset.res = res; sfx(res === 'win' ? 'win' : res === 'lose' ? 'defeat' : 'lose');
   $('endScore').innerHTML = `<b style="color:#5cc0ff">${score.blue}</b><span>–</span><b style="color:#ff6a5a">${score.red}</b>`;
-  $('endStats').innerHTML = `<div><b>${P.stats.hits}</b><span>Hits</span></div><div><b>${P.stats.flags}</b><span>Flags scored</span></div><div><b>${P.stats.kos}</b><span>Times knocked out</span></div>`;
+  $('endStats').innerHTML = `<div><b>${P.stats.hits}</b><span>Hits</span></div><div><b>${P.stats.flags}</b><span>Flags scored</span></div><div><b>${P.stats.kos}</b><span>Respawns</span></div>`;
   // the scoreboard: everyone, both teams together, most knockouts first (then flags, then fewest times knocked out)
   { const rows = [...robots].sort((a, b) => (b.stats.hits - a.stats.hits) || (b.stats.flags - a.stats.flags) || (a.stats.kos - b.stats.kos));
-    $('endBoard').innerHTML = '<h4>SCOREBOARD</h4><table><tr><th>#</th><th>PLAYER</th><th>KOS</th><th>FLAGS</th><th>KNOCKED OUT</th></tr>' + rows.map((r, i) =>
-      `<tr class="${r === P ? 'me' : ''}${i === 0 ? ' top' : ''}"><td>${i === 0 ? '★' : i + 1}</td><td><span class="dot" style="background:${r.color}"></span>${String(r.name).replace(/[<>&]/g, '')}</td><td>${r.stats.hits}</td><td>${r.stats.flags}</td><td>${r.stats.kos}</td></tr>`).join('') + '</table>'; }
+    $('endBoard').innerHTML = '<h4>SCOREBOARD</h4><table><tr><th>#</th><th>PLAYER</th><th>HITS</th><th>FLAGS</th><th>RESPAWNS</th><th>HIT STREAK</th></tr>' + rows.map((r, i) =>
+      `<tr class="${r === P ? 'me' : ''}${i === 0 ? ' top' : ''}"><td>${i === 0 ? '★' : i + 1}</td><td><span class="dot" style="background:${r.color}"></span>${String(r.name).replace(/[<>&]/g, '')}</td><td>${r.stats.hits}</td><td>${r.stats.flags}</td><td>${r.stats.kos}</td><td>${r.stats.best || 0}</td></tr>`).join('') + '</table>'; }
   setTimeout(() => show('end'), 1200);
   buzz(res === 'win' ? 'win' : 'lose');
 }
