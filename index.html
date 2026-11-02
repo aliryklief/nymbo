@@ -97,7 +97,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #feed .fl.out{opacity:0 !important;transform:translateY(-10px);transition:opacity .6s,transform .6s}
 #toast{top:calc(env(safe-area-inset-top,0px) + 62px);transform:translateX(-50%) !important;left:50%;transform:translate(-50%,-50%);font-family:var(--display);font-size:20px;letter-spacing:.03em;padding:6px 16px;border-radius:999px;background:rgba(12,18,32,.55);opacity:0;transition:opacity .4s;white-space:nowrap}
 #toast.on{opacity:1;transition:none}
-#big{top:calc(env(safe-area-inset-top,0px) + 130px);left:50%;transform:translate(-50%,-50%) rotate(-2deg);font-family:var(--display);font-size:clamp(28px,8.5vw,56px);white-space:nowrap;opacity:0;text-shadow:var(--ex),0 0 30px currentColor}
+#big{top:calc(env(safe-area-inset-top,0px) + 130px);left:50%;transform:translate(-50%,-50%) rotate(-2deg);font-family:var(--display);font-size:clamp(26px,8.5vw,56px);white-space:normal;width:max-content;max-width:92vw;text-align:center;line-height:1.05;opacity:0;text-shadow:var(--ex),0 0 30px currentColor}
 #big.on{animation:big 1.8s ease-out}
 #pops{position:fixed;inset:0;pointer-events:none;z-index:6;overflow:hidden}
 .pop{position:absolute;transform:translate(-50%,-50%);font-family:var(--display);font-size:22px;white-space:nowrap;text-shadow:0 3px 0 rgba(0,0,0,.45),0 0 12px rgba(0,0,0,.25);animation:pop .95s cubic-bezier(.2,.9,.3,1) forwards}
@@ -4710,7 +4710,7 @@ function swallow(r) {
   r.model.g.visible = false;
   fxBurst(p, 0xb36bff, 1.4, .3); sfx('portal', p);
   toast([[r.name.toUpperCase(), r.color], [' WAS SWALLOWED', null]]); netEv(['out', robots.indexOf(r)]);
-  if (r.isPlayer) specStart('SWALLOWED · DRAG TO LOOK AROUND');
+  if (r.isPlayer) { specStart('SWALLOWED'); toast('DRAG TO LOOK AROUND'); }
 }
 function specStart(msg) { SPEC.on = true; SPEC.orbit = true; SPEC.yaw = Math.atan2(FORT[P.team].x, FORT[P.team].z); SPEC.pitch = -.2; snapCamera = true; if (msg) bigToast(msg, 'red'); } // swallowed: a wide orbit round the whole stage
 function specCamera() { // the 360 camera: on the pole (Camera menu), or a wide orbit round the stage (black-hole spectators)
@@ -4744,7 +4744,7 @@ Object.assign(SFX_SYNTH, {
   squawk: () => { for (let i = 0; i < 4; i++) { const t = T0(i * .09), f = rr(850, 1100), o = osc('sawtooth', f, t, .12), bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 2; o.frequency.exponentialRampToValueAtTime(f * .5, t + .11); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.26, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .12); o.connect(bp); bp.connect(g); out(g); } noiseHit(.35, 'bandpass', 1200, .12, 0, true, 2400, 2); },
   bark: () => { const n = 2 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) { const t = T0(i * rr(.1, .14)), f = rr(520, 680), o = osc('sawtooth', f, t, .13), lp = AC.createBiquadFilter(), g = AC.createGain(); lp.type = 'lowpass'; lp.frequency.value = 1600; o.frequency.exponentialRampToValueAtTime(f * .55, t + .12); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.34, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + .1); o.connect(lp); lp.connect(g); out(g); noiseHit(.06, 'bandpass', 1500, .14, i * .12, true, 900, 2); } }, // excited yapping
   bite: () => { SFX_SYNTH.bark(); clack(700, .7, .08); clack(420, .6, .1); thump(110, .9, .08, .22); noiseHit(.25, 'bandpass', 1800, .6, .08, true, 500, 1.2); }, // a snarl and a big CHOMP
-  spring: () => { boing(90, .5, 0, 3.6, .5); whoosh(1.1, .22, 400, 3200, .05, 1); },
+  spring: () => { boing(70, .75, 0, 4.2, .7); boing(140, .45, .03, 3.2, .5); boing(95, .3, .12, 2.6, .45); whoosh(1.1, .22, 400, 3200, .05, 1); }, // a big BOING-oing-oing
   trapclick: () => { clack(1300, .55); clack(760, .45, .05); thump(95, .45, .03, .12); },
   flap: () => { for (let i = 0; i < 4; i++) noiseHit(.06, 'bandpass', 950, .22, i * .07, false, 600, 2); },
 });
@@ -4814,8 +4814,8 @@ function updateDogs(dt) {
     D.glow.visible = !D.leaving && tg.state === 'play'; if (D.glow.visible) { const c = rPos(tg); D.glow.position.set(c.x, c.y + 6, c.z); D.glow.material.opacity = .16 + .1 * Math.sin(t * 8); }
     if (D.frozenT > 0) { D.frozenT -= dt; if (D.frozenT <= 0 && D.ice) { scene.remove(D.ice); D.ice = null; } continue; }
     if (D.leaving > 0) { // job done: it trots off happily and vanishes
-      D.leaving -= dt; D.x += Math.sin(D.yaw) * DOG_SPEED * .7 * dt; D.z += Math.cos(D.yaw) * DOG_SPEED * .7 * dt; D.m.g.position.set(D.x, D.y, D.z); D.m.tail.rotation.y = Math.sin(t * 25) * .6;
-      D.m.legs.forEach((l, k) => { l.rotation.x = Math.sin(t * 22 + (k === 0 || k === 3 ? 0 : Math.PI)) * .7; }); D.m.g.rotation.y = D.yaw; D.m.g.position.y = D.y + Math.abs(Math.sin(t * 22)) * .08; // trots off, legs going
+      D.leaving -= dt; D.x += Math.sin(D.yaw) * DOG_SPEED * dt; D.z += Math.cos(D.yaw) * DOG_SPEED * dt; D.m.g.position.set(D.x, D.y, D.z); D.m.tail.rotation.y = Math.sin(t * 25) * .6;
+      D.m.legs.forEach((l, k) => { l.rotation.x = Math.sin(t * 24 + (k < 2 ? 0 : Math.PI)) * .95; }); D.m.g.rotation.set(Math.sin(t * 24) * .08, D.yaw, 0); D.m.g.position.y = D.y + Math.abs(Math.sin(t * 24)) * .18; D.m.head.rotation.x = Math.sin(t * 24) * .12; // bounds off at a gallop, tail going, legs going
       if (D.leaving <= 0) removeDog(D, 'poof'); continue;
     }
     // where to run: straight at them, or through a portal if that's shorter (same as the angry cow)
@@ -4842,7 +4842,8 @@ function updateDogs(dt) {
     // portals
     if (D.pcool > 0) D.pcool -= dt; else { const Pn = portalCheck(V(D.x, D.y + .6, D.z)); if (Pn) { const Q = PORTALS[1 - Pn.i], o = Q.pos.clone().addScaledVector(Q.n, 1.6); D.x = o.x; D.z = o.z; D.y = Math.max(0, groundAt(o.x, o.z, 4)); D.vy = 0; D.pcool = .8; D.yaw = Math.atan2(Q.n.x, Q.n.z); fxBurst(Q.pos, 0xb36bff, 1.4, .3); sfx('portal', Q.pos); } }
     D.m.g.position.set(D.x, D.y, D.z); D.m.g.rotation.y = D.yaw;
-    D.m.legs.forEach((l, k) => { l.rotation.x = D.grounded ? Math.sin(t * 22 + (k === 0 || k === 3 ? 0 : Math.PI)) * .7 : (k < 2 ? -.8 : .8); }); D.m.tail.rotation.y = Math.sin(t * 18) * .5;
+    D.m.legs.forEach((l, k) => { l.rotation.x = D.grounded ? Math.sin(t * 24 + (k < 2 ? 0 : Math.PI)) * .95 : (k < 2 ? -.9 : .9); }); D.m.tail.rotation.y = Math.sin(t * 18) * .5; // a gallop: front legs together, back legs together
+    if (D.grounded) { D.m.g.position.y = D.y + Math.abs(Math.sin(t * 24)) * .18; D.m.g.rotation.x = Math.sin(t * 24) * .08; D.m.head.rotation.x = Math.sin(t * 24) * .12; } else D.m.g.rotation.x = D.vy > 0 ? -.25 : .2;
     const gap = Math.hypot(g.x - D.x, g.z - D.z); D.barkT -= dt; if (D.barkT <= 0) { D.barkT = clamp(gap / 25, .35, 1.4) * rr(.8, 1.2); sfx('bark', V(D.x, D.y + .8, D.z)); } // yaps faster and faster as it closes in (and you hear it getting louder)
     if (gap < 3.2 && D.grounded && !D.lunged && tg.state === 'play') { D.lunged = true; D.vy = 7; D.grounded = false; } // the pounce
     // the bite: one and done
@@ -4878,6 +4879,10 @@ function placeSpring(at, owner) {
   fxBurst(V(at.x, y + .8, at.z), 0xffcc33, 1.6, .3); sfx('pop', V(at.x, y + .5, at.z));
   toast('SPRINGTRAP SET');
 }
+function springSpent(S_) { // used up: stays as a sprung wreck for a few seconds, then the ground is back to normal
+  const a = Math.random() * 6.28; S_.spent = true; S_.spentT = 0; S_.t = Math.min(S_.t, 7); S_.lidTo = { x: Math.cos(a) * 1.8, z: Math.sin(a) * 1.8, rx: rr(1.6, 2.2) * (Math.random() < .5 ? -1 : 1), rz: rr(-.4, .4) };
+  S_.g.traverse(o => { if (o.material) { o.material = Array.isArray(o.material) ? o.material.map(m => m.clone()) : o.material.clone(); } }); // (own copies, so it can fade on its own)
+}
 function launchOffMap(r, S_) {
   const c = rPos(r), d = S_.out, ax = d.x ? ((d.x > 0 ? MX : -MX) - c.x) / d.x : 1e9, az = d.z ? ((d.z > 0 ? MZ : -MZ) - c.z) / d.z : 1e9;
   const dist = Math.max(4, Math.min(ax, az)) + 14, th = rr(48, 58) * Math.PI / 180;
@@ -4893,18 +4898,23 @@ function updateSprings(dt) {
     T.t -= dt; const S_ = T.S, sink = .35 * (1 - Math.max(0, T.t));
     r.body.setTranslation({ x: S_.x, y: S_.y + .97 + .06 - sink, z: S_.z }, true); r.body.setLinvel({ x: 0, y: 0, z: 0 }, true); r.wantSpeed = 0;
     S_.sq = -sink * .5;
-    if (T.t <= 0) { r.trapped = null; S_.out = T.dir; launchOffMap(r, S_); S_.sq = .9; sfx('spring', V(S_.x, S_.y + 1, S_.z)); fxBurst(V(S_.x, S_.y + 1, S_.z), 0xffcc33, 1.8, .3); }
+    if (T.t <= 0) { r.trapped = null; S_.out = T.dir; launchOffMap(r, S_); sfx('spring', V(S_.x, S_.y + 1, S_.z)); fxBurst(V(S_.x, S_.y + 1, S_.z), 0xffcc33, 1.8, .3); springSpent(S_); }
   }
   for (let i = SPRINGS.length - 1; i >= 0; i--) {
     const S_ = SPRINGS[i]; S_.t -= dt; S_.grow = Math.min(1, S_.grow + dt * 4);
     const pop = S_.t < .4 ? Math.max(.01, S_.t / .4) : 1 - Math.pow(1 - S_.grow, 3) * 1.0 + Math.sin(S_.grow * Math.PI) * .15; S_.g.scale.setScalar(Math.max(.01, pop));
-    S_.sq += (0 - S_.sq) * Math.min(1, dt * 6); S_.top.position.y = .1 + S_.sq * 1.6; S_.coil.scale.y = Math.max(.2, 1 + S_.sq * 9); // it snaps up out of the ground, then sinks back
+    if (S_.spent) { // sprung: the lid lies flipped off to one side, the spring sticks out of the hole... then it fades back into grass
+      S_.spentT += dt; const k = Math.min(1, S_.spentT * 5);
+      S_.top.position.set(S_.lidTo.x * k, .1 + Math.sin(k * Math.PI) * 1.6 + .02, S_.lidTo.z * k); S_.top.rotation.set(S_.lidTo.rx * k, .06, S_.lidTo.rz * k);
+      { const u = Math.min(1, S_.spentT * 8); S_.coil.scale.y = 1; S_.coil.children.forEach((c, k) => { c.position.y = -.16 + k * (.05 + .3 * u); }); S_.coil.rotation.set(.85 * Math.min(1, S_.spentT * 3), S_.lidTo.rz * 3, 0); } // the coils pop apart and the spring flops out of the hole
+      if (S_.t < 1.2) { const f = Math.max(0, S_.t / 1.2); S_.g.traverse(o => { if (o.material && !Array.isArray(o.material)) { o.material.transparent = true; o.material.opacity = f; } else if (Array.isArray(o.material)) o.material.forEach(m => { m.transparent = true; m.opacity = f; }); }); }
+    } else { S_.sq += (0 - S_.sq) * Math.min(1, dt * 6); S_.top.position.y = .1 + S_.sq * 1.6; S_.coil.scale.y = Math.max(.2, 1 + S_.sq * 9); } // (sinking in when someone's caught)
     if (S_.t <= 0) { scene.remove(S_.g); SPRINGS.splice(i, 1); continue; }
     if (S_.grow < 1) continue;
     for (const r of robots) {
       if (r.state !== 'play' || !r.body) continue; const c = rPos(r);
       if (Math.hypot(c.x - S_.x, c.z - S_.z) > 1.25 || c.y - S_.y > 2.4 || c.y < S_.y) continue;
-      if ((S_.cool.get(r) || 0) > now() || r.trapped) continue; S_.cool.set(r, now() + 2600);
+      if (S_.spent || S_.armed === false || (S_.cool.get(r) || 0) > now() || r.trapped) continue; S_.armed = false; // one use: it's caught someone S_.cool.set(r, now() + 2600);
       // caught: you're held for a second and sink in a little (CLICK), then it fires you the way you were heading
       const lv = r.body.linvel(), hs = Math.hypot(lv.x, lv.z), dir = hs > .8 ? V(lv.x / hs, 0, lv.z / hs) : fwdOf(r.yaw).setY(0).normalize();
       r.trapped = { S: S_, t: 1, dir }; S_.sinkT = 1; sfx('trapclick', V(S_.x, S_.y + .3, S_.z)); if (r.isPlayer) toast('CLICK…');
@@ -5301,7 +5311,7 @@ $('quitBtn').onclick = () => restart(false);
 $('resetBtn').onclick = () => { if (confirm('Reset every setting, sound pick, look pick and upload saved on this phone?')) resetSettings(); };
 $('againBtn').onclick = () => restart(true);
 $('menuBtn').onclick = () => restart(false);
-function pauseGame() { if (match.state !== 'play') return; closePicker(); gest = null; match.menu = true; show('pause'); drawMenuMap(); } // the clock menu: map + settings, the match keeps running
+function pauseGame() { if (match.state !== 'play' && match.state !== 'count') return; /* (the countdown too: the match keeps going underneath) */ closePicker(); gest = null; match.menu = true; show('pause'); drawMenuMap(); } // the clock menu: map + settings, the match keeps running
 function restart(auto) {
   try {
     if (NET && NET.host && auto) { sessionStorage.setItem('nymbo-rehost', '1'); NET.broadcast(['again']); } // same room, same friends: everyone comes back to the lobby
@@ -6057,7 +6067,7 @@ function clientEv(e) {
   else if (k === 'gas') gasCloud(V(e[1], 0, e[2]), V(e[3], 0, e[4]));
   else if (k === 'birdgo') { for (const b of BIRDS) if (b.mode === 'perch') birdLeave(b); }
   else if (k === 'bhx') { const b = blockById(e[1]); if (b && !b.dead) { const t = b.body ? b.body.translation() : null; if (t) fxBurst0(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(b); } }
-  else if (k === 'out') { const r = robots[e[1]]; if (r) { r.state = 'out'; r.model.g.visible = false; toast([[r.name.toUpperCase(), r.color], [' WAS SWALLOWED', null]]); if (r === P) specStart('SWALLOWED · DRAG TO LOOK AROUND'); } }
+  else if (k === 'out') { const r = robots[e[1]]; if (r) { r.state = 'out'; r.model.g.visible = false; toast([[r.name.toUpperCase(), r.color], [' WAS SWALLOWED', null]]); if (r === P) specStart('SWALLOWED'); } }
   else if (k === 'bhwin') { score[e[1]] = Math.max(score[e[1]], score[other(e[1])] + 1); bigToast('SWALLOWED THEM ALL', e[1] === 'blue' ? 'blue' : 'red'); }
   else if (k === 'count') { if (match.state === 'menu') startCountdown(); }
   else if (k === 'toast') toast(e[1]);
@@ -6215,7 +6225,8 @@ const SFX_GROUPS = {
   'Explosions and powers': ['boom', 'nuke', 'siren', 'jet', 'tornado', 'blackout', 'lightsOn', 'slowmo', 'invis', 'visible', 'swoop'],
   'World': ['portal', 'pad', 'boost', 'repair', 'hole'],
   'Flags and match': ['flagGrab', 'flagDrop', 'alert', 'score', 'lose', 'streak', 'win', 'defeat', 'beep', 'go', 'tick', 'heart', 'intro', 'lock', 'ui'],
-  'Animals': ['moo', 'mooAngry', 'baa', 'baaAngry', 'hoof', 'snort', 'poof'],
+  'Animals': ['moo', 'mooAngry', 'baa', 'baaAngry', 'hoof', 'snort', 'poof', 'cluck', 'squawk', 'flap'],
+  'New powers': ['bark', 'bite', 'trapclick', 'spring', 'dig', 'anomaly'],
 };
 // which version of each sound plays: 'ai' (random take), 'ai1'..'ai3' (that take), 'v2' (previous recorded set), 'synth' (classic), 'custom:<n>' (an upload)
 // Ali's picks from the Sound lab (31 Oct) are the game's defaults; a device's own picks override them
