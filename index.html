@@ -2890,7 +2890,7 @@ function updateRobot(r, dt) {
     r.jumpReq = false;
     if (r.peckT > 0) { /* chickens all over you: no jumping */ } else
     if (r.grounded) { vy = JUMP_V; r.jumps = 1; r.grounded = false; r.model.sq = -.32; r.model.sqv = 6; if (r.isPlayer) sfx('vjump', rPos(r)); } // push down then spring up
-    else if (r.jumps < 2) { vy = JUMP_V; r.jumps = 2; r.model.pr = -.22; r.model.prv = 0; r.model.sq = -.42; r.model.sqv = 4; if (r.isPlayer) sfx('vjump', rPos(r), true); } // presses its weight into the ball mid-air
+    else if (r.jumps < 2) { vy = JUMP_V; r.jumps = r.jumps === 0 ? 1 : 2; /* walked off a ledge or dropped into a hole: that first air jump doesn't use up your double jump */ r.model.pr = -.22; r.model.prv = 0; r.model.sq = -.42; r.model.sqv = 4; if (r.isPlayer) sfx('vjump', rPos(r), true); } // presses its weight into the ball mid-air
   }
   if (r.pull && r.pull.y) vy = Math.max(vy, lv.y + r.pull.y * dt * 3);
   r.body.setLinvel({ x: lv.x + (des.x - lv.x) * k, y: vy, z: lv.z + (des.z - lv.z) * k }, true);
@@ -5208,6 +5208,65 @@ function updateBHFx(dt) {
 function updateShovelBH(dt) { updateBHWarn(dt); if (match.state === 'play') updateDug(); }
 
 // ============================================================
+// THE SKY ISLAND: a little floating island just above the centre pole. On it, a golden KILL-STREAK block sits on top
+// of a stack of 3 grey blocks (so a swipe-down grabs the grey ones first). Pick it up and you get a kill-streak power;
+// the block crumbles away and a new one appears 1 min 30 s later.
+// Getting up there: a trampoline launch carries you over the middle about 12-18 blocks up (more if you hit the pad at speed); you reach the island's edge
+// and need one more jump to climb onto it. Hard, not impossible.
+// ============================================================
+const ISLAND = { top: 15.5, r: 5.2, e: null, t: 0, spots: [] };
+{
+  const cells = [], colGrass = ['#5cb43a', '#63bb3f', '#58ad36'], colDirt = ['#7a5532', '#704d2d'], colRock = ['#6f7078', '#676870'];
+  for (let x = -6; x <= 6; x++) for (let z = -6; z <= 6; z++) { const d = Math.hypot(x, z);
+    if (d < ISLAND.r) cells.push([x, ISLAND.top - .5, z, colGrass[(x + z + 99) % 3]]);
+    if (d < 3.8) cells.push([x, ISLAND.top - 1.5, z, colDirt[(x * 3 + z + 99) % 2]]);
+    if (d > 1.3 && d < 2.6) cells.push([x, ISLAND.top - 2.5, z, colRock[(x + z + 99) % 2]]); } // a ring of rock hanging under it (clear of the pole camera)
+  const im = new THREE.InstancedMesh(cubeGeo, new LiteMat({ roughness: .9 }), cells.length); im.castShadow = im.receiveShadow = true;
+  cells.forEach(([x, y, z, c], i) => { tmpM.compose(tmpV.set(x, y, z), tmpQ.identity(), tmpS.set(1, 1, 1)); im.setMatrixAt(i, tmpM); im.setColorAt(i, new THREE.Color(c).offsetHSL(0, 0, rr(-.04, .04))); });
+  scene.add(im);
+  for (const [r, y] of [[ISLAND.r - .2, ISLAND.top - .5], [3.6, ISLAND.top - 1.5]]) { const c = world.createCollider(RAPIER.ColliderDesc.cylinder(.5, r).setTranslation(0, y, 0).setFriction(.9)); byCollider.set(c.handle, { type: 'static' }); }
+  // a faint golden glow over it, so you can see from the ground that something's up there
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 9, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: .14, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.set(1.5, ISLAND.top + 4.5, 1.5); scene.add(beam); ISLAND.beam = beam;
+  for (let k = 0; k < 3; k++) ISLAND.spots.push(V(1.5, ISLAND.top + .5 + k, 1.5)); // the 3 grey blocks, then the gold one on top
+}
+const streakMat = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 128, 128); gr.addColorStop(0, '#fff3a8'); gr.addColorStop(.5, '#ffc21f'); gr.addColorStop(1, '#d98a00'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  g.strokeStyle = '#fff8d0'; g.lineWidth = 8; g.strokeRect(6, 6, 116, 116);
+  g.fillStyle = '#ffffff'; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 20 : 46; g.lineTo(64 + Math.cos(a) * r, 66 + Math.sin(a) * r); } g.closePath(); g.fill(); g.strokeStyle = '#b86a00'; g.lineWidth = 4; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return new LiteMat({ map: t, emissive: 0xffb300, emissiveMap: t, emissiveIntensity: .55 }); })();
+function spawnStreakBlock() {
+  for (const s of ISLAND.spots) { // put back any of the 3 grey blocks that have gone
+    const there = blocks.some(b => { if (b.dead || !b.body || b.holder || b.kind === 'streak') return false; const t = b.body.translation(); return Math.hypot(t.x - s.x, t.y - s.y, t.z - s.z) < .5; });
+    if (!there) newBlock('stone', s.clone(), { dims: V(1, 1, 1), anchored: true, color: '#b9bcc4' });
+  }
+  const e = newBlock('bomb', V(1.5, ISLAND.top + 3.5, 1.5), { anchored: true });
+  e.kind = 'streak'; e.mesh.clear(); e.core = null; e.mesh.material = streakMat; e.mesh.renderOrder = 0; e.slot = null; e.origin = null;
+  ISLAND.e = e;
+}
+spawnStreakBlock();
+function takeStreak(r, e) {
+  const p = e.body.translation(), at = V(p.x, p.y, p.z);
+  destroyBlock(e); ISLAND.e = null; ISLAND.t = 90;
+  fxDebris(at, 0xffc21f, 30, 7); fxDebris(at, 0xffffff, 12, 5); fxBurst(at, 0xffd84a, 2, .4); sfx('streak', at);
+  bigToast('KILLSTREAK!', 'blue'); rollPower();
+}
+{ const gb0 = grabBlock; grabBlock = function (r, e, ...a) {
+    if (e && e.kind === 'streak') { if (!r.isPlayer || NET) return false; takeStreak(r, e); return true; } // (bots leave it alone; online play: coming later)
+    return gb0(r, e, ...a);
+  }; }
+function updateIsland(dt) {
+  const t = now() / 1000;
+  ISLAND.beam.visible = !!ISLAND.e; ISLAND.beam.material.opacity = .1 + .06 * Math.sin(t * 3);
+  if (ISLAND.e) {
+    const e = ISLAND.e; if (e.dead || !e.body || e.body.translation().y < ISLAND.top - 2) { ISLAND.e = null; ISLAND.t = 90; return; } // knocked off or swallowed: it'll be back
+    e.mesh.material.emissiveIntensity = .45 + .25 * Math.sin(t * 5);
+    if (Math.random() < dt * 8) { const p = e.body.translation(); emit(V(p.x + rr(-.6, .6), p.y + rr(-.4, .6), p.z + rr(-.6, .6)), 0xffe27a, V(0, .8, 0), .12, .7, 0); }
+  } else if (match.state === 'play') { ISLAND.t -= dt; if (ISLAND.t <= 0) { spawnStreakBlock(); toast('A KILLSTREAK BLOCK APPEARED ON THE SKY ISLAND'); } }
+}
+{ const ump0 = updateMorePowers; updateMorePowers = function (dt) { ump0(dt); updateIsland(dt); }; }
+
+// ============================================================
 // MATCH FLOW + MAIN LOOP
 // ============================================================
 for (const team of ['blue', 'red']) for (let i = 0; i < 4; i++) createRobot(team, i);
@@ -5423,7 +5482,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
