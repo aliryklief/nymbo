@@ -106,6 +106,15 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #bhWarn{position:fixed;inset:0;z-index:8;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#fff;font-family:var(--display);text-shadow:0 3px 0 rgba(0,0,0,.5),0 0 18px rgba(150,70,255,.9);box-shadow:inset 0 0 60px 10px rgba(140,60,255,.55);animation:bhw .5s ease-in-out infinite alternate}
 #bhWarn[hidden]{display:none}#bhWarn b{font-size:26px;letter-spacing:.08em;color:#ffd84a}#bhWarn span{font-size:84px;line-height:1}#bhWarn small{font:700 11px var(--body);letter-spacing:.12em;opacity:.85}
 @keyframes bhw{from{box-shadow:inset 0 0 40px 6px rgba(140,60,255,.35)}to{box-shadow:inset 0 0 90px 18px rgba(255,60,120,.6)}}
+#painter{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(6,10,20,.6)}#painter[hidden]{display:none}
+#painter .pbox{background:#141a2c;border:2px solid var(--ink2);border-radius:18px;padding:14px;width:min(94vw,420px);color:#fff}
+#painter h3{margin:0 0 8px;font-family:var(--display);letter-spacing:.04em}#painter .prow{display:flex;gap:10px;align-items:flex-start}
+#paintCv{width:min(62vw,256px);height:min(62vw,256px);border-radius:8px;touch-action:none;image-rendering:pixelated;background:#fff}
+#painter .pside{display:flex;flex-direction:column;gap:6px;align-items:center}#paintPv{width:80px;height:80px;border-radius:6px;image-rendering:pixelated}
+#painter small{font-size:9px;color:var(--muted)}#paintCol{width:80px;height:30px;border:0;background:none}
+#painter .sws{display:grid;grid-template-columns:repeat(4,18px);gap:4px}#painter .sws button{width:18px;height:18px;border-radius:4px;border:1px solid rgba(255,255,255,.4);padding:0}
+#painter .ptools{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}#painter .ptools button{flex:1;padding:7px 4px;border-radius:10px;border:1.5px solid var(--ink2);background:rgba(255,255,255,.06);color:#fff;font:600 12px var(--body)}
+#painter .ptools button.on{background:#ffd84a;color:#141a2c}
 #vig{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;box-shadow:inset 0 0 34px 2px rgba(255,40,40,.6);transition:opacity .3s}
 #vig.on{opacity:.45}#vig.on.hot{box-shadow:inset 0 0 46px 5px rgba(255,30,30,.7)}
 #vig.on.beat{animation:beat .4s ease-out}
@@ -122,7 +131,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 .pw.ready{box-shadow:0 3px 0 rgba(0,0,0,.3),0 0 12px var(--c)}
 .pw:active{transform:scale(.92)}
 /* "All powers" (testing): every power at once in a tidy two-column block on the right, under the top bar */
-#pwr.all{width:auto;display:grid;grid-template-columns:repeat(2,38px);gap:6px;bottom:auto;top:calc(env(safe-area-inset-top,0px) + 96px)}#pwr.all .pw{width:38px;height:38px;border-width:2px}#pwr.all .pw svg{width:19px;height:19px}
+#pwr.all{width:auto;display:grid;grid-template-columns:repeat(2,38px);gap:6px;bottom:auto;top:50%;transform:translateY(-50%)}#pwr.all .pw{width:38px;height:38px;border-width:2px}#pwr.all .pw svg{width:19px;height:19px}
 #pick{position:fixed;inset:0;z-index:40;background:rgba(4,8,18,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;touch-action:none}
 #pick[hidden]{display:none}
 #pickTitle{font-family:var(--display);font-size:22px;letter-spacing:.02em;text-align:center;padding:0 16px}
@@ -278,6 +287,14 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport">Export my replacements</button><button class="ghost" id="soundLabBack">Back</button></div></div>
   </div>
 </div>
+<div id="painter" hidden><div class="pbox">
+  <h3 id="paintTitle">Paint</h3>
+  <div class="prow"><canvas id="paintCv" width="256" height="256"></canvas><div class="pside"><canvas id="paintPv" width="96" height="96"></canvas><small>how it repeats</small>
+    <input type="color" id="paintCol" value="#ffffff"><div class="sws"><button data-sw="#ffffff"></button><button data-sw="#d9dbe2"></button><button data-sw="#a9adb8"></button><button data-sw="#6f737c"></button><button data-sw="#3a3d44"></button><button data-sw="#e8d9b8"></button><button data-sw="#b98a5a"></button><button data-sw="#6b4526"></button><button data-sw="#d6e8cc"></button><button data-sw="#7cc24e"></button><button data-sw="#3f9a35"></button><button data-sw="#1f5a1a"></button></div></div></div>
+  <div class="ptools"><button data-tool="pen">✏ Pen</button><button data-tool="fill">🪣 Fill</button><button data-tool="pick">💧 Pick</button><button id="paintClear">Fill all</button></div>
+  <p class="rules" style="margin:6px 0">For blocks, white shows the block's own colour; darker shades make lines and shadows.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="ghost" id="paintCancel">Cancel</button><button class="ghost" id="paintSave">Save &amp; use</button></div>
+</div></div>
 <div class="sheet" id="looklab" hidden>
   <div class="card" style="width:min(560px,100%)">
     <div class="panel"><h2>Look lab</h2><p class="rules" style="margin:0 0 8px">The textures the game draws with. Upload an image to replace one (square images, 64 to 512 pixels, work best). Kept on this device; export to send.</p>
@@ -4728,6 +4745,7 @@ Object.assign(SFX_SYNTH, {
   bark: () => { const n = 2 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) { const t = T0(i * rr(.1, .14)), f = rr(520, 680), o = osc('sawtooth', f, t, .13), lp = AC.createBiquadFilter(), g = AC.createGain(); lp.type = 'lowpass'; lp.frequency.value = 1600; o.frequency.exponentialRampToValueAtTime(f * .55, t + .12); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.34, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + .1); o.connect(lp); lp.connect(g); out(g); noiseHit(.06, 'bandpass', 1500, .14, i * .12, true, 900, 2); } }, // excited yapping
   bite: () => { SFX_SYNTH.bark(); clack(700, .7, .08); clack(420, .6, .1); thump(110, .9, .08, .22); noiseHit(.25, 'bandpass', 1800, .6, .08, true, 500, 1.2); }, // a snarl and a big CHOMP
   spring: () => { boing(90, .5, 0, 3.6, .5); whoosh(1.1, .22, 400, 3200, .05, 1); },
+  trapclick: () => { clack(1300, .55); clack(760, .45, .05); thump(95, .45, .03, .12); },
   flap: () => { for (let i = 0; i < 4; i++) noiseHit(.06, 'bandpass', 950, .22, i * .07, false, 600, 2); },
 });
 POWERS.push(
@@ -4797,6 +4815,7 @@ function updateDogs(dt) {
     if (D.frozenT > 0) { D.frozenT -= dt; if (D.frozenT <= 0 && D.ice) { scene.remove(D.ice); D.ice = null; } continue; }
     if (D.leaving > 0) { // job done: it trots off happily and vanishes
       D.leaving -= dt; D.x += Math.sin(D.yaw) * DOG_SPEED * .7 * dt; D.z += Math.cos(D.yaw) * DOG_SPEED * .7 * dt; D.m.g.position.set(D.x, D.y, D.z); D.m.tail.rotation.y = Math.sin(t * 25) * .6;
+      D.m.legs.forEach((l, k) => { l.rotation.x = Math.sin(t * 22 + (k === 0 || k === 3 ? 0 : Math.PI)) * .7; }); D.m.g.rotation.y = D.yaw; D.m.g.position.y = D.y + Math.abs(Math.sin(t * 22)) * .08; // trots off, legs going
       if (D.leaving <= 0) removeDog(D, 'poof'); continue;
     }
     // where to run: straight at them, or through a portal if that's shorter (same as the angry cow)
@@ -4869,17 +4888,26 @@ function launchOffMap(r, S_) {
   if (r.isPlayer) { toast('SPRUNG!'); shake = Math.max(shake, .4); }
 }
 function updateSprings(dt) {
+  for (const r of robots) if (r.trapped) { // held in the trap: can't move, sinking a little, then BOING
+    const T = r.trapped; if (r.state !== 'play') { r.trapped = null; continue; }
+    T.t -= dt; const S_ = T.S, sink = .35 * (1 - Math.max(0, T.t));
+    r.body.setTranslation({ x: S_.x, y: S_.y + .97 + .06 - sink, z: S_.z }, true); r.body.setLinvel({ x: 0, y: 0, z: 0 }, true); r.wantSpeed = 0;
+    S_.sq = -sink * .5;
+    if (T.t <= 0) { r.trapped = null; S_.out = T.dir; launchOffMap(r, S_); S_.sq = .9; sfx('spring', V(S_.x, S_.y + 1, S_.z)); fxBurst(V(S_.x, S_.y + 1, S_.z), 0xffcc33, 1.8, .3); }
+  }
   for (let i = SPRINGS.length - 1; i >= 0; i--) {
     const S_ = SPRINGS[i]; S_.t -= dt; S_.grow = Math.min(1, S_.grow + dt * 4);
     const pop = S_.t < .4 ? Math.max(.01, S_.t / .4) : 1 - Math.pow(1 - S_.grow, 3) * 1.0 + Math.sin(S_.grow * Math.PI) * .15; S_.g.scale.setScalar(Math.max(.01, pop));
-    S_.sq += (0 - S_.sq) * Math.min(1, dt * 6); S_.top.position.y = .1 + S_.sq * 1.6; S_.coil.scale.y = 1 + S_.sq * 9; // it snaps up out of the ground, then sinks back
+    S_.sq += (0 - S_.sq) * Math.min(1, dt * 6); S_.top.position.y = .1 + S_.sq * 1.6; S_.coil.scale.y = Math.max(.2, 1 + S_.sq * 9); // it snaps up out of the ground, then sinks back
     if (S_.t <= 0) { scene.remove(S_.g); SPRINGS.splice(i, 1); continue; }
     if (S_.grow < 1) continue;
     for (const r of robots) {
       if (r.state !== 'play' || !r.body) continue; const c = rPos(r);
       if (Math.hypot(c.x - S_.x, c.z - S_.z) > 1.25 || c.y - S_.y > 2.4 || c.y < S_.y) continue;
-      if ((S_.cool.get(r) || 0) > now()) continue; S_.cool.set(r, now() + 800);
-      launchOffMap(r, S_); S_.sq = .9; sfx('spring', V(S_.x, S_.y + 1, S_.z)); fxBurst(V(S_.x, S_.y + 1, S_.z), 0xffcc33, 1.8, .3);
+      if ((S_.cool.get(r) || 0) > now() || r.trapped) continue; S_.cool.set(r, now() + 2600);
+      // caught: you're held for a second and sink in a little (CLICK), then it fires you the way you were heading
+      const lv = r.body.linvel(), hs = Math.hypot(lv.x, lv.z), dir = hs > .8 ? V(lv.x / hs, 0, lv.z / hs) : fwdOf(r.yaw).setY(0).normalize();
+      r.trapped = { S: S_, t: 1, dir }; S_.sinkT = 1; sfx('trapclick', V(S_.x, S_.y + .3, S_.z)); if (r.isPlayer) toast('CLICK…');
     }
   }
   // flung off the island by someone's springtrap: that counts as their knockout
@@ -4950,57 +4978,60 @@ function updateAttackers(dt) {
 }
 
 // ---------------------------------------------------------------- the coop
+// The 8 hens are real chickens from the start: anyone can pick one up and carry it off. Every hen taken out of the
+// coop is one fewer left behind after the attack (two are normally left; take two and none are). When the attack starts,
+// the hens still inside the walls swarm whoever's in there. When it ends, all but the leftovers fly away, including
+// coop hens lying about outside that nobody's carrying.
 const COOP = { on: false };
+const coopHen = (pos, team) => { const e = newBlock('animal', pos, { animal: 'chicken', dims: V(.7, .8, .8), color: '#fbfaf4' }); e.anchored = false; e.body.setEnabledRotations(false, true, false, true); e.pasture = V(FORT[team].x, 0, FORT[team].z); e.wander.home = V(pos.x, 0, pos.z); e.coop = true; return e; };
 function startCoop(owner) {
   if (COOP.on) endCoop(true);
   const F = FORT[owner.team], hens = [];
-  for (let k = 0; k < 8; k++) { const m = makeAnimal('chicken'); const x = F.x + rr(-FORT_RX + 3, FORT_RX - 3), z = F.z + rr(-FORT_RZ + 3, FORT_RZ - 3); m.position.set(x, .32, z); m.rotation.y = Math.random() * 6.28;
-    hens.push({ m, x, z, home: V(x, 0, z), hopT: rr(0, 1), yaw: m.rotation.y, prey: null, dead: false, vy: 0, y: .32 }); }
-  // straw on the ground so it looks like a coop
-  const straw = new THREE.Group(), sm = new LiteMat({ color: 0xe8c86a });
-  for (let k = 0; k < 26; k++) { const s = new THREE.Mesh(new THREE.BoxGeometry(rr(.8, 1.8), .06, rr(.8, 1.8)), sm); s.position.set(F.x + rr(-FORT_RX + 2, FORT_RX - 2), .04, F.z + rr(-FORT_RZ + 2, FORT_RZ - 2)); s.rotation.y = Math.random() * 3; s.receiveShadow = true; straw.add(s); }
+  for (let k = 0; k < 8; k++) hens.push(coopHen(V(F.x + rr(-6, 6), .6, F.z + rr(-6, 6)), owner.team));
+  const straw = new THREE.Group(), sm = new LiteMat({ color: 0xe8c86a }); // straw on the ground so it looks like a coop
+  for (let k = 0; k < 26; k++) { const s_ = new THREE.Mesh(new THREE.BoxGeometry(rr(.8, 1.8), .06, rr(.8, 1.8)), sm); s_.position.set(F.x + rr(-FORT_RX + 2, FORT_RX - 2), .04, F.z + rr(-FORT_RZ + 2, FORT_RZ - 2)); s_.rotation.y = Math.random() * 3; s_.receiveShadow = true; straw.add(s_); }
   scene.add(straw);
-  Object.assign(COOP, { on: true, team: owner.team, phase: 'armed', armT: 45, attackT: 0, hens, straw, owner });
+  Object.assign(COOP, { on: true, team: owner.team, phase: 'armed', armT: 45, attackT: 0, hens, swarm: [], taken: new Set(), straw, owner });
   bigToast('CHICKEN COOP', owner.team === P.team ? 'blue' : 'red'); sfx('squawk', V(F.x, 1, F.z));
   toast('ANY ENEMY WHO WALKS INTO YOUR FORT GETS MOBBED');
 }
+const flyOff = m => { const A = { m, r: null, t: 0, a: 0 }; m.visible = true; ATTACKERS.push(A); chickenAway(A); };
+function henToBird(e) { const m = e.mesh; destroyBlock(e); e.mesh = deadMesh(); m.visible = true; return m; } // the chicken stops being a pick-up-able block and becomes a flapping bird
 function endCoop(quiet) {
   if (!COOP.on) return;
-  const keep = COOP.phase === 'attack' && !quiet ? COOP.hens.filter(h => !h.dead).slice(0, 2) : [];
-  for (const h of COOP.hens) { if (h.dead) continue;
-    if (keep.includes(h)) { scene.remove(h.m); const e = newBlock('animal', V(h.m.position.x, .6, h.m.position.z), { animal: 'chicken', dims: V(.7, .8, .8), color: '#fbfaf4' }); e.anchored = false; e.body.setEnabledRotations(false, true, false, true); e.pasture = V(FORT[COOP.team].x, 0, FORT[COOP.team].z); e.wander.home = e.pasture.clone(); continue; }
-    const A = { m: h.m, r: null, t: 0, a: 0 }; ATTACKERS.push(A); chickenAway(A); }
-  scene.remove(COOP.straw); COOP.on = false; COOP.hens = [];
+  const keep = quiet ? 0 : Math.max(0, 2 - COOP.taken.size), F = FORT[COOP.team];
+  let kept = 0;
+  for (const h of COOP.swarm) { if (h.dead) continue;
+    if (kept < keep) { kept++; scene.remove(h.m); coopHen(V(h.m.position.x, .8, h.m.position.z), COOP.team).coop = false; continue; }
+    flyOff(h.m); }
+  for (const e of COOP.hens) { if (e.dead || e.holder) { if (!e.dead) e.coop = false; continue; } // the ones being carried stay with their carrier
+    if (kept < keep && inOwnFort(COOP.team, e.body.translation())) { kept++; e.coop = false; continue; }
+    flyOff(henToBird(e)); }
+  scene.remove(COOP.straw); COOP.on = false; COOP.hens = []; COOP.swarm = [];
 }
 function updateCoop(dt) {
   if (!COOP.on) return;
   const F = FORT[COOP.team], t = now() / 1000, inside = r => r.state === 'play' && inOwnFort(COOP.team, rPos(r)) && rPos(r).y < 6;
+  for (const e of COOP.hens) if (!e.dead && e.holder) COOP.taken.add(e); // picked up = taken out of the coop
   if (COOP.phase === 'armed') {
     COOP.armT -= dt;
-    if (robots.some(r => r.team !== COOP.team && inside(r))) { COOP.phase = 'attack'; COOP.attackT = 10; bigToast('CHICKEN ATTACK!', 'red'); sfx('squawk', V(F.x, 1, F.z)); }
-    else if (COOP.armT <= 0) { endCoop(true); return; }
-  } else {
-    COOP.attackT -= dt;
-    const mobbed = robots.filter(inside); for (const r of mobbed) peck(r, .5); // everyone inside the walls, you included
-    if (COOP.attackT <= 0 || COOP.hens.every(h => h.dead)) { endCoop(false); return; }
-    // hand out the hens: two on each victim, the rest chase whoever's nearest
-    let k = 0; for (const h of COOP.hens) { if (h.dead) continue; h.prey = mobbed.length ? mobbed[Math.floor(k / 2) % mobbed.length] : null; k++; }
+    const left = COOP.hens.filter(e => !e.dead && !e.holder && e.body && inOwnFort(COOP.team, e.body.translation()));
+    if (!left.length) { if (COOP.armT < 44) { toast('THE COOP IS EMPTY'); endCoop(true); } return; }
+    if (robots.some(r => r.team !== COOP.team && inside(r))) {
+      COOP.phase = 'attack'; COOP.attackT = 10; bigToast('CHICKEN ATTACK!', 'red'); sfx('squawk', V(F.x, 1, F.z));
+      for (const e of left) COOP.swarm.push({ m: henToBird(e), dead: false, hopT: Math.random() * 6, prey: null }); // the hens inside take off
+    } else if (COOP.armT <= 0) { endCoop(true); return; }
+    return;
   }
-  for (const h of COOP.hens) {
-    if (h.dead) continue; const m = h.m, L = m.userData.legs;
-    if (h.prey && COOP.phase === 'attack') { // flap round their head
-      const c = rPos(h.prey), a = t * 5 + COOP.hens.indexOf(h) * 1.9;
-      m.position.set(c.x + Math.cos(a) * .8, c.y + 1.1 + Math.abs(Math.sin(t * 9 + h.hopT)) * .4, c.z + Math.sin(a) * .8); m.lookAt(c.x, m.position.y - .2, c.z);
-      if (L) { L[2].rotation.z = -.4 - Math.abs(Math.sin(t * 30 + h.hopT)) * 1.1; L[3].rotation.z = .4 + Math.abs(Math.sin(t * 30 + h.hopT)) * 1.1; }
-      if (Math.random() < dt * 3) emit(m.position.clone(), 0xffffff, V(rr(-1, 1), rr(.5, 2), rr(-1, 1)), .1, .6, -3);
-    } else { // pottering about, pecking at the straw, little hops
-      h.hopT -= dt; if (h.hopT <= 0) { h.hopT = rr(.6, 1.6); h.yaw = Math.atan2(h.home.x - h.x, h.home.z - h.z) + rr(-1.5, 1.5); h.vy = 3; if (Math.random() < .25) sfx('cluck', m.position.clone()); }
-      const sp = COOP.phase === 'attack' ? 4 : 1.2; h.x += Math.sin(h.yaw) * sp * dt; h.z += Math.cos(h.yaw) * sp * dt;
-      h.x = clamp(h.x, F.x - FORT_RX + 2.5, F.x + FORT_RX - 2.5); h.z = clamp(h.z, F.z - FORT_RZ + 2.5, F.z + FORT_RZ - 2.5);
-      h.vy -= 20 * dt; h.y = Math.max(.32, h.y + h.vy * dt);
-      m.position.set(h.x, h.y, h.z); m.rotation.set(0, h.yaw, 0);
-      if (L) { L[0].rotation.x = Math.sin(t * 16) * .5; L[1].rotation.x = -Math.sin(t * 16) * .5; L[2].rotation.z = -.15; L[3].rotation.z = .15; }
-    }
+  COOP.attackT -= dt;
+  const mobbed = robots.filter(inside); for (const r of mobbed) peck(r, .5); // everyone inside the walls, you included
+  if (COOP.attackT <= 0 || COOP.swarm.every(h => h.dead)) { endCoop(false); return; }
+  let k = 0;
+  for (const h of COOP.swarm) {
+    if (h.dead) continue; const m = h.m, L = m.userData.legs, prey = mobbed.length ? mobbed[Math.floor(k / 2) % mobbed.length] : null; k++;
+    if (L) { L[2].rotation.z = -.4 - Math.abs(Math.sin(t * 30 + h.hopT)) * 1.1; L[3].rotation.z = .4 + Math.abs(Math.sin(t * 30 + h.hopT)) * 1.1; }
+    if (prey) { const c = rPos(prey), a = t * 5 + k * 1.9; m.position.set(c.x + Math.cos(a) * .8, c.y + 1.1 + Math.abs(Math.sin(t * 9 + h.hopT)) * .4, c.z + Math.sin(a) * .8); m.lookAt(c.x, m.position.y - .2, c.z); if (Math.random() < dt * 3) emit(m.position.clone(), 0xffffff, V(rr(-1, 1), rr(.5, 2), rr(-1, 1)), .1, .6, -3); }
+    else { const a = t * 1.5 + k; m.position.set(F.x + Math.cos(a) * 4, 2.5 + Math.sin(t * 4 + k) * .5, F.z + Math.sin(a) * 4); m.rotation.y = -a; } // circling over the coop
   }
 }
 
@@ -5009,7 +5040,7 @@ function updateCoop(dt) {
 { const ex0 = explode; explode = function (pos, team, by, scale = 1) {
     const R = BOMB_R0 * scale * .75;
     for (const D of DOGS.slice()) if (!D.leaving && Math.hypot(D.x - pos.x, D.y + .6 - pos.y, D.z - pos.z) < R) removeDog(D, 'blast');
-    if (COOP.on) for (const h of COOP.hens) if (!h.dead && h.m.position.distanceTo(pos) < R) { h.dead = true; scene.remove(h.m); fxDebris(h.m.position.clone(), 0xffffff, 16, 6); fxDebris(h.m.position.clone(), 0xe0281a, 4, 4); }
+    if (COOP.on) for (const h of COOP.swarm) if (!h.dead && h.m.position.distanceTo(pos) < R) { h.dead = true; scene.remove(h.m); fxDebris(h.m.position.clone(), 0xffffff, 16, 6); fxDebris(h.m.position.clone(), 0xe0281a, 4, 4); }
     for (const A of ATTACKERS.slice()) if (A.m.position.distanceTo(pos) < R) { scene.remove(A.m); ATTACKERS.splice(ATTACKERS.indexOf(A), 1); fxDebris(A.m.position.clone(), 0xffffff, 12, 6); }
     for (const e of blocks) if (e.kind === 'animal' && e.animal === 'chicken' && !e.dead && !e.holder && e.body) { const p = e.body.translation(); if (Math.hypot(p.x - pos.x, p.y - pos.y, p.z - pos.z) < R) { fxDebris(V(p.x, p.y, p.z), 0xffffff, 16, 6); destroyBlock(e); } }
     return ex0(pos, team, by, scale);
@@ -6246,6 +6277,185 @@ $('soundLabBtn').onclick = () => { audioInit(); loadPendingSfx().then(soundLabRo
 $('lookLabBtn').onclick = () => { lookLabRows(); show('looklab'); };
 $('soundLabBack').onclick = $('lookLabBack').onclick = () => show(match.menu ? 'pause' : 'menu');
 $('labExport').onclick = $('labExport2').onclick = exportLabs;
+
+// ============================================================
+// TEXTURE PACKS (Look lab): every kind of thing gets its own texture, chosen separately.
+//  Grey blocks · Fort bricks · Tree trunks · Tree leaves · Stone ledges · Ground — plus the old robot/flag/power rows.
+//  Each one can be: the game's own look, a built-in texture (stone bricks, cobbles, planks, bark, leaves, mottled grass),
+//  an image you upload, or one you paint yourself in the little pixel editor (✏).
+//  "Packs" at the top set everything in one go (e.g. Stone bricks = Ali's screenshot look). Nothing changes until you pick.
+//
+// How: all plain blocks are drawn by ONE instanced mesh (that's why a "blocks" texture used to land on the trees too).
+// Each block now carries a little tag saying what it is, and the shader picks that tag's texture, repeated once per
+// block-length so bricks don't stretch on long blocks. The block on your head uses the same texture as the one you lifted.
+// ============================================================
+const TP_CATS = ['stone', 'fort', 'trunk', 'leaves', 'prop'];
+const tpCatOf = e => e.kind === 'fort' ? 1 : e.kind === 'tree' ? (e.color.g > e.color.r * 1.2 ? 3 : 2) : e.kind === 'prop' ? 4 : 0;
+const TP = { tex: [], on: [0, 0, 0, 0, 0] };
+{ const w = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); w.needsUpdate = true; for (let i = 0; i < 5; i++) TP.tex.push(w); }
+// every plain block gets its tag (a per-instance number the shader reads)
+plainIM.geometry = plainIM.geometry.clone(); // (its own copy: other meshes share the cube shape)
+const tpAttr = new THREE.InstancedBufferAttribute(new Float32Array(PLAIN_CAP), 1); plainIM.geometry.setAttribute('aCat', tpAttr);
+for (const e of blocks) if (e.inst >= 0) tpAttr.setX(e.inst, tpCatOf(e));
+tpAttr.needsUpdate = true;
+{ const nb0 = newBlock; newBlock = function (...a) { const e = nb0.apply(this, a); if (e && e.inst >= 0) { tpAttr.setX(e.inst, tpCatOf(e)); tpAttr.needsUpdate = true; } return e; }; }
+function patchPlain(mat) {
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (sh, rd) => {
+    if (prev) prev(sh, rd);
+    sh.uniforms.tpTex = { value: TP.tex }; sh.uniforms.tpOn = { value: TP.on };
+    sh.vertexShader = 'attribute float aCat; varying float vCat; varying vec2 vTpUv;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  vCat = aCat;
+  #ifdef USE_INSTANCING
+  vec3 tpS = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+  #else
+  vec3 tpS = vec3(1.0);
+  #endif
+  vec3 tpN = abs(normal), tpP = position + .5;
+  vTpUv = tpN.x > .5 ? vec2(tpP.z * tpS.z, tpP.y * tpS.y) : tpN.y > .5 ? vec2(tpP.x * tpS.x, tpP.z * tpS.z) : vec2(tpP.x * tpS.x, tpP.y * tpS.y);`);
+    sh.fragmentShader = 'uniform sampler2D tpTex[5]; uniform float tpOn[5]; varying float vCat; varying vec2 vTpUv;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+  { int c = int(vCat + .5); vec3 tx = vec3(1.0); float on = 0.0;
+    if (c == 0) { tx = texture2D(tpTex[0], vTpUv).rgb; on = tpOn[0]; } else if (c == 1) { tx = texture2D(tpTex[1], vTpUv).rgb; on = tpOn[1]; }
+    else if (c == 2) { tx = texture2D(tpTex[2], vTpUv).rgb; on = tpOn[2]; } else if (c == 3) { tx = texture2D(tpTex[3], vTpUv).rgb; on = tpOn[3]; }
+    else { tx = texture2D(tpTex[4], vTpUv).rgb; on = tpOn[4]; }
+    diffuseColor.rgb *= mix(vec3(1.0), tx, on); }`);
+  };
+  mat.customProgramCacheKey = () => 'plainTP';
+  mat.needsUpdate = true;
+}
+patchPlain(plainIM.material);
+// the block on your head wears the same texture as the block you picked up
+{ const rh0 = refreshHeld; refreshHeld = function (r) {
+    rh0(r); const e = r.stack[0], m = r.model.heldPlainMat; if (!e || e.inst < 0 || !m) return;
+    const c = tpCatOf(e), want = TP.on[c] ? TP.tex[c] : null;
+    if (m.map !== want) { m.map = want; m.needsUpdate = true; }
+  }; }
+const refreshAllHeld = () => { for (const r of robots) refreshHeld(r); };
+
+// ---------------- built-in textures, drawn in code ----------------
+const tpCanvas = (n, draw) => { const c = document.createElement('canvas'); c.width = c.height = n; draw(c.getContext('2d'), n); return c; };
+const noise = (g, n, k, a, b) => { for (let i = 0; i < k; i++) { g.fillStyle = Math.random() < .5 ? a : b; const s = 1 + Math.random() * n / 24; g.fillRect(Math.random() * n, Math.random() * n, s, s); } };
+const BUILTIN = {
+  bricks: () => tpCanvas(128, (g, n) => { // light stone bricks with bevelled edges and mortar: tinted by each block's colour
+    g.fillStyle = '#a9adb8'; g.fillRect(0, 0, n, n); const rows = 4, h = n / rows;
+    for (let r = 0; r < rows; r++) { const off = r % 2 ? n / 4 : 0; for (let k = -1; k < 3; k++) { const x = k * n / 2 + off + 3, y = r * h + 3, w = n / 2 - 6, hh = h - 6;
+      g.fillStyle = `hsl(220,8%,${82 + Math.random() * 10}%)`; g.fillRect(x, y, w, hh);
+      g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x, y, w, 3); g.fillRect(x, y, 3, hh); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(x, y + hh - 3, w, 3); g.fillRect(x + w - 3, y, 3, hh); } }
+    noise(g, n, 500, 'rgba(255,255,255,.12)', 'rgba(0,0,0,.08)'); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; for (let i = 0; i < 6; i++) { g.beginPath(); const x = Math.random() * n, y = Math.random() * n; g.moveTo(x, y); g.lineTo(x + 10, y - 6); g.stroke(); } }),
+  cobble: () => tpCanvas(128, (g, n) => { g.fillStyle = '#7d818c'; g.fillRect(0, 0, n, n);
+    for (let i = 0; i < 26; i++) { const x = Math.random() * n, y = Math.random() * n, r = 10 + Math.random() * 12; g.fillStyle = `hsl(220,6%,${70 + Math.random() * 20}%)`; g.beginPath(); g.ellipse(x, y, r, r * .8, Math.random() * 3, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.ellipse(x - r * .25, y - r * .25, r * .45, r * .3, 0, 0, 7); g.fill(); }
+    noise(g, n, 400, 'rgba(255,255,255,.1)', 'rgba(0,0,0,.1)'); }),
+  planks: () => tpCanvas(128, (g, n) => { for (let k = 0; k < 4; k++) { g.fillStyle = `hsl(30,10%,${80 + Math.random() * 12}%)`; g.fillRect(0, k * n / 4, n, n / 4); g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(0, (k + 1) * n / 4 - 3, n, 3);
+      g.strokeStyle = 'rgba(0,0,0,.12)'; for (let j = 0; j < 5; j++) { g.beginPath(); const y = k * n / 4 + 4 + Math.random() * (n / 4 - 10); g.moveTo(0, y); g.bezierCurveTo(n / 3, y + 3, n * .6, y - 3, n, y + 1); g.stroke(); } g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(k % 2 ? n * .3 : n * .7, k * n / 4, 3, n / 4); } }),
+  bark: () => tpCanvas(64, (g, n) => { g.fillStyle = '#c9b8a8'; g.fillRect(0, 0, n, n); for (let i = 0; i < 40; i++) { g.fillStyle = Math.random() < .5 ? 'rgba(60,35,15,.35)' : 'rgba(255,240,220,.2)'; g.fillRect(Math.random() * n, 0, 1 + Math.random() * 3, n); } noise(g, n, 120, 'rgba(0,0,0,.15)', 'rgba(255,255,255,.1)'); }),
+  leafy: () => tpCanvas(64, (g, n) => { g.fillStyle = '#d6e8cc'; g.fillRect(0, 0, n, n); for (let i = 0; i < 140; i++) { const x = Math.random() * n, y = Math.random() * n; g.fillStyle = Math.random() < .5 ? 'rgba(20,60,10,.28)' : 'rgba(255,255,220,.3)'; g.beginPath(); g.ellipse(x, y, 3 + Math.random() * 4, 2 + Math.random() * 2, Math.random() * 3, 0, 7); g.fill(); } }),
+  mottled: () => tpCanvas(128, (g, n) => { // the photo-ish grass from Ali's screenshot: soft blotches of greens and yellow-greens
+    g.fillStyle = '#4f9f2c'; g.fillRect(0, 0, n, n);
+    for (let i = 0; i < 260; i++) { const x = Math.random() * n, y = Math.random() * n, r = 2 + Math.random() * 9; const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      const c = [[60, 130, 30], [96, 168, 44], [128, 186, 60], [44, 104, 26], [150, 196, 70]][i % 5]; gr.addColorStop(0, `rgba(${c},.75)`); gr.addColorStop(1, `rgba(${c},0)`); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    noise(g, n, 300, 'rgba(20,50,10,.35)', 'rgba(200,230,120,.2)'); }),
+};
+const BUILTIN_NAMES = { bricks: 'Stone bricks', cobble: 'Cobbles', planks: 'Planks', bark: 'Bark', leafy: 'Leaves', mottled: 'Mottled grass' };
+const builtinTex = {}; // made once each, shared
+function texFromCanvas(c, pixel) { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; if (pixel) t.magFilter = THREE.NearestFilter; return t; }
+const getBuiltin = k => builtinTex[k] || (builtinTex[k] = { c: BUILTIN[k](), t: null }, builtinTex[k].t = texFromCanvas(builtinTex[k].c), builtinTex[k]);
+
+// ---------------- the rows ----------------
+const groundTop = () => slabMesh().material[2];
+const GROUND0 = groundTop().map;
+const groundSet = t => { const m = groundTop(); if (!t) { m.map = GROUND0; } else { const c = t.clone(); c.repeat.set(MX, MZ); c.wrapS = c.wrapT = THREE.RepeatWrapping; c.needsUpdate = true; m.map = c; } m.needsUpdate = true; };
+const catSet = i => t => { TP.on[i] = t ? 1 : 0; if (t) TP.tex[i] = t; plainIM.material.needsUpdate = true; refreshAllHeld(); };
+const TP_SLOTS = [
+  { id: 'tp_stone', name: 'Grey blocks', tip: 'loose ammo and the little stone structures', set: catSet(0), sugg: ['bricks', 'cobble'] },
+  { id: 'tp_fort', name: 'Fort bricks', tip: 'both forts and their towers (tinted by each brick\'s colour)', set: catSet(1), sugg: ['bricks', 'cobble', 'planks'] },
+  { id: 'tp_trunk', name: 'Tree trunks', tip: 'the brown trunk blocks', set: catSet(2), sugg: ['bark', 'planks'] },
+  { id: 'tp_leaves', name: 'Tree leaves', tip: 'the green leaf slabs', set: catSet(3), sugg: ['leafy', 'mottled'] },
+  { id: 'tp_prop', name: 'Stone ledges', tip: 'the ledges and the ring in the middle', set: catSet(4), sugg: ['cobble', 'bricks'] },
+  { id: 'tp_ground', name: 'Ground', tip: 'the grass; one picture covers two squares', set: groundSet, sugg: ['mottled', 'leafy'] },
+];
+const PACKS = { Game: {}, 'Stone bricks': { tp_stone: 'b:bricks', tp_fort: 'b:bricks', tp_trunk: 'b:bark', tp_leaves: 'b:leafy', tp_prop: 'b:cobble', tp_ground: 'b:mottled' }, Medieval: { tp_stone: 'b:cobble', tp_fort: 'b:bricks', tp_trunk: 'b:bark', tp_leaves: 'b:leafy', tp_prop: 'b:cobble', tp_ground: 'b:mottled' }, Wooden: { tp_stone: 'b:planks', tp_fort: 'b:planks', tp_trunk: 'b:bark', tp_leaves: 'b:leafy', tp_prop: 'b:planks' } };
+const EDITS = (() => { try { return JSON.parse(localStorage.getItem('nymbo-texedit') || '{}'); } catch (e) { return {}; } })();
+const editTex = {};
+function editedTex(id, cb) { if (editTex[id]) return cb(editTex[id]); const im = new Image(); im.onload = () => { const c = tpCanvas(im.width, g => g.drawImage(im, 0, 0)); editTex[id] = { c, t: texFromCanvas(c, true) }; cb(editTex[id]); }; im.src = EDITS[id]; }
+function tpApply(slot) {
+  const v = CHOICE.tex[slot.id];
+  if (v == null) return slot.set(null);
+  if (typeof v === 'string' && v.startsWith('b:')) return slot.set(getBuiltin(v.slice(2)).t);
+  if (v === 'edit' && EDITS[slot.id]) return editedTex(slot.id, x => slot.set(x.t));
+  const u = (CUSTOM.tex[slot.id] || [])[v]; if (u) { u.tex.wrapS = u.tex.wrapT = THREE.RepeatWrapping; u.tex.needsUpdate = true; slot.set(u.tex); }
+}
+// the old all-in-one "Blocks" row is gone (it painted the trees too); the other rows stay as they were
+{ const i = LOOK_SLOTS.findIndex(s => s.id === 'block'); if (i >= 0) LOOK_SLOTS.splice(i, 1); const j = LOOK_SLOTS.findIndex(s => s.id === 'grass'); if (j >= 0) LOOK_SLOTS.splice(j, 1); }
+{ const at0 = applyTexChoice; applyTexChoice = function (slot) { if (slot.set) tpApply(slot); else at0(slot); }; }
+for (const s of TP_SLOTS) try { tpApply(s); } catch (e) {}
+setTimeout(() => { for (const s of TP_SLOTS) try { tpApply(s); } catch (e) {} }, 1500); // (again once your uploads have loaded)
+const thumbOf = v => v.c ? v.c.toDataURL() : '';
+lookLabRows = function () {
+  const box = $('lookList'); box.innerHTML = '';
+  // packs: set everything at once
+  const pk = document.createElement('div'); pk.className = 'labsnd';
+  pk.innerHTML = `<b>Texture packs</b><span class="src">sets every row below in one go (you can still change rows one by one afterwards)</span><div class="chips">${Object.keys(PACKS).map(n => `<span class="chip"><button class="cu" data-p="${n}">${n}</button></span>`).join('')}</div>`;
+  pk.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const P_ = PACKS[b.dataset.p]; for (const s of TP_SLOTS) { if (P_[s.id]) CHOICE.tex[s.id] = P_[s.id]; else delete CHOICE.tex[s.id]; tpApply(s); } saveChoice(); toast(b.dataset.p.toUpperCase() + ' PACK'); lookLabRows(); });
+  box.appendChild(pk);
+  for (const s of [...TP_SLOTS, ...LOOK_SLOTS]) {
+    const row = document.createElement('div'); row.className = 'labsnd'; const cur = CHOICE.tex[s.id]; const ups = CUSTOM.tex[s.id] || [];
+    const chip = (val, label, thumb) => `<span class="chip${cur === val || (val === null && cur == null) ? ' on' : ''}">${thumb ? `<i class="thumb" style="background-image:url(${thumb})"></i>` : ''}<button class="cu" data-v='${JSON.stringify(val)}'>${label}</button></span>`;
+    const chips = [chip(null, 'Game')];
+    if (s.set) { for (const k of Object.keys(BUILTIN)) chips.push(chip('b:' + k, BUILTIN_NAMES[k], thumbOf(getBuiltin(k)))); if (EDITS[s.id]) chips.push(chip('edit', 'My painting', EDITS[s.id])); }
+    ups.forEach((u, i) => chips.push(chip(i, u.fname.replace(/[<'"]/g, ''), u.canvas.toDataURL())));
+    row.innerHTML = `<b>${s.name}</b><span class="src">${s.tip}</span><div class="chips">${chips.join('')}${s.set ? '<span class="chip"><button class="ed">✏ Paint</button></span>' : ''}<label class="chip up">+ Upload<input type="file" accept="image/*" hidden></label></div>`;
+    row.querySelectorAll('.cu').forEach(b => b.onclick = () => { const v = JSON.parse(b.dataset.v);
+      if (v === null) { delete CHOICE.tex[s.id]; if (!s.set) toast('BACK TO THE GAME TEXTURE (AFTER A RELOAD)'); } else CHOICE.tex[s.id] = v;
+      saveChoice(); applyTexChoice(s); lookLabRows(); });
+    const ed = row.querySelector('.ed'); if (ed) ed.onclick = () => openPainter(s);
+    row.querySelector('input').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const i = await addCustomTex(s, f); CHOICE.tex[s.id] = i; saveChoice(); applyTexChoice(s); toast('NOW USING ' + f.name.toUpperCase()); } catch (x) { toast("COULDN'T READ THAT IMAGE"); } lookLabRows(); };
+    box.appendChild(row);
+  }
+};
+
+// ---------------- the pixel painter (✏ Paint) ----------------
+// 16×16 pixels. For blocks, white = the block's own colour (the picture is multiplied by it), so paint light shades.
+const PAINT = { n: 16, px: null, col: '#ffffff', tool: 'pen', slot: null };
+function openPainter(slot) {
+  PAINT.slot = slot; const n = PAINT.n, el = $('painter');
+  // start from whatever the row shows now
+  const src = (() => { const v = CHOICE.tex[slot.id]; if (typeof v === 'string' && v.startsWith('b:')) return getBuiltin(v.slice(2)).c; if (v === 'edit' && editTex[slot.id]) return editTex[slot.id].c; const u = (CUSTOM.tex[slot.id] || [])[v]; if (u) return u.canvas; if (slot.id === 'tp_ground' && GROUND0.image) return GROUND0.image; return null; })();
+  const c = tpCanvas(n, g => { g.fillStyle = slot.id === 'tp_leaves' ? '#d6e8cc' : '#ffffff'; g.fillRect(0, 0, n, n); if (src) { g.imageSmoothingEnabled = true; g.drawImage(src, 0, 0, n, n); } });
+  PAINT.px = c.getContext('2d').getImageData(0, 0, n, n);
+  $('paintTitle').textContent = 'Paint · ' + slot.name; el.hidden = false; drawPainter();
+}
+function drawPainter() {
+  const cv = $('paintCv'), g = cv.getContext('2d'), n = PAINT.n, s = cv.width / n, d = PAINT.px.data;
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const i = (y * n + x) * 4; g.fillStyle = `rgb(${d[i]},${d[i + 1]},${d[i + 2]})`; g.fillRect(x * s, y * s, s, s); }
+  g.strokeStyle = 'rgba(0,0,0,.12)'; g.lineWidth = 1; for (let k = 1; k < n; k++) { g.beginPath(); g.moveTo(k * s, 0); g.lineTo(k * s, cv.height); g.moveTo(0, k * s); g.lineTo(cv.width, k * s); g.stroke(); }
+  // preview: 3×3 tiles
+  const pv = $('paintPv'), pg = pv.getContext('2d'), tile = tpCanvas(n, q => q.putImageData(PAINT.px, 0, 0)); pg.imageSmoothingEnabled = false;
+  for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) pg.drawImage(tile, a * pv.width / 3, b * pv.height / 3, pv.width / 3, pv.height / 3);
+  document.querySelectorAll('#painter [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === PAINT.tool));
+}
+function paintAt(ev) {
+  const cv = $('paintCv'), r = cv.getBoundingClientRect(), n = PAINT.n, x = Math.floor((ev.clientX - r.left) / r.width * n), y = Math.floor((ev.clientY - r.top) / r.height * n);
+  if (x < 0 || y < 0 || x >= n || y >= n) return; const d = PAINT.px.data, i = (y * n + x) * 4;
+  const c = new THREE.Color(PAINT.col), rgb = [c.r * 255 | 0, c.g * 255 | 0, c.b * 255 | 0];
+  if (PAINT.tool === 'pick') { PAINT.col = '#' + new THREE.Color(d[i] / 255, d[i + 1] / 255, d[i + 2] / 255).getHexString(); $('paintCol').value = PAINT.col; PAINT.tool = 'pen'; }
+  else if (PAINT.tool === 'fill') { const t0 = [d[i], d[i + 1], d[i + 2]], st = [[x, y]], seen = new Set();
+    while (st.length) { const [a, b] = st.pop(); if (a < 0 || b < 0 || a >= n || b >= n || seen.has(a + ',' + b)) continue; const k = (b * n + a) * 4; if (d[k] !== t0[0] || d[k + 1] !== t0[1] || d[k + 2] !== t0[2]) continue; seen.add(a + ',' + b); d[k] = rgb[0]; d[k + 1] = rgb[1]; d[k + 2] = rgb[2]; st.push([a + 1, b], [a - 1, b], [a, b + 1], [a, b - 1]); } }
+  else { d[i] = rgb[0]; d[i + 1] = rgb[1]; d[i + 2] = rgb[2]; d[i + 3] = 255; }
+  drawPainter();
+}
+{ const cv = $('paintCv'); let down = false;
+  cv.addEventListener('pointerdown', e => { down = true; cv.setPointerCapture(e.pointerId); paintAt(e); e.preventDefault(); });
+  cv.addEventListener('pointermove', e => { if (down && PAINT.tool === 'pen') paintAt(e); });
+  cv.addEventListener('pointerup', () => { down = false; });
+  document.querySelectorAll('#painter [data-tool]').forEach(b => b.onclick = () => { PAINT.tool = b.dataset.tool; drawPainter(); });
+  $('paintCol').oninput = e => { PAINT.col = e.target.value; };
+  document.querySelectorAll('#painter [data-sw]').forEach(b => { b.style.background = b.dataset.sw; b.onclick = () => { PAINT.col = b.dataset.sw; $('paintCol').value = PAINT.col; PAINT.tool = 'pen'; drawPainter(); }; });
+  $('paintClear').onclick = () => { const d = PAINT.px.data, c = new THREE.Color(PAINT.col); for (let i = 0; i < d.length; i += 4) { d[i] = c.r * 255; d[i + 1] = c.g * 255; d[i + 2] = c.b * 255; d[i + 3] = 255; } drawPainter(); };
+  $('paintCancel').onclick = () => { $('painter').hidden = true; };
+  $('paintSave').onclick = () => { const s = PAINT.slot, c = tpCanvas(PAINT.n, q => q.putImageData(PAINT.px, 0, 0));
+    EDITS[s.id] = c.toDataURL(); try { localStorage.setItem('nymbo-texedit', JSON.stringify(EDITS)); } catch (e) {}
+    editTex[s.id] = { c, t: texFromCanvas(c, true) }; CHOICE.tex[s.id] = 'edit'; saveChoice(); tpApply(s); $('painter').hidden = true; toast('PAINTED ' + s.name.toUpperCase()); lookLabRows(); };
+}
 
 // ============================================================
 // VOICE CHAT (test version): talk to the people in your room.
