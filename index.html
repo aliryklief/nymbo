@@ -115,6 +115,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #painter .sws{display:grid;grid-template-columns:repeat(4,18px);gap:4px}#painter .sws button{width:18px;height:18px;border-radius:4px;border:1px solid rgba(255,255,255,.4);padding:0}
 #painter .ptools{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}#painter .ptools button{flex:1;padding:7px 4px;border-radius:10px;border:1.5px solid var(--ink2);background:rgba(255,255,255,.06);color:#fff;font:600 12px var(--body)}
 #painter .ptools button.on{background:#ffd84a;color:#141a2c}
+#nv{position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0;transition:opacity .25s;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,.75) 100%),repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0 2px,rgba(0,0,0,0) 2px 4px),rgba(70,255,90,.9);mix-blend-mode:multiply}
 #vig{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;box-shadow:inset 0 0 34px 2px rgba(255,40,40,.6);transition:opacity .3s}
 #vig.on{opacity:.45}#vig.on.hot{box-shadow:inset 0 0 46px 5px rgba(255,30,30,.7)}
 #vig.on.beat{animation:beat .4s ease-out}
@@ -235,6 +236,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div class="hud" id="big"></div>
   <div id="pops"></div>
   <div id="vig"></div>
+  <div id="nv"></div>
   <div id="bhWarn" hidden><b>⚠ ANOMALY DETECTED</b><span>3</span></div>
   <div id="thief" hidden><b></b><i></i></div>
   <div id="pwr"></div>
@@ -4872,7 +4874,6 @@ function placeSpring(at, owner) {
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
   const lid = new THREE.Mesh(new THREE.BoxGeometry(2, .12, 2), [new LiteMat({ color: 0x5c8a3a }), new LiteMat({ color: 0x5c8a3a }), new LiteMat({ map: fake }), new LiteMat({ color: 0x5c8a3a }), new LiteMat({ color: 0x5c8a3a }), new LiteMat({ color: 0x5c8a3a })]);
   lid.position.y = .1; lid.receiveShadow = true; lid.rotation.y = .06; g.add(lid); // (and it's not quite square to the grid)
-  for (const [x, z] of [[.95, .95], [-.95, -.9]]) { const k = new THREE.Mesh(new THREE.BoxGeometry(.14, .14, .14), coilM); k.position.set(x, .12, z); g.add(k); } // spring corners peeking out
   const top = lid, ar = new THREE.Group();
   g.scale.setScalar(.01); scene.add(g);
   SPRINGS.push({ g, top, coil, ar, x: at.x, y, z: at.z, out, t: SPRING_LIFE, grow: 0, sq: 0, owner, cool: new Map() });
@@ -4888,7 +4889,7 @@ function launchOffMap(r, S_) {
   const dist = Math.max(4, Math.min(ax, az)) + 14, th = rr(48, 58) * Math.PI / 180;
   let v = Math.sqrt(G * dist / Math.sin(2 * th)); v = clamp(Math.max(v, 34 / Math.sin(th)), 0, 72); // always higher than a trampoline
   r.body.setLinvel({ x: d.x * v * Math.cos(th), y: v * Math.sin(th), z: d.z * v * Math.cos(th) }, true);
-  r.jumps = 2; r.grounded = false; r.padT = 2 * v * Math.sin(th) / G + 2; r.model.sq = -.4; r.model.sqv = 8;
+  r.jumps = 1; r.grounded = false; r.padT = 2 * v * Math.sin(th) / G + 2; // (one jump left: a little hope of escape) r.model.sq = -.4; r.model.sqv = 8;
   r.sprung = { by: S_.owner, at: now(), vx: d.x * v * Math.cos(th), vz: d.z * v * Math.cos(th) }; // the flight is a clean arc: no steering out of it
   if (r.isPlayer) { toast('SPRUNG!'); shake = Math.max(shake, .4); }
 }
@@ -5069,8 +5070,11 @@ function updateCoop(dt) {
       const c = rPos(r), F = COOP.on ? FORT[COOP.team] : c, d = V(c.x - F.x, 0, c.z - F.z); if (d.lengthSq() < .1) d.set(1, 0, 0); d.normalize();
       r.want.copy(d.add(V(rr(-.6, .6), 0, rr(-.6, .6))).normalize()); r.wantSpeed = RUN; r.yawT = Math.atan2(-r.want.x, -r.want.z);
     }
+    const preVy = r.sprung && !r.sprung.jumped && r.body ? r.body.linvel().y : 0;
     ur0(r, dt);
-    if (r.sprung && r.state === 'play' && r.body && now() - r.sprung.at > 50 && !r.grounded) { const lv = r.body.linvel(); r.body.setLinvel({ x: r.sprung.vx, y: lv.y, z: r.sprung.vz }, true); }
+    if (r.sprung && !r.sprung.jumped && r.jumps >= 2 && r.body) { // the escape: your double jump kills most of the fling and gives you steering back.
+      r.sprung.jumped = true; r.sprung.vx *= .75; r.sprung.vz *= .75; const lv = r.body.linvel(); r.body.setLinvel({ x: r.sprung.vx, y: Math.max(lv.y, preVy), z: r.sprung.vz }, true); } // (jumping on the way up doesn't cut the fling short) // Only works if you're quick: a second later you're already past the edge
+    if (r.sprung && !r.sprung.free && r.state === 'play' && r.body && now() - r.sprung.at > 50 && !r.grounded) { const lv = r.body.linvel(); r.body.setLinvel({ x: r.sprung.vx, y: lv.y, z: r.sprung.vz }, true); }
     const h = r.stack[0];
     if (h && h.kind === 'animal' && h.animal === 'chicken' && r.state === 'play' && !r.grounded && r.body) { const lv = r.body.linvel(); if (lv.y < -2.4) r.body.setLinvel({ x: lv.x * 1.004, y: -2.4, z: lv.z * 1.004 }, true); } // flapping: a slow, floaty fall
   }; }
@@ -5124,19 +5128,33 @@ function dig(r) {
   for (const [cx, cz] of cells) setHole(cx, cz, true);
   rebuildPits();
   for (const e of blocks) { if (e.dead || !e.body || e.holder) continue; const t = e.body.translation(); if (t.y < 3 && isHole(t.x, t.z)) { if (e.anchored) unanchorAround(V(t.x, t.y, t.z), .6); e.body.wakeUp && e.body.wakeUp(); } }
-  HOLE_GROUPS.push({ cells, t: HOLE_BACK, at: p.clone().setY(0) });
+  HOLE_GROUPS.push({ cells, t: HOLE_BACK, at: p.clone().setY(0), by: r, made: now(), shovel: true });
   sfx('dig', p); sfx('hole', p); fxDebris(V(p.x, .3, p.z), 0x6b4a2e, 40, 9); fxDebris(V(p.x, .3, p.z), 0x5cb43a, 20, 7); shake = Math.max(shake, .5);
   // whoever was standing over it drops (a little nudge down so nobody hovers on the edge of the hole)
-  for (const o of robots) { if (o.state !== 'play') continue; const c = rPos(o); if (Math.hypot(c.x - p.x, c.z - p.z) < R + .3 && c.y < 3) { const lv = o.body.linvel(); o.body.setLinvel({ x: lv.x * .3, y: -4, z: lv.z * .3 }, true); o.grounded = false; if (o !== r && o.team !== r.team) o.dug = { by: r, at: now() }; } }
+  for (const o of robots) { if (o.state !== 'play') continue; const c = rPos(o); if (Math.hypot(c.x - p.x, c.z - p.z) < R + .3 && c.y < 3) { const lv = o.body.linvel(); o.body.setLinvel({ x: lv.x * .3, y: -4, z: lv.z * .3 }, true); o.grounded = false; } }
   if (r.isPlayer) bigToast('DIG!', 'blue');
 }
 // someone you dropped through your hole: your knockout
+// WHO GETS THE KNOCKOUT FOR A FALL:
+//  - a SHOVEL hole: whoever dug it, for anyone who falls through it while it's open (your trap, your points)
+//  - a hole smashed in frozen ground by a bomb / nuke: whoever made it, but only if you go through it within about a
+//    second of it opening. Wandering into an old hole later is your own fault.
+let holeMaker = null;
+{ const ex1 = explode; explode = function (pos, team, by, scale) { const prev = holeMaker; holeMaker = by || null; try { return ex1(pos, team, by, scale); } finally { holeMaker = prev; } }; }
+{ const nb1 = nukeBlast; nukeBlast = function (pos) { const prev = holeMaker; holeMaker = P; try { return nb1(pos); } finally { holeMaker = prev; } }; }
+{ const bs0 = breakStage; breakStage = function (pos, rad) { const n0 = HOLE_GROUPS.length; bs0(pos, rad); for (let i = n0; i < HOLE_GROUPS.length; i++) Object.assign(HOLE_GROUPS[i], { by: holeMaker, made: now(), shovel: false }); }; }
+function holeAt(x, z) { const [cx, cz] = cellOf(x, z); for (const H of HOLE_GROUPS) for (const [a, b] of H.cells) if (Math.abs(a - cx) <= 1 && Math.abs(b - cz) <= 1) return H; return null; }
 function updateDug() {
-  for (const o of robots) if (o.dug) {
-    if (now() - o.dug.at > 5000) { o.dug = null; continue; }
-    if (o.state === 'rag') { const by = o.dug.by; o.dug = null; o.stats.kos++; by.stats.hits++; onStreak(by, o); toast([[by.name.toUpperCase(), by.color], [' BURIED ', null], [o.name.toUpperCase(), o.color]]); }
+  for (const o of robots) {
+    if (o.state === 'play' && o.body) { const t = o.body.translation();
+      if (t.y > .5) o.holeFall = null;
+      else if (t.y < -.8 && !o.holeFall) { const H = holeAt(t.x, t.z); if (H) o.holeFall = { H, at: now() }; } } // went down through a hole
+    if (o.state === 'rag' && o.holeFall) { const { H, at } = o.holeFall; o.holeFall = null; const by = H.by;
+      if (by && by.team !== o.team && (H.shovel || at - H.made < 1600)) { o.stats.kos++; by.stats.hits++; onStreak(by, o); toast([[by.name.toUpperCase(), by.color], [H.shovel ? ' BURIED ' : ' DROPPED ', null], [o.name.toUpperCase(), o.color]]); } }
   }
 }
+// black hole knockouts count for whoever opened it
+{ const sw0 = swallow; swallow = function (r) { const by = BH.by; if (by && r.state === 'play' && r.team !== by.team) { r.stats.kos++; by.stats.hits++; onStreak(by, r); } return sw0(r); }; }
 
 // ---------------------------------------------------------------- black hole: the warning
 const BHW = { on: false, t: 0, team: null, fov: 0 };
@@ -5146,6 +5164,7 @@ function bhWarn(team) {
 { const sbh0 = startBlackHole; startBlackHole = function (team) {
     if (BH.on || BHW.on) return;
     if (NET && NET.client) { sbh0(team); return; }       // (online friends get the warning from the host; this is the real thing)
+    BH.by = BH.byNext || (P && P.team === team ? P : robots.find(r => r.team === team)); BH.byNext = null;
     bhWarn(team); netEv(['bhwarn', team]);
     BHW.go = () => sbh0(team);
   }; }
@@ -5217,6 +5236,26 @@ function updateBHFx(dt) {
 { const ubh0 = updateBlackHole; updateBlackHole = function (dt) { ubh0(dt); updateBHFx(dt); }; }
 function updateShovelBH(dt) { updateBHWarn(dt); if (match.state === 'play') updateDug(); }
 
+// ---------------------------------------------------------------- night-vision goggles
+// Use a BLACKOUT once and you keep a pair of green night-vision goggles for the rest of the match: whenever the lights
+// go out (your blackout or a later one) they flick on by themselves with a whine, you see in green, and they show on
+// your robot's face.
+Object.assign(SFX_SYNTH, { nvon: () => { const t = T0(), o = osc('sine', 600, t, .7), g = AC.createGain(); o.frequency.exponentialRampToValueAtTime(5200, t + .6); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.08, t + .1); g.gain.exponentialRampToValueAtTime(.0001, t + .7); o.connect(g); out(g); clack(1800, .3, .62); clack(2400, .2, .66); } });
+PW.nv = false;
+{ const fp2 = firePower; firePower = function (p, at) { if (p.id === 'dark' && match.state === 'play') PW.nv = true; return fp2(p, at); }; }
+{ const ad0 = applyDark; applyDark = function (b) { const nv = PW.nv && b > 0; ad0(nv ? b * .3 : b); $('nv').style.opacity = nv ? Math.min(1, b * 1.4) : 0; updateGoggles(nv && b > .05); }; }
+let goggles = null;
+function updateGoggles(on) {
+  if (on && !goggles && P && P.model.eyesN.parent) { const head = P.model.eyesN.parent; goggles = new THREE.Group();
+    const frame = new LiteMat({ color: 0x1c1f24 }), lens = new THREE.MeshBasicMaterial({ color: 0x5dff6a });
+    for (const sx of [-1, 1]) { const tube = new THREE.Mesh(new THREE.CylinderGeometry(.13, .15, .22, 14).rotateX(Math.PI / 2), frame); tube.position.set(sx * .19, .02, .58); goggles.add(tube);
+      const l = new THREE.Mesh(new THREE.CircleGeometry(.11, 16), lens); l.position.set(sx * .19, .02, .695); goggles.add(l); }
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(1.02, .1, 1.02), frame); strap.position.set(0, .02, .02); goggles.add(strap);
+    head.add(goggles); }
+  if (goggles) goggles.visible = on;
+  if (on !== !!PW.nvWasOn) { PW.nvWasOn = on; if (on) sfx('nvon'); }
+}
+
 // ============================================================
 // THE SKY ISLAND: a little floating island just above the centre pole. On it, a golden KILL-STREAK block sits on top
 // of a stack of 3 grey blocks (so a swipe-down grabs the grey ones first). Pick it up and you get a kill-streak power;
@@ -5224,17 +5263,14 @@ function updateShovelBH(dt) { updateBHWarn(dt); if (match.state === 'play') upda
 // Getting up there: a trampoline launch carries you over the middle about 12-18 blocks up (more if you hit the pad at speed); you reach the island's edge
 // and need one more jump to climb onto it. Hard, not impossible.
 // ============================================================
-const ISLAND = { top: 15.5, r: 5.2, e: null, t: 0, spots: [] };
+const ISLAND = { top: 15.5, r: 3.9, e: null, t: 0, spots: [] };
 {
   const cells = [], colGrass = ['#5cb43a', '#63bb3f', '#58ad36'], colDirt = ['#7a5532', '#704d2d'], colRock = ['#6f7078', '#676870'];
-  for (let x = -6; x <= 6; x++) for (let z = -6; z <= 6; z++) { const d = Math.hypot(x, z);
-    if (d < ISLAND.r) cells.push([x, ISLAND.top - .5, z, colGrass[(x + z + 99) % 3]]);
-    if (d < 3.8) cells.push([x, ISLAND.top - 1.5, z, colDirt[(x * 3 + z + 99) % 2]]);
-    if (d > 1.3 && d < 2.6) cells.push([x, ISLAND.top - 2.5, z, colRock[(x + z + 99) % 2]]); } // a ring of rock hanging under it (clear of the pole camera)
+  for (let x = -5; x <= 5; x++) for (let z = -5; z <= 5; z++) if (Math.hypot(x, z) < ISLAND.r) cells.push([x, ISLAND.top - .5, z, (x + z) % 2 ? '#a9adb8' : '#9a9ea9']); // just a flat stone platform
   const im = new THREE.InstancedMesh(cubeGeo, new LiteMat({ roughness: .9 }), cells.length); im.castShadow = im.receiveShadow = true;
   cells.forEach(([x, y, z, c], i) => { tmpM.compose(tmpV.set(x, y, z), tmpQ.identity(), tmpS.set(1, 1, 1)); im.setMatrixAt(i, tmpM); im.setColorAt(i, new THREE.Color(c).offsetHSL(0, 0, rr(-.04, .04))); });
   scene.add(im);
-  for (const [r, y] of [[ISLAND.r - .2, ISLAND.top - .5], [3.6, ISLAND.top - 1.5]]) { const c = world.createCollider(RAPIER.ColliderDesc.cylinder(.5, r).setTranslation(0, y, 0).setFriction(.9)); byCollider.set(c.handle, { type: 'static' }); }
+  for (const [r, y] of [[ISLAND.r - .1, ISLAND.top - .5]]) { const c = world.createCollider(RAPIER.ColliderDesc.cylinder(.5, r).setTranslation(0, y, 0).setFriction(.9)); byCollider.set(c.handle, { type: 'static' }); }
   // a faint golden glow over it, so you can see from the ground that something's up there
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 9, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: .14, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
   beam.position.set(1.5, ISLAND.top + 4.5, 1.5); scene.add(beam); ISLAND.beam = beam;
@@ -5919,7 +5955,7 @@ function hostMsg(c, m) {
     else if (a[0] === 'd') dodge(r, a[1]);
     else if (a[0] === 'g') grabFor(r);
     else if (a[0] === 'sh') shieldFor(r);
-    else if (a[0] === 'bh') { if ((r.streak || 0) >= BH_AT - 1 || true) startBlackHole(r.team); } // (the client checked its own streak)
+    else if (a[0] === 'bh') { if ((r.streak || 0) >= BH_AT - 1 || true) { BH.byNext = r; startBlackHole(r.team); } } // (the client checked its own streak)
     else if (a[0] === 't') { if (canAct(r)) { if (typeof a[4] === 'number') r.yaw = r.yawT = a[4]; const lt = robots[a[2]], ht = robots[a[3]]; throwFor(r, a[1], lt && hittable(lt) ? lt : null, ht && hittable(ht) ? ht : null); } }
   }
 }
@@ -6226,7 +6262,7 @@ const SFX_GROUPS = {
   'World': ['portal', 'pad', 'boost', 'repair', 'hole'],
   'Flags and match': ['flagGrab', 'flagDrop', 'alert', 'score', 'lose', 'streak', 'win', 'defeat', 'beep', 'go', 'tick', 'heart', 'intro', 'lock', 'ui'],
   'Animals': ['moo', 'mooAngry', 'baa', 'baaAngry', 'hoof', 'snort', 'poof', 'cluck', 'squawk', 'flap'],
-  'New powers': ['bark', 'bite', 'trapclick', 'spring', 'dig', 'anomaly'],
+  'New powers': ['bark', 'bite', 'trapclick', 'spring', 'dig', 'anomaly', 'nvon'],
 };
 // which version of each sound plays: 'ai' (random take), 'ai1'..'ai3' (that take), 'v2' (previous recorded set), 'synth' (classic), 'custom:<n>' (an upload)
 // Ali's picks from the Sound lab (31 Oct) are the game's defaults; a device's own picks override them
