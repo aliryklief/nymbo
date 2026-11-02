@@ -103,6 +103,9 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 .pop{position:absolute;transform:translate(-50%,-50%);font-family:var(--display);font-size:22px;white-space:nowrap;text-shadow:0 3px 0 rgba(0,0,0,.45),0 0 12px rgba(0,0,0,.25);animation:pop .95s cubic-bezier(.2,.9,.3,1) forwards}
 .pop.big{font-size:28px}
 @keyframes pop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}18%{transform:translate(-50%,-90%) scale(1.25);opacity:1}35%{transform:translate(-50%,-100%) scale(1)}100%{transform:translate(-50%,-190%) scale(.95);opacity:0}}
+#bhWarn{position:fixed;inset:0;z-index:8;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#fff;font-family:var(--display);text-shadow:0 3px 0 rgba(0,0,0,.5),0 0 18px rgba(150,70,255,.9);box-shadow:inset 0 0 60px 10px rgba(140,60,255,.55);animation:bhw .5s ease-in-out infinite alternate}
+#bhWarn[hidden]{display:none}#bhWarn b{font-size:26px;letter-spacing:.08em;color:#ffd84a}#bhWarn span{font-size:84px;line-height:1}#bhWarn small{font:700 11px var(--body);letter-spacing:.12em;opacity:.85}
+@keyframes bhw{from{box-shadow:inset 0 0 40px 6px rgba(140,60,255,.35)}to{box-shadow:inset 0 0 90px 18px rgba(255,60,120,.6)}}
 #vig{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;box-shadow:inset 0 0 34px 2px rgba(255,40,40,.6);transition:opacity .3s}
 #vig.on{opacity:.45}#vig.on.hot{box-shadow:inset 0 0 46px 5px rgba(255,30,30,.7)}
 #vig.on.beat{animation:beat .4s ease-out}
@@ -221,6 +224,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div class="hud" id="big"></div>
   <div id="pops"></div>
   <div id="vig"></div>
+  <div id="bhWarn" hidden><b>⚠ ANOMALY DETECTED</b><span>3</span><small>SOMETHING IS OPENING ABOVE THE POLE</small></div>
   <div id="thief" hidden><b></b><i></i></div>
   <div id="pwr"></div>
   <button class="pw" id="holeBtn" hidden style="--c:#b36bff" aria-label="BLACK HOLE"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5c5.2 0 9.5 4.3 9.5 9.5S17.2 21.5 12 21.5 2.5 17.2 2.5 12 6.8 2.5 12 2.5zm0 2A7.5 7.5 0 1 0 12 19.5 7.5 7.5 0 0 0 12 4.5z" opacity=".5"/><path d="M4 12a8 8 0 0 1 8-8v2a6 6 0 0 0-6 6z" opacity=".9"/></svg><span>BLACK HOLE</span><i></i></button>
@@ -2920,7 +2924,7 @@ function syncRobot(r) {
   m.torso.scale.set(1 - m.pr * .5, 1 + m.pr * .6, 1 - m.pr * .5);
   if (r.state === 'play') { const focus = r.carryUp > 0; m.eyesN.visible = !focus; m.eyesF.visible = focus; m.eyesX.visible = false; }
   else { m.eyesN.visible = m.eyesF.visible = false; m.eyesX.visible = true; }
-  if (r.heldAnimal && r.stack[0] === r.heldAnimal) { const a = r.heldAnimal.mesh; a.visible = r.state === 'play'; a.position.set(t.x + Math.sin(now() / 37) * .04, t.y + (r.heldAnimal.animal === 'cow' ? 1.86 : 1.98), t.z); a.rotation.order = 'YXZ'; a.rotation.set(Math.PI + Math.sin(now() / 61) * .08, r.yaw + Math.PI / 2, Math.sin(now() / 53) * .12); /* upside down on your head, legs kicking at the sky */ animateLegs(r.heldAnimal, 'held'); } // wriggling to get loose
+  if (r.heldAnimal && r.stack[0] === r.heldAnimal) { const a = r.heldAnimal.mesh; a.visible = r.state === 'play'; a.position.set(t.x + Math.sin(now() / 37) * .04, t.y + (r.heldAnimal.animal === 'cow' ? 1.86 : 1.98), t.z); a.rotation.order = 'YXZ'; if (r.heldAnimal.animal === 'chicken') { a.position.y = t.y + 1.62; a.rotation.set(Math.sin(now() / 61) * .08, r.yaw + Math.PI, Math.sin(now() / 53) * .1); } /* a chicken sits upright on your head, facing forward, flapping */ else a.rotation.set(Math.PI + Math.sin(now() / 61) * .08, r.yaw + Math.PI / 2, Math.sin(now() / 53) * .12); /* upside down on your head, legs kicking at the sky */ animateLegs(r.heldAnimal, 'held'); } // wriggling to get loose
   // knocked out: you dropped what you were holding, so you lie there empty-handed (the next block comes back up when you respawn)
   m.held.visible = !!r.stack[0] && !r.heldAnimal && r.state === 'play';
   const carry = r.stack.length > 0 && r.state === 'play';
@@ -5025,6 +5029,132 @@ function updateMorePowers(dt) {
 }
 
 // ============================================================
+// SHOVEL (kill-streak power): dig an instant hole right where you stand. You fall in, and so does anyone close by.
+// Anyone else who drops through counts as your knockout. It fills back in like any other hole.
+//
+// THE BLACK HOLE, take two:
+//  - a 3-second warning for everyone first ("ANOMALY DETECTED"), with a siren
+//  - everyone's camera widens a little while it's coming and while it's open, so you feel something's wrong
+//  - it looks the part: a spinning accretion disk with spiral arms, a glowing photon ring, streams of light
+//    spiralling in, and dust being torn up off the ground into it
+// ============================================================
+Object.assign(SFX_SYNTH, {
+  dig: () => { noiseHit(.25, 'lowpass', 900, .5, 0, true, 300); thump(70, .6, .05, .3); for (let i = 0; i < 6; i++) clack(200 + Math.random() * 300, .12, .05 + i * .03, .08); },
+});
+POWERS.push({ id: 'shovel', name: 'SHOVEL', col: '#b98a5a', cd: 4, icon: '<path d="M14.5 2.5l7 7-2 2-1.6-1.6-6.2 6.2 1.4 1.4-3.4 3.4a3 3 0 0 1-4.2 0l-1-1a3 3 0 0 1 0-4.2l3.4-3.4 1.4 1.4 6.2-6.2L13 5.9z"/>' });
+byIdP.shovel = POWERS[POWERS.length - 1]; renderTray();
+{ const fp1 = firePower; firePower = function (p, at) {
+    if (p.id !== 'shovel') return fp1(p, at);
+    if (match.state !== 'play') { PW.pendingSlot = null; return; }
+    PW.cool[p.id] = p.cd; consumeSlot(); dig(P);
+  }; }
+const digAllowed = (x, z) => Math.abs(x) < MX - 1 && Math.abs(z) < MZ - 1 && Math.hypot(x, z) > 4
+  && !TRAMP_SPOTS.some(t => Math.hypot(x - t.x, z - t.z) < 3) && !PORTAL_SPOTS.some(p => Math.hypot(x - p.x, z - p.z) < 3.5) && !ARROWS.some(A => Math.hypot(x - A.p.x, z - A.p.z) < 3);
+function dig(r) {
+  const p = rPos(r), R = 2.6, cells = [];
+  if (p.y > 3) { if (r.isPlayer) toast('YOU CAN ONLY DIG ON THE GROUND'); return; }
+  for (let x = Math.floor(p.x - R); x <= Math.ceil(p.x + R); x++) for (let z = Math.floor(p.z - R); z <= Math.ceil(p.z + R); z++) {
+    const cxw = x + .5, czw = z + .5; if (Math.hypot(cxw - p.x, czw - p.z) > R || !digAllowed(cxw, czw)) continue;
+    const [cx, cz] = cellOf(cxw, czw); if (HOLES.has(cx + ',' + cz)) continue; cells.push([cx, cz]);
+  }
+  if (!cells.length) { if (r.isPlayer) toast("CAN'T DIG HERE"); return; }
+  for (const [cx, cz] of cells) setHole(cx, cz, true);
+  rebuildPits();
+  for (const e of blocks) { if (e.dead || !e.body || e.holder) continue; const t = e.body.translation(); if (t.y < 3 && isHole(t.x, t.z)) { if (e.anchored) unanchorAround(V(t.x, t.y, t.z), .6); e.body.wakeUp && e.body.wakeUp(); } }
+  HOLE_GROUPS.push({ cells, t: HOLE_BACK, at: p.clone().setY(0) });
+  sfx('dig', p); sfx('hole', p); fxDebris(V(p.x, .3, p.z), 0x6b4a2e, 40, 9); fxDebris(V(p.x, .3, p.z), 0x5cb43a, 20, 7); shake = Math.max(shake, .5);
+  // whoever was standing over it drops (a little nudge down so nobody hovers on the edge of the hole)
+  for (const o of robots) { if (o.state !== 'play') continue; const c = rPos(o); if (Math.hypot(c.x - p.x, c.z - p.z) < R + .3 && c.y < 3) { const lv = o.body.linvel(); o.body.setLinvel({ x: lv.x * .3, y: -4, z: lv.z * .3 }, true); o.grounded = false; if (o !== r && o.team !== r.team) o.dug = { by: r, at: now() }; } }
+  if (r.isPlayer) bigToast('DIG!', 'blue');
+}
+// someone you dropped through your hole: your knockout
+function updateDug() {
+  for (const o of robots) if (o.dug) {
+    if (now() - o.dug.at > 5000) { o.dug = null; continue; }
+    if (o.state === 'rag') { const by = o.dug.by; o.dug = null; o.stats.kos++; by.stats.hits++; onStreak(by, o); toast([[by.name.toUpperCase(), by.color], [' BURIED ', null], [o.name.toUpperCase(), o.color]]); }
+  }
+}
+
+// ---------------------------------------------------------------- black hole: the warning
+const BHW = { on: false, t: 0, team: null, fov: 0 };
+function bhWarn(team) {
+  BHW.on = true; BHW.t = 3; BHW.team = team; $('bhWarn').hidden = false; sfx('siren'); buzz('ko'); shake = Math.max(shake, .3);
+}
+{ const sbh0 = startBlackHole; startBlackHole = function (team) {
+    if (BH.on || BHW.on) return;
+    if (NET && NET.client) { sbh0(team); return; }       // (online friends get the warning from the host; this is the real thing)
+    bhWarn(team); netEv(['bhwarn', team]);
+    BHW.go = () => sbh0(team);
+  }; }
+function updateBHWarn(dt) {
+  // the camera widens a touch while the anomaly is coming and while the hole is open
+  const want = BHW.on || BH.on ? 9 : 0; BHW.fov += (want - BHW.fov) * Math.min(1, dt * 1.6);
+  if (!BHW.on) return;
+  BHW.t -= dt; const el = $('bhWarn'); el.querySelector('span').textContent = Math.max(1, Math.ceil(BHW.t));
+  if (Math.floor(BHW.t * 2) !== BHW.beat) { BHW.beat = Math.floor(BHW.t * 2); shake = Math.max(shake, .15); }
+  if (BHW.t <= 0) { BHW.on = false; el.hidden = true; if (BHW.go) { const go = BHW.go; BHW.go = null; go(); } }
+}
+{ const uc0 = updateCamera; updateCamera = function (dt) {
+    uc0(dt);
+    if (BHW.fov > .05) { camera.fov += BHW.fov; camera.updateProjectionMatrix(); BHW.applied = true; }
+    else if (BHW.applied) { BHW.applied = false; camera.updateProjectionMatrix(); }
+  }; }
+
+// ---------------------------------------------------------------- black hole: the look
+const diskTex = (() => { // spiral arms on a hot disk: white-hot inside, orange, then violet fading out
+  const N = 512, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d'), m = N / 2;
+  const gr = g.createRadialGradient(m, m, m * .26, m, m, m); gr.addColorStop(0, 'rgba(255,236,190,1)'); gr.addColorStop(.12, 'rgba(255,150,40,.97)'); gr.addColorStop(.35, 'rgba(230,70,40,.85)'); gr.addColorStop(.62, 'rgba(120,40,220,.7)'); gr.addColorStop(1, 'rgba(40,10,110,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, N, N);
+  g.globalCompositeOperation = 'source-over';
+  for (let arm = 0; arm < 5; arm++) for (let k = 0; k < 260; k++) { const u = k / 260, r = m * (.28 + .7 * u), a = arm * Math.PI * 2 / 5 + u * 5.2 + Math.random() * .12;
+    g.fillStyle = u < .5 ? `rgba(255,${230 - u * 200 | 0},${150 - u * 100 | 0},${.35 * (1 - u)})` : `rgba(${60 + (1 - u) * 80 | 0},20,${110 + (1 - u) * 100 | 0},${.5 * (1 - u)})`; g.beginPath(); g.arc(m + Math.cos(a) * r, m + Math.sin(a) * r, 6 + 14 * (1 - u), 0, 7); g.fill(); }
+  g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(m, m, m * .25, 0, 7); g.fill(); // the hole in the middle
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+const BHFX = { pts: null, n: 420 };
+bhMesh = function () {
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.SphereGeometry(2.2, 32, 20), new THREE.MeshBasicMaterial({ color: 0x000000 })); g.add(core);
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(2.75, 32, 20), new THREE.MeshBasicMaterial({ color: 0xb06bff, transparent: true, opacity: .35, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })); g.add(glow);
+  const tilt = new THREE.Group(); tilt.rotation.x = -.42; g.add(tilt);
+  for (const [s, sp, op] of [[11, 1.4, .95], [14.5, -.6, .45]]) { // two disks turning at different speeds: it looks like it's churning
+    const d = new THREE.Mesh(new THREE.PlaneGeometry(s * 2, s * 2), new THREE.MeshBasicMaterial({ map: diskTex, transparent: true, opacity: op, side: THREE.DoubleSide, depthWrite: false }));
+    d.rotation.x = -Math.PI / 2; d.userData.spin = sp; tilt.add(d); }
+  // the photon ring: a thin bright halo that always faces you
+  const halo = new THREE.Mesh(new THREE.RingGeometry(2.25, 2.75, 64), new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: .95, side: THREE.DoubleSide, depthWrite: false })); g.add(halo);
+  const halo2 = new THREE.Mesh(new THREE.RingGeometry(2.8, 4.2, 64), new THREE.MeshBasicMaterial({ color: 0x7a2dff, transparent: true, opacity: .55, side: THREE.DoubleSide, depthWrite: false })); g.add(halo2);
+  // streams of light spiralling in
+  const n = BHFX.n, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), st = [];
+  for (let i = 0; i < n; i++) st.push({ r: rr(3, 22), a: rr(0, 6.28), h: rr(-1.5, 1.5) });
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: .55, vertexColors: true, transparent: true, opacity: .95, depthWrite: false }));
+  pts.frustumCulled = false; tilt.add(pts); BHFX.st = st; BHFX.pts = pts;
+  Object.assign(g.userData, { core, glow, tilt, halo, halo2 });
+  return g;
+};
+const _bc = new THREE.Color();
+function updateBHFx(dt) {
+  if (!BH.on || !BH.g) return;
+  const g = BH.g, u = g.userData, t = BH.t;
+  if (u.tilt) {
+    u.tilt.rotation.y += dt * .25; u.tilt.children.forEach(c => { if (c.userData.spin) c.rotation.z += c.userData.spin * dt * (1 + t * .05); });
+    u.halo.lookAt(camera.position); u.halo2.lookAt(camera.position); u.halo.material.opacity = .75 + .25 * Math.sin(t * 9); u.glow.material.opacity = .3 + .12 * Math.sin(t * 5);
+    const P_ = BHFX.pts, a = P_.geometry.attributes.position.array, c = P_.geometry.attributes.color.array, speed = 1 + t * .08;
+    BHFX.st.forEach((s, i) => { // orbit faster the closer they get, and keep falling in
+      s.a += dt * speed * 9 / Math.pow(s.r, 1.1); s.r -= dt * speed * (1.2 + 14 / s.r); s.h *= Math.pow(.3, dt);
+      if (s.r < 2.4) { s.r = rr(14, 24); s.a = rr(0, 6.28); s.h = rr(-2, 2); }
+      a[i * 3] = Math.cos(s.a) * s.r; a[i * 3 + 1] = s.h; a[i * 3 + 2] = Math.sin(s.a) * s.r;
+      const k = clamp((s.r - 2.4) / 18, 0, 1); _bc.setRGB(1, .85 - k * .55, .45 - k * .25).lerp(_bc.clone().setRGB(.45, .15, .95), k); c[i * 3] = _bc.r; c[i * 3 + 1] = _bc.g; c[i * 3 + 2] = _bc.b; });
+    P_.geometry.attributes.position.needsUpdate = P_.geometry.attributes.color.needsUpdate = true;
+  }
+  // dust and grass being torn up off the ground and sucked up in a spiral
+  const n = Math.min(10, 2 + t * .5) * dt * 60;
+  for (let i = 0; i < n; i++) { const a = rr(0, 6.28), r = rr(6, 30), x = Math.cos(a) * r, z = Math.sin(a) * r, to = V(-x, BH.pos.y, -z).normalize();
+    emit(V(x, .3, z), rnd() < .6 ? 0x9a7bff : 0x8bd16a, V(to.x * 6 - z / r * 6, rr(5, 9), to.z * 6 + x / r * 6), rr(.12, .3), rr(.8, 1.6), -2); }
+}
+{ const ubh0 = updateBlackHole; updateBlackHole = function (dt) { ubh0(dt); updateBHFx(dt); }; }
+function updateShovelBH(dt) { updateBHWarn(dt); if (match.state === 'play') updateDug(); }
+
+// ============================================================
 // MATCH FLOW + MAIN LOOP
 // ============================================================
 for (const team of ['blue', 'red']) for (let i = 0; i < 4; i++) createRobot(team, i);
@@ -5230,7 +5360,7 @@ function tick(dt, t = now()) {
   if (match.state !== 'paused') updateIce(dt);
   updateFx(dt);
   updateCamera(dt);
-  if (match.state !== 'paused') { updatePowers(dt); updateMorePowers(dt); updateShield(dt); updateReplayUI(dt); }
+  if (match.state !== 'paused') { updatePowers(dt); updateMorePowers(dt); updateShovelBH(dt); updateShield(dt); updateReplayUI(dt); }
   if (NET && NET.host) NET.hostTick(dt);
 }
 plainIM.instanceColor.needsUpdate = true;
@@ -5240,7 +5370,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -5808,7 +5938,8 @@ function clientEv(e) {
   else if (k === 'ret') flagReturnedToast(e[1]);
   else if (k === 'score') { const g = GATES[e[1]]; g.flash = 1; buzz(e[1] === P.team ? 'score' : 'theyScore'); sfx(e[1] === P.team ? 'score' : 'lose'); bigToast(e[1] === 'blue' ? 'BLUE SCORES!' : 'RED SCORES!', e[1]); }
   else if (k === 'end') { setTimeout(() => endMatch(), 150); }
-  else if (k === 'bh') startBlackHole(e[1]);
+  else if (k === 'bh') { BHW.on = false; $('bhWarn').hidden = true; startBlackHole(e[1]); }
+  else if (k === 'bhwarn') bhWarn(e[1]);
   else if (k === 'stick') { const b = blockById(e[1]); if (b && !b.stuck) { b.live = false; b.stuck = { to: e[5] >= 0 ? robots[e[5]] : null, off: null, fuse: b.kind === 'egg' ? 5 : 2.5, beep: 0 }; if (b.stuck.to) { b.stuck.off = V(e[2], e[3], e[4]).sub(rPos(b.stuck.to)); } dropBody(b); makeBody(b, V(e[2], e[3], e[4]), null); b.body.setBodyType(RAPIER.RigidBodyType.Fixed, true); b.col.setSensor(true); STUCK.push(b); sfx('catch', V(e[2], e[3], e[4])); } }
   else if (k === 'birds') { const tr = TREES.find(t => Math.hypot(t.x - e[1], t.z - e[2]) < .5); if (tr && !tr.flown) { tr.flown = true; birdsOut(tr, e[4] || 'blue'); } }
   else if (k === 'gas') gasCloud(V(e[1], 0, e[2]), V(e[3], 0, e[4]));
@@ -5925,7 +6056,7 @@ function clientTick(dt, t) {
   for (const Q of PORTALS) Q.disc.rotation.z -= dt * 1.5;
   for (const team of ['blue', 'red']) { const g = GATES[team]; g.flash = Math.max(0, g.flash - dt); g.glow.material.opacity = .5 + .4 * Math.sin(t / 300) * .2 + g.flash * .5; }
   for (const r of robots) syncRobot(r);
-  updateFun(dt); updateAmbience(dt); pulseHalos(t); updateReplayUI(dt); updateBirds(dt); updateGas(dt); updateSticky(dt); updateIce(dt); updateWool(dt); updateFx(dt); updateCamera(dt);
+  updateFun(dt); updateAmbience(dt); pulseHalos(t); updateReplayUI(dt); updateBHWarn(dt); updateBirds(dt); updateGas(dt); updateSticky(dt); updateIce(dt); updateWool(dt); updateFx(dt); updateCamera(dt);
   if (hitStop > 0) hitStop = 0;
 }
 // on the host: copy every in-world sound and effect to the friends' phones as it happens
