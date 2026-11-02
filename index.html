@@ -121,6 +121,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 .pw i{position:absolute;inset:-2px;border-radius:50%;background:conic-gradient(rgba(0,0,0,.62) calc(var(--k,0)*360deg),transparent 0)}
 .pw.ready{box-shadow:0 3px 0 rgba(0,0,0,.3),0 0 12px var(--c)}
 .pw:active{transform:scale(.92)}
+/* "All powers" (testing): every power at once in a tidy two-column block on the right, under the top bar */
+#pwr.all{width:auto;display:grid;grid-template-columns:repeat(2,38px);gap:6px;bottom:auto;top:calc(env(safe-area-inset-top,0px) + 96px)}#pwr.all .pw{width:38px;height:38px;border-width:2px}#pwr.all .pw svg{width:19px;height:19px}
 #pick{position:fixed;inset:0;z-index:40;background:rgba(4,8,18,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;touch-action:none}
 #pick[hidden]{display:none}
 #pickTitle{font-family:var(--display);font-size:22px;letter-spacing:.02em;text-align:center;padding:0 16px}
@@ -224,7 +226,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div class="hud" id="big"></div>
   <div id="pops"></div>
   <div id="vig"></div>
-  <div id="bhWarn" hidden><b>⚠ ANOMALY DETECTED</b><span>3</span><small>SOMETHING IS OPENING ABOVE THE POLE</small></div>
+  <div id="bhWarn" hidden><b>⚠ ANOMALY DETECTED</b><span>3</span></div>
   <div id="thief" hidden><b></b><i></i></div>
   <div id="pwr"></div>
   <button class="pw" id="holeBtn" hidden style="--c:#b36bff" aria-label="BLACK HOLE"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5c5.2 0 9.5 4.3 9.5 9.5S17.2 21.5 12 21.5 2.5 17.2 2.5 12 6.8 2.5 12 2.5zm0 2A7.5 7.5 0 1 0 12 19.5 7.5 7.5 0 0 0 12 4.5z" opacity=".5"/><path d="M4 12a8 8 0 0 1 8-8v2a6 6 0 0 0-6 6z" opacity=".9"/></svg><span>BLACK HOLE</span><i></i></button>
@@ -4187,7 +4189,7 @@ function makePwBtn(p) {
   return b;
 }
 function renderTray() {
-  pwTray.innerHTML = '';
+  pwTray.innerHTML = ''; pwTray.classList.toggle('all', !!S.allPowers);
   if (S.allPowers) { for (const p of POWERS) { const b = makePwBtn(p); b.addEventListener('click', e => { e.stopPropagation(); usePower(p); }); pwTray.appendChild(b); p.el = b; } return; }
   for (const p of POWERS) p.el = null;
   for (const sl of PW.slots) pwTray.appendChild(sl.el);
@@ -4723,8 +4725,8 @@ const isOut = r => r && r.state === 'out';
 Object.assign(SFX_SYNTH, {
   cluck: () => { for (let i = 0; i < 2; i++) { const t = T0(i * .12), f = rr(620, 760), o = osc('square', f, t, .09), bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 3; o.frequency.exponentialRampToValueAtTime(f * .62, t + .08); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.2, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .09); o.connect(bp); bp.connect(g); out(g); } },
   squawk: () => { for (let i = 0; i < 4; i++) { const t = T0(i * .09), f = rr(850, 1100), o = osc('sawtooth', f, t, .12), bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 2; o.frequency.exponentialRampToValueAtTime(f * .5, t + .11); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.26, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .12); o.connect(bp); bp.connect(g); out(g); } noiseHit(.35, 'bandpass', 1200, .12, 0, true, 2400, 2); },
-  bark: () => { for (let i = 0; i < 2; i++) { const t = T0(i * .2), f = rr(330, 380), o = osc('sawtooth', f, t, .13), lp = AC.createBiquadFilter(), g = AC.createGain(); lp.type = 'lowpass'; lp.frequency.value = 1600; o.frequency.exponentialRampToValueAtTime(f * .55, t + .12); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.3, t + .015); g.gain.exponentialRampToValueAtTime(.0001, t + .13); o.connect(lp); lp.connect(g); out(g); noiseHit(.08, 'bandpass', 1100, .14, i * .2, true, 700, 2); } },
-  bite: () => { clack(520, .5); thump(150, .55, 0, .12); noiseHit(.12, 'bandpass', 2600, .35, 0, true, 1400, 2); },
+  bark: () => { const n = 2 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) { const t = T0(i * rr(.1, .14)), f = rr(520, 680), o = osc('sawtooth', f, t, .13), lp = AC.createBiquadFilter(), g = AC.createGain(); lp.type = 'lowpass'; lp.frequency.value = 1600; o.frequency.exponentialRampToValueAtTime(f * .55, t + .12); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.34, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + .1); o.connect(lp); lp.connect(g); out(g); noiseHit(.06, 'bandpass', 1500, .14, i * .12, true, 900, 2); } }, // excited yapping
+  bite: () => { SFX_SYNTH.bark(); clack(700, .7, .08); clack(420, .6, .1); thump(110, .9, .08, .22); noiseHit(.25, 'bandpass', 1800, .6, .08, true, 500, 1.2); }, // a snarl and a big CHOMP
   spring: () => { boing(90, .5, 0, 3.6, .5); whoosh(1.1, .22, 400, 3200, .05, 1); },
   flap: () => { for (let i = 0; i < 4; i++) noiseHit(.06, 'bandpass', 950, .22, i * .07, false, 600, 2); },
 });
@@ -4765,11 +4767,12 @@ function dogModel() {
   const legs = [[-.18, .36], [.18, .36], [-.18, -.36], [.18, -.36]].map(([x, z]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(.15, .5, .15).translate(0, -.25, 0), dark); l.position.set(x, .5, z); l.castShadow = true; g.add(l); return l; });
   scene.add(g); return { g, legs, tail, head };
 }
-function sendDog(owner) {
-  const foes = robots.filter(r => r.team !== owner.team), live = foes.filter(r => r.state === 'play'), target = (live.length ? live : foes)[Math.floor(Math.random() * (live.length ? live : foes).length)];
+function sendDog(owner, pick) {
+  const foes = robots.filter(r => r.team !== owner.team), live = foes.filter(r => r.state === 'play'), target = pick || (live.length ? live : foes)[Math.floor(Math.random() * (live.length ? live : foes).length)];
   if (!target) return;
   const m = dogModel(), p = rPos(owner), side = rightOf(owner.yaw), x = p.x + side.x * 1.5, z = p.z + side.z * 1.5;
-  const bone = new THREE.Mesh(boneGeo, boneMat); bone.position.set(0, .35, -.55); bone.rotation.set(0, Math.PI / 2, .5); target.model.g.add(bone); // on their back
+  const bone = new THREE.Mesh(boneGeo, boneMat), tb = new THREE.Box3().setFromObject(target.model.torso), inv = target.model.g.matrixWorld.clone().invert(); tb.applyMatrix4(inv);
+  bone.position.set(0, (tb.min.y + tb.max.y) / 2 + .05, tb.min.z - .1); bone.rotation.set(0, 0, .15); target.model.g.add(bone); // strapped across their back, sideways
   const glow = new THREE.Mesh(new THREE.CylinderGeometry(.9, .9, 14, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: .22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
   scene.add(glow);
   const D = { m, x, y: groundAt(x, z, p.y + 2), z, vy: 0, yaw: owner.yaw, target, owner, bone, glow, frozenT: 0, ice: null, barkT: .3, pcool: 0, leaving: 0, grounded: true, sideT: 0, side: 0 };
@@ -4810,7 +4813,7 @@ function updateDogs(dt) {
     }
     if (D.sideT > 0) D.sideT -= dt;
     const yawT = Math.atan2(dx, dz); D.yaw += angDiff(D.yaw, yawT) * Math.min(1, dt * 12);
-    const step = DOG_SPEED * dt;
+    const step = DOG_SPEED * (D.lunged && !D.grounded ? 1.8 : 1) * dt; if (D.grounded && D.lunged && D.vy === 0) D.lunged = false;
     if (blockedAt(D.x, hy, D.z, Math.sin(D.yaw), Math.cos(D.yaw), .45 + step) === null) { D.x += Math.sin(D.yaw) * step; D.z += Math.cos(D.yaw) * step; }
     // gravity and the ground under it
     D.vy -= G * dt; D.y += D.vy * dt;
@@ -4821,10 +4824,11 @@ function updateDogs(dt) {
     if (D.pcool > 0) D.pcool -= dt; else { const Pn = portalCheck(V(D.x, D.y + .6, D.z)); if (Pn) { const Q = PORTALS[1 - Pn.i], o = Q.pos.clone().addScaledVector(Q.n, 1.6); D.x = o.x; D.z = o.z; D.y = Math.max(0, groundAt(o.x, o.z, 4)); D.vy = 0; D.pcool = .8; D.yaw = Math.atan2(Q.n.x, Q.n.z); fxBurst(Q.pos, 0xb36bff, 1.4, .3); sfx('portal', Q.pos); } }
     D.m.g.position.set(D.x, D.y, D.z); D.m.g.rotation.y = D.yaw;
     D.m.legs.forEach((l, k) => { l.rotation.x = D.grounded ? Math.sin(t * 22 + (k === 0 || k === 3 ? 0 : Math.PI)) * .7 : (k < 2 ? -.8 : .8); }); D.m.tail.rotation.y = Math.sin(t * 18) * .5;
-    D.barkT -= dt; if (D.barkT <= 0) { D.barkT = rr(1.2, 2.2); sfx('bark', V(D.x, D.y + .8, D.z)); }
+    const gap = Math.hypot(g.x - D.x, g.z - D.z); D.barkT -= dt; if (D.barkT <= 0) { D.barkT = clamp(gap / 25, .35, 1.4) * rr(.8, 1.2); sfx('bark', V(D.x, D.y + .8, D.z)); } // yaps faster and faster as it closes in (and you hear it getting louder)
+    if (gap < 3.2 && D.grounded && !D.lunged && tg.state === 'play') { D.lunged = true; D.vy = 7; D.grounded = false; } // the pounce
     // the bite: one and done
     if (tg.state === 'play' && hittable(tg) && capsuleDist(tg, V(D.x + Math.sin(D.yaw) * .5, D.y + .7, D.z + Math.cos(D.yaw) * .5)) < .95) {
-      const at = rPos(tg); ragdoll(tg, V(Math.sin(D.yaw), 0, Math.cos(D.yaw)), D.owner, 1.6); sfx('bite', at); koPop(at, 'FETCHED!', '#ffd27a', true);
+      const at = rPos(tg); ragdoll(tg, V(Math.sin(D.yaw), 0, Math.cos(D.yaw)), D.owner, 3); sfx('bite', at); koPop(at, 'CHOMP!', '#ffd27a', true); fxBurst(at.clone().setY(at.y + .6), 0xffffff, 1.8, .3); fxDebris(at, 0xfff1d0, 14, 7); shake = Math.max(shake, tg.isPlayer ? 1 : .5); if (tg.isPlayer) buzz('ko');
       if (D.bone.parent) D.bone.parent.remove(D.bone);
       D.leaving = 2.2; D.yaw += Math.PI;
     }
@@ -4835,15 +4839,21 @@ function updateDogs(dt) {
 const SPRINGS = [], SPRING_LIFE = 45;
 const stripeTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#ffcc33'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#1c1c1e'; for (let i = -64; i < 128; i += 16) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 8, 0); g.lineTo(i + 8 - 64, 64); g.lineTo(i - 64, 64); g.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
 function placeSpring(at, owner) {
-  const y = Math.max(0, groundAt(at.x, at.z)), g = new THREE.Group(); g.position.set(at.x, y, at.z);
+  const y = Math.max(0, groundAt(at.x, at.z)), g = new THREE.Group(); g.position.set(at.x, y - .06, at.z);
   let out = V(at.x, 0, at.z); if (out.lengthSq() < 4) out.set(Math.random() - .5, 0, Math.random() - .5); out.normalize();
-  const base = new THREE.Mesh(new THREE.BoxGeometry(2, .22, 2), new LiteMat({ color: 0x3a3d48 })); base.position.y = .11; base.receiveShadow = true; g.add(base);
-  const coil = new THREE.Group(); g.add(coil); const coilM = new LiteMat({ color: 0xd8dbe2, roughness: .3 });
-  for (let k = 0; k < 4; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.55, .07, 8, 20), coilM); t.rotation.x = Math.PI / 2; t.position.y = .3 + k * .17; coil.add(t); }
-  const top = new THREE.Mesh(new THREE.BoxGeometry(1.8, .2, 1.8), [new LiteMat({ color: 0x1c1c1e }), new LiteMat({ color: 0x1c1c1e }), new LiteMat({ map: stripeTex }), new LiteMat({ color: 0x1c1c1e }), new LiteMat({ color: 0x1c1c1e }), new LiteMat({ color: 0x1c1c1e })]);
-  top.position.y = .98; top.castShadow = true; g.add(top);
-  const arrow = new THREE.Mesh(new THREE.ConeGeometry(.45, .9, 3), new LiteMat({ color: 0xff3b3b, emissive: 0xff2a2a, emissiveIntensity: .4 })); arrow.rotation.set(Math.PI / 2, 0, 0); arrow.position.y = .14; arrow.scale.set(1, 1, .25);
-  const ar = new THREE.Group(); ar.add(arrow); ar.rotation.y = Math.atan2(out.x, out.z); ar.position.y = .98; g.add(ar); // points the way you'll fly: off the island
+  // a badly faked patch of ground: grass that's a shade too yellow, too smooth, sitting a hair too high, with a dark seam
+  // round it and the odd corner of spring peeking out. You can spot it if you look; nobody looks.
+  const seam = new THREE.Mesh(new THREE.BoxGeometry(2.25, .05, 2.25), new LiteMat({ color: 0x2a2418 })); seam.position.y = .02; g.add(seam);
+  const coil = new THREE.Group(); g.add(coil); const coilM = new LiteMat({ color: 0xa8acb5, roughness: .3 });
+  for (let k = 0; k < 4; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.6, .07, 8, 20), coilM); t.rotation.x = Math.PI / 2; t.position.y = -.16 + k * .05; coil.add(t); }
+  const fake = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#7cc24e'; x.fillRect(0, 0, 64, 64);
+    x.strokeStyle = 'rgba(40,60,20,.35)'; x.lineWidth = 2; x.strokeRect(1, 1, 62, 62); x.beginPath(); x.moveTo(32, 0); x.lineTo(32, 64); x.moveTo(0, 32); x.lineTo(64, 32); x.stroke(); // painted-on "grass squares", a bit off
+    for (let i = 0; i < 40; i++) { x.fillStyle = Math.random() < .5 ? 'rgba(150,200,80,.6)' : 'rgba(90,150,50,.6)'; x.fillRect(Math.random() * 64, Math.random() * 64, 3, 6); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(2, .12, 2), [new LiteMat({ color: 0x5c8a3a }), new LiteMat({ color: 0x5c8a3a }), new LiteMat({ map: fake }), new LiteMat({ color: 0x5c8a3a }), new LiteMat({ color: 0x5c8a3a }), new LiteMat({ color: 0x5c8a3a })]);
+  lid.position.y = .1; lid.receiveShadow = true; lid.rotation.y = .06; g.add(lid); // (and it's not quite square to the grid)
+  for (const [x, z] of [[.95, .95], [-.95, -.9]]) { const k = new THREE.Mesh(new THREE.BoxGeometry(.14, .14, .14), coilM); k.position.set(x, .12, z); g.add(k); } // spring corners peeking out
+  const top = lid, ar = new THREE.Group();
   g.scale.setScalar(.01); scene.add(g);
   SPRINGS.push({ g, top, coil, ar, x: at.x, y, z: at.z, out, t: SPRING_LIFE, grow: 0, sq: 0, owner, cool: new Map() });
   fxBurst(V(at.x, y + .8, at.z), 0xffcc33, 1.6, .3); sfx('pop', V(at.x, y + .5, at.z));
@@ -4862,7 +4872,7 @@ function updateSprings(dt) {
   for (let i = SPRINGS.length - 1; i >= 0; i--) {
     const S_ = SPRINGS[i]; S_.t -= dt; S_.grow = Math.min(1, S_.grow + dt * 4);
     const pop = S_.t < .4 ? Math.max(.01, S_.t / .4) : 1 - Math.pow(1 - S_.grow, 3) * 1.0 + Math.sin(S_.grow * Math.PI) * .15; S_.g.scale.setScalar(Math.max(.01, pop));
-    S_.sq += (0 - S_.sq) * Math.min(1, dt * 10); S_.top.position.y = .98 + S_.sq; S_.ar.position.y = S_.top.position.y; S_.coil.scale.y = (S_.top.position.y - .2) / .78;
+    S_.sq += (0 - S_.sq) * Math.min(1, dt * 6); S_.top.position.y = .1 + S_.sq * 1.6; S_.coil.scale.y = 1 + S_.sq * 9; // it snaps up out of the ground, then sinks back
     if (S_.t <= 0) { scene.remove(S_.g); SPRINGS.splice(i, 1); continue; }
     if (S_.grow < 1) continue;
     for (const r of robots) {
@@ -5039,6 +5049,18 @@ function updateMorePowers(dt) {
 //    spiralling in, and dust being torn up off the ground into it
 // ============================================================
 Object.assign(SFX_SYNTH, {
+  // the anomaly warning: a deep space drone that swells and rises, an eerie warbling tone over it, and a low rumble
+  anomaly: () => {
+    const t = T0(), D = 3.2, mix = AC.createGain(), lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 6;
+    lp.frequency.setValueAtTime(180, t); lp.frequency.exponentialRampToValueAtTime(2400, t + D);
+    mix.gain.setValueAtTime(.0001, t); mix.gain.exponentialRampToValueAtTime(.32, t + .6); mix.gain.setValueAtTime(.32, t + D - .4); mix.gain.exponentialRampToValueAtTime(.0001, t + D);
+    for (const [f, dt] of [[41, 0], [41.6, 0], [61.8, .3], [82, .5]]) { const o = osc('sawtooth', f, t, D); o.frequency.exponentialRampToValueAtTime(f * 2.4, t + D); o.detune.value = dt * 20; o.connect(lp); }
+    lp.connect(mix); out(mix);
+    const w = osc('sine', 300, t, D), wg = AC.createGain(), lfo = osc('sine', 5.5, t, D), lg = AC.createGain(); // the theremin-ish wail, wobbling
+    lg.gain.value = 22; lfo.connect(lg); lg.connect(w.frequency); w.frequency.setValueAtTime(300, t); w.frequency.exponentialRampToValueAtTime(1100, t + D);
+    wg.gain.setValueAtTime(.0001, t); wg.gain.exponentialRampToValueAtTime(.09, t + 1); wg.gain.exponentialRampToValueAtTime(.0001, t + D); w.connect(wg); out(wg);
+    thump(32, .9, 0, 2.5); noiseHit(D, 'lowpass', 120, .45, 0, true, 900, 1);
+  },
   dig: () => { noiseHit(.25, 'lowpass', 900, .5, 0, true, 300); thump(70, .6, .05, .3); for (let i = 0; i < 6; i++) clack(200 + Math.random() * 300, .12, .05 + i * .03, .08); },
 });
 POWERS.push({ id: 'shovel', name: 'SHOVEL', col: '#b98a5a', cd: 4, icon: '<path d="M14.5 2.5l7 7-2 2-1.6-1.6-6.2 6.2 1.4 1.4-3.4 3.4a3 3 0 0 1-4.2 0l-1-1a3 3 0 0 1 0-4.2l3.4-3.4 1.4 1.4 6.2-6.2L13 5.9z"/>' });
@@ -5051,7 +5073,7 @@ byIdP.shovel = POWERS[POWERS.length - 1]; renderTray();
 const digAllowed = (x, z) => Math.abs(x) < MX - 1 && Math.abs(z) < MZ - 1 && Math.hypot(x, z) > 4
   && !TRAMP_SPOTS.some(t => Math.hypot(x - t.x, z - t.z) < 3) && !PORTAL_SPOTS.some(p => Math.hypot(x - p.x, z - p.z) < 3.5) && !ARROWS.some(A => Math.hypot(x - A.p.x, z - A.p.z) < 3);
 function dig(r) {
-  const p = rPos(r), R = 2.6, cells = [];
+  const p = rPos(r), R = 3.6, cells = []; // (about 7 blocks across)
   if (p.y > 3) { if (r.isPlayer) toast('YOU CAN ONLY DIG ON THE GROUND'); return; }
   for (let x = Math.floor(p.x - R); x <= Math.ceil(p.x + R); x++) for (let z = Math.floor(p.z - R); z <= Math.ceil(p.z + R); z++) {
     const cxw = x + .5, czw = z + .5; if (Math.hypot(cxw - p.x, czw - p.z) > R || !digAllowed(cxw, czw)) continue;
@@ -5078,7 +5100,7 @@ function updateDug() {
 // ---------------------------------------------------------------- black hole: the warning
 const BHW = { on: false, t: 0, team: null, fov: 0 };
 function bhWarn(team) {
-  BHW.on = true; BHW.t = 3; BHW.team = team; $('bhWarn').hidden = false; sfx('siren'); buzz('ko'); shake = Math.max(shake, .3);
+  BHW.on = true; BHW.t = 3; BHW.team = team; $('bhWarn').hidden = false; sfx('anomaly'); buzz('ko'); shake = Math.max(shake, .3);
 }
 { const sbh0 = startBlackHole; startBlackHole = function (team) {
     if (BH.on || BHW.on) return;
