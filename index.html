@@ -1463,7 +1463,7 @@ function consumePower(e) {
 }
 
 // ---------- flags ----------
-function resetFlag(f, quiet) {
+function resetFlag(f, quiet) { f.looseSince = null;
   if (f.holder) { const r = f.holder; r.stack = r.stack.filter(x => x !== f); f.holder = null; refreshHeld(r); }
   dropBody(f); f.frozenT = 0; if (f.ice) { scene.remove(f.ice); f.ice = null; }
   f.mesh.visible = true; f.live = false;
@@ -1642,7 +1642,7 @@ function updateRepair(dt) {
     tmpV.copy(F.from).lerp(F.s.pos, ease); tmpV.y += Math.sin(k * Math.PI) * F.arc;
     tmpQ.copy(F.q0).slerp(tmpQ2.identity(), ease);
     if (e.inst >= 0) { tmpM.compose(tmpV, tmpQ, tmpS.copy(e.dims)); plainIM.setMatrixAt(e.inst, tmpM); plainIM.instanceMatrix.needsUpdate = true; }
-    if (k >= 1) { flying.splice(i, 1); lockHome(F.s); }
+    if (k >= 1) { flying.splice(i, 1); liftFlags(F.s); lockHome(F.s); }
   }
 }
 const flying = [];
@@ -1668,7 +1668,18 @@ function bringHome(s) {
 }
 
 // our own fort rubble lying in a spot that's being rebuilt: it flies home too if it can, otherwise it puffs away (and comes back later)
+// a flag that fell into the hole is lifted up to sit on top of the brick coming back (it used to end up inside it)
+function liftFlags(s) {
+  const hx = s.dims.x / 2 + .1, hy = s.dims.y / 2, hz = s.dims.z / 2 + .1, p = s.pos;
+  for (const b of blocks) {
+    if (b.kind !== 'flag' || b.dead || !b.body || b.holder) continue; const t = b.body.translation();
+    if (Math.abs(t.x - p.x) > hx + b.dims.x * .45 || Math.abs(t.z - p.z) > hz + b.dims.z * .45 || Math.abs(t.y - p.y) > hy + b.dims.y * .45) continue;
+    b.body.setTranslation({ x: p.x, y: p.y + hy + b.dims.y / 2 + .03, z: p.z }, true); b.body.setLinvel({ x: 0, y: 0, z: 0 }, true); b.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    b.body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true); b.pt = null;
+  }
+}
 function clearRubble(s) {
+  liftFlags(s);
   const hx = s.dims.x / 2 + .1, hy = s.dims.y / 2, hz = s.dims.z / 2 + .1, p = s.pos;
   for (const b of blocks) {
     if (b === s.e || b.dead || !b.body || b.holder || b.kind !== 'fort' || b.anchored || b.team !== s.team) continue; const t = b.body.translation();
@@ -2666,7 +2677,7 @@ function grabBlock(r, e) {
   if (e.anchored) { const t = e.body.translation(); unanchorAround(V(t.x, t.y, t.z), 1.2, e); e.anchored = false; } // pulling a block out loosens its neighbours
   if (e.slot) { e.slot.e = null; e.slot = null; }
   dropAnimals(r); // grabbing anything else makes you let go of the animal you're carrying
-  dropBody(e); hideBlock(e); e.holder = r; e.live = false; e.atHome = false;
+  dropBody(e); hideBlock(e); e.holder = r; e.live = false; e.atHome = false; e.looseSince = null; // (its "lying loose" timer starts again when it's dropped)
   r.stack.unshift(e); refreshHeld(r);
   fxBurst(rPos(r).setY(rPos(r).y + 1.3), e.kind === 'flag' ? e.color.getHex() : 0xffffff, .5, .2);
   if (e.kind === 'flag') onFlagTaken(e, r);
@@ -3100,10 +3111,14 @@ function onFlagTaken(f, r) {
   else if (r.isPlayer) { bigToast('RUN!', 'blue'); sfx('flagGrab'); }
   toast([[r.name.toUpperCase(), r.color], [' GRABBED THE ', null], [f.team.toUpperCase() + ' FLAG', teamCol(f.team)]]);
 }
+// a flag going home is always announced, so it never just seems to vanish
+function flagReturnedToast(team, by) {
+  toast(by ? [[by.name.toUpperCase(), by.color], [' RETURNED THE ', null], [team.toUpperCase() + ' FLAG', teamCol(team)]] : [[team.toUpperCase() + ' FLAG', teamCol(team)], [' WENT HOME', null]]);
+}
 function updateFlags() {
   for (const team of ['blue', 'red']) for (const f of FLAGS[team]) {
     if (f.holder) {
-      const r = f.holder;
+      const r = f.holder; f.looseSince = null;
       if (r.team !== f.team && r.state === 'play' && r.frozenT <= 0 && inGate(r.team, rPos(r).setY(rPos(r).y - .5))) scoreFlag(r.team, f, r);
       continue;
     }
@@ -3114,11 +3129,11 @@ function updateFlags() {
     if (inGate(enemy, p)) { scoreFlag(enemy, f, f.thrower); continue; }
     // your own team touching a loose flag sends it straight home
     // ...but not inside your own fort: a flag that falls in there stays put until someone steals it
-    if (!f.atHome && !f.live) { f.looseSince = f.looseSince ?? match.time; if (f.looseSince - match.time > 25 && !inOwnFort(f.team, p)) { resetFlag(f); f.looseSince = null; netEv(['ret', f.team]); if (f.team === P.team) toast('FLAG RETURNED'); continue; } } else f.looseSince = null;
+    if (!f.atHome && !f.live) { f.looseSince = f.looseSince ?? match.time; if (f.looseSince - match.time > 25 && !inOwnFort(f.team, p)) { resetFlag(f); f.looseSince = null; netEv(['ret', f.team]); flagReturnedToast(f.team); continue; } } else f.looseSince = null;
     if (!f.atHome && !inOwnFort(f.team, p)) for (const r of robots) {
       if (r.team === f.team && r.state === 'play' && capsuleDist(r, p) < 1.7) {
         resetFlag(f);
-        netEv(['ret', f.team]); if (f.team === P.team) toast('FLAG RETURNED');
+        netEv(['ret', f.team]); flagReturnedToast(f.team, r);
         break;
       }
     }
@@ -4032,12 +4047,18 @@ function updateRage(a, dt) {
   R.puff -= dt;
   if (R.puff <= 0) { R.puff = .07; const q = a.body.rotation(), fw = V(0, 0, 1).applyQuaternion(tmpQ.set(q.x, q.y, q.z, q.w)); emit(V(t.x + fw.x * .7 + rr(-.2, .2), t.y + 1.0, t.z + fw.z * .7 + rr(-.2, .2)), rnd() < .3 ? 0x555555 : 0xf2f2f2, V(rr(-.5, .5), rr(2.2, 3.4), rr(-.5, .5)), rr(.18, .3), .55, -1.5); }
   const tg = R.target;
-  if (R.t <= 0 || !tg || tg.state !== 'play' || t.y < -5) { calmDown(a); return; }
+  if (!tg || tg.state !== 'play' || t.y < -5) { calmDown(a); return; } // no time limit: it doesn't stop until you're knocked down
   if (!a.upright) { getUp(a, dt); R.t += dt * .8; return; }   // first it has to get back on its feet
   if (R.wind > 0) { animateLegs(a, 'held'); return; } // then scrapes its hoof for a moment
   if (!R.charging) { R.charging = true; a.col.setFriction(0); }
   // charge straight at its victim, faster than anyone can run
-  const g = rPos(tg), dir = V(g.x - t.x, 0, g.z - t.z); const dist = dir.length(); dir.normalize();
+  const g = rPos(tg); let aim = g;
+  // if you went through a portal, it follows you through whichever way is shorter (straight at you, or via a portal)
+  { let best = Math.hypot(g.x - t.x, g.z - t.z);
+    for (const Pn of PORTALS) { const Q = PORTALS[1 - Pn.i], via = Math.hypot(Pn.pos.x - t.x, Pn.pos.z - t.z) + Math.hypot(g.x - Q.pos.x, g.z - Q.pos.z) + 6;
+      if (via < best) { best = via; const front = (t.x - Pn.pos.x) * Pn.n.x + (t.z - Pn.pos.z) * Pn.n.z; // walk round to the front of the ring first, then straight in
+        aim = front > 1.2 || Math.hypot(t.x - Pn.pos.x, t.z - Pn.pos.z) < 3 ? Pn.pos : Pn.pos.clone().addScaledVector(Pn.n, 4); } } }
+  const dir = V(aim.x - t.x, 0, aim.z - t.z); dir.normalize(); const dist = Math.hypot(g.x - t.x, g.z - t.z);
   a.body.setLinvel({ x: dir.x * RAGE_SPEED, y: Math.min(lv.y, 3), z: dir.z * RAGE_SPEED }, true);
   a.body.setRotation(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.atan2(dir.x, dir.z)), true); a.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
   animateLegs(a, 'walk', 4);
@@ -4875,7 +4896,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { PORTALS, get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -5440,7 +5461,7 @@ function clientEv(e) {
   else if (k === 'wool') woolHeap(V(e[1], 0, e[2]));
   else if (k === 'flag') { if (e[1] === P.team) { bigToast('FLAG STOLEN!', 'red'); buzz('stolen'); sfx('alert'); } else if (e[2] === robots.indexOf(P)) { bigToast('RUN!', 'blue'); sfx('flagGrab'); } const rr_ = robots[e[2]]; if (rr_) toast([[rr_.name.toUpperCase(), rr_.color], [' GRABBED THE ', null], [String(e[1]).toUpperCase() + ' FLAG', teamCol(e[1])]]); }
   else if (k === 'kof') { const a = robots[e[1]], v = robots[e[2]]; if (v === P) REPLAY.lastKiller = { r: a, t: now() }; if (a && v) toast([[a.name.toUpperCase(), a.color], [' KNOCKED OUT ', null], [v.name.toUpperCase(), v.color]]); }
-  else if (k === 'ret') { if (e[1] === P.team) toast('FLAG RETURNED'); }
+  else if (k === 'ret') flagReturnedToast(e[1]);
   else if (k === 'score') { const g = GATES[e[1]]; g.flash = 1; buzz(e[1] === P.team ? 'score' : 'theyScore'); sfx(e[1] === P.team ? 'score' : 'lose'); bigToast(e[1] === 'blue' ? 'BLUE SCORES!' : 'RED SCORES!', e[1]); }
   else if (k === 'end') { setTimeout(() => endMatch(), 150); }
   else if (k === 'bh') startBlackHole(e[1]);
