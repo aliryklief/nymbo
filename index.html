@@ -114,7 +114,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #painter small{font-size:9px;color:var(--muted)}#paintCol{width:80px;height:30px;border:0;background:none}
 #painter .sws{display:grid;grid-template-columns:repeat(4,18px);gap:4px}#painter .sws button{width:18px;height:18px;border-radius:4px;border:1px solid rgba(255,255,255,.4);padding:0}
 #painter .ptools{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}#painter .ptools button{flex:1;padding:7px 4px;border-radius:10px;border:1.5px solid var(--ink2);background:rgba(255,255,255,.06);color:#fff;font:600 12px var(--body)}
-#painter .ptools button.on{background:#ffd84a;color:#141a2c}
+#painter .ptools button.on{background:#ffd84a;color:#141a2c}#painter .ptools .pimp{flex:1;padding:7px 4px;border-radius:10px;border:1.5px solid var(--ink2);background:rgba(255,255,255,.06);color:#fff;font:600 12px var(--body);text-align:center}
+#painter .pbox{max-height:96vh;overflow:auto}#paintCv{width:min(86vw,380px) !important;height:auto !important}#painter .prow{flex-wrap:wrap;justify-content:center}#painter .ptools{margin-top:6px}
 #nv{position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0;transition:opacity .25s;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,.75) 100%),repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0 2px,rgba(0,0,0,0) 2px 4px),rgba(70,255,90,.9);mix-blend-mode:multiply}
 #vig{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;box-shadow:inset 0 0 34px 2px rgba(255,40,40,.6);transition:opacity .3s}
 #vig.on{opacity:.45}#vig.on.hot{box-shadow:inset 0 0 46px 5px rgba(255,30,30,.7)}
@@ -319,8 +320,10 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <h3 id="paintTitle">Paint</h3>
   <div class="prow"><canvas id="paintCv" width="256" height="256"></canvas><div class="pside"><canvas id="paintPv" width="96" height="96"></canvas><small>how it repeats</small>
     <input type="color" id="paintCol" value="#ffffff"><div class="sws"><button data-sw="#ffffff"></button><button data-sw="#d9dbe2"></button><button data-sw="#a9adb8"></button><button data-sw="#6f737c"></button><button data-sw="#3a3d44"></button><button data-sw="#e8d9b8"></button><button data-sw="#b98a5a"></button><button data-sw="#6b4526"></button><button data-sw="#d6e8cc"></button><button data-sw="#7cc24e"></button><button data-sw="#3f9a35"></button><button data-sw="#1f5a1a"></button></div></div></div>
-  <div class="ptools"><button data-tool="pen">✏ Pen</button><button data-tool="fill">🪣 Fill</button><button data-tool="pick">💧 Pick</button><button id="paintClear">Fill all</button></div>
-  <p class="rules" style="margin:6px 0">For blocks, white shows the block's own colour; darker shades make lines and shadows.</p>
+  <div class="ptools"><button data-tool="pen">✏ Pen</button><button data-tool="erase">⌫ Eraser</button><button data-tool="line">╱ Line</button><button data-tool="rect">▭ Box</button><button data-tool="fill">🪣 Fill</button><button data-tool="pick">💧 Pick</button></div>
+  <div class="ptools"><button data-size="1">• S</button><button data-size="2">● M</button><button data-size="3">⬤ L</button><button id="paintMirror">⇋ Mirror</button><button id="paintUndo">↶</button><button id="paintRedo">↷</button></div>
+  <div class="ptools"><label class="pimp">🖼 Import picture<input type="file" accept="image/*" id="paintImport" hidden></label><button id="paintClear">Fill all</button></div>
+  <p class="rules" id="paintTip" style="margin:6px 0">For blocks, white shows the block's own colour; darker shades make lines and shadows.</p>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="ghost" id="paintCancel">Cancel</button><button class="ghost" id="paintSave">Save &amp; use</button></div>
 </div></div>
 <div class="sheet" id="looklab" hidden>
@@ -443,6 +446,24 @@ const yawTo = (dx, dz) => Math.atan2(-dx, -dz);
 // ---------------- game constants ----------------
 // MAPS: Classic (medium) and two bigger ones (1.4x): the cloud conveyor and the rainbow bridge. The world is built from
 // these numbers when the page loads, so picking a map in the menu reloads the page.
+// PAINTABLE NETS: a box-ish shape's six faces laid out flat as a cross (top / left·front·right·back / bottom) in one
+// small picture (the "atlas"), so one painting wraps round the robot's head, body and arms (or an animal's body and head).
+// The bottom-right corner of every atlas stays white: everything else on the model (ears, legs...) samples that.
+const PNET = { W: 64, H: 48, C: 8, cells: { top: [1, 0], left: [0, 1], front: [1, 1], right: [2, 1], back: [3, 1], bottom: [1, 2] } };
+function netUV(geo, ox, oy) {
+  geo.computeBoundingBox(); const bb = geo.boundingBox, P = geo.attributes.position, Nn = geo.attributes.normal, uv = geo.attributes.uv, { W, H, C } = PNET;
+  const w = bb.max.x - bb.min.x || 1, h = bb.max.y - bb.min.y || 1, d = bb.max.z - bb.min.z || 1, k = (v, a, b) => Math.min(.97, Math.max(.03, (v - a) / (b - a || 1)));
+  for (let i = 0; i < P.count; i++) {
+    const x = P.getX(i), y = P.getY(i), z = P.getZ(i), nx = Nn.getX(i), ny = Nn.getY(i), nz = Nn.getZ(i), ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+    let f, s, t;
+    if (az >= ax && az >= ay) { if (nz > 0) { f = 'front'; s = k(x, bb.min.x, bb.max.x); } else { f = 'back'; s = 1 - k(x, bb.min.x, bb.max.x); } t = k(y, bb.min.y, bb.max.y); }
+    else if (ax >= ay) { if (nx < 0) { f = 'left'; s = k(z, bb.min.z, bb.max.z); } else { f = 'right'; s = 1 - k(z, bb.min.z, bb.max.z); } t = k(y, bb.min.y, bb.max.y); }
+    else { s = k(x, bb.min.x, bb.max.x); if (ny > 0) { f = 'top'; t = 1 - k(z, bb.min.z, bb.max.z); } else { f = 'bottom'; t = k(z, bb.min.z, bb.max.z); } }
+    const [cx, cy] = PNET.cells[f]; uv.setXY(i, (ox + (cx + s) * C) / W, 1 - (oy + (cy + 1 - t) * C) / H);
+  }
+  uv.needsUpdate = true; return geo;
+}
+function whiteUV(geo) { const uv = geo.attributes.uv; if (!uv) return geo; for (let i = 0; i < uv.count; i++) uv.setXY(i, (PNET.W - 1.5) / PNET.W, 1.5 / PNET.H); uv.needsUpdate = true; return geo; }
 const MAP = (() => { try { const m = localStorage.getItem('nymbo-map'); return ['classic', 'clouds', 'rainbow'].includes(m) ? m : 'classic'; } catch (e) { return 'classic'; } })();
 const MS = MAP === 'classic' ? 1 : 1.4;   // map scale
 const MX = Math.round(67 * MS), MZ = Math.round(46 * MS); // half-size of the island (classic: 1.2x the first test map)
@@ -775,7 +796,7 @@ function portalCheck(p) { // is point p inside a portal's doorway? returns the p
 }
 
 // ---- animals: blocky cows and sheep near the portals (made pick-up-able in the blocks file) ----
-const legGeo = {};
+const legGeo = {}, ANIMAL_TEX = {}; // (painted animal skins from the Look lab)
 const voiceOf = (e, angry) => e.animal === 'cow' ? (angry ? 'mooAngry' : 'moo') : e.animal === 'chicken' ? (angry ? 'squawk' : 'cluck') : (angry ? 'baaAngry' : 'baa');
 function makeAnimal(kind) {
   // body built from boxes, merged into ONE mesh with vertex colours; the four legs are separate so they can kick
@@ -785,34 +806,35 @@ function makeAnimal(kind) {
   let legs; const W = '#f6f6f2', K = '#1c1c1e';
   if (kind === 'cow') {
     // black-and-white dairy cow: white body with big black patches on both sides and the back, black ears, pink nose
-    add(1.0, .8, 1.6, 0, 1.0, 0, W);
+    add(1.0, .8, 1.6, 0, 1.0, 0, W); parts[parts.length - 1].userData.net = [0, 0];
     for (const [x, y, z, w, h, d] of [[-.5, 1.05, -.35, .04, .5, .7], [-.5, .9, .45, .04, .45, .45], [.5, 1.1, .2, .04, .48, .8], [.5, .85, -.55, .04, .35, .4], [.1, 1.405, -.2, .6, .03, .65], [-.2, 1.405, .5, .35, .03, .3]]) add(w, h, d, x, y, z, K);
-    add(.7, .65, .6, 0, 1.25, 1.0, W); add(.71, .3, .35, 0, 1.4, .95, K); // black top of the head
+    add(.7, .65, .6, 0, 1.25, 1.0, W); parts[parts.length - 1].userData.net = [32, 0]; add(.71, .3, .35, 0, 1.4, .95, K); // black top of the head
     add(.6, .3, .2, 0, 1.08, 1.35, '#f0a9b0'); add(.08, .08, .02, -.14, 1.1, 1.455, '#7a4a50'); add(.08, .08, .02, .14, 1.1, 1.455, '#7a4a50');
     add(.25, .14, .14, -.47, 1.42, .95, K); add(.25, .14, .14, .47, 1.42, .95, K); // ears
     add(.1, .18, .1, -.22, 1.62, 1.0, '#e8e2c8'); add(.1, .18, .1, .22, 1.62, 1.0, '#e8e2c8'); // little horns
     add(.12, .5, .12, 0, 1.0, -.86, K); // tail
     legs = [[-.33, -.55], [.33, -.55], [-.33, .52], [.33, .52]];
-    legGeo.cow = legGeo.cow || colGeo(new THREE.BoxGeometry(.3, .36, .3).translate(0, -.18, 0), W);
-    legGeo.hoof = legGeo.hoof || colGeo(new THREE.BoxGeometry(.32, .1, .32).translate(0, -.31, 0), K);
+    legGeo.cow = legGeo.cow || whiteUV(colGeo(new THREE.BoxGeometry(.3, .36, .3).translate(0, -.18, 0), W));
+    legGeo.hoof = legGeo.hoof || whiteUV(colGeo(new THREE.BoxGeometry(.32, .1, .32).translate(0, -.31, 0), K));
   } else if (kind === 'chicken') {
     // a plump white hen: red comb and wattle, orange beak, a little tail. (Its legs and wings are added below.)
     const add2 = (w, h, d, x, y, z, c) => { const gg = new THREE.BoxGeometry(w, h, d); gg.translate(x, y, z); parts.push(colGeo(gg, c)); };
-    add2(.56, .46, .62, 0, -.02, -.02, '#fbfaf4'); add2(.34, .36, .32, 0, .3, .26, '#fbfaf4');      // body, head
+    add2(.56, .46, .62, 0, -.02, -.02, '#fbfaf4'); parts[parts.length - 1].userData.net = [0, 0]; add2(.34, .36, .32, 0, .3, .26, '#fbfaf4'); parts[parts.length - 1].userData.net = [32, 0]; // body, head
     add2(.1, .14, .22, 0, .52, .26, '#e0281a'); add2(.1, .14, .08, 0, .14, .44, '#e0281a');          // comb, wattle
     add2(.14, .09, .14, 0, .28, .48, '#ffb300');                                                      // beak
     add2(.06, .07, .02, -.1, .34, .425, '#1c1c1e'); add2(.06, .07, .02, .1, .34, .425, '#1c1c1e');   // eyes
     add2(.4, .3, .16, 0, .14, -.36, '#f1efe6');                                                        // tail
     legs = [];
   } else {
-    add(1.0, .85, 1.3, 0, 1.0, 0, '#f4f4f0'); add(.55, .55, .55, 0, 1.15, .82, '#3a3a3f'); add(1.05, .3, 1.35, 0, 1.4, 0, '#fafaf6');
+    add(1.0, .85, 1.3, 0, 1.0, 0, '#f4f4f0'); parts[parts.length - 1].userData.net = [0, 0]; add(.55, .55, .55, 0, 1.15, .82, '#3a3a3f'); parts[parts.length - 1].userData.net = [32, 0]; add(1.05, .3, 1.35, 0, 1.4, 0, '#fafaf6');
     add(.2, .12, .1, -.33, 1.25, .82, '#3a3a3f'); add(.2, .12, .1, .33, 1.25, .82, '#3a3a3f');
     legs = [[-.3, -.42], [.3, -.42], [-.3, .42], [.3, .42]];
-    legGeo.sheep = legGeo.sheep || colGeo(new THREE.BoxGeometry(.26, .36, .26).translate(0, -.18, 0), '#3a3a3f');
+    legGeo.sheep = legGeo.sheep || whiteUV(colGeo(new THREE.BoxGeometry(.26, .36, .26).translate(0, -.18, 0), '#3a3a3f'));
   }
+  for (const pg of parts) { if (pg.userData.net) netUV(pg, ...pg.userData.net); else whiteUV(pg); } // body and head can be painted; the rest stays plain
   const geo = mergeGeometries(parts); parts.forEach(p => p.dispose());
-  const mat = new LiteMat({ vertexColors: true });
-  const g = new THREE.Mesh(geo, mat); g.castShadow = true;
+  const mat = new LiteMat({ vertexColors: true, map: ANIMAL_TEX[kind] || null });
+  const g = new THREE.Mesh(geo, mat); g.castShadow = true; g.userData.kind = kind;
   // angry face, only shown when it breaks loose: red face plate, black slanted brows, glowing eyes
   { const face = new THREE.Group(), cow = kind === 'cow', fy = cow ? .49 : .27, fz = cow ? 1.035 : .825, w = cow ? .66 : .52;
     const red = new THREE.MeshBasicMaterial({ color: 0xe0281a }), blk = new THREE.MeshBasicMaterial({ color: 0x111111 }), eyeM = new THREE.MeshBasicMaterial({ color: 0xffe14a });
@@ -2650,6 +2672,7 @@ const RB = {
   ball: new THREE.SphereGeometry(.37, 28, 18).rotateZ(Math.PI / 2), // poles on the rolling axis, so the stripes sweep round as it rolls
   ear: new THREE.CylinderGeometry(.12, .12, .08, 14), bolt: new THREE.CylinderGeometry(.03, .05, .22, 6),
 };
+netUV(RB.head, 0, 0); netUV(RB.body, 32, 0); netUV(RB.arm, 0, 24); whiteUV(RB.ear); // (paintable: see the Look lab)
 const ballTexs = {};
 function ballTex(color) { // player colour (a touch lighter than the body) with six white stripes running pole to pole
   if (ballTexs[color]) return ballTexs[color];
@@ -2676,7 +2699,7 @@ function robotModel(color, happy) {
   add(RB.ball, ballMat, 0, 0, 0, ball, true);
   // fixed hub caps on both sides (the poles): a dark disc with a colour button, they don't roll with the ball — like the early robot sheet
   const hub = new THREE.Group(); hub.position.y = -.58; g.add(hub);
-  const capGeo = RB.cap || (RB.cap = new THREE.CylinderGeometry(.17, .17, .05, 20).rotateZ(Math.PI / 2)), dotGeo = RB.dot || (RB.dot = new THREE.CylinderGeometry(.08, .08, .06, 16).rotateZ(Math.PI / 2));
+  const capGeo = RB.cap || (RB.cap = new THREE.CylinderGeometry(.17, .17, .05, 20).rotateZ(Math.PI / 2)), dotGeo = RB.dot || (RB.dot = whiteUV(new THREE.CylinderGeometry(.08, .08, .06, 16).rotateZ(Math.PI / 2)));
   for (const sx of [-1, 1]) { add(capGeo, dark, sx * .36, 0, 0, hub); add(dotGeo, body, sx * .385, 0, 0, hub); }
   // (the old team-colour disc under the ball is gone: it floated in the air under you when you jumped, looking like a stray shadow)
 
@@ -6926,7 +6949,8 @@ lookLabRows = function () {
     const row = document.createElement('div'); row.className = 'labsnd'; const cur = CHOICE.tex[s.id]; const ups = CUSTOM.tex[s.id] || [];
     const chip = (val, label, thumb) => `<span class="chip${cur === val || (val === null && cur == null) ? ' on' : ''}">${thumb ? `<i class="thumb" style="background-image:url(${thumb})"></i>` : ''}<button class="cu" data-v='${JSON.stringify(val)}'>${label}</button></span>`;
     const chips = [chip(null, 'Game')];
-    if (s.set) { for (const k of Object.keys(BUILTIN)) chips.push(chip('b:' + k, BUILTIN_NAMES[k], thumbOf(getBuiltin(k)))); if (EDITS[s.id]) chips.push(chip('edit', 'My painting', EDITS[s.id])); }
+    if (s.set && !s.net) for (const k of Object.keys(BUILTIN)) chips.push(chip('b:' + k, BUILTIN_NAMES[k], thumbOf(getBuiltin(k))));
+    if (s.set && EDITS[s.id]) chips.push(chip('edit', 'My painting', EDITS[s.id]));
     ups.forEach((u, i) => chips.push(chip(i, u.fname.replace(/[<'"]/g, ''), u.canvas.toDataURL())));
     row.innerHTML = `<b>${s.name}</b><span class="src">${s.tip}</span><div class="chips">${chips.join('')}${s.set ? '<span class="chip"><button class="ed">✏ Paint</button></span>' : ''}<label class="chip up">+ Upload<input type="file" accept="image/*" hidden></label></div>`;
     row.querySelectorAll('.cu').forEach(b => b.onclick = () => { const v = JSON.parse(b.dataset.v);
@@ -6938,48 +6962,93 @@ lookLabRows = function () {
   }
 };
 
-// ---------------- the pixel painter (✏ Paint) ----------------
-// 16×16 pixels. For blocks, white = the block's own colour (the picture is multiplied by it), so paint light shades.
-const PAINT = { n: 16, px: null, col: '#ffffff', tool: 'pen', slot: null };
+// ---------------- the painter (✏ Paint) ----------------
+// Blocks and ground: a 16×16 tile. Robots and animals: an unfolded NET (each part's six faces laid out flat as a cross),
+// so you can paint a face on the front of the head, stripes down the back, spots on a cow... White = the model's own
+// colour (robots keep their team colours), darker shades draw on top.
+// Tools: pen (3 sizes) · eraser · line · box · fill · colour picker · mirror (left/right, inside each face) · undo/redo ·
+// import a picture · fill all.
+const NETS = {
+  robot: { w: PNET.W, h: PNET.H, parts: [['HEAD', 0, 0], ['BODY', 32, 0], ['ARMS', 0, 24]] },
+  animal: { w: PNET.W, h: PNET.H, parts: [['BODY', 0, 0], ['HEAD', 32, 0]] },
+};
+const netFaces = kind => { const out = []; for (const [label, ox, oy] of NETS[kind].parts) for (const [f, [cx, cy]] of Object.entries(PNET.cells)) out.push({ label, f, x: ox + cx * PNET.C, y: oy + cy * PNET.C, w: PNET.C, h: PNET.C }); return out; };
+const robotSet = t => { for (const r of robots) { const m = r.model.mats[0]; if (m.map !== t) { m.map = t || null; m.needsUpdate = true; } } };
+const animalSet = kind => t => { ANIMAL_TEX[kind] = t || null; for (const e of blocks) if (e.kind === 'animal' && e.animal === kind && e.mesh && e.mesh.material) { e.mesh.material.map = t || null; e.mesh.material.needsUpdate = true; }
+  for (const A of (typeof ATTACKERS !== 'undefined' ? ATTACKERS : [])) if (A.m.userData.kind === kind) { A.m.material.map = t || null; A.m.material.needsUpdate = true; } };
+TP_SLOTS.push(
+  { id: 'tp_robot', name: 'Robots (paint the net)', tip: 'head, body and arms unfolded; white keeps each robot\'s own colour', set: robotSet, net: 'robot' },
+  { id: 'tp_cow', name: 'Cows (paint the net)', tip: 'body and head unfolded', set: animalSet('cow'), net: 'animal' },
+  { id: 'tp_sheep', name: 'Sheep (paint the net)', tip: 'body and head unfolded', set: animalSet('sheep'), net: 'animal' },
+  { id: 'tp_chicken', name: 'Chickens (paint the net)', tip: 'body and head unfolded', set: animalSet('chicken'), net: 'animal' },
+);
+for (const sl of TP_SLOTS) if (sl.net) try { tpApply(sl); } catch (e) {}
+const PAINT = { w: 16, h: 16, px: null, col: '#ffffff', tool: 'pen', size: 1, mirror: false, slot: null, undo: [], redo: [], faces: null, drag: null };
 function openPainter(slot) {
-  PAINT.slot = slot; const n = PAINT.n, el = $('painter');
-  // start from whatever the row shows now
+  PAINT.slot = slot; const net = slot.net && NETS[slot.net]; PAINT.w = net ? net.w : 16; PAINT.h = net ? net.h : 16; PAINT.faces = net ? netFaces(slot.net) : null;
+  const { w, h } = PAINT;
   const src = (() => { const v = CHOICE.tex[slot.id]; if (typeof v === 'string' && v.startsWith('b:')) return getBuiltin(v.slice(2)).c; if (v === 'edit' && editTex[slot.id]) return editTex[slot.id].c; const u = (CUSTOM.tex[slot.id] || [])[v]; if (u) return u.canvas; if (slot.id === 'tp_ground' && GROUND0.image) return GROUND0.image; return null; })();
-  const c = tpCanvas(n, g => { g.fillStyle = slot.id === 'tp_leaves' ? '#d6e8cc' : '#ffffff'; g.fillRect(0, 0, n, n); if (src) { g.imageSmoothingEnabled = true; g.drawImage(src, 0, 0, n, n); } });
-  PAINT.px = c.getContext('2d').getImageData(0, 0, n, n);
-  $('paintTitle').textContent = 'Paint · ' + slot.name; el.hidden = false; drawPainter();
+  const c = tpCanvas(1, () => {}); c.width = w; c.height = h; const g = c.getContext('2d'); g.fillStyle = slot.id === 'tp_leaves' ? '#d6e8cc' : '#ffffff'; g.fillRect(0, 0, w, h); if (src) { g.imageSmoothingEnabled = !net; g.drawImage(src, 0, 0, w, h); }
+  PAINT.px = g.getImageData(0, 0, w, h); PAINT.undo = []; PAINT.redo = [];
+  const cv = $('paintCv'), sc = Math.max(1, Math.floor(512 / Math.max(w, h))); cv.width = w * sc; cv.height = h * sc; cv.style.aspectRatio = w + ' / ' + h; cv.style.height = 'auto';
+  $('paintPv').hidden = !!net; $('paintPv').nextElementSibling.hidden = !!net; $('paintTip').textContent = net ? 'Each part is unfolded: TOP, then LEFT · FRONT · RIGHT · BACK, then BOTTOM. White keeps the model\'s own colour.' : 'For blocks, white shows the block\'s own colour; darker shades make lines and shadows.';
+  $('paintTitle').textContent = 'Paint · ' + slot.name; $('painter').hidden = false; drawPainter();
 }
+const faceAt = (x, y) => PAINT.faces && PAINT.faces.find(f => x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h);
 function drawPainter() {
-  const cv = $('paintCv'), g = cv.getContext('2d'), n = PAINT.n, s = cv.width / n, d = PAINT.px.data;
-  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const i = (y * n + x) * 4; g.fillStyle = `rgb(${d[i]},${d[i + 1]},${d[i + 2]})`; g.fillRect(x * s, y * s, s, s); }
-  g.strokeStyle = 'rgba(0,0,0,.12)'; g.lineWidth = 1; for (let k = 1; k < n; k++) { g.beginPath(); g.moveTo(k * s, 0); g.lineTo(k * s, cv.height); g.moveTo(0, k * s); g.lineTo(cv.width, k * s); g.stroke(); }
-  // preview: 3×3 tiles
-  const pv = $('paintPv'), pg = pv.getContext('2d'), tile = tpCanvas(n, q => q.putImageData(PAINT.px, 0, 0)); pg.imageSmoothingEnabled = false;
-  for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) pg.drawImage(tile, a * pv.width / 3, b * pv.height / 3, pv.width / 3, pv.height / 3);
+  const cv = $('paintCv'), g = cv.getContext('2d'), { w, h } = PAINT, s = cv.width / w, d = PAINT.px.data;
+  g.imageSmoothingEnabled = false; g.drawImage(tpCanvas(1, () => {}), 0, 0); const tile = document.createElement('canvas'); tile.width = w; tile.height = h; tile.getContext('2d').putImageData(PAINT.px, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+  if (PAINT.faces) { g.fillStyle = '#2a3046'; g.fillRect(0, 0, cv.width, cv.height); } // unused parts of the net: dark
+  if (PAINT.faces) for (const f of PAINT.faces) g.drawImage(tile, f.x, f.y, f.w, f.h, f.x * s, f.y * s, f.w * s, f.h * s); else g.drawImage(tile, 0, 0, cv.width, cv.height);
+  if (s >= 6) { g.strokeStyle = 'rgba(0,0,0,.1)'; g.lineWidth = 1; for (let k = 1; k < w; k++) { g.beginPath(); g.moveTo(k * s, 0); g.lineTo(k * s, cv.height); g.stroke(); } for (let k = 1; k < h; k++) { g.beginPath(); g.moveTo(0, k * s); g.lineTo(cv.width, k * s); g.stroke(); } }
+  if (PAINT.faces) { g.font = `bold ${Math.max(8, s * 2.2)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const f of PAINT.faces) { g.strokeStyle = 'rgba(255,216,74,.9)'; g.lineWidth = 2; g.strokeRect(f.x * s + 1, f.y * s + 1, f.w * s - 2, f.h * s - 2); g.fillStyle = 'rgba(0,0,0,.28)'; g.fillText(f.f === 'front' ? f.label : f.f[0].toUpperCase(), (f.x + f.w / 2) * s, (f.y + f.h / 2) * s); }
+    if (PAINT.mirror) { g.strokeStyle = 'rgba(255,90,90,.6)'; g.setLineDash([4, 4]); for (const f of PAINT.faces) { g.beginPath(); g.moveTo((f.x + f.w / 2) * s, f.y * s); g.lineTo((f.x + f.w / 2) * s, (f.y + f.h) * s); g.stroke(); } g.setLineDash([]); } }
+  else if (PAINT.mirror) { g.strokeStyle = 'rgba(255,90,90,.6)'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(cv.width / 2, 0); g.lineTo(cv.width / 2, cv.height); g.stroke(); g.setLineDash([]); }
+  if (PAINT.drag && (PAINT.tool === 'line' || PAINT.tool === 'rect')) { const [x0, y0] = PAINT.drag.a, [x1, y1] = PAINT.drag.b; g.strokeStyle = PAINT.col; g.lineWidth = Math.max(2, s * .6); if (PAINT.tool === 'rect') g.strokeRect(Math.min(x0, x1) * s, Math.min(y0, y1) * s, (Math.abs(x1 - x0) + 1) * s, (Math.abs(y1 - y0) + 1) * s); else { g.beginPath(); g.moveTo((x0 + .5) * s, (y0 + .5) * s); g.lineTo((x1 + .5) * s, (y1 + .5) * s); g.stroke(); } }
+  const pv = $('paintPv'); if (!pv.hidden) { const pg = pv.getContext('2d'); pg.imageSmoothingEnabled = false; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) pg.drawImage(tile, a * pv.width / 3, b * pv.height / 3, pv.width / 3, pv.height / 3); }
   document.querySelectorAll('#painter [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === PAINT.tool));
+  document.querySelectorAll('#painter [data-size]').forEach(b => b.classList.toggle('on', +b.dataset.size === PAINT.size));
+  $('paintMirror').classList.toggle('on', PAINT.mirror);
 }
-function paintAt(ev) {
-  const cv = $('paintCv'), r = cv.getBoundingClientRect(), n = PAINT.n, x = Math.floor((ev.clientX - r.left) / r.width * n), y = Math.floor((ev.clientY - r.top) / r.height * n);
-  if (x < 0 || y < 0 || x >= n || y >= n) return; const d = PAINT.px.data, i = (y * n + x) * 4;
-  const c = new THREE.Color(PAINT.col), rgb = [c.r * 255 | 0, c.g * 255 | 0, c.b * 255 | 0];
-  if (PAINT.tool === 'pick') { PAINT.col = '#' + new THREE.Color(d[i] / 255, d[i + 1] / 255, d[i + 2] / 255).getHexString(); $('paintCol').value = PAINT.col; PAINT.tool = 'pen'; }
-  else if (PAINT.tool === 'fill') { const t0 = [d[i], d[i + 1], d[i + 2]], st = [[x, y]], seen = new Set();
-    while (st.length) { const [a, b] = st.pop(); if (a < 0 || b < 0 || a >= n || b >= n || seen.has(a + ',' + b)) continue; const k = (b * n + a) * 4; if (d[k] !== t0[0] || d[k + 1] !== t0[1] || d[k + 2] !== t0[2]) continue; seen.add(a + ',' + b); d[k] = rgb[0]; d[k + 1] = rgb[1]; d[k + 2] = rgb[2]; st.push([a + 1, b], [a - 1, b], [a, b + 1], [a, b - 1]); } }
-  else { d[i] = rgb[0]; d[i + 1] = rgb[1]; d[i + 2] = rgb[2]; d[i + 3] = 255; }
-  drawPainter();
-}
-{ const cv = $('paintCv'); let down = false;
-  cv.addEventListener('pointerdown', e => { down = true; cv.setPointerCapture(e.pointerId); paintAt(e); e.preventDefault(); });
-  cv.addEventListener('pointermove', e => { if (down && PAINT.tool === 'pen') paintAt(e); });
-  cv.addEventListener('pointerup', () => { down = false; });
+const pxAt = ev => { const cv = $('paintCv'), r = cv.getBoundingClientRect(); return [Math.floor((ev.clientX - r.left) / r.width * PAINT.w), Math.floor((ev.clientY - r.top) / r.height * PAINT.h)]; };
+function snapshot() { PAINT.undo.push(new Uint8ClampedArray(PAINT.px.data)); if (PAINT.undo.length > 40) PAINT.undo.shift(); PAINT.redo = []; }
+function setPx(x, y, rgb) { const { w, h } = PAINT; if (x < 0 || y < 0 || x >= w || y >= h) return; if (PAINT.faces && !faceAt(x, y)) return; const d = PAINT.px.data, i = (y * w + x) * 4; d[i] = rgb[0]; d[i + 1] = rgb[1]; d[i + 2] = rgb[2]; d[i + 3] = 255; }
+function stamp(x, y, rgb) { const r = PAINT.size - 1; const pts = []; for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) if (a * a + b * b <= r * r + r) pts.push([x + a, y + b]);
+  for (const [px, py] of pts) { setPx(px, py, rgb); if (PAINT.mirror) { const f = faceAt(px, py); if (f) setPx(f.x + f.w - 1 - (px - f.x), py, rgb); else if (!PAINT.faces) setPx(PAINT.w - 1 - px, py, rgb); } } }
+const curRGB = () => { const c = new THREE.Color(PAINT.tool === 'erase' ? '#ffffff' : PAINT.col); return [Math.round(c.r * 255), Math.round(c.g * 255), Math.round(c.b * 255)]; };
+function lineTo(x0, y0, x1, y1, rgb) { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let k = 0; k <= n; k++) stamp(Math.round(x0 + (x1 - x0) * k / n), Math.round(y0 + (y1 - y0) * k / n), rgb); }
+function fillFrom(x, y, rgb) { const { w, h } = PAINT, d = PAINT.px.data, i0 = (y * w + x) * 4, t0 = [d[i0], d[i0 + 1], d[i0 + 2]], f0 = faceAt(x, y), st = [[x, y]], seen = new Set();
+  while (st.length) { const [a, b] = st.pop(); if (a < 0 || b < 0 || a >= w || b >= h || seen.has(a + ',' + b)) continue; if (PAINT.faces && faceAt(a, b) !== f0) continue; const k = (b * w + a) * 4; if (d[k] !== t0[0] || d[k + 1] !== t0[1] || d[k + 2] !== t0[2]) continue; seen.add(a + ',' + b); d[k] = rgb[0]; d[k + 1] = rgb[1]; d[k + 2] = rgb[2]; st.push([a + 1, b], [a - 1, b], [a, b + 1], [a, b - 1]); } }
+{ const cv = $('paintCv'); let down = false, last = null;
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); const [x, y] = pxAt(e); down = true; last = [x, y];
+    if (PAINT.tool === 'pick') { const d = PAINT.px.data, i = (y * PAINT.w + x) * 4; PAINT.col = '#' + new THREE.Color(d[i] / 255, d[i + 1] / 255, d[i + 2] / 255).getHexString(); $('paintCol').value = PAINT.col; PAINT.tool = 'pen'; down = false; drawPainter(); return; }
+    snapshot();
+    if (PAINT.tool === 'fill') { fillFrom(x, y, curRGB()); down = false; }
+    else if (PAINT.tool === 'line' || PAINT.tool === 'rect') PAINT.drag = { a: [x, y], b: [x, y] };
+    else stamp(x, y, curRGB());
+    drawPainter(); });
+  cv.addEventListener('pointermove', e => { if (!down) return; const [x, y] = pxAt(e);
+    if (PAINT.drag) PAINT.drag.b = [x, y]; else if (PAINT.tool === 'pen' || PAINT.tool === 'erase') { lineTo(last[0], last[1], x, y, curRGB()); last = [x, y]; }
+    drawPainter(); });
+  cv.addEventListener('pointerup', () => { if (PAINT.drag) { const [x0, y0] = PAINT.drag.a, [x1, y1] = PAINT.drag.b, rgb = curRGB();
+      if (PAINT.tool === 'line') lineTo(x0, y0, x1, y1, rgb); else { lineTo(x0, y0, x1, y0, rgb); lineTo(x1, y0, x1, y1, rgb); lineTo(x1, y1, x0, y1, rgb); lineTo(x0, y1, x0, y0, rgb); }
+      PAINT.drag = null; } down = false; drawPainter(); });
   document.querySelectorAll('#painter [data-tool]').forEach(b => b.onclick = () => { PAINT.tool = b.dataset.tool; drawPainter(); });
-  $('paintCol').oninput = e => { PAINT.col = e.target.value; };
-  document.querySelectorAll('#painter [data-sw]').forEach(b => { b.style.background = b.dataset.sw; b.onclick = () => { PAINT.col = b.dataset.sw; $('paintCol').value = PAINT.col; PAINT.tool = 'pen'; drawPainter(); }; });
-  $('paintClear').onclick = () => { const d = PAINT.px.data, c = new THREE.Color(PAINT.col); for (let i = 0; i < d.length; i += 4) { d[i] = c.r * 255; d[i + 1] = c.g * 255; d[i + 2] = c.b * 255; d[i + 3] = 255; } drawPainter(); };
+  document.querySelectorAll('#painter [data-size]').forEach(b => b.onclick = () => { PAINT.size = +b.dataset.size; drawPainter(); });
+  $('paintMirror').onclick = () => { PAINT.mirror = !PAINT.mirror; drawPainter(); };
+  $('paintUndo').onclick = () => { const u = PAINT.undo.pop(); if (!u) return; PAINT.redo.push(new Uint8ClampedArray(PAINT.px.data)); PAINT.px.data.set(u); drawPainter(); };
+  $('paintRedo').onclick = () => { const u = PAINT.redo.pop(); if (!u) return; PAINT.undo.push(new Uint8ClampedArray(PAINT.px.data)); PAINT.px.data.set(u); drawPainter(); };
+  $('paintImport').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const bmp = await createImageBitmap(f); snapshot(); const c = document.createElement('canvas'); c.width = PAINT.w; c.height = PAINT.h; const g = c.getContext('2d'); g.drawImage(bmp, 0, 0, PAINT.w, PAINT.h); PAINT.px = g.getImageData(0, 0, PAINT.w, PAINT.h); drawPainter(); } catch (x) { toast("COULDN'T READ THAT IMAGE"); } e.target.value = ''; };
+  $('paintCol').oninput = e => { PAINT.col = e.target.value; if (PAINT.tool === 'erase' || PAINT.tool === 'pick') PAINT.tool = 'pen'; drawPainter(); };
+  document.querySelectorAll('#painter [data-sw]').forEach(b => { b.style.background = b.dataset.sw; b.onclick = () => { PAINT.col = b.dataset.sw; $('paintCol').value = PAINT.col; if (PAINT.tool === 'erase' || PAINT.tool === 'pick') PAINT.tool = 'pen'; drawPainter(); }; });
+  $('paintClear').onclick = () => { snapshot(); const d = PAINT.px.data, rgb = curRGB(); for (let i = 0; i < d.length; i += 4) { d[i] = rgb[0]; d[i + 1] = rgb[1]; d[i + 2] = rgb[2]; d[i + 3] = 255; } drawPainter(); };
   $('paintCancel').onclick = () => { $('painter').hidden = true; };
-  $('paintSave').onclick = () => { const s = PAINT.slot, c = tpCanvas(PAINT.n, q => q.putImageData(PAINT.px, 0, 0));
+  $('paintSave').onclick = () => { const s = PAINT.slot, c = document.createElement('canvas'); c.width = PAINT.w; c.height = PAINT.h; const g = c.getContext('2d'); g.putImageData(PAINT.px, 0, 0);
+    if (s.net) { g.fillStyle = '#ffffff'; g.fillRect(PAINT.w - 4, PAINT.h - 4, 4, 4); } // (the plain corner everything else on the model uses)
     EDITS[s.id] = c.toDataURL(); try { localStorage.setItem('nymbo-texedit', JSON.stringify(EDITS)); } catch (e) {}
-    editTex[s.id] = { c, t: texFromCanvas(c, true) }; CHOICE.tex[s.id] = 'edit'; saveChoice(); tpApply(s); $('painter').hidden = true; toast('PAINTED ' + s.name.toUpperCase()); lookLabRows(); };
+    const t = texFromCanvas(c, true); if (s.net) { t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.needsUpdate = true; }
+    editTex[s.id] = { c, t }; CHOICE.tex[s.id] = 'edit'; saveChoice(); tpApply(s); $('painter').hidden = true; toast('PAINTED ' + s.name.toUpperCase()); lookLabRows(); };
 }
 
 // ============================================================
