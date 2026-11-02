@@ -5011,7 +5011,7 @@ function endCoop(quiet) {
 }
 function updateCoop(dt) {
   if (!COOP.on) return;
-  const F = FORT[COOP.team], t = now() / 1000, inside = r => r.state === 'play' && inOwnFort(COOP.team, rPos(r)) && rPos(r).y < 6;
+  const F = FORT[COOP.team], t = now() / 1000, inside = r => r.state === 'play' && (r.grounded || r.peckT > 0) && inOwnFort(COOP.team, rPos(r)) && rPos(r).y < 2.2; // only feet on the coop floor count: jumping over or walking the walls does nothing
   for (const e of COOP.hens) if (!e.dead && e.holder) COOP.taken.add(e); // picked up = taken out of the coop
   if (COOP.phase === 'armed') {
     COOP.armT -= dt;
