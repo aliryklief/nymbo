@@ -968,7 +968,7 @@ function updateLaunchers(dt, visualOnly = false) {
         const T = 2 * PAD_UP / G, land = o => V(c.x + f.x * o * T * .82, 0, c.z + f.z * o * T * .82);
         const bad = q => Math.abs(q.x) > MX - 5 || Math.abs(q.z) > MZ - 5 || Object.values(FORT).some(F => Math.abs(q.x - F.x) < FORT_RX + 3 && Math.abs(q.z - F.z) < FORT_RZ + 3);
         while (out > 1 && bad(land(out))) out -= .5;
-        r.body.setLinvel({ x: f.x * out, y: PAD_UP, z: f.z * out }, true); r.jumps = 1; r.grounded = false; r.padT = 2.9;
+        r.body.setLinvel({ x: f.x * out, y: PAD_UP, z: f.z * out }, true); r.jumps = 0; /* both your jumps are still there after a trampoline */ r.grounded = false; r.padT = 2.9;
         r.model.sq = -.35; r.model.sqv = 7; Pd.sqv = -9; sfx('pad', V(Pd.x, .5, Pd.z)); fxBurst(V(Pd.x, .6, Pd.z), 0xffd21f, 1.6, .3);
       }
     }
@@ -4665,7 +4665,7 @@ function bhMesh() {
 }
 function startBlackHole(team) {
   if (BH.on) return;
-  BH.on = true; BH.team = team; BH.t = 0; BH.R = 40; BH.eaten = 0; BH.won = false; BH.pos.set(0, MONUMENT.top + 7, 0);
+  BH.on = true; BH.team = team; BH.t = 0; BH.R = 40; BH.eaten = 0; BH.won = false; BH.pos.set(0, MONUMENT.top + 15, 0); // (above the sky island)
   BH.g = bhMesh(); BH.g.position.copy(BH.pos); BH.g.scale.setScalar(.01); scene.add(BH.g);
   sfx('nuke', BH.pos); mixDuck(.6, .8); shake = Math.max(shake, 1); bigToast('BLACK HOLE', team === 'blue' ? 'blue' : 'red');
   netEv(['bh', team]);
@@ -4773,7 +4773,7 @@ Object.assign(SFX_SYNTH, {
   bark: () => { const n = 2 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) { const t = T0(i * rr(.1, .14)), f = rr(520, 680), o = osc('sawtooth', f, t, .13), lp = AC.createBiquadFilter(), g = AC.createGain(); lp.type = 'lowpass'; lp.frequency.value = 1600; o.frequency.exponentialRampToValueAtTime(f * .55, t + .12); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.34, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + .1); o.connect(lp); lp.connect(g); out(g); noiseHit(.06, 'bandpass', 1500, .14, i * .12, true, 900, 2); } }, // excited yapping
   bite: () => { SFX_SYNTH.bark(); clack(700, .7, .08); clack(420, .6, .1); thump(110, .9, .08, .22); noiseHit(.25, 'bandpass', 1800, .6, .08, true, 500, 1.2); }, // a snarl and a big CHOMP
   spring: () => { boing(70, .75, 0, 4.2, .7); boing(140, .45, .03, 3.2, .5); boing(95, .3, .12, 2.6, .45); whoosh(1.1, .22, 400, 3200, .05, 1); }, // a big BOING-oing-oing
-  trapclick: () => { clack(1300, .55); clack(760, .45, .05); thump(95, .45, .03, .12); },
+  trapclick: () => { thump(110, .6, 0, .12); clack(900, .5, .01); clack(520, .45, .05); const t = T0(.06), o = osc('sawtooth', 420, t, .35), g = AC.createGain(), bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1100; bp.Q.value = 4; o.frequency.exponentialRampToValueAtTime(160, t + .3); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.16, t + .03); g.gain.exponentialRampToValueAtTime(.0001, t + .32); o.connect(bp); bp.connect(g); out(g); }, // CLUNK, and the spring creaking as it squashes
   flap: () => { for (let i = 0; i < 4; i++) noiseHit(.06, 'bandpass', 950, .22, i * .07, false, 600, 2); },
 });
 POWERS.push(
@@ -4891,14 +4891,14 @@ function placeSpring(at, owner) {
   let out = V(at.x, 0, at.z); if (out.lengthSq() < 4) out.set(Math.random() - .5, 0, Math.random() - .5); out.normalize();
   // a badly faked patch of ground: grass that's a shade too yellow, too smooth, sitting a hair too high, with a dark seam
   // round it and the odd corner of spring peeking out. You can spot it if you look; nobody looks.
-  const seam = new THREE.Mesh(new THREE.BoxGeometry(2.25, .05, 2.25), new LiteMat({ color: 0x2a2418 })); seam.position.y = .02; g.add(seam);
+  const seam = new THREE.Mesh(new THREE.BoxGeometry(2.25, .05, 2.25), new LiteMat({ color: NIGHT ? 0x1a2238 : 0x2a2418 })); seam.position.y = .02; g.add(seam);
   const coil = new THREE.Group(); g.add(coil); const coilM = new LiteMat({ color: 0xa8acb5, roughness: .3 });
   for (let k = 0; k < 4; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.6, .07, 8, 20), coilM); t.rotation.x = Math.PI / 2; t.position.y = -.16 + k * .05; coil.add(t); }
-  const fake = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#7cc24e'; x.fillRect(0, 0, 64, 64);
-    x.strokeStyle = 'rgba(40,60,20,.35)'; x.lineWidth = 2; x.strokeRect(1, 1, 62, 62); x.beginPath(); x.moveTo(32, 0); x.lineTo(32, 64); x.moveTo(0, 32); x.lineTo(64, 32); x.stroke(); // painted-on "grass squares", a bit off
-    for (let i = 0; i < 40; i++) { x.fillStyle = Math.random() < .5 ? 'rgba(150,200,80,.6)' : 'rgba(90,150,50,.6)'; x.fillRect(Math.random() * 64, Math.random() * 64, 3, 6); }
+  const fake = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = NIGHT ? '#dde2f2' : '#7cc24e'; x.fillRect(0, 0, 64, 64); // a shade off the real ground (snow at night)
+    x.strokeStyle = NIGHT ? 'rgba(60,70,110,.35)' : 'rgba(40,60,20,.35)'; x.lineWidth = 2; x.strokeRect(1, 1, 62, 62); x.beginPath(); x.moveTo(32, 0); x.lineTo(32, 64); x.moveTo(0, 32); x.lineTo(64, 32); x.stroke(); // painted-on "grass squares", a bit off
+    for (let i = 0; i < 40; i++) { x.fillStyle = NIGHT ? (Math.random() < .5 ? 'rgba(255,255,255,.6)' : 'rgba(150,165,200,.5)') : Math.random() < .5 ? 'rgba(150,200,80,.6)' : 'rgba(90,150,50,.6)'; x.fillRect(Math.random() * 64, Math.random() * 64, 3, 6); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
-  const lid = new THREE.Mesh(new THREE.BoxGeometry(2, .12, 2), [new LiteMat({ color: 0x5c8a3a }), new LiteMat({ color: 0x5c8a3a }), new LiteMat({ map: fake }), new LiteMat({ color: 0x5c8a3a }), new LiteMat({ color: 0x5c8a3a }), new LiteMat({ color: 0x5c8a3a })]);
+  const sideC = NIGHT ? 0x8e98b8 : 0x5c8a3a, lid = new THREE.Mesh(new THREE.BoxGeometry(2, .12, 2), [new LiteMat({ color: sideC }), new LiteMat({ color: sideC }), new LiteMat({ map: fake, emissive: NIGHT ? 0x1a2550 : 0, emissiveIntensity: .2 }), new LiteMat({ color: sideC }), new LiteMat({ color: sideC }), new LiteMat({ color: sideC })]);
   lid.position.y = .1; lid.receiveShadow = true; lid.rotation.y = .06; g.add(lid); // (and it's not quite square to the grid)
   const top = lid, ar = new THREE.Group();
   g.scale.setScalar(.01); scene.add(g);
@@ -4907,7 +4907,7 @@ function placeSpring(at, owner) {
   toast('SPRINGTRAP SET');
 }
 function springSpent(S_) { // used up: stays as a sprung wreck for a few seconds, then the ground is back to normal
-  const a = Math.random() * 6.28; S_.spent = true; S_.spentT = 0; S_.t = Math.min(S_.t, 7); S_.lidTo = { x: Math.cos(a) * 1.8, z: Math.sin(a) * 1.8, rx: rr(1.6, 2.2) * (Math.random() < .5 ? -1 : 1), rz: rr(-.4, .4) };
+  const a = Math.atan2(S_.out.z, S_.out.x); S_.spent = true; // (the lid flies off the way you went) S_.spentT = 0; S_.t = Math.min(S_.t, 7); S_.lidTo = { x: Math.cos(a) * 1.8, z: Math.sin(a) * 1.8, rx: rr(1.6, 2.2) * (Math.random() < .5 ? -1 : 1), rz: rr(-.4, .4) };
   S_.g.traverse(o => { if (o.material) { o.material = Array.isArray(o.material) ? o.material.map(m => m.clone()) : o.material.clone(); } }); // (own copies, so it can fade on its own)
 }
 function launchOffMap(r, S_) {
@@ -4922,10 +4922,10 @@ function launchOffMap(r, S_) {
 function updateSprings(dt) {
   for (const r of robots) if (r.trapped) { // held in the trap: can't move, sinking a little, then BOING
     const T = r.trapped; if (r.state !== 'play') { r.trapped = null; continue; }
-    T.t -= dt; const S_ = T.S, sink = .35 * (1 - Math.max(0, T.t));
+    T.t -= dt; const S_ = T.S, sink = .35 * (1 - Math.max(0, T.t) / .6);
     r.body.setTranslation({ x: S_.x, y: S_.y + .97 + .06 - sink, z: S_.z }, true); r.body.setLinvel({ x: 0, y: 0, z: 0 }, true); r.wantSpeed = 0;
     S_.sq = -sink * .5;
-    if (T.t <= 0) { r.trapped = null; S_.out = T.dir; launchOffMap(r, S_); sfx('spring', V(S_.x, S_.y + 1, S_.z)); fxBurst(V(S_.x, S_.y + 1, S_.z), 0xffcc33, 1.8, .3); springSpent(S_); }
+    if (T.t <= 0) { r.trapped = null; S_.out = r.isPlayer || r.remote ? fwdOf(r.yaw).setY(0).normalize() : T.dir; /* like a trampoline: off you go the way you're facing */ launchOffMap(r, S_); sfx('spring', V(S_.x, S_.y + 1, S_.z)); fxBurst(V(S_.x, S_.y + 1, S_.z), 0xffcc33, 1.8, .3); springSpent(S_); }
   }
   for (let i = SPRINGS.length - 1; i >= 0; i--) {
     const S_ = SPRINGS[i]; S_.t -= dt; S_.grow = Math.min(1, S_.grow + dt * 4);
@@ -4944,7 +4944,7 @@ function updateSprings(dt) {
       if (S_.spent || S_.armed === false || (S_.cool.get(r) || 0) > now() || r.trapped) continue; S_.armed = false; // one use: it's caught someone S_.cool.set(r, now() + 2600);
       // caught: you're held for a second and sink in a little (CLICK), then it fires you the way you were heading
       const lv = r.body.linvel(), hs = Math.hypot(lv.x, lv.z), dir = hs > .8 ? V(lv.x / hs, 0, lv.z / hs) : fwdOf(r.yaw).setY(0).normalize();
-      r.trapped = { S: S_, t: 1, dir }; S_.sinkT = 1; sfx('trapclick', V(S_.x, S_.y + .3, S_.z)); if (r.isPlayer) toast('CLICK…');
+      r.trapped = { S: S_, t: .6, dir }; // (held just long enough to be funny) S_.sinkT = 1; sfx('trapclick', V(S_.x, S_.y + .3, S_.z)); if (r.isPlayer) toast('CLICK…');
     }
   }
   // flung off the island by someone's springtrap: that counts as their knockout
@@ -5295,7 +5295,7 @@ function updateGoggles(on) {
 // Getting up there: a trampoline launch carries you over the middle about 12-18 blocks up (more if you hit the pad at speed); you reach the island's edge
 // and need one more jump to climb onto it. Hard, not impossible.
 // ============================================================
-const ISLAND = { top: 15.5, r: 3.9, e: null, t: 0, spots: [] };
+const ISLAND = { top: 19, r: 3.9, e: null, t: 0, spots: [] };
 {
   const cells = [], colGrass = ['#5cb43a', '#63bb3f', '#58ad36'], colDirt = ['#7a5532', '#704d2d'], colRock = ['#6f7078', '#676870'];
   for (let x = -5; x <= 5; x++) for (let z = -5; z <= 5; z++) if (Math.hypot(x, z) < ISLAND.r) cells.push([x, ISLAND.top - .5, z, (x + z) % 2 ? '#a9adb8' : '#9a9ea9']); // just a flat stone platform
