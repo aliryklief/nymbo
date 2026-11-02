@@ -287,6 +287,8 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <button class="go" id="playBtn">PLAY</button>
     <div class="lbl">BOTS</div>
     <div class="seg"><button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div>
+    <div class="lbl">MAP</div>
+    <div class="seg"><button data-map="classic">Classic</button><button data-map="clouds">☁ Cloud conveyor</button><button data-map="rainbow">🌈 Rainbow bridge</button></div>
     <div class="lbl">WORLD</div>
     <div class="seg" style="grid-template-columns:1fr 1fr"><button data-world="day">☀ Day</button><button data-world="night">✦ Aurora night</button></div>
     <div class="lbl">PLAY WITH FRIENDS</div>
@@ -439,7 +441,11 @@ const rightOf = yaw => V(Math.cos(yaw), 0, -Math.sin(yaw));
 const yawTo = (dx, dz) => Math.atan2(-dx, -dz);
 
 // ---------------- game constants ----------------
-const MX = 67, MZ = 46;            // half-size of the island (1.2x the first test map)
+// MAPS: Classic (medium) and two bigger ones (1.4x): the cloud conveyor and the rainbow bridge. The world is built from
+// these numbers when the page loads, so picking a map in the menu reloads the page.
+const MAP = (() => { try { const m = localStorage.getItem('nymbo-map'); return ['classic', 'clouds', 'rainbow'].includes(m) ? m : 'classic'; } catch (e) { return 'classic'; } })();
+const MS = MAP === 'classic' ? 1 : 1.4;   // map scale
+const MX = Math.round(67 * MS), MZ = Math.round(46 * MS); // half-size of the island (classic: 1.2x the first test map)
 const G = 22;                      // gravity: snappy like Toblo (was 26 at first, then 14)
 const JUMP_V = 11.8;               // each jump ~3.2 blocks; a perfectly timed double jump just clears the tallest trees (~6.3)
 const RUN = 6.2;                   // auto-run speed
@@ -457,13 +463,13 @@ const TEAMS = {
 };
 const other = t => t === 'blue' ? 'red' : 'blue';
 // forts sit near opposite corners (with room to walk round them); portals take the other two corners
-const FORT = { blue: { x: -45, z: 25 }, red: { x: 45, z: -25 } }; // near the corners with room to walk behind
+const FORT = { blue: { x: Math.round(-45 * MS), z: Math.round(25 * MS) }, red: { x: Math.round(45 * MS), z: Math.round(-25 * MS) } }; // near the corners with room to walk behind
 const FORT_RX = 17, FORT_RZ = 14;  // fort half-size (outer wall): a rectangle, longer towards the middle
 const FORT_R = FORT_RX;            // the bigger half-size, for rough 'near the fort' checks
-const FOG_N = 62, FOG_F = 150;     // haze distances (bigger map: see further)
-const PORTAL_SPOTS = [{ x: -56, z: -34 }, { x: 56, z: 34 }];
+const FOG_N = 62 * MS, FOG_F = 150 * MS;     // haze distances (bigger map: see further)
+const PORTAL_SPOTS = [{ x: Math.round(-56 * MS), z: Math.round(-34 * MS) }, { x: Math.round(56 * MS), z: Math.round(34 * MS) }];
 // two power-block hubs, each the same distance from both forts (fair for both teams)
-const HUBS = [{ x: 8, z: 16 }, { x: -8, z: -16 }];
+const HUBS = [{ x: Math.round(8 * MS), z: Math.round(16 * MS) }, { x: Math.round(-8 * MS), z: Math.round(-16 * MS) }];
 
 // ---------------- renderer / scene ----------------
 const stage = $('stage');
@@ -536,6 +542,11 @@ function canvasTex(w, h, draw, repeatX = 1, repeatY = 1) {
 // physics: the island floor is made of 4x4 chunks; a chunk with a hole in it is rebuilt from single squares
 // drawing: a tiny texture with one pixel per ground square tints the grass (icy where frozen) and cuts holes in it
 const GCH = 4, GW = MX * 2, GD = MZ * 2, HOLES = new Set(), chunkCols = new Map();
+// CLOUD CONVEYOR map: a band of open sky runs through the middle from near one portal to near the other (stopping short
+// of the pastures, so you can still walk round the ends). Clouds with tiles on top ride round it in two lanes.
+const CH = (() => { if (MAP !== 'clouds') return null; const A = PORTAL_SPOTS[1], L = Math.hypot(A.x, A.z), u = { x: A.x / L, z: A.z / L }; return { u, n: { x: -u.z, z: u.x }, T: L - 30, W: 7, lane: 4.2 }; })();
+const chasmDist = (x, z) => { if (!CH) return 99; const t = x * CH.u.x + z * CH.u.z, o = x * CH.n.x + z * CH.n.z, tc = clamp(t, -CH.T, CH.T); return Math.hypot(t - tc, o) - CH.W; }; // < 0 inside the band
+const inChasm = (x, z) => CH && chasmDist(x, z) < 0 && Math.hypot(x, z) > 2.4; // (the pole keeps a little island of its own)
 const cellOf = (x, z) => [Math.floor(x + MX), Math.floor(z + MZ)];
 const isHole = (x, z) => { const [cx, cz] = cellOf(x, z); return HOLES.has(cx + ',' + cz); };
 function buildChunk(i, j) {
@@ -607,6 +618,7 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
   const slab = new THREE.Mesh(new THREE.BoxGeometry(MX * 2, 6, MZ * 2), [mX, mX, mTop, mTop, mZ, mZ]);
   slab.position.y = -3; slab.receiveShadow = true; scene.add(slab);
   groundPatch(mTop);
+  if (CH) for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) if (inChasm(cx - MX + .5, cz - MZ + .5)) { HOLES.add(cx + ',' + cz); setCell(cx, cz, 255, 255, 255, 0); } // the sky band
   for (let i = 0; i < Math.ceil(MX * 2 / GCH); i++) for (let j = 0; j < Math.ceil(MZ * 2 / GCH); j++) buildChunk(i, j);
   // thin yellow line warns you where the island ends
   const em = new THREE.MeshBasicMaterial({ color: 0xffd400, transparent: true, opacity: .5 });
@@ -629,7 +641,7 @@ function staticBox(x0, y0, z0, w, h, d, color, jit = .05) {
   }
 }
 // hidden trampolines: one in each big tree grove (mirrored, so both teams get one), black and flat, easy to miss
-const TRAMP_SPOTS = [{ x: 18, z: 26 }, { x: -18, z: -26 }];
+const TRAMP_SPOTS = [{ x: Math.round(18 * MS), z: Math.round(26 * MS) }, { x: Math.round(-18 * MS), z: Math.round(-26 * MS) }];
 const keepClear = [ // places scenery must avoid
   ...Object.values(FORT).map(f => ({ x: f.x, z: f.z, r: 25 })),
   ...PORTAL_SPOTS.map(p => ({ x: p.x, z: p.z, r: 6 })),
@@ -638,7 +650,7 @@ const keepClear = [ // places scenery must avoid
   ...TRAMP_SPOTS.map(t => ({ x: t.x, z: t.z, r: 2.5 })),
   ...PORTAL_SPOTS.map(p => { const L = Math.hypot(p.x, p.z); return { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5, r: 10 }; }), // the pastures
 ];
-const clearAt = (x, z, pad = 0) => keepClear.every(k => Math.hypot(x - k.x, z - k.z) > k.r + pad) && Math.abs(x) < MX - 3 && Math.abs(z) < MZ - 3;
+const clearAt = (x, z, pad = 0) => keepClear.every(k => Math.hypot(x - k.x, z - k.z) > k.r + pad) && Math.abs(x) < MX - 3 && Math.abs(z) < MZ - 3 && chasmDist(x, z) > 2.5 + Math.max(0, pad);
 // trees are made of real blocks now (built in the blocks file, asleep until something hits them)
 const TREES = [];
 function tree(x, z, h) {
@@ -647,7 +659,7 @@ function tree(x, z, h) {
 }
 // trees: two groves on the flanks give cover for sneaking round, plus a few loners. The middle stays open.
 // same 27 trees as before, spread wider: smaller groves, a few round each pasture (the corners looked empty), more loners
-const GROVES = [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }];
+const GROVES = [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }].map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
 for (const p of PORTAL_SPOTS) { const L = Math.hypot(p.x, p.z), pa = { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; // trees scattered round the pasture fence, never in the portal's way
   for (let i = 0, n = 0; i < 120 && n < 4; i++) { const a = rnd() * Math.PI * 2, d = rr(11, 16), x = Math.round(pa.x + Math.cos(a) * d), z = Math.round(pa.z + Math.sin(a) * d);
     if (Math.hypot(x - p.x, z - p.z) < 7 || !clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue; tree(x, z, 2 + Math.floor(rnd() * 3)); n++; } }
@@ -718,7 +730,7 @@ const inOwnFort = (team, p) => Math.abs(p.x - FORT[team].x) < FORT_RX + .5 && Ma
 const inGate = (team, p) => { const g = GATES[team]; return Math.abs(p.x - g.x) < 1.1 && Math.abs(p.z - g.z) < 1.5 && p.y < 3.3 && p.y > -.5; };
 
 // ---- linked portals ----
-const PORTALS = PORTAL_SPOTS.map((sp, i) => {
+const PORTALS = (MAP === 'rainbow' ? [] : PORTAL_SPOTS).map((sp, i) => { // (the rainbow map has a rainbow bridge instead)
   const n = V(-sp.x, 0, -sp.z).normalize(), t = V(-n.z, 0, n.x);
   for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) staticCells.push([sp.x + a, -.47, sp.z + b, new THREE.Color('#74767e').offsetHSL(0, 0, rr(-.04, .04))]);
   // stone feet either side of the ring
@@ -832,7 +844,7 @@ function animateLegs(e, mode, sp = 0) {
 }
 const ANIMAL_SPOTS = [];
 // pastures: one fenced meadow next to each portal. Its animals live there and always try to walk back home.
-const PASTURE_R = 7.5, PASTURES = PORTALS.map(P => V(P.pos.x + P.n.x * 8.5, 0, P.pos.z + P.n.z * 8.5));
+const PASTURE_R = 7.5, PASTURES = PORTAL_SPOTS.map(p => { const L = Math.hypot(p.x, p.z); return V(p.x - p.x / L * 8.5, 0, p.z - p.z / L * 8.5); });
 PASTURES.forEach((pa, i) => ['cow', 'cow', 'sheep', 'sheep'].forEach(kind => ANIMAL_SPOTS.push({ kind, pasture: pa, home: V(pa.x + rr(-4, 4), 0, pa.z + rr(-4, 4)) })));
 { // meadow patch (clover and little flowers) and a ring of short wooden fence posts with wide gaps
   const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
@@ -848,7 +860,7 @@ PASTURES.forEach((pa, i) => ['cow', 'cow', 'sheep', 'sheep'].forEach(kind => ANI
     for (let k = 0; k < n; k++) {
       if (k % 9 === 0 || k % 9 === 1) continue; // two wide gaps (gates)
       const a = k / n * Math.PI * 2, x = pa.x + Math.cos(a) * (PASTURE_R + .6), z = pa.z + Math.sin(a) * (PASTURE_R + .6);
-      if (PORTALS.some(Q => Math.hypot(x - Q.pos.x, z - Q.pos.z) < 4.5)) continue; // no post standing in the portal's mouth
+      if (PORTAL_SPOTS.some(Q => Math.hypot(x - Q.x, z - Q.z) < 4.5)) continue; // no post standing in the portal's mouth
       const post = new THREE.Mesh(boxGeo, postMat); post.scale.set(.22, .9, .22); post.position.set(x, .45, z); post.castShadow = true; scene.add(post);
       const cap = new THREE.Mesh(boxGeo, capMat); cap.scale.set(.28, .08, .28); cap.position.set(x, .93, z); scene.add(cap);
       const col = world.createCollider(RAPIER.ColliderDesc.cuboid(.11, .45, .11).setTranslation(x, .45, z)); byCollider.set(col.handle, { type: 'static' });
@@ -934,7 +946,7 @@ function speedStrip(x, z, dx, dz, team) {
   staticBoxes.push({ x0: Math.min(x, x + dir.x * 8) - 2.5, y0: 0, z0: Math.min(z, z + dir.z * 8) - 2.5, x1: Math.max(x, x + dir.x * 8) + 2.5, y1: .1, z1: Math.max(z, z + dir.z * 8) + 2.5, foot: true });
 }
 for (const t of TRAMP_SPOTS) trampoline(t.x, t.z);
-for (const [s, team] of [[1, 'blue'], [-1, 'red']]) speedStrip(-s * 13, s * 42, s, 0, team); // mirrored (point-symmetric): blue panel on our side, red on theirs
+for (const [s, team] of [[1, 'blue'], [-1, 'red']]) speedStrip(Math.round(-s * 13 * MS), Math.round(s * 42 * MS), s, 0, team); // mirrored (point-symmetric): blue panel on our side, red on theirs
 // the mat's rings slide inwards and shrink (it's pulling you in): same look, just alive
 function animateMat(t) {
   const cv = tramp.mat.map.userData.cv, h = cv.getContext('2d'), ph = (t / 1400) % 1;
@@ -1444,7 +1456,7 @@ function updateAnimals(dt) {
       const hsp = Math.hypot(lv.x, lv.z); w.stuck = hsp < .5 && w.speed > 1 ? (w.stuck || 0) + dt : 0;
       if (w.side > 0) w.side -= dt; else if (w.stuck > 1.2) { w.side = 1.1; w.sideDir = rnd() < .5 ? -1 : 1; w.stuck = 0; }
       let goal = pa; // a portal can be the short way home: walk in one side, pop out next to the pasture on the other
-      for (let i = 0; i < 2; i++) { const A = PORTALS[i], Bq = PORTALS[1 - i], via = Math.hypot(A.pos.x - t.x, A.pos.z - t.z) + Math.hypot(Bq.pos.x - pa.x, Bq.pos.z - pa.z); if (via + 8 < away) goal = A.pos.clone().addScaledVector(A.n, Math.hypot(A.pos.x - t.x, A.pos.z - t.z) > 4 ? 2.5 : -1); }
+      for (let i = 0; i < PORTALS.length; i++) { const A = PORTALS[i], Bq = PORTALS[1 - i], via = Math.hypot(A.pos.x - t.x, A.pos.z - t.z) + Math.hypot(Bq.pos.x - pa.x, Bq.pos.z - pa.z); if (via + 8 < away) goal = A.pos.clone().addScaledVector(A.n, Math.hypot(A.pos.x - t.x, A.pos.z - t.z) > 4 ? 2.5 : -1); }
       w.dir = Math.atan2(goal.x - t.x, goal.z - t.z) + Math.sin(now() / 700 + e.id) * .25 + (w.side > 0 ? w.sideDir * 1.4 : 0);
       w.speed = away > 18 ? 4.4 : 3.4; w.t = .5;
       w.callT -= dt; if (w.callT <= 0) { w.callT = rr(4, 8); if (P && rPos(P).distanceTo(V(t.x, t.y, t.z)) < 40) sfx(voiceOf(e), V(t.x, t.y, t.z)); }
@@ -5696,7 +5708,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -6148,6 +6160,140 @@ function readPad(dt) {
 setInterval(() => { const tip = $('landTip'); if (tip) tip.hidden = !(S.land && !NET && match.state === 'play' && innerHeight > innerWidth && !matchMedia('(pointer:fine)').matches); }, 700);
 
 // ============================================================
+// THE TWO BIG MAPS (1.4x the classic island). Picked in the menu (the page reloads into the new map).
+//  CLOUD CONVEYOR: a band of open sky runs through the middle between the portal corners. Clouds with a square of
+//    ground on top ride round it in two lanes, in opposite directions, level with the floor, looping round each end.
+//    The gaps between clouds are a double jump if they were standing still. Fall in and you're out.
+//  RAINBOW BRIDGE: no portals. A rainbow arches from one portal corner to the other, high over the middle. Step on
+//    either end and it whisks you across; jump to leap off whenever you like. Clouds and rainbows everywhere.
+// ============================================================
+// ---------------------------------------------------------------- the cloud conveyor
+const CONV = { tiles: [], s: 0, speed: 2.6, handles: new Set() };
+const puffGeo = new THREE.IcosahedronGeometry(1, 1);
+if (CH) {
+  const R = CH.lane, T = CH.T, straight = 2 * T, arc = Math.PI * R, L = 2 * straight + 2 * arc, SP = 12, N = Math.floor(L / SP);
+  CONV.L = L; CONV.SP = L / N;
+  CONV.at = s => { s = ((s % L) + L) % L; let t, o;
+    if (s < straight) { t = -T + s; o = R; }
+    else if ((s -= straight) < arc) { const a = s / R; t = T + Math.sin(a) * R; o = Math.cos(a) * R; }
+    else if ((s -= arc) < straight) { t = T - s; o = -R; }
+    else { s -= straight; const a = s / R; t = -T - Math.sin(a) * R; o = -Math.cos(a) * R; }
+    return V(CH.u.x * t + CH.n.x * o, 0, CH.u.z * t + CH.n.z * o); };
+  const top = new THREE.InstancedMesh(cubeGeo, new LiteMat({ color: NIGHT ? 0xd2daec : 0x63bb3f }), N), dirt = new THREE.InstancedMesh(cubeGeo, new LiteMat({ color: NIGHT ? 0x4a5a7e : 0x7a5532 }), N);
+  const puffs = new THREE.InstancedMesh(puffGeo, new LiteMat({ color: 0xffffff, emissive: NIGHT ? 0x3a4a7a : 0x8090a0, emissiveIntensity: .25 }), N * 5);
+  for (const m of [top, dirt, puffs]) { m.castShadow = m.receiveShadow = true; m.frustumCulled = false; scene.add(m); }
+  CONV.top = top; CONV.dirt = dirt; CONV.puffs = puffs;
+  for (let i = 0; i < N; i++) {
+    const p = CONV.at(i * CONV.SP), body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(p.x, -.5, p.z));
+    const col = world.createCollider(RAPIER.ColliderDesc.cuboid(1.5, .5, 1.5).setFriction(1), body); byCollider.set(col.handle, { type: 'static' }); CONV.handles.add(col.handle);
+    CONV.tiles.push({ body, col, p: p.clone(), v: V(), yaw: 0, puff: [...Array(5)].map(() => [rr(-1.6, 1.6), rr(-1.9, -1.1), rr(-1.6, 1.6), rr(.9, 1.5)]) });
+  }
+}
+const _cq = new THREE.Quaternion(), _cm = new THREE.Matrix4(), _cs = new THREE.Vector3(), _cv = new THREE.Vector3(), _ce = new THREE.Euler();
+function updateConveyor(dt) {
+  if (!CH) return;
+  CONV.s = CONV.speed * (match.state === 'play' || match.state === 'end' ? MATCH_TIME - match.time : 0) + (CONV.idle = (CONV.idle || 0) + (match.state === 'play' ? 0 : dt * 0)); const t = now() / 1000; // (driven by the match clock, so everyone online sees the clouds in the same place)
+  CONV.tiles.forEach((T_, i) => {
+    const p = CONV.at(CONV.s + i * CONV.SP), q = CONV.at(CONV.s + i * CONV.SP + .5);
+    T_.v.set((p.x - T_.p.x) / Math.max(dt, 1e-3), 0, (p.z - T_.p.z) / Math.max(dt, 1e-3)); T_.p.copy(p);
+    T_.yaw = Math.atan2(q.x - p.x, q.z - p.z); _cq.setFromAxisAngle(_cv.set(0, 1, 0), T_.yaw);
+    T_.body.setNextKinematicTranslation({ x: p.x, y: -.5, z: p.z }); T_.body.setNextKinematicRotation(_cq);
+    _cm.compose(_cv.set(p.x, -.5, p.z), _cq, _cs.set(3, 1, 3)); CONV.top.setMatrixAt(i, _cm);
+    _cm.compose(_cv.set(p.x, -1.15, p.z), _cq, _cs.set(2.6, .3, 2.6)); CONV.dirt.setMatrixAt(i, _cm);
+    T_.puff.forEach(([x, y, z, s], k) => { const c = Math.cos(T_.yaw), sn = Math.sin(T_.yaw), bob = Math.sin(t * 1.3 + i + k) * .08;
+      _cm.compose(_cv.set(p.x + x * c + z * sn, y + bob, p.z - x * sn + z * c), _cq, _cs.set(s, s * .7, s)); CONV.puffs.setMatrixAt(i * 5 + k, _cm); });
+  });
+  CONV.top.instanceMatrix.needsUpdate = CONV.dirt.instanceMatrix.needsUpdate = CONV.puffs.instanceMatrix.needsUpdate = true;
+}
+const convRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
+function tileUnder(r) { const t = r.body.translation(); convRay.origin = { x: t.x, y: t.y, z: t.z }; const h = world.castRay(convRay, 1.25, true, undefined, undefined, r.col); if (!h || !CONV.handles.has(h.collider.handle)) return null; return CONV.tiles.find(T_ => T_.col.handle === h.collider.handle); }
+
+// ---------------------------------------------------------------- the rainbow bridge
+const RBW = { on: MAP === 'rainbow', H: 26, speed: 30 };
+if (RBW.on) {
+  const A = PORTAL_SPOTS[0], B = PORTAL_SPOTS[1], LA = Math.hypot(A.x, A.z);
+  RBW.A = V(A.x - A.x / LA * 2, 0, A.z - A.z / LA * 2); RBW.B = V(B.x - B.x / LA * 2, 0, B.z - B.z / LA * 2); // the ends, a little in from the corners
+  RBW.at = s => V(RBW.A.x + (RBW.B.x - RBW.A.x) * s, .25 + RBW.H * Math.sin(Math.PI * s), RBW.A.z + (RBW.B.z - RBW.A.z) * s);
+  { let L = 0, p0 = RBW.at(0); for (let k = 1; k <= 200; k++) { const p = RBW.at(k / 200); L += p.distanceTo(p0); p0 = p; } RBW.L = L; }
+  // the band: seven stripes
+  const cols = ['#ff3b3b', '#ff9a1f', '#ffe14a', '#4fd64a', '#3aa8ff', '#5a5aff', '#b05cff'], W = 3.6, SEG = 160, pos = [], col = [], idx = [];
+  const side = V(-(RBW.B.z - RBW.A.z), 0, RBW.B.x - RBW.A.x).normalize();
+  for (let k = 0; k <= SEG; k++) { const p = RBW.at(k / SEG);
+    for (let j = 0; j <= 7; j++) { const off = (j / 7 - .5) * W; pos.push(p.x + side.x * off, p.y, p.z + side.z * off); const c = new THREE.Color(cols[Math.min(6, j)]); col.push(c.r, c.g, c.b); } }
+  for (let k = 0; k < SEG; k++) for (let j = 0; j < 7; j++) { const a = k * 8 + j, b = a + 8; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+  // (flat colour per stripe: duplicate the stripe's colour on both edges by building stripes as separate quads)
+  const g = new THREE.BufferGeometry(), P2 = [], C2 = [];
+  for (let k = 0; k < SEG; k++) for (let j = 0; j < 7; j++) { const c = new THREE.Color(cols[j]), q = [[k, j], [k + 1, j], [k, j + 1], [k, j + 1], [k + 1, j], [k + 1, j + 1]];
+    for (const [kk, jj] of q) { const i3 = (kk * 8 + jj) * 3; P2.push(pos[i3], pos[i3 + 1], pos[i3 + 2]); C2.push(c.r, c.g, c.b); } }
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P2, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C2, 3)); g.computeVertexNormals();
+  const band = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: .92 })); band.renderOrder = 2; scene.add(band); RBW.band = band;
+  // fluffy clouds at each end, and big soft rainbows in the sky all round
+  const puffM = new LiteMat({ color: 0xffffff, emissive: 0x9aa8c8, emissiveIntensity: .3 });
+  for (const E of [RBW.A, RBW.B]) for (let k = 0; k < 9; k++) { const m = new THREE.Mesh(puffGeo, puffM); const a = k / 9 * 6.28; m.position.set(E.x + Math.cos(a) * 2.6, .4 + rr(0, .6), E.z + Math.sin(a) * 2.6); m.scale.set(rr(1, 1.5), rr(.6, .9), rr(1, 1.5)); scene.add(m); }
+  for (let k = 0; k < 4; k++) { const a = k / 4 * 6.28 + .4, R = MX * 2.2, cx = Math.cos(a) * R, cz = Math.sin(a) * R * .8;
+    const arcG = new THREE.Group(); arcG.position.set(cx, -20, cz); arcG.lookAt(0, -20, 0); scene.add(arcG);
+    cols.forEach((c, j) => { const t = new THREE.Mesh(new THREE.TorusGeometry(70 - j * 3, 1.5, 6, 48, Math.PI), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .35, fog: false })); t.rotation.y = Math.PI / 2; arcG.add(t); }); }
+  for (let k = 0; k < 40; k++) { const m = new THREE.Mesh(puffGeo, puffM); const a = rnd() * 6.28, R = MX * rr(1.2, 1.9); m.position.set(Math.cos(a) * R, rr(-6, 18), Math.sin(a) * R * .8); m.scale.set(rr(4, 9), rr(2, 4), rr(4, 9)); scene.add(m); }
+}
+function rainbowRide(r, dt) {
+  if (!RBW.on || !r.body) return;
+  if (r.rb) {
+    const R_ = r.rb, s0 = R_.s; R_.s += R_.dir * RBW.speed * dt / RBW.L;
+    if (r.state !== 'play') { r.rb = null; return; }
+    const done = R_.s >= 1 || R_.s <= 0, s = clamp(R_.s, 0, 1), p = RBW.at(s), q = RBW.at(clamp(s + R_.dir * .01, 0, 1)), tan = q.clone().sub(p).normalize();
+    if (R_.jump || done) { // leap off (or reach the far end): you keep the bridge's speed and fly on
+      r.rb = null; r.rbCool = now() + 1500; const vh = done ? .35 : .7;
+      r.body.setLinvel({ x: tan.x * RBW.speed * vh, y: done ? 2 : Math.max(tan.y * RBW.speed * .6, 0) + JUMP_V, z: tan.z * RBW.speed * vh }, true); r.jumps = done ? 0 : 1; r.grounded = false; r.padT = done ? 0 : 2.5;
+      return; }
+    r.body.setTranslation({ x: p.x, y: p.y + .97, z: p.z }, true); r.body.setLinvel({ x: tan.x * RBW.speed, y: tan.y * RBW.speed, z: tan.z * RBW.speed }, true);
+    r.grounded = false; r.jumps = 1; r.yaw = r.yawT = Math.atan2(-tan.x, -tan.z);
+    if (Math.random() < .5) emit(V(p.x, p.y + .2, p.z), [0xff3b3b, 0xffe14a, 0x4fd64a, 0x3aa8ff, 0xb05cff][Math.floor(Math.random() * 5)], V(rr(-1, 1), rr(0, 1), rr(-1, 1)), .18, .6, 0);
+    return;
+  }
+  if (r.state !== 'play' || (r.rbCool || 0) > now()) return;
+  const c = rPos(r);
+  for (const [E, s, dir] of [[RBW.A, 0, 1], [RBW.B, 1, -1]]) if (Math.hypot(c.x - E.x, c.z - E.z) < 2.2 && c.y < 3) { r.rb = { s, dir }; sfx('swoop', c); if (r.isPlayer) toast('WHEEE! JUMP TO LEAP OFF'); break; }
+}
+
+// ---------------------------------------------------------------- hooks
+{ const ur1 = updateRobot; updateRobot = function (r, dt) {
+    const wantJump = r.jumpReq && r.rb; if (wantJump) { r.jumpReq = false; r.rb.jump = true; }
+    ur1(r, dt);
+    if (CH && r.body && r.state === 'play' && r.grounded) { const T_ = tileUnder(r); if (T_) { const t = r.body.translation(); r.body.setTranslation({ x: t.x + T_.v.x * dt, y: t.y, z: t.z + T_.v.z * dt }, true); } } // riding a cloud
+    rainbowRide(r, dt);
+  }; }
+{ const ump1 = updateMorePowers; updateMorePowers = function (dt) { updateConveyor(dt); ump1(dt); }; }
+if (CH) setTimeout(() => { try { rebuildPits(); } catch (e) {} }, 0); // dirt walls down the sides of the sky band
+// ---------------------------------------------------------------- the map picker in the menu
+document.querySelectorAll('[data-map]').forEach(b => { b.classList.toggle('on', b.dataset.map === MAP);
+  b.onclick = () => { if (b.dataset.map === MAP) return; try { localStorage.setItem('nymbo-map', b.dataset.map); } catch (e) {} location.reload(); }; });
+
+// ---------------------------------------------------------------- bots on the cloud map: don't walk into the sky
+// If the straight line to where a bot wants to go crosses the band, it heads for the nearer end of the band (on its own
+// side) and walks round. (All difficulties: falling off is never smart.)
+function chasmAim(p, goal) {
+  if (!CH) return null;
+  let cross = false; for (let k = 1; k <= 12; k++) { const f = k / 12; if (chasmDist(p.x + (goal.x - p.x) * f, p.z + (goal.z - p.z) * f) < 1) { cross = true; break; } }
+  if (!cross) return null;
+  const tp = p.x * CH.u.x + p.z * CH.u.z, op = p.x * CH.n.x + p.z * CH.n.z, side = Math.sign(op) || 1, end = CH.T + CH.W + 4;
+  const wp = e => V(CH.u.x * e + CH.n.x * side * (CH.W + 3), 0, CH.u.z * e + CH.n.z * side * (CH.W + 3));
+  const a = wp(end), b = wp(-end), cost = w => Math.hypot(w.x - p.x, w.z - p.z) + Math.hypot(goal.x - w.x, goal.z - w.z);
+  const w = cost(a) < cost(b) ? a : b, tw = w.x * CH.u.x + w.z * CH.u.z;
+  if (Math.abs(tp) > CH.T + CH.W + 1) return null; // already round the end
+  if (Math.hypot(w.x - p.x, w.z - p.z) < 2.5) return V(CH.u.x * Math.sign(tw) * (end + 3), 0, CH.u.z * Math.sign(tw) * (end + 3)); // at the corner: step round the end
+  return w;
+}
+{ const ua1 = updateAI; updateAI = function (r, dt) {
+    if (!CH || !r.ai.goal) return ua1(r, dt);
+    ua1(r, dt);
+    const p = rPos(r);
+    if (r.wantSpeed > 0 && r.ai.goal) { const aim = chasmAim(p, r.ai.goal); if (aim) { const d = V(aim.x - p.x, 0, aim.z - p.z); if (d.lengthSq() > .01) r.want.copy(d.normalize()); } }
+    // last line of defence: a step that would go over the edge turns along the edge instead (unless it's riding a cloud)
+    if (r.wantSpeed > 0 && r.grounded && chasmDist(p.x, p.z) > 0 && chasmDist(p.x + r.want.x * 1.8, p.z + r.want.z * 1.8) < .4) {
+      const t = V(CH.u.x, 0, CH.u.z), dot = t.dot(r.want); r.want.copy(dot >= 0 ? t : t.negate()); }
+  }; }
+
+// ============================================================
 // ONLINE PLAY (test version, no game server needed)
 // One device HOSTS: it runs the real match exactly like offline play. Friends JOIN with a 4-digit room code;
 // their phones connect straight to the host (WebRTC through PeerJS's free matchmaking service).
@@ -6234,7 +6380,7 @@ function hostMsg(c, m) {
 function hostLobbyUpdate() {
   const N = NET, list = N.list.map(p => ({ idx: p.idx, name: p.name }));
   lobbyShow(N.code, list, true);
-  const s = JSON.stringify({ t: 'lobby', list }); for (const c of N.conns) if (c.open) c.send(s);
+  const s = JSON.stringify({ t: 'lobby', list, map: MAP }); for (const c of N.conns) if (c.open) c.send(s);
 }
 function hostLeave(c) {
   const N = NET; if (!N) return;
@@ -6332,6 +6478,7 @@ function clientMsg(m) {
     }
     N.me = m.idx; try { sessionStorage.setItem('nymbo-seat', JSON.stringify({ code: N.code, idx: m.idx, t: Date.now() })); } catch (e) {} netStatus('You are in! Waiting for the host to start…'); return;
   }
+  if (m.t === 'lobby' && m.map && m.map !== MAP) { try { localStorage.setItem('nymbo-map', m.map); } catch (e) {} toast('SWITCHING TO THE HOST\'S MAP…'); setTimeout(() => location.reload(), 400); return; } // the host picks the map
   if (m.t === 'lobby') { lobbyShow(N.code, m.list, false); netStatus(N.me >= 0 ? 'You are ' + (robots[N.me].team === 'blue' ? 'BLUE' : 'RED') + '. Waiting for the host to start…' : 'Joining…'); return; }
   if (m.t === 'rejoin') { // straight back into the running match, no intro
     $('lobby').hidden = true; $('againBtn').textContent = 'WAITING FOR HOST…'; $('againBtn').disabled = true;
@@ -6486,7 +6633,7 @@ function clientTick(dt, t) {
   for (const Q of PORTALS) Q.disc.rotation.z -= dt * 1.5;
   for (const team of ['blue', 'red']) { const g = GATES[team]; g.flash = Math.max(0, g.flash - dt); g.glow.material.opacity = .5 + .4 * Math.sin(t / 300) * .2 + g.flash * .5; }
   for (const r of robots) syncRobot(r);
-  updateFun(dt); updateAmbience(dt); pulseHalos(t); updateReplayUI(dt); updateBHWarn(dt); updateBirds(dt); updateGas(dt); updateSticky(dt); updateIce(dt); updateWool(dt); updateFx(dt); updateCamera(dt);
+  updateFun(dt); updateAmbience(dt); pulseHalos(t); updateReplayUI(dt); updateBHWarn(dt); updateConveyor(dt); updateBirds(dt); updateGas(dt); updateSticky(dt); updateIce(dt); updateWool(dt); updateFx(dt); updateCamera(dt);
   if (hitStop > 0) hitStop = 0;
 }
 // on the host: copy every in-world sound and effect to the friends' phones as it happens
