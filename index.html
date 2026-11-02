@@ -148,6 +148,19 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #count{top:45%;left:50%;transform:translate(-50%,-50%);font-family:var(--display);font-size:96px;text-shadow:0 6px 0 rgba(0,0,0,.3)}
 /* landscape buttons */
 #lbtns{display:none}
+/* landscape controls (experimental) */
+#landUI{position:fixed;inset:0;pointer-events:none;z-index:6}#landUI[hidden]{display:none}
+#landJoy{position:fixed;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:3px solid rgba(255,255,255,.55);background:rgba(10,14,26,.25)}#landJoy[hidden]{display:none}
+#landKnob{position:absolute;left:30px;top:30px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.75)}
+#landUI .lb{position:fixed;pointer-events:auto;touch-action:none;border-radius:50%;border:3px solid rgba(255,255,255,.7);background:rgba(10,14,26,.45);color:#fff;font:700 12px var(--display);letter-spacing:.04em;width:64px;height:64px;padding:0}
+#landUI .lb.down{transform:scale(.92);background:rgba(255,216,74,.55)}
+#landUI .lb.big{width:84px;height:84px;font-size:14px;overflow:hidden}#landUI .lb.big i{position:absolute;left:0;bottom:0;width:100%;height:calc(var(--k,0)*100%);background:rgba(255,216,74,.5);z-index:-1}
+#landUI .lb.sm{width:46px;height:46px;font-size:16px}
+#lThrow{right:calc(env(safe-area-inset-right,0px) + 22px);bottom:calc(env(safe-area-inset-bottom,0px) + 30px)}
+#lJump{right:calc(env(safe-area-inset-right,0px) + 118px);bottom:calc(env(safe-area-inset-bottom,0px) + 18px)}
+#lGrab{right:calc(env(safe-area-inset-right,0px) + 40px);bottom:calc(env(safe-area-inset-bottom,0px) + 130px)}
+#lDodgeL{right:calc(env(safe-area-inset-right,0px) + 196px);bottom:calc(env(safe-area-inset-bottom,0px) + 28px)}#lDodgeR{right:calc(env(safe-area-inset-right,0px) + 132px);bottom:calc(env(safe-area-inset-bottom,0px) + 96px)}
+#landTip{position:fixed;left:50%;bottom:24%;transform:translateX(-50%);z-index:7;background:rgba(10,14,26,.7);color:#fff;padding:8px 14px;border-radius:999px;font:700 12px var(--body);pointer-events:none}#landTip[hidden]{display:none}
 @media (orientation:landscape){#lbtns{display:block}}
 .lbtn.down{transform:scale(.92);filter:brightness(1.2)}
 #bThrow{right:calc(env(safe-area-inset-right,0px) + 26px);bottom:calc(env(safe-area-inset-bottom,0px) + 30px);width:92px;height:92px;background:rgba(255,212,0,.85);color:var(--ink);font-size:18px}
@@ -256,6 +269,9 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div class="hud" id="fps" hidden></div>
   <div class="hud" id="count" hidden>3</div>
   <div class="warn" id="wl"></div><div class="warn" id="wr"></div><div class="warn" id="wt"></div><div class="warn" id="wb"></div>
+  <div id="landUI" hidden><div id="landJoy" hidden><i id="landKnob"></i></div>
+    <button class="lb" id="lJump">JUMP</button><button class="lb big" id="lThrow">THROW<i></i></button><button class="lb" id="lGrab">GRAB</button><button class="lb sm" id="lDodgeL">◀</button><button class="lb sm" id="lDodgeR">▶</button></div>
+  <div id="landTip" hidden>↻ Turn your phone sideways for landscape controls</div>
   <div id="lbtns"><div class="lbtn" id="bStop">STOP</div><div class="lbtn" id="bJump">JUMP</div><div class="lbtn" id="bGrab">GRAB</div><div class="lbtn" id="bThrow">THROW</div></div>
 </div>
 
@@ -352,6 +368,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <div class="tog"><label for="sBuzz">Vibration</label><input id="sBuzz" type="checkbox"></div>
     <div class="tog"><label for="sSound">Sound effects</label><input id="sSound" type="checkbox"></div>
     <div class="tog"><label for="sAllPowers">All powers (testing: every power + black hole, no streak needed)</label><input id="sAllPowers" type="checkbox"></div>
+    <div class="tog"><label for="sLand">Landscape controls (experimental): joystick + look, keyboard &amp; mouse, gamepad. Offline games.</label><input id="sLand" type="checkbox"></div>
     <div class="tog"><label for="sReplay">Instant replay when you're knocked out (off = a replay button while you're down)</label><input id="sReplay" type="checkbox"></div>
     <div class="tog"><label for="sClassic">Classic sounds</label><input id="sClassic" type="checkbox"></div>
     <div class="tog"><label for="sFps">Show FPS (frames per second, and what the game is spending its time on)</label><input id="sFps" type="checkbox"></div>
@@ -5464,7 +5481,7 @@ function restart(auto) {
   setTimeout(() => location.reload(), NET && NET.host && auto ? 300 : 0);
 }
 const bindRange = (id, key, fmt) => { const el = $(id), v = $(id + 'V'); el.value = S[key]; const sh = () => v.textContent = fmt(S[key]); sh(); el.oninput = () => { S[key] = +el.value; sh(); saveS(); }; };
-for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 'allPowers'], ['sClassic', 'classic'], ['sAoe', 'aoe'], ['sFps', 'fps'], ['sReplay', 'replay']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
+for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 'allPowers'], ['sClassic', 'classic'], ['sAoe', 'aoe'], ['sFps', 'fps'], ['sReplay', 'replay'], ['sLand', 'land']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
 
 let wakeLock = null;
 const INTRO_T = 8.2; // flyover length; the last 5 seconds show the countdown
@@ -5985,6 +6002,110 @@ $('replayBtn').addEventListener('click', e => { e.stopPropagation(); startReplay
 stage.addEventListener('pointerdown', e => { if (REPLAY.on) { stopReplay(); e.stopImmediatePropagation(); } }, true);
 addEventListener('keydown', e => { if (REPLAY.on && (e.code === 'Space' || e.code === 'Escape')) stopReplay(); });
 $('replayTag').addEventListener('click', () => stopReplay());
+
+// ============================================================
+// LANDSCAPE CONTROLS (experimental; Settings → "Landscape controls"). A separate control scheme for holding the phone
+// sideways, or for playing with a keyboard + mouse or a gamepad. It doesn't change the normal swipe game at all.
+//  Touch:     left thumb anywhere = a joystick (moves you relative to the camera) · drag on the right half = look around
+//             buttons: JUMP · THROW (hold to throw further) · GRAB · ◀ DODGE ▶ · the block slot is still the shield
+//  Keyboard:  WASD move · click the game to grab the mouse, then the mouse looks · left button throws (hold = further)
+//             right button or E grabs · Space jumps · Q / R dodge · F shield · Esc menu
+//  Gamepad:   left stick move · right stick look · A jump · RT throw (hold = further) · X grab · LB / RB dodge · Y shield · Start menu
+// Your robot faces where the camera looks, so the lock-on and the throws aim straight ahead. (Offline games for now.)
+// ============================================================
+if (S.land === undefined) S.land = false;
+const LAND = { yaw: 0, pitch: .32, move: V(), joy: null, look: null, charge: null, gpPrev: {}, keys: {} };
+const landOn = () => S.land && !NET && match.state === 'play';
+// ---- on-screen controls ----
+const landUI = $('landUI');
+function landShow() { const on = S.land && !NET && (match.state === 'play' || match.state === 'count'); landUI.hidden = !on; $('lbtns').style.display = on ? 'none' : ''; document.body.classList.toggle('land', on); }
+const lbtn = (id, down, up) => { const el = $(id); el.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); el.classList.add('down'); down && down(); });
+  const off = e => { el.classList.remove('down'); up && up(); }; el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off); };
+lbtn('lJump', () => playerJump());
+lbtn('lGrab', () => playerGrab());
+lbtn('lThrow', () => { LAND.charge = now(); }, () => landThrow());
+lbtn('lDodgeL', () => playerDodge(-1)); lbtn('lDodgeR', () => playerDodge(1));
+function landThrow() { if (LAND.charge == null) return; const held = (now() - LAND.charge) / 1000; LAND.charge = null; playerThrow(clamp(.25 + held * .75, .25, 1)); }
+// ---- touch: joystick on the left, look on the right (in front of the normal swipe controls) ----
+stage.addEventListener('pointerdown', e => {
+  if (!landOn()) return;
+  e.stopImmediatePropagation(); if (e.pointerType === 'mouse') return; // (the mouse is handled below) try { stage.setPointerCapture(e.pointerId); } catch (x) {}
+  if (e.clientX < innerWidth * .45 && !LAND.joy) { LAND.joy = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY }; const j = $('landJoy'); j.hidden = false; j.style.left = e.clientX + 'px'; j.style.top = e.clientY + 'px'; }
+  else if (!LAND.look) LAND.look = { id: e.pointerId, x: e.clientX, y: e.clientY };
+}, true);
+stage.addEventListener('pointermove', e => {
+  if (!landOn()) return;
+  if (LAND.joy && e.pointerId === LAND.joy.id) { e.stopImmediatePropagation(); LAND.joy.x = e.clientX; LAND.joy.y = e.clientY; const dx = e.clientX - LAND.joy.x0, dy = e.clientY - LAND.joy.y0, L = Math.hypot(dx, dy), k = Math.min(1, 44 / (L || 1)); $('landKnob').style.transform = `translate(${dx * k}px,${dy * k}px)`; }
+  else if (LAND.look && e.pointerId === LAND.look.id) { e.stopImmediatePropagation(); LAND.yaw -= (e.clientX - LAND.look.x) * .006; LAND.pitch = clamp(LAND.pitch + (e.clientY - LAND.look.y) * .004, -.3, 1.1); LAND.look.x = e.clientX; LAND.look.y = e.clientY; }
+}, true);
+const landUp = e => { if (!S.land) return;
+  if (LAND.joy && e.pointerId === LAND.joy.id) { LAND.joy = null; $('landJoy').hidden = true; $('landKnob').style.transform = ''; e.stopImmediatePropagation(); }
+  else if (LAND.look && e.pointerId === LAND.look.id) { LAND.look = null; e.stopImmediatePropagation(); } };
+stage.addEventListener('pointerup', landUp, true); stage.addEventListener('pointercancel', landUp, true);
+// ---- mouse ----
+stage.addEventListener('mousedown', e => {
+  if (!landOn()) return; e.stopImmediatePropagation();
+  if (document.pointerLockElement !== stage) { try { stage.requestPointerLock(); } catch (x) {} return; }
+  if (e.button === 0) LAND.charge = now(); else if (e.button === 2) playerGrab();
+}, true);
+stage.addEventListener('mouseup', e => { if (landOn() && e.button === 0 && document.pointerLockElement === stage) landThrow(); }, true);
+stage.addEventListener('contextmenu', e => { if (S.land) e.preventDefault(); });
+addEventListener('mousemove', e => { if (landOn() && document.pointerLockElement === stage) { LAND.yaw -= e.movementX * .0025; LAND.pitch = clamp(LAND.pitch + e.movementY * .002, -.3, 1.1); } });
+// ---- keyboard (in front of the normal keys, which turn and auto-run) ----
+document.addEventListener('keydown', e => {
+  if (!landOn()) return; const c = e.code;
+  if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(c)) { LAND.keys[c] = true; e.stopImmediatePropagation(); e.preventDefault(); return; }
+  if (e.repeat) return;
+  if (c === 'Space') { playerJump(); e.preventDefault(); e.stopImmediatePropagation(); }
+  else if (c === 'KeyE') { playerGrab(); e.stopImmediatePropagation(); }
+  else if (c === 'KeyQ') { playerDodge(-1); e.stopImmediatePropagation(); } else if (c === 'KeyR') { playerDodge(1); e.stopImmediatePropagation(); }
+  else if (c === 'KeyF') { playerShield(); e.stopImmediatePropagation(); }
+}, true);
+document.addEventListener('keyup', e => { LAND.keys[e.code] = false; }, true);
+addEventListener('blur', () => { LAND.keys = {}; LAND.charge = null; });
+// ---- gamepad ----
+function readPad(dt) {
+  const gp = (navigator.getGamepads ? [...navigator.getGamepads()] : []).find(g => g && g.connected); if (!gp) return null;
+  const dz = v => Math.abs(v) < .15 ? 0 : v, ax = gp.axes, b = i => !!(gp.buttons[i] && gp.buttons[i].pressed), was = LAND.gpPrev, press = i => b(i) && !was[i];
+  const m = V(dz(ax[0] || 0), 0, dz(ax[1] || 0));
+  LAND.yaw -= dz(ax[2] || 0) * 3 * dt; LAND.pitch = clamp(LAND.pitch + dz(ax[3] || 0) * 2 * dt, -.3, 1.1);
+  if (press(0)) playerJump(); if (press(2)) playerGrab(); if (press(4)) playerDodge(-1); if (press(5)) playerDodge(1); if (press(3)) playerShield();
+  if (press(9)) { if (match.menu) $('resumeBtn').click(); else pauseGame(); }
+  if (press(7)) LAND.charge = now(); if (!b(7) && was[7]) landThrow();
+  LAND.gpPrev = Object.fromEntries(gp.buttons.map((x, i) => [i, x.pressed]));
+  return m;
+}
+// ---- moving: replaces the auto-run while the scheme is on ----
+{ const upc0 = updatePlayerControl; updatePlayerControl = function (dt) {
+    landShow();
+    if (!landOn()) { if (S.land && match.state === 'count') LAND.yaw = P.yaw; return upc0(dt); }
+    if (PW.pick || !canMove(P)) { P.wantSpeed = 0; return; }
+    let mx = 0, mz = 0; const K = LAND.keys;
+    if (K.KeyW || K.ArrowUp) mz -= 1; if (K.KeyS || K.ArrowDown) mz += 1; if (K.KeyA || K.ArrowLeft) mx -= 1; if (K.KeyD || K.ArrowRight) mx += 1;
+    if (LAND.joy) { const dx = LAND.joy.x - LAND.joy.x0, dy = LAND.joy.y - LAND.joy.y0, L = Math.hypot(dx, dy); if (L > 8) { const k = Math.min(1, L / 44); mx += dx / L * k; mz += dy / L * k; } }
+    const pad = readPad(dt); if (pad) { mx += pad.x; mz += pad.z; }
+    const mag = Math.min(1, Math.hypot(mx, mz));
+    P.yaw = P.yawT = LAND.yaw; // you face where the camera looks
+    const f = fwdOf(LAND.yaw), rt = V(-f.z, 0, f.x);
+    if (mag > .05) { const d = f.clone().multiplyScalar(-mz).addScaledVector(rt, mx).normalize(); P.want.copy(d); P.wantSpeed = RUN * mag * (P.stack[0] && P.stack[0].kind === 'flag' ? 1.2 : 1); }
+    else P.wantSpeed = 0;
+    $('lThrow').style.setProperty('--k', LAND.charge == null ? 0 : clamp((now() - LAND.charge) / 1000, 0, 1));
+  }; }
+// ---- the camera: orbits behind you wherever you point it ----
+{ const uc1 = updateCamera; updateCamera = function (dt) {
+    uc1(dt);
+    if (!landOn() || SPEC.on || REPLAY.on) return;
+    const p = P.model.g.position, f = fwdOf(LAND.yaw), dist = innerWidth < innerHeight ? 8.5 : 7;
+    const head = V(p.x, p.y + 1.4, p.z), back = f.clone().multiplyScalar(-Math.cos(LAND.pitch)).setY(Math.sin(LAND.pitch)).normalize();
+    const want = head.clone().addScaledVector(back, dist);
+    probeRay.origin = { x: head.x, y: head.y, z: head.z }; probeRay.dir = { x: back.x, y: back.y, z: back.z };
+    const h = world.castRay(probeRay, dist, true, undefined, undefined, P.col, undefined, rayPred); if (h) want.copy(head).addScaledVector(back, Math.max(1.8, h.toi - .3));
+    want.y = Math.max(want.y, .6);
+    if (!LAND.cam || snapCamera) LAND.cam = want.clone(); else LAND.cam.lerp(want, Math.min(1, dt * 14));
+    camera.position.copy(LAND.cam); camera.lookAt(head.x + f.x * 4, head.y + .3 - LAND.pitch * 1.5, head.z + f.z * 4);
+  }; }
+// a nudge to turn the phone sideways
+setInterval(() => { const tip = $('landTip'); if (tip) tip.hidden = !(S.land && !NET && match.state === 'play' && innerHeight > innerWidth && !matchMedia('(pointer:fine)').matches); }, 700);
 
 // ============================================================
 // ONLINE PLAY (test version, no game server needed)
