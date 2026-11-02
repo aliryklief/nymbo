@@ -2890,7 +2890,7 @@ function updateRobot(r, dt) {
   r.lastVy = lv.y;
   r.yaw += angDiff(r.yaw, r.yawT) * Math.min(1, dt * (r.isPlayer ? 14 : 9));
   if (r.dashT > 0) r.dashT -= dt; else r.dashV *= Math.pow(.001, dt);
-  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1) * (r.peckT > 0 ? .3 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
+  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1) * (r.peckT > 0 ? .3 : 1) * (r.grounded && onIce(rPos(r)) ? 1.35 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
   if (r.pull) { des.add(r.pull); } // the black hole's drag
   if (r.boost) { des.add(r.boost); r.boost.multiplyScalar(Math.exp(-1.3 * dt)); if (r.boost.lengthSq() < .3) r.boost = null; } // speed arrows
   if (r.gasT > 0) r.gasT -= dt; // (in the stink cloud: crawling)
@@ -3008,7 +3008,7 @@ function freezeArea(pos, team, by, FREEZE_R = FREEZE_R0) {
   // leaves an ice slick on the ground for a few seconds: everybody slides about on it
   if (pos.y < 3) makeIcePatch(pos, FREEZE_R);
 }
-const ICE = [], ICE_TIME = 6;
+const ICE = [], ICE_TIME = 7.5; // (1.5 s longer than it used to be)
 // the ground turns into a floor of clear ice-glass blocks (you see the grass through them), one per ground square
 function makeIcePatch(pos, FREEZE_R) {
   netEv(['ice', +pos.x.toFixed(2), +pos.y.toFixed(2), +pos.z.toFixed(2), FREEZE_R]);
@@ -5072,6 +5072,12 @@ function updateCoop(dt) {
 // mobbed robots: arms up over their heads, flailing. Carrying a chicken: you glide down when you jump
 { const sync0 = syncRobot; syncRobot = function (r) {
     sync0(r);
+    { // skating on ice: you turn slowly round and round while you slide (a lot less than being frozen), and settle back after
+      const dt = clamp(lastDt || 1 / 60, 1 / 240, 1 / 30), lv = r.body && r.body.linvel(), on = r.state === 'play' && r.grounded && r.frozenT <= 0 && lv && Math.hypot(lv.x, lv.z) > 1.5 && onIce(rPos(r));
+      if (on) { r.iceSpinDir = r.iceSpinDir || (Math.random() < .5 ? 1 : -1); r.iceSpin = (r.iceSpin || 0) + r.iceSpinDir * dt * 3.2; }
+      else if (r.iceSpin) { const tgt = Math.round(r.iceSpin / (Math.PI * 2)) * Math.PI * 2; r.iceSpin += (tgt - r.iceSpin) * Math.min(1, dt * 6); if (Math.abs(tgt - r.iceSpin) < .01) { r.iceSpin = 0; r.iceSpinDir = 0; } }
+      if (r.iceSpin) r.model.g.rotateY(r.iceSpin);
+    }
     if (r.peckT > 0 && r.state === 'play') { const t = now() / 1000; r.model.arms.forEach((a, i) => { const s = i ? 1 : -1; a.rotation.z = s * (2.75 + Math.sin(t * 19 + i * 2) * .3); a.rotation.x = Math.sin(t * 23 + i) * .7; }); r.model.held.visible = false; r.model.g.rotateY(Math.sin(t * 31) * .12); }
   }; }
 { const ur0 = updateRobot; updateRobot = function (r, dt) {
