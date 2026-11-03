@@ -465,7 +465,8 @@ function netUV(geo, ox, oy) {
 }
 function whiteUV(geo) { const uv = geo.attributes.uv; if (!uv) return geo; for (let i = 0; i < uv.count; i++) uv.setXY(i, (PNET.W - 1.5) / PNET.W, 1.5 / PNET.H); uv.needsUpdate = true; return geo; }
 const MAP = (() => { try { const m = localStorage.getItem('nymbo-map'); return m === 'clouds' || m === 'rainbow' || m === 'sky' ? 'sky' : 'classic'; } catch (e) { return 'classic'; } })(); // (the cloud and rainbow maps were merged into one: 'sky')
-const MS = MAP === 'classic' ? 1 : 1.05;   // map scale
+const MS = MAP === 'classic' ? 1 : 1.3;
+const STRIP_Z = MAP === 'sky' ? 24 : 42; // speed strips: the sky map has them nearer the middle   // map scale
 const MX = Math.round(67 * MS), MZ = Math.round(46 * MS); // half-size of the island (classic: 1.2x the first test map)
 const G = 22;                      // gravity: snappy like Toblo (was 26 at first, then 14)
 const JUMP_V = 11.8;               // each jump ~3.2 blocks; a perfectly timed double jump just clears the tallest trees (~6.3)
@@ -674,7 +675,7 @@ function staticBox(x0, y0, z0, w, h, d, color, jit = .05) {
 }
 // hidden trampolines: one in each big tree grove (mirrored, so both teams get one), black and flat, easy to miss
 const TRAMP_SPOTS = MAP === 'sky' ? (() => { const A = PORTAL_SPOTS[1], L = Math.hypot(A.x, A.z), u = { x: A.x / L, z: A.z / L }, n = { x: -u.z, z: u.x }; // the sky map: one on each side, back from the gorge (each has a water slide)
-    return [[-20, 26], [20, -26]].map(([t, o]) => ({ x: Math.round(u.x * t + n.x * o), z: Math.round(u.z * t + n.z * o), t, o })); })()
+    return [[-20 * MS / 1.05, 26], [20 * MS / 1.05, -26]].map(([t, o]) => ({ x: Math.round(u.x * t + n.x * o), z: Math.round(u.z * t + n.z * o), t, o })); })()
   : [{ x: Math.round(18 * MS), z: Math.round(26 * MS) }, { x: Math.round(-18 * MS), z: Math.round(-26 * MS) }];
 // TERRAIN (sky bridge map only): each fort stands on a plateau 4 blocks up that slopes gently down towards the gorge,
 // and the groves are on low rolling hills. Everything else (the middle, the hubs, the trampolines, the speed strips,
@@ -690,7 +691,7 @@ function TH(x, z) {
   if (h <= 0) return 0;
   let k = clamp((chasmDist(x, z) - 3) / 7, 0, 1); // flat along the gorge
   for (const p of [...TRAMP_SPOTS, ...HUBS]) k = Math.min(k, clamp((Math.hypot(x - p.x, z - p.z) - 6) / 5, 0, 1));
-  for (const s of [-1, 1]) k = Math.min(k, clamp((Math.hypot(x - Math.round(-s * 13 * MS) - s * 4, z - Math.round(s * 42 * MS)) - 7) / 5, 0, 1)); // the speed strips
+  for (const s of [-1, 1]) k = Math.min(k, clamp((Math.hypot(x - Math.round(-s * 13 * MS) - s * 4, z - Math.round(s * STRIP_Z * MS)) - 7) / 5, 0, 1)); // the speed strips
   k = Math.min(k, clamp((MX - Math.abs(x)) / 3, 0, 1), clamp((MZ - Math.abs(z)) / 3, 0, 1)); // down to nothing at the island's edge
   return h * k;
 }
@@ -1008,7 +1009,7 @@ function speedStrip(x, z, dx, dz, team) {
   staticBoxes.push({ x0: Math.min(x, x + dir.x * 8) - 2.5, y0: 0, z0: Math.min(z, z + dir.z * 8) - 2.5, x1: Math.max(x, x + dir.x * 8) + 2.5, y1: .1, z1: Math.max(z, z + dir.z * 8) + 2.5, foot: true });
 }
 for (const t of TRAMP_SPOTS) trampoline(t.x, t.z);
-for (const [s, team] of [[1, 'blue'], [-1, 'red']]) speedStrip(Math.round(-s * 13 * MS), Math.round(s * 42 * MS), s, 0, team); // mirrored (point-symmetric): blue panel on our side, red on theirs
+for (const [s, team] of [[1, 'blue'], [-1, 'red']]) speedStrip(Math.round(-s * 13 * MS), Math.round(s * STRIP_Z * MS), s, 0, team); // mirrored (point-symmetric): blue panel on our side, red on theirs
 // the mat's rings slide inwards and shrink (it's pulling you in): same look, just alive
 function animateMat(t) {
   const cv = tramp.mat.map.userData.cv, h = cv.getContext('2d'), ph = (t / 1400) % 1;
@@ -6338,10 +6339,10 @@ if (RBW.on) {
       for (const q of [v(p0, o0), v(p1, o0), v(p0, o1), v(p0, o1), v(p1, o0), v(p1, o1)]) { P2.push(...q); C2.push(c.r, c.g, c.b); } } }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P2, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C2, 3)); g.computeVertexNormals();
   const band = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: .92 })); band.renderOrder = 2; scene.add(band); RBW.band = band;
-  // it's solid: you can land on it anywhere (and then it carries you); a thin slab so nobody falls through it
+  // it's solid: you can land on it and walk on it (it only carries you if you get on at a pasture end); a thin slab so nobody falls through it
   for (let k = 0; k <= SEG; k++) { const p = RBW.at(k / SEG); for (const o of [-Wd / 2, Wd / 2]) cv.push(p.x + side.x * o, p.y - .05, p.z + side.z * o); }
   for (let k = 0; k < SEG; k++) { const a = k * 2; ci.push(a, a + 2, a + 1, a + 1, a + 2, a + 3, a, a + 1, a + 2, a + 1, a + 3, a + 2); }
-  const col = world.createCollider(RAPIER.ColliderDesc.trimesh(new Float32Array(cv), new Uint32Array(ci)).setFriction(0)); byCollider.set(col.handle, { type: 'static' }); RBW.handle = col.handle;
+  const col = world.createCollider(RAPIER.ColliderDesc.trimesh(new Float32Array(cv), new Uint32Array(ci)).setFriction(.8)); byCollider.set(col.handle, { type: 'static' }); RBW.handle = col.handle;
   const puffM = new LiteMat({ color: 0xffffff, emissive: 0x9aa8c8, emissiveIntensity: .3 });
   for (const E of [RBW.A, RBW.B]) for (let k = 0; k < 9; k++) { const m = new THREE.Mesh(puffGeo, puffM); const a = k / 9 * 6.28; m.position.set(E.x + Math.cos(a) * 2.6, .4 + rr(0, .6), E.z + Math.sin(a) * 2.6); m.scale.set(rr(1, 1.5), rr(.6, .9), rr(1, 1.5)); scene.add(m); }
   for (let k = 0; k < 4; k++) { const a = k / 4 * 6.28 + .4, R = MX * 2.2, cx = Math.cos(a) * R, cz = Math.sin(a) * R * .8; // soft rainbows far out in the sky
@@ -6369,20 +6370,18 @@ function rainbowRide(r, dt) {
   if (r.state !== 'play' || (r.rbCool || 0) > now()) return;
   const c = rPos(r);
   for (const [E, s, dir] of [[RBW.A, 0, 1], [RBW.B, 1, -1]]) if (Math.hypot(c.x - E.x, c.z - E.z) < 2.2 && c.y - TH(c.x, c.z) < 3) { r.rb = { s, dir }; sfx('swoop', c); if (r.isPlayer) toast('WHEEE! JUMP TO LEAP OFF'); return; }
-  // landed on it somewhere along the way: it picks you up and carries you on the way you were heading
-  rbRay.origin = { x: c.x, y: c.y, z: c.z }; const h = world.castRay(rbRay, 1.4, true, undefined, undefined, r.col);
-  if (h && h.collider.handle === RBW.handle) { const s = nearestS(c), lv = r.body.linvel(), tan = RBW.at(Math.min(1, s + .01)).sub(RBW.at(Math.max(0, s - .01))); r.rb = { s, dir: s < .5 ? -1 : 1 }; /* it slides you down to the nearer end (jump straight off if you don't want that) */ sfx('swoop', c); }
 }
 
 // ---------------------------------------------------------------- water slides: one by each trampoline
 // Bounce on the trampoline heading for the gorge and you come down on a water slide. It twists and dips its way over the
-// gorge and drops you on the other side. Jump to leap off it any time.
+// gorge and down to the other side. The water pushes you down it: go with it and you lie back and slide; turn round and
+// you can climb up against it (hard work, but you'll get there). Hop on or off anywhere.
 const SLIDES = [];
 if (CH) for (const T of TRAMP_SPOTS) {
   const sd = Math.sign(T.o), u = CH.u, n = CH.n, Wd = 4.2, SEG = 150;
   const at = s => { // across from the trampoline over the gorge; straight where you land, then it snakes and bobs down
     const a = 18 + 34 * s, bend = s < .42 ? 0 : Math.sin((s - .42) / .58 * Math.PI * 1.6) * 9 * Math.sin((s - .42) / .58 * Math.PI) ;
-    const t = T.t + sd * bend, o = T.o - sd * a, y = 15 * (1 - s) + Math.sin(s * Math.PI * 5) * 1.1 * Math.sin(s * Math.PI) + .35;
+    const t = T.t + sd * bend, o = T.o - sd * a, y = 15 * (1 - s) + Math.sin(s * Math.PI * 5) * .75 * Math.sin(s * Math.PI) + .35;
     return V(u.x * t + n.x * o, y, u.z * t + n.z * o); };
   const S_ = { at, samples: [], L: 0, T };
   { let p0 = at(0); for (let k = 0; k <= 200; k++) { const p = at(k / 200); S_.L += p.distanceTo(p0); p0 = p; S_.samples.push(p); } }
@@ -6391,10 +6390,11 @@ if (CH) for (const T of TRAMP_SPOTS) {
   for (let k = 0; k <= SEG; k++) { const s = k / SEG, p = at(s), q = at(Math.min(1, s + .005)), tan = q.sub(p).normalize(), side = V(-tan.z, 0, tan.x).normalize();
     for (const x of prof) { const h = Math.pow(Math.abs(x), 3) * .9 - .05; P2.push(p.x + side.x * x * Wd / 2, p.y + h, p.z + side.z * x * Wd / 2); }
     for (const x of [-.8, .8]) { W2.push(p.x + side.x * x * Wd / 2, p.y + .06, p.z + side.z * x * Wd / 2); UV.push(x > 0 ? 1 : 0, s * S_.L / 3); }
-    for (const x of [-.85, .85]) cv.push(p.x + side.x * x * Wd / 2, p.y - .05, p.z + side.z * x * Wd / 2); }
+    for (const x of prof) { const h = Math.pow(Math.abs(x), 3) * .9 - .1; cv.push(p.x + side.x * x * Wd / 2, p.y + h, p.z + side.z * x * Wd / 2); } }
   const idx = [], wi = [];
   for (let k = 0; k < SEG; k++) { for (let j = 0; j < prof.length - 1; j++) { const a = k * 7 + j, b = a + 7; idx.push(a, a + 1, b, a + 1, b + 1, b); }
-    const a = k * 2; wi.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); ci.push(a, a + 2, a + 1, a + 1, a + 2, a + 3, a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    for (let j = 0; j < prof.length - 1; j++) { const a = k * 7 + j, b = a + 7; ci.push(a, a + 1, b, a + 1, b + 1, b); }
+    const a = k * 2; wi.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P2, 3)); g.setIndex(idx); g.computeVertexNormals();
   const tube = new THREE.Mesh(g, new LiteMat({ color: 0x2f8fe8, emissive: 0x0b3a70, emissiveIntensity: .5, side: THREE.DoubleSide })); tube.castShadow = tube.receiveShadow = true; scene.add(tube);
   const wc = document.createElement('canvas'); wc.width = 32; wc.height = 64; const wg = wc.getContext('2d'); wg.fillStyle = '#7fd8ff'; wg.fillRect(0, 0, 32, 64); wg.fillStyle = 'rgba(255,255,255,.75)';
@@ -6408,27 +6408,18 @@ if (CH) for (const T of TRAMP_SPOTS) {
   SLIDES.push(S_);
 }
 const slideS = (S_, p) => { let best = 0, bd = 1e9; S_.samples.forEach((q, k) => { const d = q.distanceToSquared(p); if (d < bd) { bd = d; best = k; } }); return best / 200; };
-function slideRide(r, dt) {
-  if (!SLIDES.length || !r.body) return;
-  if (r.sl) {
-    const R_ = r.sl, S_ = R_.S; if (r.state !== 'play') { r.sl = null; return; }
-    const sp = 17 + 12 * R_.s; R_.s += sp * dt / S_.L;
-    const done = R_.s >= 1, s = Math.min(1, R_.s), p = S_.at(s), q = S_.at(Math.min(1, s + .01)), tan = q.clone().sub(p).normalize();
-    if (R_.jump || done) { r.sl = null; r.slCool = now() + 700;
-      r.body.setTranslation({ x: p.x, y: p.y + 1.1, z: p.z }, true);
-      r.body.setLinvel({ x: tan.x * sp * (done ? .45 : .7), y: done ? 3 : JUMP_V, z: tan.z * sp * (done ? .45 : .7) }, true); r.jumps = done ? 0 : 1; r.grounded = false; r.padT = done ? 0 : 1.5;
-      if (done) { fxBurst(V(p.x, TH(p.x, p.z) + .3, p.z), 0x8fe0ff, 1.8, .35); sfx('splash', p); }
-      return; }
-    r.body.setTranslation({ x: p.x, y: p.y + 1.0, z: p.z }, true); r.body.setLinvel({ x: tan.x * sp, y: tan.y * sp, z: tan.z * sp }, true);
-    r.grounded = false; r.jumps = 1;
-    if (Math.random() < .7) emit(V(p.x + rr(-.6, .6), p.y + .2, p.z + rr(-.6, .6)), 0xbdefff, V(rr(-2, 2), rr(1, 3), rr(-2, 2)), .14, .5, 0);
-    return;
-  }
-  if (r.state !== 'play' || (r.slCool || 0) > now()) return;
-  const c = rPos(r); rbRay.origin = { x: c.x, y: c.y, z: c.z }; const h = world.castRay(rbRay, 1.5, true, undefined, undefined, r.col);
-  if (!h) return; const S_ = SLIDES.find(x => x.handle === h.collider.handle); if (!S_) return;
-  r.sl = { S: S_, s: slideS(S_, c) }; sfx('splash', c); if (r.isPlayer) toast('SPLASH! JUMP TO LEAP OFF');
+function slideAfter(r, dt) { // the water pushes you down the chute (taken off again before the next move, so it never piles up)
+  r.onSlide = null; r.slLay = false; if (!SLIDES.length || !r.body || r.state !== 'play') return;
+  const c = rPos(r); rbRay.origin = { x: c.x, y: c.y, z: c.z }; const h = world.castRay(rbRay, 1.6, true, undefined, undefined, r.col);
+  const S_ = h && SLIDES.find(x => x.handle === h.collider.handle); if (!S_) { if ((r.slLayT || 0) > now()) r.slLay = true; else r.wasSlide = false; return; } // (still lying back over a little bump)
+  const s = slideS(S_, c), d = S_.at(Math.min(1, s + .01)).sub(S_.at(Math.max(0, s - .01))), dh = V(d.x, 0, d.z).normalize(), lv = r.body.linvel();
+  const going = lv.x * dh.x + lv.z * dh.z, lay = (!(r.wantSpeed > .5) || r.want.x * dh.x + r.want.z * dh.z > -.2) && s < .985, /* (heading down, or not trying to go anywhere: lie back and slide) */ P = lay ? 6 : 3.3, push = dh.clone().multiplyScalar(P);
+  r.body.setLinvel({ x: lv.x + push.x, y: lv.y, z: lv.z + push.z }, true); r.slPush = push;
+  r.onSlide = S_; r.slLay = lay; r.slDir = dh; if (lay) r.slLayT = now() + 350;
+  if (!r.wasSlide) { sfx('splash', c); if (r.isPlayer && !slideTip) { slideTip = true; toast('SPLASH! TURN ROUND TO CLIMB'); } } r.wasSlide = true;
+  if (Math.random() < .5) emit(V(c.x + rr(-.5, .5), c.y - .7, c.z + rr(-.5, .5)), 0xbdefff, V(rr(-2, 2), rr(1, 3), rr(-2, 2)), .14, .5, 0);
 }
+let slideTip = false;
 function updateSlides(dt) { for (const S_ of SLIDES) S_.wt.offset.y -= dt * 2.2; }
 
 // ---------------------------------------------------------------- rain clouds over the battlefield (solid; some carry power blocks)
@@ -6573,8 +6564,10 @@ function hopCloud(r, p, goal) { // bots cross the gorge on the moving clouds
 { const ua1 = updateAI; updateAI = function (r, dt) {
     if (!CH || !r.ai.goal) return ua1(r, dt);
     ua1(r, dt);
-    if (r.rb || r.sl) return; // riding the rainbow or a slide
+    if (r.forceWant) { r.want.copy(r.forceWant); r.wantSpeed = RUN; return; } /* (tests) */
+    if (r.rb) return; // riding the rainbow
     const p = rPos(r), goal = r.ai.goal, lvl = SMART();
+    if (r.onSlide) { if (goal && crossesGorge(p, goal)) { r.want.copy(r.slDir); r.wantSpeed = RUN; } return; } // on a slide: go with the water
     if (r.padT > 0 && r.slideRun) { r.want.copy(r.slideRun); r.wantSpeed = RUN; return; } // flying off the trampoline at the slide
     if (r.wantSpeed > 0 && goal && crossesGorge(p, goal)) {
       if ((tileUnder(r) || (lvl >= 2 && chasmDist(p.x, p.z) < 1.5)) && hopCloud(r, p, goal)) return; /* hard bots hop the clouds too */
@@ -6617,13 +6610,17 @@ const gateExit = (x, z) => { let best = null, bd = 1e9; for (const t of ['blue',
 
 // ---------------------------------------------------------------- hooks
 { const ur1 = updateRobot; updateRobot = function (r, dt) {
-    const wantJump = r.jumpReq && (r.rb || r.sl); if (wantJump) { r.jumpReq = false; (r.rb || r.sl).jump = true; }
+    const wantJump = r.jumpReq && r.rb; if (wantJump) { r.jumpReq = false; r.rb.jump = true; }
+    if (r.slPush && r.body) { const lv = r.body.linvel(); r.body.setLinvel({ x: lv.x - r.slPush.x, y: lv.y, z: lv.z - r.slPush.z }, true); r.slPush = null; }
     ur1(r, dt);
     if (CH && r.body && r.state === 'play' && r.grounded) { const T_ = tileUnder(r); if (T_) { const t = r.body.translation(); r.body.setTranslation({ x: t.x + T_.v.x * dt, y: t.y, z: t.z + T_.v.z * dt }, true); } } // riding a cloud
-    rainbowRide(r, dt); slideRide(r, dt);
+    rainbowRide(r, dt); slideAfter(r, dt);
   }; }
 { const ump1 = updateMorePowers; updateMorePowers = function (dt) { updateConveyor(dt); updateSkyClouds(dt); updateWeather(dt); updateSlides(dt); ump1(dt); }; }
 if (CH) setTimeout(() => { try { rebuildPits(); } catch (e) {} }, 0); // dirt walls down the sides of the gorge
+{ const sy1 = syncRobot; syncRobot = function (r) { sy1(r);
+    if (r.slLay && r.state === 'play' && r.slDir) { const m = r.model; m.g.quaternion.setFromAxisAngle(V(0, 1, 0), Math.atan2(-r.slDir.x, -r.slDir.z) + Math.PI); m.g.rotateX(-1.3); m.g.position.y -= .45; } // lying back, feet first
+  }; }
 // ---------------------------------------------------------------- the map picker in the menu
 document.querySelectorAll('[data-map]').forEach(b => { b.classList.toggle('on', b.dataset.map === MAP);
   b.onclick = () => { if (b.dataset.map === MAP) return; try { localStorage.setItem('nymbo-map', b.dataset.map); } catch (e) {} location.reload(); }; });
