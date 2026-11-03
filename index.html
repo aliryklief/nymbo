@@ -289,7 +289,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <div class="lbl">BOTS</div>
     <div class="seg"><button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div>
     <div class="lbl">MAP</div>
-    <div class="seg"><button data-map="classic">Classic</button><button data-map="clouds">☁ Cloud conveyor</button><button data-map="rainbow">🌈 Rainbow bridge</button></div>
+    <div class="seg"><button data-map="classic">Classic</button><button data-map="sky">🌈 Sky bridge</button></div>
     <div class="lbl">WORLD</div>
     <div class="seg" style="grid-template-columns:1fr 1fr"><button data-world="day">☀ Day</button><button data-world="night">✦ Aurora night</button></div>
     <div class="lbl">PLAY WITH FRIENDS</div>
@@ -464,7 +464,7 @@ function netUV(geo, ox, oy) {
   uv.needsUpdate = true; return geo;
 }
 function whiteUV(geo) { const uv = geo.attributes.uv; if (!uv) return geo; for (let i = 0; i < uv.count; i++) uv.setXY(i, (PNET.W - 1.5) / PNET.W, 1.5 / PNET.H); uv.needsUpdate = true; return geo; }
-const MAP = (() => { try { const m = localStorage.getItem('nymbo-map'); return ['classic', 'clouds', 'rainbow'].includes(m) ? m : 'classic'; } catch (e) { return 'classic'; } })();
+const MAP = (() => { try { const m = localStorage.getItem('nymbo-map'); return m === 'clouds' || m === 'rainbow' || m === 'sky' ? 'sky' : 'classic'; } catch (e) { return 'classic'; } })(); // (the cloud and rainbow maps were merged into one: 'sky')
 const MS = MAP === 'classic' ? 1 : 1.4;   // map scale
 const MX = Math.round(67 * MS), MZ = Math.round(46 * MS); // half-size of the island (classic: 1.2x the first test map)
 const G = 22;                      // gravity: snappy like Toblo (was 26 at first, then 14)
@@ -565,17 +565,24 @@ function canvasTex(w, h, draw, repeatX = 1, repeatY = 1) {
 const GCH = 4, GW = MX * 2, GD = MZ * 2, HOLES = new Set(), chunkCols = new Map();
 // CLOUD CONVEYOR map: a band of open sky runs through the middle from near one portal to near the other (stopping short
 // of the pastures, so you can still walk round the ends). Clouds with tiles on top ride round it in two lanes.
-const CH = (() => { if (MAP !== 'clouds') return null; const A = PORTAL_SPOTS[1], L = Math.hypot(A.x, A.z), u = { x: A.x / L, z: A.z / L }; return { u, n: { x: -u.z, z: u.x }, T: L - 30, W: 7, lane: 4.2 }; })();
-const chasmDist = (x, z) => { if (!CH) return 99; const t = x * CH.u.x + z * CH.u.z, o = x * CH.n.x + z * CH.n.z, tc = clamp(t, -CH.T, CH.T); return Math.hypot(t - tc, o) - CH.W; }; // < 0 inside the band
+// SKY BRIDGE map: a gorge of open sky runs right across the island and off both edges, splitting it into the blue half and
+// the red half. Each pasture sits on its own little island in the gorge, with a moat of sky round it. Clouds ride round it.
+const CH = (() => { if (MAP !== 'sky') return null; const A = PORTAL_SPOTS[1], L = Math.hypot(A.x, A.z), u = { x: A.x / L, z: A.z / L };
+  const tp = L - 8.5; return { u, n: { x: -u.z, z: u.x }, W: 8.5, lane: 5, tp, Ri: 10, Rl: 13, Ro: 16.5, pas: [V(u.x * tp, 0, u.z * tp), V(-u.x * tp, 0, -u.z * tp)] }; })();
+const chasmDist = (x, z) => { if (!CH) return 99; const o = x * CH.n.x + z * CH.n.z; let d = Math.abs(o) - CH.W;
+  for (const P_ of CH.pas) { const dp = Math.hypot(x - P_.x, z - P_.z); d = Math.max(Math.min(d, Math.max(CH.Ri - dp, dp - CH.Ro)), CH.Ri - dp > 0 ? CH.Ri - dp : -99); }
+  return d; }; // < 0 inside the gorge (the pasture islands are outside it)
 const inChasm = (x, z) => CH && chasmDist(x, z) < 0 && Math.hypot(x, z) > 2.4; // (the pole keeps a little island of its own)
 const cellOf = (x, z) => [Math.floor(x + MX), Math.floor(z + MZ)];
 const isHole = (x, z) => { const [cx, cz] = cellOf(x, z); return HOLES.has(cx + ',' + cz); };
+const RAISED = new Set();
 function buildChunk(i, j) {
   for (const c of chunkCols.get(i + ',' + j) || []) { byCollider.delete(c.handle); world.removeCollider(c, false); }
   const x0 = i * GCH, z0 = j * GCH, w = Math.min(GCH, GW - x0), d = Math.min(GCH, GD - z0), list = [];
   const add = (cx, cz, cw, cd) => { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(cw / 2, 3, cd / 2).setTranslation(cx - MX + cw / 2, -3, cz - MZ + cd / 2).setFriction(.9)); byCollider.set(c.handle, { type: 'static' }); list.push(c); };
-  let holes = false; for (let a = 0; a < w; a++) for (let b = 0; b < d; b++) if (HOLES.has((x0 + a) + ',' + (z0 + b))) holes = true;
-  if (!holes) add(x0, z0, w, d); else for (let a = 0; a < w; a++) for (let b = 0; b < d; b++) if (!HOLES.has((x0 + a) + ',' + (z0 + b))) add(x0 + a, z0 + b, 1, 1);
+  const gone = k => HOLES.has(k) || RAISED.has(k);
+  let holes = false; for (let a = 0; a < w; a++) for (let b = 0; b < d; b++) if (gone((x0 + a) + ',' + (z0 + b))) holes = true;
+  if (!holes) add(x0, z0, w, d); else for (let a = 0; a < w; a++) for (let b = 0; b < d; b++) if (!gone((x0 + a) + ',' + (z0 + b))) add(x0 + a, z0 + b, 1, 1);
   chunkCols.set(i + ',' + j, list);
 }
 const cellData = new Uint8Array(GW * GD * 4).fill(255);
@@ -653,6 +660,7 @@ const onIsland = (x, z) => Math.abs(x) <= MX && Math.abs(z) <= MZ;
 const staticCells = [];   // [x,y,z,color]
 const staticBoxes = [];   // {x0,y0,z0,x1,y1,z1}
 function staticBox(x0, y0, z0, w, h, d, color, jit = .05) {
+  if (typeof TH === 'function' && TERRAIN) y0 += TH(x0 - .5 + w / 2, z0 - .5 + d / 2);
   staticBoxes.push({ x0: x0 - .5, y0, z0: z0 - .5, x1: x0 + w - .5, y1: y0 + h, z1: z0 + d - .5 });
   const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, h / 2, d / 2).setTranslation(x0 - .5 + w / 2, y0 + h / 2, z0 - .5 + d / 2).setFriction(.8));
   byCollider.set(c.handle, { type: 'static' });
@@ -663,6 +671,32 @@ function staticBox(x0, y0, z0, w, h, d, color, jit = .05) {
 }
 // hidden trampolines: one in each big tree grove (mirrored, so both teams get one), black and flat, easy to miss
 const TRAMP_SPOTS = [{ x: Math.round(18 * MS), z: Math.round(26 * MS) }, { x: Math.round(-18 * MS), z: Math.round(-26 * MS) }];
+// TERRAIN (sky bridge map only): each fort stands on a plateau 4 blocks up that slopes gently down towards the gorge,
+// and the groves are on low rolling hills. Everything else (the middle, the hubs, the trampolines, the speed strips,
+// the gorge edges) stays flat. TH(x, z) = how high the ground is there.
+const TERRAIN = MAP === 'sky';
+const HILLS = TERRAIN ? [[-20, -23], [20, 23], [-5, 33], [5, -33]].map(([x, z]) => ({ x: x * MS, z: z * MS, r: 15, h: 2 })) : [];
+const _sm = s => s * s * (3 - 2 * s);
+function TH(x, z) {
+  if (!TERRAIN) return 0;
+  let h = 0;
+  for (const t of ['blue', 'red']) { const F = FORT[t], dx = Math.max(0, Math.abs(x - F.x) - (FORT_RX + 3)), dz = Math.max(0, Math.abs(z - F.z) - (FORT_RZ + 3)), d = Math.hypot(dx, dz); if (d < 16) h = Math.max(h, 4 * _sm(1 - d / 16)); }
+  for (const g of HILLS) { const d = Math.hypot(x - g.x, z - g.z); if (d < g.r) h = Math.max(h, g.h * (.5 + .5 * Math.cos(Math.PI * d / g.r))); }
+  if (h <= 0) return 0;
+  let k = clamp((chasmDist(x, z) - 3) / 7, 0, 1); // flat along the gorge
+  for (const p of [...TRAMP_SPOTS, ...HUBS]) k = Math.min(k, clamp((Math.hypot(x - p.x, z - p.z) - 6) / 5, 0, 1));
+  for (const s of [-1, 1]) k = Math.min(k, clamp((Math.hypot(x - Math.round(-s * 13 * MS) - s * 4, z - Math.round(s * 42 * MS)) - 7) / 5, 0, 1)); // the speed strips
+  k = Math.min(k, clamp((MX - Math.abs(x)) / 3, 0, 1), clamp((MZ - Math.abs(z)) / 3, 0, 1)); // down to nothing at the island's edge
+  return h * k;
+}
+/* RAISED (declared above buildChunk): ground squares that aren't flat get one smooth collider instead of boxes */
+if (TERRAIN) for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const x = cx - MX, z = cz - MZ; if (Math.max(TH(x, z), TH(x + 1, z), TH(x, z + 1), TH(x + 1, z + 1)) > .02) RAISED.add(cx + ',' + cz); }
+if (RAISED.size) { // one triangle mesh for all the raised ground
+  const vid = new Map(), vs = [], ix = []; const v = (cx, cz) => { const k = cx + ',' + cz; if (!vid.has(k)) { vid.set(k, vs.length / 3); vs.push(cx - MX, TH(cx - MX, cz - MZ), cz - MZ); } return vid.get(k); };
+  for (const k of RAISED) { const [cx, cz] = k.split(',').map(Number), a = v(cx, cz), b = v(cx + 1, cz), c = v(cx, cz + 1), d = v(cx + 1, cz + 1); ix.push(a, c, b, b, c, d); }
+  const col = world.createCollider(RAPIER.ColliderDesc.trimesh(new Float32Array(vs), new Uint32Array(ix)).setFriction(.9)); byCollider.set(col.handle, { type: 'static' });
+  for (const k of RAISED) { const [cx, cz] = k.split(','); buildChunk(Math.floor(cx / GCH), Math.floor(cz / GCH)); } // (rebuild those chunks without their flat boxes)
+}
 const keepClear = [ // places scenery must avoid
   ...Object.values(FORT).map(f => ({ x: f.x, z: f.z, r: 25 })),
   ...PORTAL_SPOTS.map(p => ({ x: p.x, z: p.z, r: 6 })),
@@ -671,7 +705,7 @@ const keepClear = [ // places scenery must avoid
   ...TRAMP_SPOTS.map(t => ({ x: t.x, z: t.z, r: 2.5 })),
   ...PORTAL_SPOTS.map(p => { const L = Math.hypot(p.x, p.z); return { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5, r: 10 }; }), // the pastures
 ];
-const clearAt = (x, z, pad = 0) => keepClear.every(k => Math.hypot(x - k.x, z - k.z) > k.r + pad) && Math.abs(x) < MX - 3 && Math.abs(z) < MZ - 3 && chasmDist(x, z) > 2.5 + Math.max(0, pad);
+const clearAt = (x, z, pad = 0) => (!TERRAIN || pad < 0 || TH(x, z) < .05 || pad === 2) && keepClear.every(k => Math.hypot(x - k.x, z - k.z) > k.r + pad) && Math.abs(x) < MX - 3 && Math.abs(z) < MZ - 3 && chasmDist(x, z) > 2.5 + Math.max(0, pad);
 // trees are made of real blocks now (built in the blocks file, asleep until something hits them)
 const TREES = [];
 function tree(x, z, h) {
@@ -742,16 +776,16 @@ function gateway(team) {
   const { x, z } = FORT[team], st = '#8f9199';
   staticBox(x, 0, z - 2, 1, 3, 1, st); staticBox(x, 0, z + 2, 1, 3, 1, st); staticBox(x, 3, z - 2, 1, 1, 5, '#80828a');
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: TEAMS[team].gate, transparent: true, opacity: .55, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
-  glow.rotation.y = Math.PI / 2; glow.position.set(x, 1.5, z); scene.add(glow);
+  const gy = TH(x, z); glow.rotation.y = Math.PI / 2; glow.position.set(x, 1.5 + gy, z); scene.add(glow);
   const light = { intensity: 0 }; // no real light: cheaper
-  GATES[team] = { x, z, glow, light, flash: 0 };
+  GATES[team] = { x, z, y: gy, glow, light, flash: 0 };
 }
 gateway('blue'); gateway('red');
 const inOwnFort = (team, p) => Math.abs(p.x - FORT[team].x) < FORT_RX + .5 && Math.abs(p.z - FORT[team].z) < FORT_RZ + .5;
-const inGate = (team, p) => { const g = GATES[team]; return Math.abs(p.x - g.x) < 1.1 && Math.abs(p.z - g.z) < 1.5 && p.y < 3.3 && p.y > -.5; };
+const inGate = (team, p) => { const g = GATES[team]; return Math.abs(p.x - g.x) < 1.1 && Math.abs(p.z - g.z) < 1.5 && p.y - (g.y || 0) < 3.3 && p.y - (g.y || 0) > -.5; };
 
 // ---- linked portals ----
-const PORTALS = (MAP === 'rainbow' ? [] : PORTAL_SPOTS).map((sp, i) => { // (the rainbow map has a rainbow bridge instead)
+const PORTALS = (MAP === 'sky' ? [] : PORTAL_SPOTS).map((sp, i) => { // (the rainbow map has a rainbow bridge instead)
   const n = V(-sp.x, 0, -sp.z).normalize(), t = V(-n.z, 0, n.x);
   for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) staticCells.push([sp.x + a, -.47, sp.z + b, new THREE.Color('#74767e').offsetHSL(0, 0, rr(-.04, .04))]);
   // stone feet either side of the ring
@@ -840,7 +874,7 @@ function makeAnimal(kind) {
     const red = new THREE.MeshBasicMaterial({ color: 0xe0281a }), blk = new THREE.MeshBasicMaterial({ color: 0x111111 }), eyeM = new THREE.MeshBasicMaterial({ color: 0xffe14a });
     const plate = new THREE.Mesh(new THREE.BoxGeometry(w, .3, .03), red); plate.position.set(0, fy, fz); face.add(plate);
     for (const sx of [-1, 1]) {
-      const b = new THREE.Mesh(new THREE.BoxGeometry(w * .36, .06, .03), blk); b.position.set(sx * w * .22, fy + .1, fz + .02); b.rotation.z = sx * .45; // angry brows: \ / face.add(b);
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w * .36, .06, .03), blk); b.position.set(sx * w * .22, fy + .1, fz + .02); b.rotation.z = sx * .45; face.add(b); /* angry brows: \ / */
       const e = new THREE.Mesh(new THREE.BoxGeometry(.09, .07, .03), eyeM); e.position.set(sx * w * .22, fy - .03, fz + .02); face.add(e);
     }
     face.visible = false; g.add(face); g.userData.face = face; }
@@ -919,7 +953,7 @@ function trampoline(x, z) {
   // set INTO the ground (flush, nothing to bump into): a dark pit ring, the striped rim barely sticking out, the mat level with the grass
   const pit = new THREE.Mesh(new THREE.CircleGeometry(1.85, 40).rotateX(-Math.PI / 2), tramp.base); pit.position.y = .012; g.add(pit);
   const top = new THREE.Group(); top.position.y = 0; g.add(top);
-  const rim = new THREE.Mesh(tramp.rimGeo, tramp.rim.clone()); // (own material: each rim flashes on its own) rim.position.y = -.07; rim.scale.set(1, .7, 1); top.add(rim);
+  const rim = new THREE.Mesh(tramp.rimGeo, tramp.rim.clone()); /* own material: each rim flashes on its own */ rim.position.y = -.07; rim.scale.set(1, .7, 1); top.add(rim);
   const mat = new THREE.Mesh(tramp.matGeo, tramp.mat); mat.position.y = .02; mat.receiveShadow = true; top.add(mat);
   const springs = [];
   // no collider at all: thrown blocks, rubble and animals pass straight over it like it's not there
@@ -1276,6 +1310,11 @@ const iceOverlayMat = new LiteMat({ color: 0xaef4ff, transparent: true, opacity:
 const isPower = k => k === 'bomb' || k === 'freeze' || k === 'homing' || k === 'warp' || k === 'sticky' || k === 'egg';
 const isSticky = k => k === 'sticky'; // (the egg doesn't stick: it bursts the moment it touches anything)
 function newBlock(kind, pos, o = {}) {
+  if (TERRAIN && pos) { // standing on the terrain: forts, flags and trees always; anything else placed at ground level too
+    const dy = kind === 'fort' || kind === 'flag' || kind === 'tree' || pos.y < 6 ? TH(pos.x, pos.z) : 0;
+    if (kind === 'fort' || kind === 'flag') { const F = FORT[o.team || (Math.hypot(pos.x - FORT.blue.x, pos.z - FORT.blue.z) < Math.hypot(pos.x - FORT.red.x, pos.z - FORT.red.z) ? 'blue' : 'red')]; pos = pos.clone().setY(pos.y + TH(F.x, F.z)); if (o.home) o = { ...o, home: o.home.clone().setY(o.home.y + TH(F.x, F.z)) }; }
+    else if (dy) pos = pos.clone().setY(pos.y + dy);
+  }
   const dims = o.dims ? o.dims.clone() : V(1, 1, 1).multiplyScalar(o.size || 1);
   const e = { id: nextId++, kind, dims, size: Math.max(dims.x, dims.y, dims.z), rad: (dims.x + dims.y + dims.z) / 6,
     color: new THREE.Color(o.color || '#c2c5cc'), team: o.team || null, body: null, col: null, holder: null, live: false, liveT: 0, thrower: null,
@@ -1513,14 +1552,14 @@ const AMMO_SHAPES = [[1, 1, 1, 30], [2, 1, 1, 18], [3, 1, 1, 9], [2, .5, 2, 8], 
 const ammoDims = () => { let k = rnd() * 100; for (const [x, y, z, w] of AMMO_SHAPES) { if ((k -= w) < 0) return V(x, y, z); } return V(1, 1, 1); };
 function slotAt(x, z, kind) { const s = { pos: V(x, .5, z), kind, e: null }; slots.push(s); fillSlot(s); }
 function fillSlot(s, near) {
-  const p = s.pos.clone().setY(near ? 1.2 : .55); if (near) { const a = rnd() * 6.28, d = rr(.3, 1.8); p.x += Math.cos(a) * d; p.z += Math.sin(a) * d; }
+  const p = s.pos.clone().setY((s.baseY || 0) + (near ? 1.2 : .55)); if (near) { const a = rnd() * 6.28, d = rr(.3, s.baseY ? .8 : 1.8); p.x += Math.cos(a) * d; p.z += Math.sin(a) * d; }
   s.e = newBlock(s.kind, p, { rot: new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), rnd() * 3) }); s.e.slot = s; s.e.origin = s;
   if (near) fxBurst(p, KIND_COL[s.kind][2], .9, .35);
 }
 const freeSpot = (pad = 1) => {
   for (let k = 0; k < 200; k++) {
     const x = rr(-MX + 3, MX - 3), z = rr(-MZ + 3, MZ - 3);
-    if (!clearAt(x, z, -2) || Object.values(FORT).some(f => (Math.abs(x - f.x) < FORT_RX + 4 && Math.abs(z - f.z) < FORT_RZ + 4))) continue; // never inside a fort's square (corners too)
+    if (!clearAt(x, z, -2) || TH(x, z) > .05 || Object.values(FORT).some(f => (Math.abs(x - f.x) < FORT_RX + 4 && Math.abs(z - f.z) < FORT_RZ + 4))) continue; // never inside a fort's square (corners too)
     if (staticBoxes.some(b => x > b.x0 - pad && x < b.x1 + pad && z > b.z0 - pad && z < b.z1 + pad)) continue;
     return [x, z];
   }
@@ -2730,7 +2769,7 @@ function flagSpot(team, i) {
   const f = FORT[team], fl = FLAGS[team][i], t = fl ? fl.home : f; // always beside the tower, wherever the flag itself has gone
   return V(t.x + Math.sign(f.x - t.x) * 1.8, 0, t.z + Math.sign(f.z - t.z) * 1.8);
 }
-function spawnPoint(team, i) { const s = flagSpot(team, i); return V(s.x, .97, s.z); }
+function spawnPoint(team, i) { const s = flagSpot(team, i); return V(s.x, .97 + TH(s.x, s.z), s.z); }
 const doorYaw = (team, from) => { const f = FORT[team], door = V(f.x + Math.sign(-f.x) * (FORT_RX + 2), 0, f.z); return yawTo(door.x - from.x, door.z - from.z); };
 function createRobot(team, idx) {
   const T = TEAMS[team], col = T.cols[idx];
@@ -3058,7 +3097,7 @@ function freezeArea(pos, team, by, FREEZE_R = FREEZE_R0) {
   }
   for (const r of robots) if (r.team !== team && rPos(r).distanceTo(pos) < FREEZE_R + .4) { if (freezeRobot(r, rPos(r).sub(pos)) && by) by.stats.hits++; }
   // leaves an ice slick on the ground for a few seconds: everybody slides about on it
-  if (pos.y < 3) makeIcePatch(pos, FREEZE_R);
+  if (pos.y - TH(pos.x, pos.z) < 3) makeIcePatch(pos, FREEZE_R);
 }
 const ICE = [], ICE_TIME = 7.5; // (1.5 s longer than it used to be)
 // the ground turns into a floor of clear ice-glass blocks (you see the grass through them), one per ground square
@@ -3067,8 +3106,8 @@ function makeIcePatch(pos, FREEZE_R) {
   const cells = []; for (let x = Math.floor(pos.x - FREEZE_R); x <= Math.ceil(pos.x + FREEZE_R); x++) for (let z = Math.floor(pos.z - FREEZE_R); z <= Math.ceil(pos.z + FREEZE_R); z++)
     if (Math.hypot(x + .5 - pos.x, z + .5 - pos.z) < FREEZE_R && onIsland(x + .5, z + .5) && !isHole(x + .5, z + .5)) cells.push([x + .5, z + .5]);
   const m = new THREE.InstancedMesh(iceTileGeo, iceTileMat.clone(), cells.length); m.renderOrder = 1;
-  cells.forEach(([x, z], i) => { tmpM.compose(tmpV.set(x, .08, z), tmpQ.setFromAxisAngle(V(0, 1, 0), 0), tmpS.set(1, 1 + rr(-.25, .25), 1)); m.setMatrixAt(i, tmpM); });
-  scene.add(m); fxDebris(V(pos.x, .3, pos.z), 0xe8f8ff, 16, 4);
+  cells.forEach(([x, z], i) => { tmpM.compose(tmpV.set(x, .08 + TH(x, z), z), tmpQ.setFromAxisAngle(V(0, 1, 0), 0), tmpS.set(1, 1 + rr(-.25, .25), 1)); m.setMatrixAt(i, tmpM); });
+  scene.add(m); fxDebris(V(pos.x, .3 + TH(pos.x, pos.z), pos.z), 0xe8f8ff, 16, 4);
   ICE.push({ x: pos.x, z: pos.z, r: FREEZE_R, t: ICE_TIME, m, cells }); frostCells(cells, true); // the grass squares underneath freeze too
 }
 const iceGeo = new THREE.CircleGeometry(1, 28);
@@ -3087,7 +3126,7 @@ const iceTileMat = (() => { const c = document.createElement('canvas'); c.width 
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   return new LiteMat({ map: t, color: 0xd8f4ff, emissive: 0x4ab8e8, emissiveIntensity: .35, transparent: true, opacity: .7, depthWrite: false }); })();
 const iceSlickMat = new THREE.MeshBasicMaterial({ color: 0xd8f3ff, map: iceTex(), transparent: true, opacity: .6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
-const onIce = p => p.y < 1.8 && ICE.some(i => Math.hypot(p.x - i.x, p.z - i.z) < i.r);
+const onIce = p => p.y - TH(p.x, p.z) < 1.8 && ICE.some(i => Math.hypot(p.x - i.x, p.z - i.z) < i.r);
 function updateIce(dt) {
   for (let k = ICE.length - 1; k >= 0; k--) {
     const i = ICE[k]; i.t -= dt; i.m.material.opacity = .7 * clamp(i.t / 1.2, 0, 1); // clear ice: you see the ground through it
@@ -3276,6 +3315,7 @@ function frostCells(cells, on) {
     if (n > 0) setCell(cx, cz, 170, 215, 255, 255); else setCell(cx, cz, ...sideTint(cx, cz), 255); }
 }
 function holeAllowed(x, z) {
+  if (TH(x, z) > .02) return false; // never in the hillsides
   if (Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 4 && Math.abs(z - F.z) < FORT_RZ + 4)) return false;
   if (ARROWS.some(A => Math.hypot(x - A.p.x, z - A.p.z) < 4.5)) return false;
   if (TRAMP_SPOTS.some(t => Math.hypot(x - t.x, z - t.z) < 3.5)) return false;
@@ -4901,6 +4941,7 @@ function updateDogs(dt) {
     const D = DOGS[i], tg = D.target, t = now() / 1000;
     D.glow.visible = !D.leaving && tg.state === 'play'; if (D.glow.visible) { const c = rPos(tg); D.glow.position.set(c.x, c.y + 6, c.z); D.glow.material.opacity = .16 + .1 * Math.sin(t * 8); }
     if (D.frozenT > 0) { D.frozenT -= dt; if (D.frozenT <= 0 && D.ice) { scene.remove(D.ice); D.ice = null; } continue; }
+    if (D.rb) { dogRide(D, dt); continue; } /* riding the rainbow */
     if (D.fight) { // a cartoon fight cloud: dust, stars, bits of robot and dog flailing out of it
       const F = D.fight; F.t -= dt; animFightCloud(F.cloud, dt);
       if ((F.sT = (F.sT || 0) - dt) <= 0) { F.sT = rr(.12, .22); sfx(Math.random() < .4 ? 'bark' : Math.random() < .5 ? 'hit' : 'dodge', F.at); }
@@ -4908,7 +4949,7 @@ function updateDogs(dt) {
         if (tg.state === 'play') { const a = Math.random() * 6.28; ragdoll(tg, V(Math.cos(a), 0, Math.sin(a)), D.owner, 3); koPop(F.at, 'FETCHED!', '#ffd27a', true); fxBurst(F.at.clone().setY(F.at.y + .6), 0xefe4cf, 2.2, .35); fxDebris(F.at, 0xefe4cf, 20, 7); }
         if (D.bone.parent) D.bone.parent.remove(D.bone);
         // off to the nearest portal, and gone
-        const ex = PORTALS.length ? PORTALS.reduce((m, q) => Math.hypot(q.pos.x - D.x, q.pos.z - D.z) < Math.hypot(m.pos.x - D.x, m.pos.z - D.z) ? q : m) : null;
+        const ex = PORTALS.length ? PORTALS.reduce((m, q) => Math.hypot(q.pos.x - D.x, q.pos.z - D.z) < Math.hypot(m.pos.x - D.x, m.pos.z - D.z) ? q : m) : (CH ? gateExit(D.x, D.z) : null); /* (the sky map: home through a fort's flag gateway) */
         D.exit = ex; D.leaving = ex ? 14 : 2.2; D.yaw = ex ? Math.atan2(ex.pos.x - D.x, ex.pos.z - D.z) : D.yaw + Math.PI; D.x = F.at.x; D.z = F.at.z; }
       continue;
     }
@@ -4924,6 +4965,7 @@ function updateDogs(dt) {
     const g = rPos(tg); let aim = g, best = Math.hypot(g.x - D.x, g.z - D.z);
     for (const Pn of PORTALS) { const Q = PORTALS[1 - Pn.i], via = Math.hypot(Pn.pos.x - D.x, Pn.pos.z - D.z) + Math.hypot(g.x - Q.pos.x, g.z - Q.pos.z) + 6;
       if (via < best) { best = via; const front = (D.x - Pn.pos.x) * Pn.n.x + (D.z - Pn.pos.z) * Pn.n.z; aim = front > 1.2 || Math.hypot(D.x - Pn.pos.x, D.z - Pn.pos.z) < 3 ? Pn.pos : Pn.pos.clone().addScaledVector(Pn.n, 4); } }
+    if (CH) { const sk = skyDogAim(D, g); if (sk) { aim = sk; if (dogRideStart(D)) continue; } } /* the other side of the gorge: over the rainbow */
     let dx = aim.x - D.x, dz = aim.z - D.z; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
     // a wall in the way: jump it if it's low enough, otherwise run round it
     const hy = D.y + .4, wall = blockedAt(D.x, hy, D.z, dx, dz, 1.1);
@@ -4980,7 +5022,7 @@ function placeSpring(at, owner) {
   toast('SPRINGTRAP SET');
 }
 function springSpent(S_) { // used up: stays as a sprung wreck for a few seconds, then the ground is back to normal
-  const a = Math.atan2(S_.out.z, S_.out.x); S_.spent = true; // (the lid flies off the way you went) S_.spentT = 0; S_.t = Math.min(S_.t, 7); S_.lidTo = { x: Math.cos(a) * 1.8, z: Math.sin(a) * 1.8, rx: rr(1.6, 2.2) * (Math.random() < .5 ? -1 : 1), rz: rr(-.4, .4) };
+  const a = Math.atan2(S_.out.z, S_.out.x); S_.spent = true; /* the lid flies off the way you went */ S_.spentT = 0; S_.t = Math.min(S_.t, 7); S_.lidTo = { x: Math.cos(a) * 1.8, z: Math.sin(a) * 1.8, rx: rr(1.6, 2.2) * (Math.random() < .5 ? -1 : 1), rz: rr(-.4, .4) };
   S_.g.traverse(o => { if (o.material) { o.material = Array.isArray(o.material) ? o.material.map(m => m.clone()) : o.material.clone(); } }); // (own copies, so it can fade on its own)
 }
 function launchOffMap(r, S_) {
@@ -4988,7 +5030,7 @@ function launchOffMap(r, S_) {
   const dist = Math.max(4, Math.min(ax, az)) + 14, th = rr(48, 58) * Math.PI / 180;
   let v = Math.sqrt(G * dist / Math.sin(2 * th)); v = clamp(Math.max(v, 34 / Math.sin(th)), 0, 72); // always higher than a trampoline
   r.body.setLinvel({ x: d.x * v * Math.cos(th), y: v * Math.sin(th), z: d.z * v * Math.cos(th) }, true);
-  r.jumps = 1; r.grounded = false; r.padT = 2 * v * Math.sin(th) / G + 2; // (one jump left: a little hope of escape) r.model.sq = -.4; r.model.sqv = 8;
+  r.jumps = 1; r.grounded = false; r.padT = 2 * v * Math.sin(th) / G + 2; /* one jump left: a little hope of escape */ r.model.sq = -.4; r.model.sqv = 8;
   r.sprung = { by: S_.owner, at: now(), vx: d.x * v * Math.cos(th), vz: d.z * v * Math.cos(th) }; // the flight is a clean arc: no steering out of it
   if (r.isPlayer) { toast('SPRUNG!'); shake = Math.max(shake, .4); }
 }
@@ -5014,10 +5056,10 @@ function updateSprings(dt) {
     for (const r of robots) {
       if (r.state !== 'play' || !r.body) continue; const c = rPos(r);
       if (Math.hypot(c.x - S_.x, c.z - S_.z) > 1.25 || c.y - S_.y > 2.4 || c.y < S_.y) continue;
-      if (S_.spent || S_.armed === false || (S_.cool.get(r) || 0) > now() || r.trapped) continue; S_.armed = false; // one use: it's caught someone S_.cool.set(r, now() + 2600);
+      if (S_.spent || S_.armed === false || (S_.cool.get(r) || 0) > now() || r.trapped) continue; S_.armed = false; /* one use: it's caught someone */ S_.cool.set(r, now() + 2600);
       // caught: you're held for a second and sink in a little (CLICK), then it fires you the way you were heading
       const lv = r.body.linvel(), hs = Math.hypot(lv.x, lv.z), dir = hs > .8 ? V(lv.x / hs, 0, lv.z / hs) : fwdOf(r.yaw).setY(0).normalize();
-      r.trapped = { S: S_, t: .6, dir }; // (held just long enough to be funny) S_.sinkT = 1; sfx('trapclick', V(S_.x, S_.y + .3, S_.z)); if (r.isPlayer) toast('CLICK…');
+      r.trapped = { S: S_, t: .6, dir }; /* held just long enough to be funny */ S_.sinkT = 1; sfx('trapclick', V(S_.x, S_.y + .3, S_.z)); if (r.isPlayer) toast('CLICK…');
     }
   }
   // flung off the island by someone's springtrap: that counts as their knockout
@@ -5400,7 +5442,7 @@ function spawnStreakBlock() {
 spawnStreakBlock();
 function takeStreak(r, e) {
   const p = e.body.translation(), at = V(p.x, p.y, p.z);
-  destroyBlock(e); ISLAND.e = null; ISLAND.t = 90;
+  destroyBlock(e); if (e === ISLAND.e) { ISLAND.e = null; ISLAND.t = 90; } if (e.onTaken) e.onTaken();
   fxDebris(at, 0xffc21f, 30, 7); fxDebris(at, 0xffffff, 12, 5); fxBurst(at, 0xffd84a, 2, .4); sfx('streak', at);
   bigToast('HIT STREAK POWER!', 'blue'); rollPower();
 }
@@ -6104,7 +6146,7 @@ function landThrow() { if (LAND.charge == null) return; const held = (now() - LA
 // ---- touch: joystick on the left, look on the right (in front of the normal swipe controls) ----
 stage.addEventListener('pointerdown', e => {
   if (!landOn()) return;
-  e.stopImmediatePropagation(); if (e.pointerType === 'mouse') return; // (the mouse is handled below) try { stage.setPointerCapture(e.pointerId); } catch (x) {}
+  e.stopImmediatePropagation(); if (e.pointerType === 'mouse') return; /* the mouse is handled below */ try { stage.setPointerCapture(e.pointerId); } catch (x) {}
   if (e.clientX < innerWidth * .45 && !LAND.joy) { LAND.joy = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY }; const j = $('landJoy'); j.hidden = false; j.style.left = e.clientX + 'px'; j.style.top = e.clientY + 'px'; }
   else if (!LAND.look) LAND.look = { id: e.pointerId, x: e.clientX, y: e.clientY };
 }, true);
@@ -6183,100 +6225,262 @@ function readPad(dt) {
 setInterval(() => { const tip = $('landTip'); if (tip) tip.hidden = !(S.land && !NET && match.state === 'play' && innerHeight > innerWidth && !matchMedia('(pointer:fine)').matches); }, 700);
 
 // ============================================================
-// THE TWO BIG MAPS (1.4x the classic island). Picked in the menu (the page reloads into the new map).
-//  CLOUD CONVEYOR: a band of open sky runs through the middle between the portal corners. Clouds with a square of
-//    ground on top ride round it in two lanes, in opposite directions, level with the floor, looping round each end.
-//    The gaps between clouds are a double jump if they were standing still. Fall in and you're out.
-//  RAINBOW BRIDGE: no portals. A rainbow arches from one portal corner to the other, high over the middle. Step on
-//    either end and it whisks you across; jump to leap off whenever you like. Clouds and rainbows everywhere.
+// THE SKY BRIDGE MAP (1.4x the classic island). Picked in the menu; the page reloads into it.
+//  - A gorge of open sky runs right across the middle and off both edges of the island: blue's half and red's half.
+//    Each pasture is a little island in the gorge with a moat of sky round it.
+//  - Clouds with a patch of grass on top (small, medium and large) ride round the gorge in two lanes, level with the
+//    ground, going opposite ways. At each end they loop round the pasture island, sail off past the edge of the map,
+//    turn and come back. Big gaps between them (a double jump if they were standing still).
+//  - A rainbow arches across the gorge from one half to the other. Step on (or land on) it and it carries you over;
+//    turn as you like, jump off whenever you want.
+//  - Rain clouds hang over the battlefield (not over the forts). Leap off the rainbow and you might just land on one.
+//    Some have bombs, ice or homing blocks on them, and now and then a gold hit-streak block appears on one.
+//  - The forts sit on plateaus 4 blocks up, sloping down to the gorge; the groves are on low hills.
+//  - It's raining, and every few minutes the sky goes dark and it hails ice: icy patches freeze wherever it lands.
 // ============================================================
-// ---------------------------------------------------------------- the cloud conveyor
-const CONV = { tiles: [], s: 0, speed: 2.6, handles: new Set() };
 const puffGeo = new THREE.IcosahedronGeometry(1, 1);
+// ---------------------------------------------------------------- the ground: hills and plateaus
+let GROUND_MESH = null;
+if (TERRAIN) {
+  const slab = scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6), mTop = slab.material[2], g = new THREE.PlaneGeometry(MX * 2, MZ * 2, GW, GD).rotateX(-Math.PI / 2), P_ = g.attributes.position;
+  for (let i = 0; i < P_.count; i++) P_.setY(i, TH(P_.getX(i), P_.getZ(i)));
+  g.computeVertexNormals();
+  GROUND_MESH = new THREE.Mesh(g, mTop); GROUND_MESH.receiveShadow = true; scene.add(GROUND_MESH);
+  const mats = slab.material.slice(); mats[2] = new THREE.MeshBasicMaterial({ visible: false }); slab.material = mats; // (the flat top is replaced by the shaped one)
+}
+// ---------------------------------------------------------------- the cloud conveyor
+const CONV = { tiles: [], speed: 2.6, handles: new Set() };
 if (CH) {
-  const R = CH.lane, T = CH.T, straight = 2 * T, arc = Math.PI * R, L = 2 * straight + 2 * arc, SP = 12, N = Math.floor(L / SP);
-  CONV.L = L; CONV.SP = L / N;
-  CONV.at = s => { s = ((s % L) + L) % L; let t, o;
-    if (s < straight) { t = -T + s; o = R; }
-    else if ((s -= straight) < arc) { const a = s / R; t = T + Math.sin(a) * R; o = Math.cos(a) * R; }
-    else if ((s -= arc) < straight) { t = T - s; o = -R; }
-    else { s -= straight; const a = s / R; t = -T - Math.sin(a) * R; o = -Math.cos(a) * R; }
-    return V(CH.u.x * t + CH.n.x * o, 0, CH.u.z * t + CH.n.z * o); };
+  const R = CH.lane, Rl = CH.Rl, tp = CH.tp, aIn = Math.asin(R / Rl), far = Math.max(MX / Math.abs(CH.u.x || 1e-3), 0) > 0 ? Math.min(MX / Math.abs(CH.u.x), MZ / Math.abs(CH.u.z)) + 14 : 130;
+  const pts = []; const add = (t, o) => pts.push([t, o]);
+  const line = (t0, t1, o) => { const n = Math.ceil(Math.abs(t1 - t0)); for (let k = 1; k <= n; k++) add(t0 + (t1 - t0) * k / n, o); };
+  const arc = (tc, a0, a1, r) => { const n = Math.ceil(Math.abs(a1 - a0) * r); for (let k = 1; k <= n; k++) { const a = a0 + (a1 - a0) * k / n; add(tc + r * Math.cos(a), r * Math.sin(a)); } };
+  const tIn = tp - Rl * Math.cos(aIn), tOut = tp + Rl * Math.cos(aIn);
+  add(-tIn, R);
+  line(-tIn, tIn, R); arc(tp, Math.PI - aIn, aIn, Rl); line(tOut, far, R); arc(far, Math.PI / 2, -Math.PI / 2, R); line(far, tOut, -R);           // round the far pasture, off the map and back
+  arc(tp, -aIn, -(Math.PI - aIn), Rl); line(tIn, -tIn, -R);
+  arc(-tp, -aIn, -(Math.PI - aIn), Rl); line(-tOut, -far, -R); arc(-far, -Math.PI / 2, -Math.PI * 1.5, R); line(-far, -tOut, R);                // and round the near one
+  arc(-tp, Math.PI - aIn, aIn, Rl);
+  const W = pts.map(([t, o]) => V(CH.u.x * t + CH.n.x * o, 0, CH.u.z * t + CH.n.z * o)), cum = [0];
+  for (let i = 1; i < W.length; i++) cum.push(cum[i - 1] + W[i].distanceTo(W[i - 1]));
+  const L = cum[cum.length - 1] + W[0].distanceTo(W[W.length - 1]); W.push(W[0].clone()); cum.push(L); CONV.L = L;
+  CONV.at = s => { s = ((s % L) + L) % L; let lo = 0, hi = cum.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] <= s) lo = m; else hi = m; } const f = (s - cum[lo]) / Math.max(1e-6, cum[hi] - cum[lo]); return W[lo].clone().lerp(W[hi], f); };
+  // random sizes: small (3), medium (4), large (5: a bit under 3x the area of a small one), with big gaps between
+  const offs = []; let s = 0; while (true) { const size = [3, 3, 4, 4, 5][Math.floor(rnd() * 5)], gap = rr(7.5, 9.5); if (offs.length && s + size / 2 + gap / 2 > L - 2) break; offs.push([s + size / 2, size]); s += size + gap; }
+  const N = offs.length;
   const top = new THREE.InstancedMesh(cubeGeo, new LiteMat({ color: NIGHT ? 0xd2daec : 0x63bb3f }), N), dirt = new THREE.InstancedMesh(cubeGeo, new LiteMat({ color: NIGHT ? 0x4a5a7e : 0x7a5532 }), N);
   const puffs = new THREE.InstancedMesh(puffGeo, new LiteMat({ color: 0xffffff, emissive: NIGHT ? 0x3a4a7a : 0x8090a0, emissiveIntensity: .25 }), N * 5);
   for (const m of [top, dirt, puffs]) { m.castShadow = m.receiveShadow = true; m.frustumCulled = false; scene.add(m); }
-  CONV.top = top; CONV.dirt = dirt; CONV.puffs = puffs;
-  for (let i = 0; i < N; i++) {
-    const p = CONV.at(i * CONV.SP), body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(p.x, -.5, p.z));
-    const col = world.createCollider(RAPIER.ColliderDesc.cuboid(1.5, .5, 1.5).setFriction(1), body); byCollider.set(col.handle, { type: 'static' }); CONV.handles.add(col.handle);
-    CONV.tiles.push({ body, col, p: p.clone(), v: V(), yaw: 0, puff: [...Array(5)].map(() => [rr(-1.6, 1.6), rr(-1.9, -1.1), rr(-1.6, 1.6), rr(.9, 1.5)]) });
-  }
+  Object.assign(CONV, { top, dirt, puffs });
+  offs.forEach(([o, size]) => {
+    const p = CONV.at(o), body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(p.x, -.5, p.z));
+    const col = world.createCollider(RAPIER.ColliderDesc.cuboid(size / 2, .5, size / 2).setFriction(1), body); byCollider.set(col.handle, { type: 'static' }); CONV.handles.add(col.handle);
+    CONV.tiles.push({ body, col, o, size, p: p.clone(), v: V(), yaw: 0, puff: [...Array(5)].map(() => [rr(-.5, .5) * size, rr(-1.9, -1.1), rr(-.5, .5) * size, rr(.9, 1.5) * size / 3]) });
+  });
 }
-const _cq = new THREE.Quaternion(), _cm = new THREE.Matrix4(), _cs = new THREE.Vector3(), _cv = new THREE.Vector3(), _ce = new THREE.Euler();
+const _cq = new THREE.Quaternion(), _cm = new THREE.Matrix4(), _cs = new THREE.Vector3(), _cv = new THREE.Vector3();
 function updateConveyor(dt) {
   if (!CH) return;
-  CONV.s = CONV.speed * (match.state === 'play' || match.state === 'end' ? MATCH_TIME - match.time : 0) + (CONV.idle = (CONV.idle || 0) + (match.state === 'play' ? 0 : dt * 0)); const t = now() / 1000; // (driven by the match clock, so everyone online sees the clouds in the same place)
+  const s0 = CONV.speed * (match.state === 'play' || match.state === 'end' ? MATCH_TIME - match.time : 0), t = now() / 1000; // (the match clock drives it: everyone online sees the same)
   CONV.tiles.forEach((T_, i) => {
-    const p = CONV.at(CONV.s + i * CONV.SP), q = CONV.at(CONV.s + i * CONV.SP + .5);
-    T_.v.set((p.x - T_.p.x) / Math.max(dt, 1e-3), 0, (p.z - T_.p.z) / Math.max(dt, 1e-3)); T_.p.copy(p);
+    const p = CONV.at(s0 + T_.o), q = CONV.at(s0 + T_.o + .5);
+    T_.v.set((p.x - T_.p.x) / Math.max(dt, 1e-3), 0, (p.z - T_.p.z) / Math.max(dt, 1e-3)); if (T_.v.length() > 20) T_.v.set(0, 0, 0); T_.p.copy(p);
     T_.yaw = Math.atan2(q.x - p.x, q.z - p.z); _cq.setFromAxisAngle(_cv.set(0, 1, 0), T_.yaw);
     T_.body.setNextKinematicTranslation({ x: p.x, y: -.5, z: p.z }); T_.body.setNextKinematicRotation(_cq);
-    _cm.compose(_cv.set(p.x, -.5, p.z), _cq, _cs.set(3, 1, 3)); CONV.top.setMatrixAt(i, _cm);
-    _cm.compose(_cv.set(p.x, -1.15, p.z), _cq, _cs.set(2.6, .3, 2.6)); CONV.dirt.setMatrixAt(i, _cm);
+    _cm.compose(_cv.set(p.x, -.5, p.z), _cq, _cs.set(T_.size, 1, T_.size)); CONV.top.setMatrixAt(i, _cm);
+    _cm.compose(_cv.set(p.x, -1.15, p.z), _cq, _cs.set(T_.size * .87, .3, T_.size * .87)); CONV.dirt.setMatrixAt(i, _cm);
     T_.puff.forEach(([x, y, z, s], k) => { const c = Math.cos(T_.yaw), sn = Math.sin(T_.yaw), bob = Math.sin(t * 1.3 + i + k) * .08;
       _cm.compose(_cv.set(p.x + x * c + z * sn, y + bob, p.z - x * sn + z * c), _cq, _cs.set(s, s * .7, s)); CONV.puffs.setMatrixAt(i * 5 + k, _cm); });
   });
   CONV.top.instanceMatrix.needsUpdate = CONV.dirt.instanceMatrix.needsUpdate = CONV.puffs.instanceMatrix.needsUpdate = true;
 }
 const convRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
-function tileUnder(r) { const t = r.body.translation(); convRay.origin = { x: t.x, y: t.y, z: t.z }; const h = world.castRay(convRay, 1.25, true, undefined, undefined, r.col); if (!h || !CONV.handles.has(h.collider.handle)) return null; return CONV.tiles.find(T_ => T_.col.handle === h.collider.handle); }
+function tileUnder(r) { const t = r.body.translation(); convRay.origin = { x: t.x, y: t.y, z: t.z }; convRay.dir = { x: 0, y: -1, z: 0 }; const h = world.castRay(convRay, 1.25, true, undefined, undefined, r.col); if (!h || !CONV.handles.has(h.collider.handle)) return null; return CONV.tiles.find(T_ => T_.col.handle === h.collider.handle); }
 
-// ---------------------------------------------------------------- the rainbow bridge
-const RBW = { on: MAP === 'rainbow', H: 26, speed: 30 };
+// ---------------------------------------------------------------- the rainbow bridge: across the gorge, from blue's half to red's
+const RBW = { on: MAP === 'sky', H: 26, speed: 26 };
+const rainbowCols = ['#ff3b3b', '#ff9a1f', '#ffe14a', '#4fd64a', '#3aa8ff', '#5a5aff', '#b05cff'];
 if (RBW.on) {
-  const A = PORTAL_SPOTS[0], B = PORTAL_SPOTS[1], LA = Math.hypot(A.x, A.z);
-  RBW.A = V(A.x - A.x / LA * 2, 0, A.z - A.z / LA * 2); RBW.B = V(B.x - B.x / LA * 2, 0, B.z - B.z / LA * 2); // the ends, a little in from the corners
+  const D = 38; RBW.A = V(CH.n.x * D, 0, CH.n.z * D); RBW.B = V(-CH.n.x * D, 0, -CH.n.z * D); // A on the blue side (+n), B on the red side
   RBW.at = s => V(RBW.A.x + (RBW.B.x - RBW.A.x) * s, .25 + RBW.H * Math.sin(Math.PI * s), RBW.A.z + (RBW.B.z - RBW.A.z) * s);
-  { let L = 0, p0 = RBW.at(0); for (let k = 1; k <= 200; k++) { const p = RBW.at(k / 200); L += p.distanceTo(p0); p0 = p; } RBW.L = L; }
-  // the band: seven stripes
-  const cols = ['#ff3b3b', '#ff9a1f', '#ffe14a', '#4fd64a', '#3aa8ff', '#5a5aff', '#b05cff'], W = 3.6, SEG = 160, pos = [], col = [], idx = [];
-  const side = V(-(RBW.B.z - RBW.A.z), 0, RBW.B.x - RBW.A.x).normalize();
-  for (let k = 0; k <= SEG; k++) { const p = RBW.at(k / SEG);
-    for (let j = 0; j <= 7; j++) { const off = (j / 7 - .5) * W; pos.push(p.x + side.x * off, p.y, p.z + side.z * off); const c = new THREE.Color(cols[Math.min(6, j)]); col.push(c.r, c.g, c.b); } }
-  for (let k = 0; k < SEG; k++) for (let j = 0; j < 7; j++) { const a = k * 8 + j, b = a + 8; idx.push(a, b, a + 1, a + 1, b, b + 1); }
-  // (flat colour per stripe: duplicate the stripe's colour on both edges by building stripes as separate quads)
-  const g = new THREE.BufferGeometry(), P2 = [], C2 = [];
-  for (let k = 0; k < SEG; k++) for (let j = 0; j < 7; j++) { const c = new THREE.Color(cols[j]), q = [[k, j], [k + 1, j], [k, j + 1], [k, j + 1], [k + 1, j], [k + 1, j + 1]];
-    for (const [kk, jj] of q) { const i3 = (kk * 8 + jj) * 3; P2.push(pos[i3], pos[i3 + 1], pos[i3 + 2]); C2.push(c.r, c.g, c.b); } }
-  g.setAttribute('position', new THREE.Float32BufferAttribute(P2, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C2, 3)); g.computeVertexNormals();
+  RBW.samples = []; { let L = 0, p0 = RBW.at(0); for (let k = 0; k <= 240; k++) { const p = RBW.at(k / 240); L += p.distanceTo(p0); p0 = p; RBW.samples.push(p); } RBW.L = L; }
+  const Wd = 3.6, SEG = 160, side = V(-(RBW.B.z - RBW.A.z), 0, RBW.B.x - RBW.A.x).normalize(); RBW.side = side;
+  const P2 = [], C2 = [], cv = [], ci = [];
+  for (let k = 0; k < SEG; k++) { const p0 = RBW.at(k / SEG), p1 = RBW.at((k + 1) / SEG);
+    for (let j = 0; j < 7; j++) { const c = new THREE.Color(rainbowCols[j]), o0 = (j / 7 - .5) * Wd, o1 = ((j + 1) / 7 - .5) * Wd;
+      const v = (p, o) => [p.x + side.x * o, p.y, p.z + side.z * o];
+      for (const q of [v(p0, o0), v(p1, o0), v(p0, o1), v(p0, o1), v(p1, o0), v(p1, o1)]) { P2.push(...q); C2.push(c.r, c.g, c.b); } } }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P2, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C2, 3)); g.computeVertexNormals();
   const band = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: .92 })); band.renderOrder = 2; scene.add(band); RBW.band = band;
-  // fluffy clouds at each end, and big soft rainbows in the sky all round
+  // it's solid: you can land on it anywhere (and then it carries you); a thin slab so nobody falls through it
+  for (let k = 0; k <= SEG; k++) { const p = RBW.at(k / SEG); for (const o of [-Wd / 2, Wd / 2]) cv.push(p.x + side.x * o, p.y - .05, p.z + side.z * o); }
+  for (let k = 0; k < SEG; k++) { const a = k * 2; ci.push(a, a + 2, a + 1, a + 1, a + 2, a + 3, a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  const col = world.createCollider(RAPIER.ColliderDesc.trimesh(new Float32Array(cv), new Uint32Array(ci)).setFriction(0)); byCollider.set(col.handle, { type: 'static' }); RBW.handle = col.handle;
   const puffM = new LiteMat({ color: 0xffffff, emissive: 0x9aa8c8, emissiveIntensity: .3 });
   for (const E of [RBW.A, RBW.B]) for (let k = 0; k < 9; k++) { const m = new THREE.Mesh(puffGeo, puffM); const a = k / 9 * 6.28; m.position.set(E.x + Math.cos(a) * 2.6, .4 + rr(0, .6), E.z + Math.sin(a) * 2.6); m.scale.set(rr(1, 1.5), rr(.6, .9), rr(1, 1.5)); scene.add(m); }
-  for (let k = 0; k < 4; k++) { const a = k / 4 * 6.28 + .4, R = MX * 2.2, cx = Math.cos(a) * R, cz = Math.sin(a) * R * .8;
-    const arcG = new THREE.Group(); arcG.position.set(cx, -20, cz); arcG.lookAt(0, -20, 0); scene.add(arcG);
-    cols.forEach((c, j) => { const t = new THREE.Mesh(new THREE.TorusGeometry(70 - j * 3, 1.5, 6, 48, Math.PI), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .35, fog: false })); t.rotation.y = Math.PI / 2; arcG.add(t); }); }
-  for (let k = 0; k < 40; k++) { const m = new THREE.Mesh(puffGeo, puffM); const a = rnd() * 6.28, R = MX * rr(1.2, 1.9); m.position.set(Math.cos(a) * R, rr(-6, 18), Math.sin(a) * R * .8); m.scale.set(rr(4, 9), rr(2, 4), rr(4, 9)); scene.add(m); }
+  for (let k = 0; k < 4; k++) { const a = k / 4 * 6.28 + .4, R = MX * 2.2, cx = Math.cos(a) * R, cz = Math.sin(a) * R * .8; // soft rainbows far out in the sky
+    const arcG = new THREE.Group(); arcG.position.set(cx, -10, cz); arcG.lookAt(0, -10, 0); scene.add(arcG);
+    rainbowCols.forEach((c, j) => { const t = new THREE.Mesh(new THREE.TorusGeometry(70 - j * 3, 1.5, 6, 48, Math.PI), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .3, fog: false })); t.rotation.y = Math.PI / 2; arcG.add(t); }); }
 }
+const nearestS = p => { let best = 0, bd = 1e9; RBW.samples.forEach((q, k) => { const d = q.distanceToSquared(p); if (d < bd) { bd = d; best = k; } }); return best / 240; };
+const rbRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
 function rainbowRide(r, dt) {
   if (!RBW.on || !r.body) return;
   if (r.rb) {
-    const R_ = r.rb, s0 = R_.s; R_.s += R_.dir * RBW.speed * dt / RBW.L;
+    const R_ = r.rb; R_.s += R_.dir * RBW.speed * dt / RBW.L;
     if (r.state !== 'play') { r.rb = null; return; }
     const done = R_.s >= 1 || R_.s <= 0, s = clamp(R_.s, 0, 1), p = RBW.at(s), q = RBW.at(clamp(s + R_.dir * .01, 0, 1)), tan = q.clone().sub(p).normalize();
     if (R_.jump || done) { // leap off (or reach the far end): you keep the bridge's speed and fly on
-      r.rb = null; r.rbCool = now() + 1500; const vh = done ? .35 : .7;
+      r.rb = null; r.rbCool = now() + 900; const vh = done ? .35 : .7;
+      r.body.setTranslation({ x: p.x, y: p.y + 1.1, z: p.z }, true);
       r.body.setLinvel({ x: tan.x * RBW.speed * vh, y: done ? 2 : Math.max(tan.y * RBW.speed * .6, 0) + JUMP_V, z: tan.z * RBW.speed * vh }, true); r.jumps = done ? 0 : 1; r.grounded = false; r.padT = done ? 0 : 2.5;
       return; }
-    r.body.setTranslation({ x: p.x, y: p.y + .97, z: p.z }, true); r.body.setLinvel({ x: tan.x * RBW.speed, y: tan.y * RBW.speed, z: tan.z * RBW.speed }, true);
-    r.grounded = false; r.jumps = 1; r.yaw = r.yawT = Math.atan2(-tan.x, -tan.z);
+    r.body.setTranslation({ x: p.x, y: p.y + 1.02, z: p.z }, true); r.body.setLinvel({ x: tan.x * RBW.speed, y: tan.y * RBW.speed, z: tan.z * RBW.speed }, true);
+    r.grounded = false; r.jumps = 1; // (you can turn round freely while it carries you)
     if (Math.random() < .5) emit(V(p.x, p.y + .2, p.z), [0xff3b3b, 0xffe14a, 0x4fd64a, 0x3aa8ff, 0xb05cff][Math.floor(Math.random() * 5)], V(rr(-1, 1), rr(0, 1), rr(-1, 1)), .18, .6, 0);
     return;
   }
   if (r.state !== 'play' || (r.rbCool || 0) > now()) return;
   const c = rPos(r);
-  for (const [E, s, dir] of [[RBW.A, 0, 1], [RBW.B, 1, -1]]) if (Math.hypot(c.x - E.x, c.z - E.z) < 2.2 && c.y < 3) { r.rb = { s, dir }; sfx('swoop', c); if (r.isPlayer) toast('WHEEE! JUMP TO LEAP OFF'); break; }
+  for (const [E, s, dir] of [[RBW.A, 0, 1], [RBW.B, 1, -1]]) if (Math.hypot(c.x - E.x, c.z - E.z) < 2.2 && c.y - TH(c.x, c.z) < 3) { r.rb = { s, dir }; sfx('swoop', c); if (r.isPlayer) toast('WHEEE! JUMP TO LEAP OFF'); return; }
+  // landed on it somewhere along the way: it picks you up and carries you on the way you were heading
+  rbRay.origin = { x: c.x, y: c.y, z: c.z }; const h = world.castRay(rbRay, 1.4, true, undefined, undefined, r.col);
+  if (h && h.collider.handle === RBW.handle) { const s = nearestS(c), lv = r.body.linvel(), tan = RBW.at(Math.min(1, s + .01)).sub(RBW.at(Math.max(0, s - .01))); r.rb = { s, dir: lv.x * tan.x + lv.z * tan.z >= 0 ? 1 : -1 }; sfx('swoop', c); }
 }
+
+// ---------------------------------------------------------------- rain clouds over the battlefield (solid; some carry power blocks)
+const SKY = { clouds: [], streak: null, streakT: 40 };
+if (RBW.on) {
+  const spots = [];
+  for (const [s, sd] of [[.22, 1], [.32, -1], [.68, 1], [.78, -1]]) { const p = RBW.at(s); spots.push(V(p.x + RBW.side.x * sd * 6.5, p.y - 3.5, p.z + RBW.side.z * sd * 6.5)); } // just off the rainbow: leap and you might land
+  for (const [t, o, y] of [[-34, 22, 11], [30, -20, 12], [-12, -28, 10], [16, 30, 13], [48, 14, 11], [-50, -12, 12]]) spots.push(V(CH.u.x * t + CH.n.x * o, y, CH.u.z * t + CH.n.z * o));
+  const cloudM = new LiteMat({ color: NIGHT ? 0x6a7898 : 0x9aa2b2, emissive: 0x222838, emissiveIntensity: .3 }), topM = new LiteMat({ color: NIGHT ? 0x8a96b4 : 0xb8bfcc });
+  spots.forEach((p, i) => {
+    const w = rr(5.5, 7), d = rr(4.5, 6), g = new THREE.Group(); g.position.copy(p); scene.add(g);
+    const slab = new THREE.Mesh(new RoundedBoxGeometry(w, .8, d, 2, .35), topM); slab.position.y = -.4; slab.receiveShadow = slab.castShadow = true; g.add(slab);
+    for (let k = 0; k < 9; k++) { const m = new THREE.Mesh(puffGeo, cloudM); m.position.set(rr(-.5, .5) * w, rr(-1.3, -.4), rr(-.5, .5) * d); m.scale.set(rr(1.4, 2.4), rr(.9, 1.4), rr(1.4, 2.2)); m.castShadow = true; g.add(m); }
+    const col = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, .4, d / 2).setTranslation(p.x, p.y - .4, p.z).setFriction(.9)); byCollider.set(col.handle, { type: 'static' });
+    const C = { p, w, d, g }; SKY.clouds.push(C);
+    if (i % 2 === 0 || i >= 8) { const s_ = { pos: V(p.x, 0, p.z), kind: ['bomb', 'freeze', 'homing'][i % 3], e: null, baseY: p.y }; slots.push(s_); fillSlot(s_); } // a power block on top
+  });
+}
+function updateSkyClouds(dt) {
+  if (!SKY.clouds.length) return;
+  // the rain falling out of them
+  for (const C of SKY.clouds) if (Math.random() < dt * 30) emit(V(C.p.x + rr(-.5, .5) * C.w, C.p.y - 1.2, C.p.z + rr(-.5, .5) * C.d), 0x9cc8ff, V(0, -16, 0), .08, .9, 0);
+  if (NET && NET.client) return;
+  if (SKY.streak && (SKY.streak.dead || !SKY.streak.body)) SKY.streak = null;
+  if (!SKY.streak && match.state === 'play' && (SKY.streakT -= dt) <= 0) { // now and then a gold hit-streak block pops up on a cloud
+    const C = SKY.clouds[Math.floor(rnd() * SKY.clouds.length)], e = newBlock('bomb', V(C.p.x + rr(-1, 1), C.p.y + .5, C.p.z + rr(-1, 1)), { anchored: true });
+    e.kind = 'streak'; e.mesh.clear(); e.core = null; e.mesh.material = streakMat; e.slot = null; e.origin = null; e.onTaken = () => { SKY.streak = null; SKY.streakT = rr(60, 90); };
+    SKY.streak = e; fxBurst(V(C.p.x, C.p.y + 1, C.p.z), 0xffd84a, 2, .4); toast('A HIT STREAK BLOCK APPEARED ON A CLOUD');
+  }
+  if (SKY.streak && SKY.streak.mesh) SKY.streak.mesh.material.emissiveIntensity = .45 + .25 * Math.sin(now() / 200);
+}
+
+// ---------------------------------------------------------------- weather: rain, and now and then an ice storm
+const WX = { on: MAP === 'sky', storm: 0, next: 150, drops: null, hail: null, rainGain: null, gloom: 0, t: 0 };
+if (WX.on) {
+  const mk = (n, col, len, op) => { const pos = new Float32Array(n * 6), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const m = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false })); m.frustumCulled = false; scene.add(m);
+    const d = []; for (let i = 0; i < n; i++) d.push([rr(-30, 30), rr(0, 30), rr(-30, 30)]); return { m, d, len, n }; };
+  WX.drops = mk(900, 0xa8c8f0, .9, .45); WX.hail = mk(300, 0xf4fbff, .25, .95); WX.hail.m.visible = false;
+  const C = h => new THREE.Color(h); // a grey, rainy sky (and much darker in an ice storm)
+  WX.pal = [['zen', C('#4a5568'), C('#1c2230')], ['mid', C('#6c7788'), C('#2c3442')], ['hor', C('#a7aeb8'), C('#56606e')], ['low', C('#949ca8'), C('#4a5260')], ['sunCol', C('#8a8678'), C('#000000')]];
+  WX.fogA = C('#9aa2ad'); WX.fogB = C('#4f5866'); WX.hemi0 = LIGHT0.hemi; WX.sun0 = LIGHT0.sun;
+}
+Object.assign(SFX_SYNTH, {
+  thunder: () => { thump(40, .9, 0, 2.2); noiseHit(2.6, 'lowpass', 400, .6, .05, true, 80, 1); noiseHit(.4, 'lowpass', 1600, .3, 0, true, 300, 1); },
+  icestorm: () => { SFX_SYNTH.thunder(); for (let i = 0; i < 12; i++) clack(1800 + Math.random() * 1500, .12, .3 + i * .09, .05); },
+});
+function moveFall(F, cam, speed, dt) {
+  const a = F.m.geometry.attributes.position.array;
+  F.d.forEach((q, i) => { q[1] -= speed * dt; if (q[1] < -2) { q[0] = rr(-30, 30); q[1] = rr(22, 32); q[2] = rr(-30, 30); }
+    const x = cam.x + q[0], y = cam.y - 8 + q[1], z = cam.z + q[2]; a.set([x, y, z, x - .3, y + F.len, z], i * 6); });
+  F.m.geometry.attributes.position.needsUpdate = true;
+}
+function updateWeather(dt) {
+  if (!WX.on) return;
+  const cam = camera.position; WX.t += dt;
+  moveFall(WX.drops, cam, 26, dt);
+  // the ice storm: every 2½-3½ minutes for 18 seconds (the match clock drives it, so everyone online gets it together)
+  const el = match.state === 'play' ? MATCH_TIME - match.time : 0, cyc = 190, ph = el % cyc, storming = match.state === 'play' && el > 60 && ph > cyc - 18;
+  if (storming && !WX.storming) { WX.storming = true; bigToast('ICE STORM!', 'red'); sfx('icestorm'); shake = Math.max(shake, .3); }
+  if (!storming && WX.storming) { WX.storming = false; toast('THE ICE STORM HAS PASSED'); }
+  WX.gloom += ((storming ? 1 : .35) - WX.gloom) * Math.min(1, dt * .8);
+  WX.hail.m.visible = WX.gloom > .5; if (WX.hail.m.visible) moveFall(WX.hail, cam, 34, dt);
+  // gloomy sky: darker and greyer, much darker in a storm (the blackout power still works on top of this)
+  { const k = clamp((WX.gloom - .35) / .65, 0, 1); // .35 = just rainy, 1 = ice storm
+    if (!NIGHT) for (const [u, A, B] of WX.pal) skyU[u].value.copy(A).lerp(B, k);
+    LIGHT0.fog.copy(NIGHT ? LIGHT0.fog : WX.fogA.clone().lerp(WX.fogB, k)); LIGHT0.hemi = WX.hemi0 * (NIGHT ? 1 : .8 - .35 * k); LIGHT0.sun = WX.sun0 * (NIGHT ? 1 : .55 - .35 * k);
+    if (!(PW.dark > 0)) { scene.fog.color.copy(LIGHT0.fog); if (hemi) hemi.intensity = LIGHT0.hemi; sun.intensity = LIGHT0.sun; } }
+  if (Math.random() < dt * (storming ? .15 : .02)) { sfx('thunder'); }
+  // hail lands: icy patches all over the battlefield (and anyone standing there freezes)
+  if (storming && !(NET && NET.client) && (WX.hailT = (WX.hailT || 0) - dt) <= 0) { WX.hailT = rr(.6, 1.1);
+    for (let k = 0; k < 20; k++) { const x = rr(-MX + 4, MX - 4), z = rr(-MZ + 4, MZ - 4); if (chasmDist(x, z) < 2 || Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 2 && Math.abs(z - F.z) < FORT_RZ + 2)) continue;
+      freezeArea(V(x, TH(x, z) + .3, z), null, null, 2.6); break; } }
+  // rain sound: a soft hiss under everything
+  if (AC && S.sound && !WX.rainSrc) { try { const n = AC.sampleRate * 2, b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = AC.createBufferSource(); src.buffer = b; src.loop = true; const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = .5; const g = AC.createGain(); g.gain.value = .035;
+    src.connect(bp); bp.connect(g); g.connect(master); src.start(); WX.rainSrc = src; WX.rainGain = g; } catch (e) { WX.rainSrc = true; } }
+  if (WX.rainGain && WX.rainGain.gain) WX.rainGain.gain.value = S.sound ? .03 + .05 * WX.gloom : 0;
+}
+
+// ---------------------------------------------------------------- getting across: bots, dogs and animals
+// bots (every difficulty): if where they're going is over the gorge, they go to the rainbow on their side and ride it.
+// Hard bots also hop across on the clouds when one comes past.
+const sideOf = p => Math.sign(p.x * CH.n.x + p.z * CH.n.z) || 1;
+function crossesGorge(p, goal) { if (!CH) return false; if (sideOf(p) === sideOf(goal) && chasmDist(goal.x, goal.z) > 0) { for (let k = 1; k <= 10; k++) { const f = k / 10; if (chasmDist(p.x + (goal.x - p.x) * f, p.z + (goal.z - p.z) * f) < 0) return true; } return false; } return true; }
+const rainbowEnd = p => sideOf(p) > 0 ? RBW.A : RBW.B;
+function chasmAim(p, goal) { if (!CH || !RBW.on) return null; if (!crossesGorge(p, goal)) return null; return rainbowEnd(p).clone(); }
+function hopCloud(r, p, goal) { // hard bots: hop onto a passing cloud, then across
+  const T_ = tileUnder(r);
+  if (T_) { // on a cloud: jump for the far edge when it's close, or for a cloud in the other lane that's closer to it
+    const gs = sideOf(goal), edge = V(p.x + CH.n.x * gs * 3.5, 0, p.z + CH.n.z * gs * 3.5);
+    if (chasmDist(edge.x, edge.z) > .5 && sideOf(edge) === gs) { r.want.copy(V(CH.n.x * gs, 0, CH.n.z * gs)); r.wantSpeed = RUN; if (r.grounded) r.jumpReq = true; return true; }
+    const nxt = CONV.tiles.find(o => o !== T_ && (o.p.x * CH.n.x + o.p.z * CH.n.z) * gs < (p.x * CH.n.x + p.z * CH.n.z) * gs + 1 && Math.hypot(o.p.x - p.x, o.p.z - p.z) < o.size / 2 + T_.size / 2 + 4.5);
+    if (nxt) { const d = V(nxt.p.x + nxt.v.x * .6 - p.x, 0, nxt.p.z + nxt.v.z * .6 - p.z).normalize(); r.want.copy(d); r.wantSpeed = RUN; if (r.grounded) r.jumpReq = true; }
+    else r.wantSpeed = 0; // wait for one to come along
+    return true;
+  }
+  const cd = chasmDist(p.x, p.z); if (cd < 0 || cd > 3) return false;
+  const near = CONV.tiles.find(o => Math.hypot(o.p.x + o.v.x * .5 - p.x, o.p.z + o.v.z * .5 - p.z) < o.size / 2 + 2.6);
+  if (near) { const d = V(near.p.x + near.v.x * .5 - p.x, 0, near.p.z + near.v.z * .5 - p.z).normalize(); r.want.copy(d); r.wantSpeed = RUN; if (r.grounded) r.jumpReq = true; return true; }
+  r.wantSpeed = 0; return true; // at the edge: wait for a cloud
+}
+{ const ua1 = updateAI; updateAI = function (r, dt) {
+    if (!CH || !r.ai.goal) return ua1(r, dt);
+    ua1(r, dt);
+    if (r.rb) return; // riding the rainbow
+    const p = rPos(r), goal = r.ai.goal, lvl = SMART();
+    if (r.wantSpeed > 0 && goal && crossesGorge(p, goal)) {
+      if (lvl >= 2 && (tileUnder(r) || (chasmDist(p.x, p.z) < 3 && Math.hypot(p.x - rainbowEnd(p).x, p.z - rainbowEnd(p).z) > 25)) && hopCloud(r, p, goal)) return;
+      const aim = chasmAim(p, goal); if (aim) { const d = V(aim.x - p.x, 0, aim.z - p.z); if (d.lengthSq() > .01) r.want.copy(d.normalize()); }
+    }
+    if (tileUnder(r)) return;
+    // last line of defence: a step that would go over the edge turns along the edge instead
+    if (r.wantSpeed > 0 && r.grounded && chasmDist(p.x, p.z) > 0 && chasmDist(p.x + r.want.x * 1.8, p.z + r.want.z * 1.8) < .4) {
+      const t = V(CH.u.x, 0, CH.u.z), dot = t.dot(r.want); r.want.copy(dot >= 0 ? t : t.negate()); }
+  }; }
+// dogs: ride the rainbow to get at someone on the other side; and they go home through a fort's flag gateway
+function skyDogAim(D, g) { if (!CH || !RBW.on) return null; const p = V(D.x, 0, D.z); if (!crossesGorge(p, g)) return null; return rainbowEnd(p); }
+function dogRideStart(D) { if (!RBW.on || D.rb) return false; for (const [E, s, dir] of [[RBW.A, 0, 1], [RBW.B, 1, -1]]) if (Math.hypot(D.x - E.x, D.z - E.z) < 2.2) { D.rb = { s, dir }; return true; } return false; }
+function dogRide(D, dt) { const R_ = D.rb; R_.s += R_.dir * RBW.speed * .8 * dt / RBW.L; const s = clamp(R_.s, 0, 1), p = RBW.at(s); D.x = p.x; D.z = p.z; D.y = p.y; D.vy = 0; D.m.g.position.set(p.x, p.y, p.z); D.yaw = Math.atan2(RBW.B.x - RBW.A.x, RBW.B.z - RBW.A.z) + (R_.dir > 0 ? 0 : Math.PI); D.m.g.rotation.y = D.yaw; D.grounded = true; if (R_.s >= 1 || R_.s <= 0) D.rb = null; }
+const gateExit = (x, z) => { let best = null, bd = 1e9; for (const t of ['blue', 'red']) { const G_ = GATES[t], d = Math.hypot(G_.x - x, G_.z - z); if (d < bd) { bd = d; best = { pos: V(G_.x, G_.y || 0, G_.z), n: V(0, 0, 0), gate: true }; } } return best; };
+// cows and sheep that wander onto the wrong half (or anywhere far from home for a long while) find their way home:
+// walking into a fort they pop out back in their pasture, as if through the flag gateway
+{ const uan0 = updateAnimals; updateAnimals = function (dt) {
+    if (CH) for (const e of blocks) {
+      if (e.kind !== 'animal' || e.dead || !e.body || e.holder || e.rage || !e.pasture || e.animal === 'chicken') continue;
+      const t = e.body.translation(), away = Math.hypot(t.x - e.pasture.x, t.z - e.pasture.z);
+      e.lostT = away > PASTURE_R + 3 ? (e.lostT || 0) + dt : 0;
+      const inFort = Object.keys(FORT).some(k => inOwnFort(k, V(t.x, t.y, t.z)));
+      if ((inFort && e.lostT > 2) || e.lostT > 45) { dropBody(e); makeBody(e, V(e.pasture.x + rr(-3, 3), 2, e.pasture.z + rr(-3, 3))); e.body.setEnabledRotations(false, true, false, true); e.upright = true; e.live = false; e.lostT = 0; fxBurst(V(e.pasture.x, 1.5, e.pasture.z), 0xb36bff, 1.4, .3); continue; }
+      if (e.lostT > 1 && crossesGorge(V(t.x, 0, t.z), e.pasture)) { e._pas = e.pasture; const F = FORT[sideOf(V(t.x, 0, t.z)) > 0 ? 'blue' : 'red']; e.pasture = V(F.x, 0, F.z); }
+    }
+    uan0(dt);
+    for (const e of blocks) if (e._pas) { e.pasture = e._pas; e._pas = null; }
+  }; }
 
 // ---------------------------------------------------------------- hooks
 { const ur1 = updateRobot; updateRobot = function (r, dt) {
@@ -6285,36 +6489,11 @@ function rainbowRide(r, dt) {
     if (CH && r.body && r.state === 'play' && r.grounded) { const T_ = tileUnder(r); if (T_) { const t = r.body.translation(); r.body.setTranslation({ x: t.x + T_.v.x * dt, y: t.y, z: t.z + T_.v.z * dt }, true); } } // riding a cloud
     rainbowRide(r, dt);
   }; }
-{ const ump1 = updateMorePowers; updateMorePowers = function (dt) { updateConveyor(dt); ump1(dt); }; }
-if (CH) setTimeout(() => { try { rebuildPits(); } catch (e) {} }, 0); // dirt walls down the sides of the sky band
+{ const ump1 = updateMorePowers; updateMorePowers = function (dt) { updateConveyor(dt); updateSkyClouds(dt); updateWeather(dt); ump1(dt); }; }
+if (CH) setTimeout(() => { try { rebuildPits(); } catch (e) {} }, 0); // dirt walls down the sides of the gorge
 // ---------------------------------------------------------------- the map picker in the menu
 document.querySelectorAll('[data-map]').forEach(b => { b.classList.toggle('on', b.dataset.map === MAP);
   b.onclick = () => { if (b.dataset.map === MAP) return; try { localStorage.setItem('nymbo-map', b.dataset.map); } catch (e) {} location.reload(); }; });
-
-// ---------------------------------------------------------------- bots on the cloud map: don't walk into the sky
-// If the straight line to where a bot wants to go crosses the band, it heads for the nearer end of the band (on its own
-// side) and walks round. (All difficulties: falling off is never smart.)
-function chasmAim(p, goal) {
-  if (!CH) return null;
-  let cross = false; for (let k = 1; k <= 12; k++) { const f = k / 12; if (chasmDist(p.x + (goal.x - p.x) * f, p.z + (goal.z - p.z) * f) < 1) { cross = true; break; } }
-  if (!cross) return null;
-  const tp = p.x * CH.u.x + p.z * CH.u.z, op = p.x * CH.n.x + p.z * CH.n.z, side = Math.sign(op) || 1, end = CH.T + CH.W + 4;
-  const wp = e => V(CH.u.x * e + CH.n.x * side * (CH.W + 3), 0, CH.u.z * e + CH.n.z * side * (CH.W + 3));
-  const a = wp(end), b = wp(-end), cost = w => Math.hypot(w.x - p.x, w.z - p.z) + Math.hypot(goal.x - w.x, goal.z - w.z);
-  const w = cost(a) < cost(b) ? a : b, tw = w.x * CH.u.x + w.z * CH.u.z;
-  if (Math.abs(tp) > CH.T + CH.W + 1) return null; // already round the end
-  if (Math.hypot(w.x - p.x, w.z - p.z) < 2.5) return V(CH.u.x * Math.sign(tw) * (end + 3), 0, CH.u.z * Math.sign(tw) * (end + 3)); // at the corner: step round the end
-  return w;
-}
-{ const ua1 = updateAI; updateAI = function (r, dt) {
-    if (!CH || !r.ai.goal) return ua1(r, dt);
-    ua1(r, dt);
-    const p = rPos(r);
-    if (r.wantSpeed > 0 && r.ai.goal) { const aim = chasmAim(p, r.ai.goal); if (aim) { const d = V(aim.x - p.x, 0, aim.z - p.z); if (d.lengthSq() > .01) r.want.copy(d.normalize()); } }
-    // last line of defence: a step that would go over the edge turns along the edge instead (unless it's riding a cloud)
-    if (r.wantSpeed > 0 && r.grounded && chasmDist(p.x, p.z) > 0 && chasmDist(p.x + r.want.x * 1.8, p.z + r.want.z * 1.8) < .4) {
-      const t = V(CH.u.x, 0, CH.u.z), dot = t.dot(r.want); r.want.copy(dot >= 0 ? t : t.negate()); }
-  }; }
 
 // ============================================================
 // ONLINE PLAY (test version, no game server needed)
@@ -6656,7 +6835,7 @@ function clientTick(dt, t) {
   for (const Q of PORTALS) Q.disc.rotation.z -= dt * 1.5;
   for (const team of ['blue', 'red']) { const g = GATES[team]; g.flash = Math.max(0, g.flash - dt); g.glow.material.opacity = .5 + .4 * Math.sin(t / 300) * .2 + g.flash * .5; }
   for (const r of robots) syncRobot(r);
-  updateFun(dt); updateAmbience(dt); pulseHalos(t); updateReplayUI(dt); updateBHWarn(dt); updateConveyor(dt); updateBirds(dt); updateGas(dt); updateSticky(dt); updateIce(dt); updateWool(dt); updateFx(dt); updateCamera(dt);
+  updateFun(dt); updateAmbience(dt); pulseHalos(t); updateReplayUI(dt); updateBHWarn(dt); updateConveyor(dt); updateSkyClouds(dt); updateWeather(dt); updateBirds(dt); updateGas(dt); updateSticky(dt); updateIce(dt); updateWool(dt); updateFx(dt); updateCamera(dt);
   if (hitStop > 0) hitStop = 0;
 }
 // on the host: copy every in-world sound and effect to the friends' phones as it happens
@@ -6760,7 +6939,7 @@ function soundLabRows() {
 const slabMesh = () => scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6);
 const paintMat = (m, tex) => { m.map = tex; m.color.set(0xffffff); if (m.emissiveMap) m.emissiveMap = tex; m.needsUpdate = true; };
 const LOOK_SLOTS = [
-  { id: 'grass', name: 'Ground (top)', tip: 'repeats once per square; a 64×64 image works well', apply: t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(MX, MZ); t.magFilter = THREE.NearestFilter; paintMat(slabMesh().material[2], t); } },
+  { id: 'grass', name: 'Ground (top)', tip: 'repeats once per square; a 64×64 image works well', apply: t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(MX, MZ); t.magFilter = THREE.NearestFilter; paintMat(GROUND_MESH ? GROUND_MESH.material : slabMesh().material[2], t); } },
   { id: 'ground_side', name: 'Ground (side)', tip: 'the cliff face under the grass', apply: t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; const m = slabMesh().material; const t2 = t.clone(); t.repeat.set(MZ * 2, 1); t2.repeat.set(MX * 2, 1); t2.needsUpdate = true; paintMat(m[0], t); paintMat(m[1], t); paintMat(m[4], t2); paintMat(m[5], t2); } },
   { id: 'block', name: 'Blocks (forts, ammo, trees)', tip: 'drawn on every plain block, tinted by the block\'s colour', apply: t => { plainIM.material.map = t; plainIM.material.needsUpdate = true; } },
   { id: 'robot_blue', name: 'Robot body (blue team)', tip: 'wrapped round the body, head and arms', apply: t => { for (const r of robots) if (r.team === 'blue') paintMat(r.model.mats[0], t); } },
@@ -6909,7 +7088,7 @@ function texFromCanvas(c, pixel) { const t = new THREE.CanvasTexture(c); t.color
 const getBuiltin = k => builtinTex[k] || (builtinTex[k] = { c: BUILTIN[k](), t: null }, builtinTex[k].t = texFromCanvas(builtinTex[k].c), builtinTex[k]);
 
 // ---------------- the rows ----------------
-const groundTop = () => slabMesh().material[2];
+const groundTop = () => (typeof GROUND_MESH !== 'undefined' && GROUND_MESH ? GROUND_MESH.material : slabMesh().material[2]);
 const GROUND0 = groundTop().map;
 const groundSet = t => { const m = groundTop(); if (!t) { m.map = GROUND0; } else { const c = t.clone(); c.repeat.set(MX, MZ); c.wrapS = c.wrapT = THREE.RepeatWrapping; c.needsUpdate = true; m.map = c; } m.needsUpdate = true; };
 const catSet = i => t => { TP.on[i] = t ? 1 : 0; if (t) TP.tex[i] = t; plainIM.material.needsUpdate = true; refreshAllHeld(); };
