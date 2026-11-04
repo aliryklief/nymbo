@@ -3048,7 +3048,7 @@ function updateRobot(r, dt) {
   r.lastVy = lv.y;
   r.yaw += angDiff(r.yaw, r.yawT) * Math.min(1, dt * (r.isPlayer ? 14 : 9));
   if (r.dashT > 0) r.dashT -= dt; else r.dashV *= Math.pow(.001, dt);
-  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1) * (r.peckT > 0 ? .3 : 1) * (r.goldT > 0 ? 1.5 : 1) * (r.grounded && onIce(rPos(r)) ? 1.35 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
+  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1) * (r.peckT > 0 ? .3 : 1) * (r.goldT > 0 ? 2 : 1) * (r.grounded && onIce(rPos(r)) ? 1.35 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
   if (r.pull) { des.add(r.pull); } // the black hole's drag
   if (r.boost) { des.add(r.boost); r.boost.multiplyScalar(Math.exp(-1.3 * dt)); if (r.boost.lengthSq() < .3) r.boost = null; } // speed arrows
   if (r.gasT > 0) r.gasT -= dt; // (in the stink cloud: crawling)
@@ -3058,8 +3058,8 @@ function updateRobot(r, dt) {
   if (r.jumpReq) {
     r.jumpReq = false;
     if (r.peckT > 0) { /* chickens all over you: no jumping */ } else
-    if (r.grounded) { vy = JUMP_V * (isSlowed(r) ? .5 : 1); r.jumps = 1; r.grounded = false; r.model.sq = -.32; r.model.sqv = 6; if (r.isPlayer) sfx('vjump', rPos(r)); } // push down then spring up
-    else if (r.jumps < 2) { vy = JUMP_V * (isSlowed(r) ? .5 : 1); r.jumps = r.jumps === 0 ? 1 : 2; /* walked off a ledge or dropped into a hole: that first air jump doesn't use up your double jump */ r.model.pr = -.22; r.model.prv = 0; r.model.sq = -.42; r.model.sqv = 4; if (r.isPlayer) sfx('vjump', rPos(r), true); } // presses its weight into the ball mid-air
+    if (r.grounded) { vy = JUMP_V * (isSlowed(r) ? .5 : 1) * (r.goldT > 0 ? 1.414 : 1); r.jumps = 1; r.grounded = false; r.model.sq = -.32; r.model.sqv = 6; if (r.isPlayer) sfx('vjump', rPos(r)); } // push down then spring up
+    else if (r.jumps < 2) { vy = JUMP_V * (isSlowed(r) ? .5 : 1) * (r.goldT > 0 ? 1.414 : 1); r.jumps = r.jumps === 0 ? 1 : 2; /* walked off a ledge or dropped into a hole: that first air jump doesn't use up your double jump */ r.model.pr = -.22; r.model.prv = 0; r.model.sq = -.42; r.model.sqv = 4; if (r.isPlayer) sfx('vjump', rPos(r), true); } // presses its weight into the ball mid-air
   }
   if (r.pull && r.pull.y) vy = Math.max(vy, lv.y + r.pull.y * dt * 3);
   r.body.setLinvel({ x: lv.x + (des.x - lv.x) * k, y: vy, z: lv.z + (des.z - lv.z) * k }, true);
@@ -6516,7 +6516,8 @@ if (CH) for (const T of TRAMP_SPOTS.filter(t => t.slide)) {
     // you land, then it swings one way, back the other and back again, with a few soft bumps
     const a = a0 + (aEnd - a0) * s, q = s < sL ? 0 : (s - sL) / (1 - sL), bend = 7 * Math.sin(3 * Math.PI * q) * Math.min(1, q * 4);
     const t = T.t - sd * bend, o = T.o - sd * a, y = 14 + (yEnd - 14) * (s < .94 ? s / .94 : 1) + (s < .94 ? .3 * Math.sin(s / .94 * Math.PI * 4) * Math.sin(s / .94 * Math.PI) : 0); // (flat for the last bit, level with the ground: you just walk off)
-    return V(u.x * t + n.x * o, y, u.z * t + n.z * o); };
+    const wx = u.x * t + n.x * o, wz = u.z * t + n.z * o, lift = .35 * (1 - clamp((s - .85) / .1, 0, 1)); // never dips into a hill: it stays just above the ground all the way
+    return V(wx, Math.max(y, TH(wx, wz) + (s > .95 ? .04 : lift + .04)), wz); };
   const S_ = { at, samples: [], L: 0, T };
   { let p0 = at(0); for (let k = 0; k <= 200; k++) { const p = at(k / 200); S_.L += p.distanceTo(p0); p0 = p; S_.samples.push(p); } }
   // the chute: a blue half-pipe, with a sheet of rushing water in it
@@ -6538,7 +6539,12 @@ if (CH) for (const T of TRAMP_SPOTS.filter(t => t.slide)) {
   const water = new THREE.Mesh(wgeo, new THREE.MeshBasicMaterial({ map: wt, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false })); scene.add(water); S_.wt = wt;
   const col = world.createCollider(RAPIER.ColliderDesc.trimesh(new Float32Array(cv), new Uint32Array(ci)).setFriction(0).setSensor(true)); byCollider.set(col.handle, { type: 'static' }); S_.handle = col.handle;
   // a splash pool where it lands
-  const end = at(1), pool = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, .12, 24), new THREE.MeshBasicMaterial({ color: 0x8fe0ff, transparent: true, opacity: .7 })); pool.position.set(end.x, TH(end.x, end.z) + .06, end.z); scene.add(pool);
+  const end = at(1), pool = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, .1, 32), new THREE.MeshBasicMaterial({ map: RBW.poolTex || null, color: 0xbfeeff, transparent: true, opacity: .85 })); S_.pool = V(end.x + (end.x - at(.97).x) * 40 / Math.max(.1, Math.hypot(end.x - at(.97).x, end.z - at(.97).z)) * .05, 0, end.z + (end.z - at(.97).z) * 40 / Math.max(.1, Math.hypot(end.x - at(.97).x, end.z - at(.97).z)) * .05); // a splash pool at the bottom (penguins dive in here to go home) pool.position.set(S_.pool.x, TH(S_.pool.x, S_.pool.z) + .05, S_.pool.z); scene.add(pool);
+  { // a small landing platform just under the top of the slide: land there, then jump up onto the slide
+    const p0 = at(.02), p1 = at(.09), d = V(p1.x - p0.x, 0, p1.z - p0.z).normalize(), c = p0.clone().lerp(p1, .5), y = Math.min(p0.y, p1.y) - 2.6, yaw = Math.atan2(d.x, d.z), q = new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), yaw);
+    const slab = new THREE.Mesh(new RoundedBoxGeometry(4.6, .6, 5.2, 2, .25), new LiteMat({ color: 0xe8f2fb, emissive: 0x9ab0c8, emissiveIntensity: .25 })); slab.position.set(c.x, y - .3, c.z); slab.quaternion.copy(q); slab.castShadow = slab.receiveShadow = true; scene.add(slab);
+    for (let k = 0; k < 6; k++) { const m = new THREE.Mesh(puffGeo, new LiteMat({ color: 0xffffff, emissive: 0x8a9ab8, emissiveIntensity: .25 })); m.position.set(c.x + rr(-1.8, 1.8), y - .9, c.z + rr(-1.8, 1.8)); m.scale.set(rr(1.2, 1.8), rr(.7, 1), rr(1.2, 1.8)); scene.add(m); }
+    const col = world.createCollider(RAPIER.ColliderDesc.cuboid(2.3, .3, 2.6).setTranslation(c.x, y - .3, c.z).setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }).setFriction(.9)); byCollider.set(col.handle, { type: 'static' }); S_.plat = { c: V(c.x, y, c.z), d, handle: col.handle }; }
   { let mx = 0, mz = 0; for (const p of S_.samples) { mx += p.x / S_.samples.length; mz += p.z / S_.samples.length; } S_.mid = V(mx, 0, mz); S_.reach = Math.max(...S_.samples.map(p => Math.hypot(p.x - mx, p.z - mz))) + 4; }
   SLIDES.push(S_);
 }
@@ -6553,7 +6559,7 @@ const slideSF = (S_, p) => { const k = Math.round(slideS(S_, p) * 200), A = S_.s
 function slideAfter(r, dt) { // the water pushes you down the chute (taken off again before the next move, so it never piles up)
   r.onSlide = null; r.slLay = false; if (!SLIDES.length || !r.body || r.state !== 'play') { r.prevY = null; return; }
   const c = rPos(r), py = r.prevY ?? c.y; r.prevY = c.y;
-  { const lv0 = r.body.linvel(); if (lv0.y < -1 && !r.wasSlide) for (const X of SLIDES) { // dropping in fast (off a trampoline): catch them, so nobody falls straight through the chute
+  { const lv0 = r.body.linvel(); if (lv0.y < -1 && !r.wasSlide && !r.isPlayer && !r.remote) for (const X of SLIDES) { // (bots only: people land on the platform under the top, then hop on) // dropping in fast (off a trampoline): catch them, so nobody falls straight through the chute
     if (Math.hypot(c.x - X.mid.x, c.z - X.mid.z) > X.reach) continue;
     const s0 = slideS(X, c), m = X.at(s0), dd = X.at(Math.min(1, s0 + .01)).sub(X.at(Math.max(0, s0 - .01))), sd_ = V(-dd.z, 0, dd.x).normalize(), lat = (c.x - m.x) * sd_.x + (c.z - m.z) * sd_.z;
     if (Math.abs(lat) < (s0 < .5 ? 6 : 2.4) && c.y < m.y + 1.0 && py >= m.y + .5) { const k = Math.max(0, Math.abs(lat) - 1.4) * Math.sign(lat); c.x -= sd_.x * k; c.z -= sd_.z * k; /* (a near miss: a splash of water scoops you in) */ r.body.setTranslation({ x: c.x, y: m.y + 1.02, z: c.z }, true); r.body.setLinvel({ x: lv0.x * .6, y: 0, z: lv0.z * .6 }, true); c.y = m.y + 1.02; r.prevY = c.y; break; } } }
@@ -6564,7 +6570,7 @@ function slideAfter(r, dt) { // the water pushes you down the chute (taken off a
   const mid = S_.at(s), side = V(-dh.z, 0, dh.x), lat = (c.x - mid.x) * side.x + (c.z - mid.z) * side.z; // (and it keeps you in the middle of the chute)
   // glued smoothly to the chute (the round robot used to bump over every panel): unless you're jumping off it
   const surf = mid.y + 1.3 * Math.pow(Math.min(1, Math.abs(lat) / 2.3), 3) + .98, hs = Math.hypot(lv.x + push.x, lv.z + push.z), slope = d.y / Math.max(1e-4, Math.hypot(d.x, d.z)), along = ((lv.x + push.x) * dh.x + (lv.z + push.z) * dh.z);
-  const glue = lv.y < 2.5 && c.y < surf + .45 && c.y > surf - 1.2;
+  const glue = lv.y < 2.5 && lv.y > (r.wasSlide ? -40 : -6) && c.y < surf + .45 && c.y > surf - 1.2; // (dropping in fast from a trampoline: you go past it, down to the platform)
   if (glue) r.body.setTranslation({ x: c.x, y: surf, z: c.z }, true);
   r.body.setLinvel({ x: lv.x + push.x - side.x * lat, y: glue ? along * slope : lv.y, z: lv.z + push.z - side.z * lat }, true); r.slPush = push; if (glue) r.grounded = true;
   r.onSlide = S_; r.slLay = lay; r.slDir = dh; if (lay) r.slLayT = now() + 350;
@@ -6625,7 +6631,7 @@ function updateGold(dt) {
 { const gbG = grabBlock; grabBlock = function (r, e, ...a) {
     if (e && e.kind === 'gold') { if (!canAct(r) || e.dead) return false; const p = e.body.translation(); destroyBlock(e); GOLD.e = null; GOLD.t = rr(60, 120);
       r.goldT = 10; fxDebris(V(p.x, p.y, p.z), 0xffc21f, 26, 7); fxBurst(V(p.x, p.y, p.z), 0xffd84a, 2, .4); sfx('streak', V(p.x, p.y, p.z));
-      if (r.isPlayer) bigToast('GOLD RUSH! 1.5x SPEED', 'blue'); else toast([[r.name.toUpperCase(), r.color], [' GOT THE GOLD: 1.5x SPEED', null]]); return true; }
+      if (r.isPlayer) bigToast('GOLD RUSH! 2x SPEED, 2x JUMP', 'blue'); else toast([[r.name.toUpperCase(), r.color], [' GOT THE GOLD: 2x SPEED AND JUMP', null]]); return true; }
     return gbG(r, e, ...a);
   }; }
 
@@ -6641,6 +6647,7 @@ if (WX.on) {
   WX.drops = mk(550, 0xa8c8f0, .9, .45); WX.hail = mk(260, 0xf4fbff, .25, .95); WX.hail.m.visible = false;
   const C = h => new THREE.Color(h); // [uniform, sunny, rainy, storm]
   WX.pal = ['zen', 'mid', 'hor', 'low', 'sunCol'].map((u, i) => [u, skyU[u].value.clone(), C(['#4a5568', '#6c7788', '#a7aeb8', '#949ca8', '#8a8678'][i]), C(['#1c2230', '#2c3442', '#56606e', '#4a5260', '#000000'][i])]);
+  for (const P_ of WX.pal) P_[1].lerp(P_[2], .18); // (the sunshine sky a touch softer than a plain sunny day)
   WX.fog = [LIGHT0.fog.clone(), C('#9aa2ad'), C('#4f5866')]; WX.hemi0 = LIGHT0.hemi; WX.sun0 = LIGHT0.sun;
   WX.cloudCols = [[C('#ffffff'), C('#9aa2b2'), C('#5d6576')], [C('#f6f9ff'), C('#b8bfcc'), C('#7b8392')]];
   // sunbeams: soft golden shafts slanting down from the sun
@@ -6673,7 +6680,7 @@ function updateWeather(dt) {
   const cam = camera.position; WX.t += dt;
   const { storm, warn } = stormClock();
   if (storm && !WX.storming) { WX.storming = true; bigToast('ICE STORM!', 'red'); sfx('icestorm'); shake = Math.max(shake, .3); }
-  if (!storm && WX.storming) { WX.storming = false; WX.sunny = true; toast('THE STORM HAS PASSED: HERE COMES THE SUN'); }
+  if (!storm && WX.storming) { WX.storming = false; WX.sunny = true; if (match.state === 'play' && match.time > 12) toast('THE STORM HAS PASSED: HERE COMES THE SUN'); } // (not at the very end of the match)
   if (match.state !== 'play' && match.state !== 'end') { WX.sunny = false; WX.storming = false; }
   wxWarn.style.display = warn && !REPLAY.on ? 'block' : 'none'; if (warn) wxWarn.textContent = '❄ ICE STORM IN ' + warn;
   if (warn && warn !== WX.lastWarn) sfx('tick'); WX.lastWarn = warn;
@@ -6684,7 +6691,7 @@ function updateWeather(dt) {
   // the sky: sunny (0) → rainy (.35) → storm (1); the blackout power still works on top of this
   const _mx = WX._mx || (WX._mx = new THREE.Color()), mix3 = (A, B, Cc) => G_ < .35 ? _mx.copy(A).lerp(B, G_ / .35) : _mx.copy(B).lerp(Cc, (G_ - .35) / .65);
   if (!NIGHT) { for (const [u, A, B, Cc] of WX.pal) skyU[u].value.copy(mix3(A, B, Cc));
-    LIGHT0.fog.copy(mix3(...WX.fog)); const lk = G_ < .35 ? 1 - .2 * G_ / .35 : .8 - .35 * (G_ - .35) / .65, sk = G_ < .35 ? 1.1 - .55 * G_ / .35 : .55 - .35 * (G_ - .35) / .65;
+    LIGHT0.fog.copy(mix3(...WX.fog)); const lk = G_ < .35 ? .88 - .08 * G_ / .35 : .8 - .35 * (G_ - .35) / .65, sk = G_ < .35 ? .82 - .27 * G_ / .35 : .55 - .35 * (G_ - .35) / .65; // (sunshine, but not glaring)
     LIGHT0.hemi = WX.hemi0 * lk; LIGHT0.sun = WX.sun0 * sk;
     if (!(PW.dark > 0)) { scene.fog.color.copy(LIGHT0.fog); if (hemi) hemi.intensity = LIGHT0.hemi; sun.intensity = LIGHT0.sun; }
     if (SKY.mats) SKY.mats.forEach((m, i) => m.color.copy(mix3(...WX.cloudCols[i]))); }
@@ -6693,12 +6700,12 @@ function updateWeather(dt) {
   if (WX.rays.visible) { const top = cam.clone().addScaledVector(SUN_DIR, 140);
     WX.rays.children.forEach(m => { const U = m.userData, base = V(cam.x + Math.cos(U.a + WX.t * .02) * U.d, -4, cam.z + Math.sin(U.a + WX.t * .02) * U.d), dir = base.clone().sub(top), L = dir.length();
       m.position.copy(top).addScaledVector(dir, .5); m.scale.set(1, L, 1); m.quaternion.setFromUnitVectors(V(0, -1, 0), dir.normalize());
-      m.material.opacity = sunK * (.22 + .08 * Math.sin(WX.t * U.w + U.ph)); }); }
+      m.material.opacity = sunK * (.14 + .05 * Math.sin(WX.t * U.w + U.ph)); }); }
   if (Math.random() < dt * (WX.storming ? .15 : WX.sunny ? 0 : .02)) sfx('thunder');
   // hail lands: big icy patches all over the battlefield (and anyone standing there freezes)
   if (WX.storming && !(NET && NET.client) && (WX.hailT = (WX.hailT || 0) - dt) <= 0) { WX.hailT = rr(.3, .55);
     for (let k = 0; k < 20; k++) { const x = rr(-MX + 4, MX - 4), z = rr(-MZ + 4, MZ - 4); if (chasmDist(x, z) < 2 || Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 2 && Math.abs(z - F.z) < FORT_RZ + 2)) continue;
-      freezeArea(V(x, TH(x, z) + .3, z), null, null, 5.2); if (++WX.hailN % 3 === 0) break; } } // (several big icy patches at a time)
+      freezeArea(V(x, TH(x, z) + .3, z), null, null, rr(1.8, 6.5)); if (++WX.hailN % 5 === 0) break; } } /* (icy patches of every size, lots of them) */ // (several big icy patches at a time)
   // rain sound: a soft hiss under everything
   if (AC && S.sound && !WX.rainSrc) { try { const n = AC.sampleRate * 2, b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
     const src = AC.createBufferSource(); src.buffer = b; src.loop = true; const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = .5; const g = AC.createGain(); g.gain.value = .035;
@@ -6745,6 +6752,7 @@ function hopCloud(r, p, goal) { // bots cross the gorge on the moving clouds
     if (r.rb) return; // riding the rainbow
     const p = rPos(r), goal = r.ai.goal, lvl = SMART();
     if (r.onSlide) { if (goal && crossesGorge(p, goal)) { r.want.copy(r.slDir); r.wantSpeed = RUN; } return; } // on a slide: go with the water
+    { const Sp = SLIDES.find(S_ => S_.plat && Math.hypot(p.x - S_.plat.c.x, p.z - S_.plat.c.z) < 3 && Math.abs(p.y - S_.plat.c.y - 1) < 1.2); if (Sp) { r.want.copy(Sp.plat.d); r.wantSpeed = RUN * .5; if (r.grounded) r.jumpReq = true; return; } } // on a landing platform: hop up onto the slide
     if (r.padT > 0 && r.slideRun) { r.want.copy(r.slideRun); r.wantSpeed = RUN; return; } // flying off the trampoline at the slide
     if (r.wantSpeed > 0 && goal && crossesGorge(p, goal)) {
       if ((tileUnder(r) || (lvl >= 2 && chasmDist(p.x, p.z) < 1.5)) && hopCloud(r, p, goal)) return; /* hard bots hop the clouds too */
@@ -6835,7 +6843,7 @@ Object.assign(SFX_SYNTH, {
     const mat = new LiteMat({ vertexColors: true }), g = new THREE.Mesh(geo, mat); g.castShadow = true; g.userData.kind = kind;
     const footM = new LiteMat({ color: 0xff9a1f }), flipM = new LiteMat({ color: 0x22252c }), L = [];
     for (const sx of [-1, 1]) { const f = new THREE.Mesh(new THREE.BoxGeometry(.16, .06, .24).translate(0, -.03, .06), footM); f.position.set(sx * .14, -.47, 0); g.add(f); L.push(f); }
-    for (const sx of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(.06, .4, .2).translate(0, -.18, 0), flipM); w.position.set(sx * .32, .14, 0); w.castShadow = true; g.add(w); L.push(w); }
+    for (const sx of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(.08, .62, .32).translate(0, -.28, 0), flipM); w.position.set(sx * .34, .18, 0); w.castShadow = true; g.add(w); L.push(w); }
     g.userData.legs = L; g.userData.face = new THREE.Group(); g.userData.face.visible = false; g.scale.setScalar(1.15); scene.add(g); return g;
   }; }
 // ---- popping out of a broken ice pillar ----
@@ -6849,11 +6857,18 @@ function spawnPenguin(at) {
 }
 if (PENG.on) { const tf0 = treeFell; treeFell = function (tr) { if (!tr.peng) { tr.peng = true; spawnPenguin(V(tr.x, 0, tr.z)); } return tf0(tr); }; }
 // ---- knocked flat: on your back, legs in the air, struggling to get up ----
-function flop(r, t, push) {
+function flop(r, t, push) { // hit by a sliding penguin: knocked flat on your back, struggling to get up
   if (!r.body || r.state !== 'play') return;
-  r.flopT = Math.max(r.flopT || 0, t); r.flopSpin = Math.random() < .5 ? 1 : -1;
+  r.flopT = Math.max(r.flopT || 0, t);
   if (push) r.body.setLinvel({ x: push.x, y: push.y || 3, z: push.z }, true);
   r.grounded = false; sfx('bellybump', rPos(r)); if (r.isPlayer) { shake = Math.max(shake, .35); buzz('blast'); }
+  koPop(rPos(r), 'WHUMP!', '#9fd8ff');
+}
+function bonk(r, push) { // a tummy bonk: no falling over, you just get shoved back a long way
+  if (!r.body || r.state !== 'play') return;
+  const h = Math.hypot(push.x, push.z) || 1, k = 17 / h; r.body.setLinvel({ x: push.x * k, y: 6.5, z: push.z * k }, true);
+  r.grounded = false; r.padT = 1.6; r.jumps = 1; // (flying: hardly any steering until you land)
+  sfx('bellybump', rPos(r)); if (r.isPlayer) { shake = Math.max(shake, .35); buzz('blast'); }
   koPop(rPos(r), 'BONK!', '#9fd8ff');
 }
 { const ur0 = updateRobot; updateRobot = function (r, dt) {
@@ -6879,15 +6894,16 @@ function flop(r, t, push) {
     const e = taP(r, ...a); if (!e || e.animal !== 'penguin' || !e.body) return e;
     const f = fwdOf(r.yaw), p = e.body.translation();
     e.live = false; e.upright = true; e.body.setEnabledRotations(false, true, false, true); e.body.setTranslation({ x: p.x, y: Math.max(p.y, TH(p.x, p.z) + .45), z: p.z }, true);
-    e.peng.slide = { dir: V(f.x, 0, f.z), sp: 14, by: r, hit: new Set([r]), t: 0 }; e.peng.bump = null; e.peng.age = Math.min(e.peng.age, 20); sfx('throw', V(p.x, p.y, p.z));
+    e.peng.slide = { dir: V(f.x, 0, f.z), sp: 17, by: r, hit: new Set([r]), t: 0 }; e.peng.yaw = Math.atan2(f.x, f.z); e.peng.bump = null; e.peng.age = Math.min(e.peng.age, 20); sfx('throw', V(p.x, p.y, p.z));
     return e;
   }; }
 const _pq = new THREE.Quaternion(), _pe = new THREE.Euler(0, 0, 0, 'YXZ');
-function knockAlong(pos, dir, R, by, hit, strength) { // sweeps loose blocks aside; anyone it reaches falls flat on their back
+function knockAlong(pos, dir, R, by, hit, strength, bonking) { // a heavy penguin: knocks standing blocks loose and sweeps everything aside; anyone it reaches gets bonked
+  unanchorAround(V(pos.x, pos.y, pos.z), R * .7);
   for (const b of blocks) { if (b.dead || !b.body || b.holder || b.anchored || b.kind === 'flag' || b.peng) continue; const t = b.body.translation(); if (Math.hypot(t.x - pos.x, t.z - pos.z) > R || Math.abs(t.y - pos.y) > 1.5) continue;
-    const side = V(t.x - pos.x, 0, t.z - pos.z).normalize(), m = b.body.mass(); b.body.applyImpulse({ x: (dir.x * .6 + side.x) * 5 * m, y: 2.5 * m, z: (dir.z * .6 + side.z) * 5 * m }, true); b.live = false; }
+    const side = V(t.x - pos.x, 0, t.z - pos.z).normalize(), m = b.body.mass(); b.body.applyImpulse({ x: (dir.x + side.x * .8) * 9 * m, y: 4 * m, z: (dir.z + side.z * .8) * 9 * m }, true); b.live = false; }
   for (const r of robots) { if (r.state !== 'play' || hit.has(r) || r.flopT > 0) continue; const c = rPos(r); if (Math.hypot(c.x - pos.x, c.z - pos.z) > R || Math.abs(c.y - pos.y) > 1.6) continue;
-    hit.add(r); const side = V(c.x - pos.x, 0, c.z - pos.z).normalize(); flop(r, rr(2, 3), { x: (dir.x * .7 + side.x * .7) * strength, y: 3.5, z: (dir.z * .7 + side.z * .7) * strength }); }
+    hit.add(r); const side = V(c.x - pos.x, 0, c.z - pos.z).normalize(), push = { x: (dir.x * .7 + side.x * .7) * strength, y: 3.5, z: (dir.z * .7 + side.z * .7) * strength }; if (bonking) bonk(r, push); else flop(r, rr(2, 3), push); }
 }
 function updatePenguins(dt) {
   if (!PENG.on) return;
@@ -6897,27 +6913,42 @@ function updatePenguins(dt) {
     if (!e.body || e.holder) continue;
     const t = e.body.translation(), lv = e.body.linvel(), gy = TH(t.x, t.z);
     if (t.y < -6) { destroyBlock(e); PENG.list.splice(i, 1); continue; } // gone into the sky
-    G_.age += dt; if (G_.age > 50) { fxBurst(V(t.x, t.y + .4, t.z), 0xd8f4ff, 1, .3); destroyBlock(e); PENG.list.splice(i, 1); continue; }
+    G_.age += dt; if (G_.age > 80) { fxBurst(V(t.x, t.y + .4, t.z), 0xd8f4ff, 1, .3); destroyBlock(e); PENG.list.splice(i, 1); continue; }
     let lying = false, sp = 0, dir = null;
+    if (G_.slide && !G_.ride) { // thrown onto a water slide or the rainbow: it rides it all the way down
+      for (const S_ of SLIDES) { const s0 = slideSF(S_, t), m = S_.at(s0); if (Math.hypot(m.x - t.x, m.z - t.z) < 2.4 && t.y - m.y < 2.8 && t.y - m.y > -1.2 && s0 < .95) { G_.ride = { S: S_, s: s0, rb: false, hit: G_.slide.hit, by: G_.slide.by }; break; } }
+      if (!G_.ride && RBW.on) { const s0 = nearestS(V(t.x, t.y, t.z)), m = RBW.at(s0); if (m.distanceTo(V(t.x, t.y, t.z)) < 1.8) { const tan = RBW.at(Math.min(1, s0 + .01)).sub(RBW.at(Math.max(0, s0 - .01))); G_.ride = { s: s0, rb: true, dir: tan.x * G_.slide.dir.x + tan.z * G_.slide.dir.z >= 0 ? 1 : -1, hit: G_.slide.hit, by: G_.slide.by }; } }
+    }
+    if (G_.ride) { const R_ = G_.ride, L = R_.rb ? RBW.L : R_.S.L, sp = R_.rb ? RBW.speed : 16, d0 = R_.rb ? R_.dir : 1;
+      R_.s += d0 * sp * dt / L; const done = R_.rb ? (R_.s >= 1 || R_.s <= 0) : R_.s >= .97, s1 = clamp(R_.s, 0, 1), at_ = R_.rb ? RBW.at(s1) : R_.S.at(s1), nx = R_.rb ? RBW.at(clamp(s1 + d0 * .01, 0, 1)) : R_.S.at(Math.min(1, s1 + .01)), tan = nx.clone().sub(at_), th = V(tan.x, 0, tan.z).normalize();
+      e.body.setTranslation({ x: at_.x, y: at_.y + .5, z: at_.z }, true); e.body.setLinvel({ x: 0, y: 0, z: 0 }, true); G_.yaw = Math.atan2(th.x, th.z);
+      knockAlong(V(at_.x, at_.y + .6, at_.z), th, 1.8, R_.by, R_.hit, 7); // everyone on it gets knocked off
+      if (Math.random() < .7) emit(V(at_.x, at_.y + .2, at_.z), R_.rb ? [0xff3b3b, 0xffe14a, 0x4fd64a, 0x3aa8ff][Math.floor(Math.random() * 4)] : 0xbfeeff, V(rr(-1, 1), rr(.5, 2), rr(-1, 1)), .12, .5, 0);
+      _pe.set(Math.PI / 2 - Math.atan2(tan.y, Math.hypot(tan.x, tan.z)) * 0, G_.yaw, 0); e.body.setRotation(_pq.setFromEuler(_pe), true);
+      if (done) { G_.ride = null; if (G_.slide) { G_.slide.dir = th; G_.slide.sp = 11; G_.slide.t = 0; } e.body.setTranslation({ x: at_.x + th.x, y: Math.max(at_.y, TH(at_.x, at_.z)) + .6, z: at_.z + th.z }, true); }
+      continue; }
     if (G_.slide) { // thrown: sliding on its tummy, sweeping things aside, slowing down over a few blocks
-      const S_ = G_.slide; S_.t += dt; S_.sp = Math.max(0, S_.sp - dt * 7.5); lying = true; dir = S_.dir; sp = S_.sp;
-      knockAlong(V(t.x + dir.x * .6, t.y, t.z + dir.z * .6), dir, 1.2, S_.by, S_.hit, 7);
+      const S_ = G_.slide; S_.t += dt; S_.sp = Math.max(0, S_.sp - dt * 4.6); lying = true; dir = S_.dir; sp = S_.sp; G_.yaw = Math.atan2(dir.x, dir.z); // (dead straight, head first)
+      knockAlong(V(t.x + dir.x * .7, t.y, t.z + dir.z * .7), dir, 1.7, S_.by, S_.hit, 7);
       if (Math.random() < .6) emit(V(t.x, t.y - .3, t.z), 0xe8f6ff, V(rr(-1, 1), rr(.5, 1.5), rr(-1, 1)), .1, .4, 0);
-      if (S_.sp < 1.2 || S_.t > 2.4) { G_.slide = null; G_.yaw = Math.atan2(dir.x, dir.z); // up it gets, and bumps whatever's in front with its tummy
-        knockAlong(V(t.x + dir.x * 1.2, t.y, t.z + dir.z * 1.2), dir, 1.4, S_.by, new Set([S_.by]), 6); sfx('honk', V(t.x, t.y, t.z)); }
+      if (S_.sp < 1.2 || S_.t > 4) { G_.slide = null; G_.yaw = Math.atan2(dir.x, dir.z); // up it gets, and bumps whatever's in front with its tummy
+        knockAlong(V(t.x + dir.x * 1.2, t.y, t.z + dir.z * 1.2), dir, 1.4, S_.by, new Set([S_.by]), 6, true); sfx('honk', V(t.x, t.y, t.z)); }
     } else if (G_.bump) { // cross: chasing whoever held it too long, bumping them towards the edge
       const B = G_.bump, tg = B.target; B.t -= dt; B.cool -= dt;
       if (B.t <= 0 || tg.state !== 'play') G_.bump = null;
       else { const c = rPos(tg), d = V(c.x - t.x, 0, c.z - t.z), L = d.length(); dir = d.normalize(); sp = 4.6; G_.yaw = Math.atan2(dir.x, dir.z);
         if (L < 1.4 && B.cool <= 0 && Math.abs(c.y - t.y) < 2) { B.cool = 2.2; const out = V(c.x, 0, c.z); if (out.lengthSq() < .01) out.set(1, 0, 0); out.normalize(); const push = dir.clone().multiplyScalar(.5).add(out.multiplyScalar(.5)).normalize();
-          flop(tg, rr(2, 3), { x: push.x * 9, y: 5, z: push.z * 9 }); e.body.setLinvel({ x: -dir.x * 2, y: 3, z: -dir.z * 2 }, true); continue; } }
+          bonk(tg, { x: push.x * 9, y: 5, z: push.z * 9 }); e.body.setLinvel({ x: -dir.x * 2, y: 3, z: -dir.z * 2 }, true); continue; } }
     }
     if (!G_.slide && !G_.bump) { // waddling about: wander, now and then a quick belly-slide; after 30 s it heads for the middle
       G_.turnT -= dt; G_.selfSlide -= dt;
-      if (G_.age > 30) { const d = V(-t.x, 0, -t.z); G_.yaw = Math.atan2(d.x, d.z); }
+      if (G_.age > 30 && SLIDES.length) { // time to go home: off to the nearest slide pool, and in with a splash
+        const P_ = SLIDES.map(S_ => S_.pool).reduce((m, q) => Math.hypot(q.x - t.x, q.z - t.z) < Math.hypot(m.x - t.x, m.z - t.z) ? q : m), d = V(P_.x - t.x, 0, P_.z - t.z);
+        if (d.length() < 1.8) { fxBurst(V(P_.x, TH(P_.x, P_.z) + .3, P_.z), 0x8fe0ff, 1.8, .35); fxDebris(V(P_.x, TH(P_.x, P_.z) + .3, P_.z), 0xbfeeff, 18, 5); sfx('splash', V(P_.x, 1, P_.z)); destroyBlock(e); PENG.list.splice(i, 1); continue; }
+        G_.yaw = Math.atan2(d.x, d.z); }
       else if (G_.turnT <= 0) { G_.turnT = rr(1.2, 3); G_.yaw += rr(-1.6, 1.6); if (chasmDist(t.x + Math.sin(G_.yaw) * 3, t.z + Math.cos(G_.yaw) * 3) < 1) G_.yaw += Math.PI; if (Math.random() < .3) G_.selfSlide = rr(.6, 1); }
       dir = V(Math.sin(G_.yaw), 0, Math.cos(G_.yaw)); sp = G_.selfSlide > 0 ? 6.5 : 2.1; lying = G_.selfSlide > 0;
-      if (G_.age <= 30 && chasmDist(t.x + dir.x * 1.5, t.z + dir.z * 1.5) < .3) { G_.yaw += Math.PI; G_.selfSlide = 0; sp = 0; } // (not into the gorge... until it's time)
+      if (chasmDist(t.x + dir.x * 1.5, t.z + dir.z * 1.5) < .3) { G_.yaw += Math.PI; G_.selfSlide = 0; sp = 0; } // (not into the gorge... until it's time)
       if (Math.random() < dt * .25) sfx('honk', V(t.x, t.y, t.z));
     }
     if (dir) e.body.setLinvel({ x: dir.x * sp, y: lv.y, z: dir.z * sp }, true);
@@ -6948,11 +6979,11 @@ Object.assign(SFX_SYNTH, {
 function bearModel() {
   const g = new THREE.Group(), fur = new LiteMat({ color: 0xf6f3ea, emissive: 0x6a6a66, emissiveIntensity: .45 }), fur2 = new LiteMat({ color: 0xe9e4d6, emissive: 0x5a5a56, emissiveIntensity: .45 }), blk = new LiteMat({ color: 0x15161a }), add = (w, h, d, x, y, z, m, p = g) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = true; p.add(b); return b; };
   // standing upright: legs, a big body, arms up, and a head with a snout (everything ~3x a robot)
-  const legs = [-1, 1].map(s => { const l = new THREE.Group(); l.position.set(s * .32, .95, 0); g.add(l); add(.42, .95, .5, 0, -.48, 0, fur2, l); add(.46, .16, .62, 0, -.95, .08, fur2, l); return l; });
-  const up = new THREE.Group(); up.position.y = .95; g.add(up); // everything above the hips: stands up, or drops forward onto its front paws
-  const body = add(1.2, 1.5, .9, 0, .8, 0, fur, up); add(.8, 1.0, .1, 0, .7, .46, fur2, up); // body, tummy
-  const arms = [-1, 1].map(s => { const a = new THREE.Group(); a.position.set(s * .7, 1.4, 0); up.add(a); add(.34, 1.0, .38, 0, -.45, 0, fur, a); add(.36, .2, .4, 0, -.95, .06, fur2, a); for (let k = -1; k <= 1; k++) add(.05, .12, .05, k * .1, -1.06, .24, blk, a); return a; });
-  const head = new THREE.Group(); head.position.set(0, 1.8, .05); up.add(head);
+  const legs = [-1, 1].map(s => { const l = new THREE.Group(); l.position.set(s * .38, .85, -.05); g.add(l); add(.56, .7, .66, 0, -.3, 0, fur, l); add(.5, .2, .6, 0, -.72, .02, fur2, l); add(.6, .18, .78, 0, -.76, .1, fur2, l); return l; }); // short thick hind legs, big flat paws
+  const up = new THREE.Group(); up.position.y = .85; g.add(up); // everything above the hips: stands up, or drops forward onto its front paws
+  const body = add(1.4, 1.1, 1.05, 0, .45, 0, fur, up); add(1.2, .7, .95, 0, 1.25, 0, fur, up); add(.95, .95, .1, 0, .55, .53, fur2, up); // a big round body narrowing to the shoulders, tummy
+  const arms = [-1, 1].map(s => { const a = new THREE.Group(); a.position.set(s * .72, 1.45, 0); up.add(a); add(.5, .62, .55, 0, -.25, 0, fur, a); add(.44, .5, .5, 0, -.72, .02, fur, a); add(.54, .2, .66, 0, -1.02, .08, fur2, a); for (let k = -1; k <= 1; k++) add(.07, .14, .07, k * .15, -1.14, .38, blk, a); return a; }); // thick forelegs (same length as the back legs, so it runs on all fours), big paws and claws
+  const head = new THREE.Group(); head.position.set(0, 1.72, .1); up.add(head);
   add(.8, .66, .7, 0, .3, 0, fur, head); add(.44, .32, .38, 0, .2, .48, fur2, head); add(.16, .12, .08, 0, .3, .68, blk, head); // head, snout, nose
   for (const s of [-1, 1]) { add(.09, .09, .04, s * .19, .44, .36, blk, head); add(.2, .2, .14, s * .3, .67, -.05, fur, head); add(.1, .1, .05, s * .3, .67, .03, blk, head); } // eyes, ears
   const mouth = add(.24, .06, .04, 0, .07, .66, new LiteMat({ color: 0x7a2a2a }), head);
