@@ -3409,8 +3409,9 @@ function rebuildPits() {
   const quad = (a, b) => { const ha = TH(a[0], a[1]), hb = TH(b[0], b[1]); pos.push(a[0], ha, a[1], b[0], hb, b[1], b[0], -6, b[1], a[0], ha, a[1], b[0], -6, b[1], a[0], -6, a[1]); }; // (the walls start at the ground's height, hills included)
   for (const k of HOLES) {
     const [cx, cz] = k.split(',').map(Number), x = cx - MX, z = cz - MZ;
-    if (!HOLES.has((cx - 1) + ',' + cz)) quad([x, z], [x, z + 1]); if (!HOLES.has((cx + 1) + ',' + cz)) quad([x + 1, z], [x + 1, z + 1]);
-    if (!HOLES.has(cx + ',' + (cz - 1))) quad([x, z], [x + 1, z]); if (!HOLES.has(cx + ',' + (cz + 1))) quad([x, z + 1], [x + 1, z + 1]);
+    const open = (i, j) => HOLES.has(i + ',' + j) || i < 0 || j < 0 || i >= GW || j >= GD; // (no wall along the map's outer edge: the gorge just runs off into the sky)
+    if (!open(cx - 1, cz)) quad([x, z], [x, z + 1]); if (!open(cx + 1, cz)) quad([x + 1, z], [x + 1, z + 1]);
+    if (!open(cx, cz - 1)) quad([x, z], [x + 1, z]); if (!open(cx, cz + 1)) quad([x, z + 1], [x + 1, z + 1]);
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
   pitMesh = new THREE.Mesh(g, pitMat); scene.add(pitMesh);
@@ -6603,7 +6604,7 @@ function updateSkyClouds(dt) {
   // the rain falling out of them
   for (const C of SKY.clouds) if (Math.random() < dt * 12 * clamp(WX.gloom / .35, 0, 1)) emit(V(C.p.x + rr(-.5, .5) * C.w, C.p.y - 1.2, C.p.z + rr(-.5, .5) * C.d), 0x9cc8ff, V(0, -16, 0), .08, .9, 0);
   if (NET && NET.client) return;
-  if (SKY.streak && (SKY.streak.dead || !SKY.streak.body)) SKY.streak = null;
+  if (SKY.streak && (SKY.streak.dead || !SKY.streak.body)) { SKY.streak = null; SKY.streakT = rr(60, 90); } // (swallowed or knocked away: a new one comes later, not straight away)
   if (!SKY.streak && match.state === 'play' && (SKY.streakT -= dt) <= 0) { // now and then a gold hit-streak block pops up on a cloud
     const C = SKY.clouds[Math.floor(rnd() * SKY.clouds.length)], e = newBlock('bomb', V(C.p.x + rr(-1, 1), C.p.y + .5, C.p.z + rr(-1, 1)), { anchored: true });
     e.kind = 'streak'; e.mesh.clear(); e.core = null; e.mesh.material = streakMat; e.slot = null; e.origin = null; e.onTaken = () => { SKY.streak = null; SKY.streakT = rr(60, 90); };
