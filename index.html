@@ -186,8 +186,30 @@ button:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
 .seg button[aria-pressed=true]{background:var(--c1);color:#fff;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
 .seg button[data-world=night][aria-pressed=true]{background:var(--c5)}
 .lbl{font:700 11px var(--body);letter-spacing:.22em;color:#fff;text-align:center;margin-bottom:-6px;text-shadow:0 1px 0 var(--ink2),0 2px 0 var(--ink2)}
-.panel{background:#1b1838;border:3px solid var(--ink2);border-radius:22px;padding:18px;box-shadow:0 7px 0 var(--ink2),0 16px 30px rgba(0,0,0,.35)}
-.panel h2{font-family:var(--display);font-weight:400;font-size:26px;margin:0 0 6px;color:var(--c4);text-shadow:0 1px 0 var(--ink2),0 2px 0 var(--ink2),0 3px 0 var(--ink2)}
+/* ---- menus: one look everywhere (frosty sky panels, chunky ink outlines) ---- */
+.maps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mapcard{display:grid;gap:3px;padding:6px 6px 9px;border:2.5px solid var(--ink2);border-radius:16px;background:#fff8ec;color:var(--ink2);cursor:pointer;box-shadow:0 4px 0 var(--ink2);text-align:center;font-family:var(--body)}
+.mapcard svg{width:100%;height:auto;border-radius:11px;display:block}
+.mapcard b{font:400 16px var(--display);letter-spacing:.02em}.mapcard span{font-size:10.5px;color:#6b6480;line-height:1.25}
+.mapcard.on{background:var(--c4);box-shadow:0 4px 0 var(--ink2),0 0 0 3px #fff inset}.mapcard.on span{color:var(--ink2)}
+.mapcard:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink2)}
+.menurow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.menurow .ghost{padding:10px 4px;font-size:14px}
+details.friends{border:2.5px solid var(--ink2);border-radius:14px;background:rgba(16,24,44,.55);box-shadow:0 4px 0 var(--ink2);padding:0 10px}
+details.friends summary{list-style:none;cursor:pointer;padding:11px 2px;font:700 15px var(--body);color:#fff;text-align:center}details.friends summary::-webkit-details-marker{display:none}
+details.friends[open]{padding-bottom:10px}details.friends .net{margin-top:8px}
+.panel .sect{margin-top:12px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.08)}
+.panel .sect h3{margin:0 0 6px;font:400 15px var(--display);letter-spacing:.04em;color:#bfe8ff}
+.panel .sub{font:700 11px var(--body);letter-spacing:.14em;color:var(--muted);margin:8px 0 6px;text-transform:uppercase}
+.tog label small{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:2px}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:#fff8ec;padding:4px;border-radius:14px;border:2.5px solid var(--ink2);margin:6px 0 10px}
+.tabs button{border:0;border-radius:10px;padding:8px 0;font:700 12px var(--body);background:transparent;color:#6b6480;cursor:pointer}.tabs button.on{background:var(--c1);color:#fff}
+#guideBody{display:grid;gap:7px;max-height:min(58vh,560px);overflow:auto;padding-right:2px}
+.gi{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;background:rgba(255,255,255,.05);border-radius:12px;padding:8px 10px}
+.gi .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:22px;background:#22304f;color:#fff}.gi .ic svg{width:26px;height:26px}
+.gi b{font:400 15px var(--display);display:block;letter-spacing:.02em}.gi span{font-size:12px;color:var(--muted);line-height:1.4}
+.gh{font:700 11px var(--body);letter-spacing:.18em;color:#bfe8ff;margin:6px 2px 0}
+.panel{background:linear-gradient(165deg,#22325a,#18213f 55%,#1b2850);border:3px solid var(--ink2);border-radius:22px;padding:18px;box-shadow:0 7px 0 var(--ink2),0 16px 30px rgba(0,0,0,.35)}
+.panel h2{font-family:var(--display);font-weight:400;font-size:26px;margin:0 0 6px;color:#dff3ff;text-shadow:0 1px 0 var(--ink2),0 2px 0 var(--ink2),0 3px 0 var(--ink2)}
 .moves{display:grid;gap:7px;margin:0;padding:0;list-style:none}
 .moves li{display:grid;grid-template-columns:38px 1fr;gap:10px;align-items:center;background:rgba(255,255,255,.05);border-radius:12px;padding:7px 9px}
 .g{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:#22304f;font-size:19px;font-weight:700}
@@ -292,18 +314,40 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div class="card">
     <div><div class="logo"><i>N</i><i>Y</i><i>M</i><i>B</i><i>O</i></div><div class="tag">THROW · STEAL · SCORE</div></div>
     <button class="go" id="playBtn">PLAY</button>
+    <div class="lbl">PICK A MAP</div>
+    <div class="maps"><button class="mapcard" data-map="classic"><svg viewBox="0 0 120 70" aria-hidden="true"><rect width="120" height="70" fill="#9fd4ff"/><rect x="8" y="9" width="104" height="52" rx="8" fill="#5cb43a" stroke="#14111f" stroke-width="2.5"/><rect x="14" y="14" width="22" height="16" rx="2" fill="none" stroke="#3a7bff" stroke-width="3"/><rect x="84" y="40" width="22" height="16" rx="2" fill="none" stroke="#ff4d40" stroke-width="3"/><circle cx="96" cy="20" r="5" fill="none" stroke="#b36bff" stroke-width="2.5"/><circle cx="24" cy="50" r="5" fill="none" stroke="#b36bff" stroke-width="2.5"/><g fill="#2f7a2a"><circle cx="50" cy="22" r="4"/><circle cx="57" cy="26" r="3.5"/><circle cx="66" cy="46" r="4"/><circle cx="73" cy="42" r="3.5"/></g><rect x="58.5" y="30" width="3" height="10" fill="#d8dbe2"/></svg><b>Classic</b><span>Green island · portals · tree groves</span></button><button class="mapcard" data-map="sky"><svg viewBox="0 0 120 70" aria-hidden="true"><rect width="120" height="70" fill="#c9dcf2"/><polygon points="8,9 112,9 112,61 8,61" fill="#eef3fb" stroke="#14111f" stroke-width="2.5"/><polygon points="8,47 112,13 112,27 8,61" fill="#a9d6ff"/><g fill="#fff" stroke="#9fb3cf" stroke-width="1"><rect x="30" y="44" width="8" height="4" rx="2"/><rect x="58" y="34" width="10" height="4" rx="2"/><rect x="86" y="25" width="7" height="4" rx="2"/></g><circle cx="15" cy="55" r="6" fill="#5cb43a"/><circle cx="105" cy="17" r="6" fill="#5cb43a"/><path d="M15 55 Q60 -18 105 17" fill="none" stroke="#ff4d40" stroke-width="2.4"/><path d="M15 55 Q60 -14 105 17" fill="none" stroke="#ffd23a" stroke-width="2.4"/><path d="M15 55 Q60 -10 105 17" fill="none" stroke="#4fd64a" stroke-width="2.4"/><path d="M15 55 Q60 -6 105 17" fill="none" stroke="#3aa8ff" stroke-width="2.4"/><path d="M40 22 q8 6 2 14 q-5 8 4 14" fill="none" stroke="#2f8fe8" stroke-width="3" stroke-linecap="round"/></svg><b>Sky bridge</b><span>Rainbow · water slides · ice storms</span></button></div>
     <div class="lbl">BOTS</div>
     <div class="seg"><button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div>
-    <div class="lbl">MAP</div>
-    <div class="seg"><button data-map="classic">Classic</button><button data-map="sky">🌈 Sky bridge</button></div>
     <div class="lbl">WORLD</div>
     <div class="seg" style="grid-template-columns:1fr 1fr"><button data-world="day">☀ Day</button><button data-world="night">✦ Aurora night</button></div>
-    <div class="lbl">PLAY WITH FRIENDS</div>
-    <div class="net"><input id="netName" maxlength="12" placeholder="Your name" autocomplete="off"><button class="ghost" id="hostBtn">HOST</button></div>
-    <div class="net"><input id="netCode" inputmode="numeric" maxlength="4" placeholder="Room code" autocomplete="off"><button class="ghost" id="joinBtn">JOIN</button></div>
-    <button class="ghost" id="howBtn">How to play</button>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><button class="ghost" id="soundLabBtn">🔊 Sound</button><button class="ghost" id="lookLabBtn">🎨 Look</button><button class="ghost" id="camBtn">🎥 Camera</button></div>
+    <details class="friends"><summary>👫 Play with friends</summary>
+      <div class="net"><input id="netName" maxlength="12" placeholder="Your name" autocomplete="off"><button class="ghost" id="hostBtn">HOST</button></div>
+      <div class="net"><input id="netCode" inputmode="numeric" maxlength="4" placeholder="Room code" autocomplete="off"><button class="ghost" id="joinBtn">JOIN</button></div>
+    </details>
+    <div class="menurow"><button class="ghost" id="howBtn">📖 Guide</button><button class="ghost" id="setBtn">⚙ Settings</button><button class="ghost" id="camBtn">🗺 View map</button></div>
   </div>
+</div>
+<div class="sheet" id="settings" hidden>
+  <div class="card" style="width:min(520px,100%)"><div class="panel">
+    <h2>Settings</h2>
+    <div class="sect"><h3>Sound &amp; feel</h3>
+      <div class="tog"><label for="sSound">Sound effects</label><input id="sSound" type="checkbox"></div>
+      <div class="tog"><label for="sClassic">Original sound set</label><input id="sClassic" type="checkbox"></div>
+      <div class="tog"><label for="sBuzz">Vibration</label><input id="sBuzz" type="checkbox"></div></div>
+    <div class="sect"><h3>Playing</h3>
+      <div class="tog"><label for="sReplay">Instant replay when you're knocked out <small>off = a replay button while you're down</small></label><input id="sReplay" type="checkbox"></div>
+      <div class="tog"><label for="sLand">Landscape controls <small>joystick + look, keyboard &amp; mouse, gamepad (offline games, still being tried out)</small></label><input id="sLand" type="checkbox"></div></div>
+    <div class="sect"><h3>Look</h3>
+      <div class="tog"><label for="sAoe">Blast sphere <small>shows the area a bomb, freeze or nuke covers</small></label><input id="sAoe" type="checkbox"></div>
+      <div class="sub">Classic map floor</div>
+      <div class="seg"><button data-floor="classic">Grass</button><button data-floor="mosaic">Soft mosaic</button><button data-floor="lava">Grass &amp; lava</button></div></div>
+    <div class="sect"><h3>Creator tools</h3><p class="rules" style="margin:0 0 8px">Change every sound and texture in the game, paint your own, see them in 3D.</p>
+      <div class="menurow" style="grid-template-columns:1fr 1fr"><button class="ghost" id="soundLabBtn">🔊 Sound lab</button><button class="ghost" id="lookLabBtn">🎨 Look lab</button></div></div>
+    <div class="sect"><h3>Testing</h3>
+      <div class="tog"><label for="sAllPowers">All powers <small>every power and the black hole, no streak needed</small></label><input id="sAllPowers" type="checkbox"></div>
+      <div class="tog"><label for="sFps">Show FPS <small>frames per second, and what the game spends its time on</small></label><input id="sFps" type="checkbox"></div></div>
+    <div style="display:grid;gap:8px;margin-top:12px"><button class="ghost" id="setBack">Back</button><button class="ghost" id="resetBtn" style="font-size:12px;padding:8px">Reset all my settings on this phone</button></div>
+  </div></div>
 </div>
 <div class="sheet" id="cammenu" hidden>
   <div class="card" style="width:min(560px,100%)">
@@ -334,11 +378,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 </div></div>
 <div class="sheet" id="looklab" hidden>
   <div class="card" style="width:min(560px,100%)">
-    <div class="panel"><h2>Look lab</h2><p class="rules" style="margin:0 0 8px">The textures the game draws with. Upload an image to replace one (square images, 64 to 512 pixels, work best). Kept on this device; export to send.</p>
-      <div class="lbl" style="margin:10px 0 6px">VISUALS</div>
-      <div class="tog"><label for="sAoe">Blast sphere (shows the area a bomb / freeze / nuke covers)</label><input id="sAoe" type="checkbox"></div>
-      <div class="lbl" style="margin:10px 0 6px">FLOOR</div>
-      <div class="seg"><button data-floor="classic">Classic grass</button><button data-floor="mosaic">Soft mosaic</button><button data-floor="lava">Grass &amp; lava</button></div>
+    <div class="panel"><h2>Look lab</h2><p class="rules" style="margin:0 0 8px">The textures the game draws with. Tap 🧊 3D to turn any of them round and look; paint your own, or upload a picture (square, 64 to 512 pixels). Kept on this device; export to send.</p>
       <div id="lookList"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport2">Export my replacements</button><button class="ghost" id="lookLabBack">Back</button></div></div>
   </div>
@@ -357,17 +397,10 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 </div>
 
 <div class="sheet" id="howto" hidden>
-  <div class="card"><div class="panel">
-    <h2>How to play</h2>
-    <ul class="moves">
-      <li><div class="g">•</div><div><b>Tap: jump</b><span>Tap again in the air to double jump (about 3 blocks)</span></div></li>
-      <li><div class="g">✋</div><div><b>Hold: stop, keep holding: reverse</b><span>You run forward on your own. Hold to stop, keep holding to back up. Hold and slide to turn on the spot</span></div></li>
-      <li><div class="g">↔</div><div><b>Swipe: turn</b><span>Left or right anywhere on screen</span></div></li>
-      <li><div class="g">⇆</div><div><b>Double-tap a screen edge: dodge that way</b><span>Two dodges, then a quick reload. Tap the clock for the map and menu</span></div></li>
-      <li><div class="g">↓</div><div><b>Swipe down: grab</b><span>The block you grab becomes your active block</span></div></li>
-      <li><div class="g">↑</div><div><b>Swipe up: throw</b><span>Harder swipe, further throw. Red ring = locked on</span></div></li>
-    </ul>
-    <p class="rules">Knock down their towers, grab one of their 4 flags and get it into the glowing gateway in your fort. First to 4 flags wins, or most flags when time runs out. Touch your own loose flag to send it home. Black bomb boxes blast everything nearby, icy freeze boxes stop everything in time for 3 seconds (robots slide), glowing purple homing boxes chase whoever you're locked on to. Throw a cow or sheep and it bowls robots over like pins.</p>
+  <div class="card" style="width:min(560px,100%)"><div class="panel">
+    <h2>Guide</h2>
+    <div class="tabs" id="guideTabs"><button data-g="controls">Controls</button><button data-g="blocks">Blocks</button><button data-g="powers">Powers</button><button data-g="creatures">Creatures</button><button data-g="maps">Maps</button></div>
+    <div id="guideBody"></div>
     <button class="ghost" id="howBack" style="margin-top:12px">Back</button>
   </div></div>
 </div>
@@ -376,14 +409,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div class="card"><div class="panel">
     <h2 style="margin:0">Menu</h2><p class="rules" style="margin:0 0 8px">The match keeps running.</p>
     <canvas id="menuMap" style="display:block;width:100%;border-radius:14px;margin-bottom:10px"></canvas>
-    <div class="tog"><label for="sBuzz">Vibration</label><input id="sBuzz" type="checkbox"></div>
-    <div class="tog"><label for="sSound">Sound effects</label><input id="sSound" type="checkbox"></div>
-    <div class="tog"><label for="sAllPowers">All powers (testing: every power + black hole, no streak needed)</label><input id="sAllPowers" type="checkbox"></div>
-    <div class="tog"><label for="sLand">Landscape controls (experimental): joystick + look, keyboard &amp; mouse, gamepad. Offline games.</label><input id="sLand" type="checkbox"></div>
-    <div class="tog"><label for="sReplay">Instant replay when you're knocked out (off = a replay button while you're down)</label><input id="sReplay" type="checkbox"></div>
-    <div class="tog"><label for="sClassic">Classic sounds</label><input id="sClassic" type="checkbox"></div>
-    <div class="tog"><label for="sFps">Show FPS (frames per second, and what the game is spending its time on)</label><input id="sFps" type="checkbox"></div>
-    <div style="display:grid;gap:8px;margin-top:6px"><button class="go" id="resumeBtn" style="font-size:24px;padding:14px">BACK TO THE GAME</button><button class="ghost" id="pHow">How to play</button><button class="ghost" id="quitBtn">Quit match</button><button class="ghost" id="resetBtn" style="font-size:12px;padding:8px">Reset all my settings on this phone</button></div>
+    <div style="display:grid;gap:8px;margin-top:6px"><button class="go" id="resumeBtn" style="font-size:24px;padding:14px">BACK TO THE GAME</button><div class="menurow" style="grid-template-columns:1fr 1fr"><button class="ghost" id="pSet">⚙ Settings</button><button class="ghost" id="pHow">📖 Guide</button></div><button class="ghost" id="quitBtn">Quit match</button></div>
   </div></div>
 </div>
 
@@ -5726,7 +5752,7 @@ function resize() {
 addEventListener('resize', resize); resize();
 
 // ---------------- screens ----------------
-const show = id => { for (const s of ['menu', 'howto', 'pause', 'end', 'lobby', 'soundlab', 'looklab', 'cammenu']) $(s).hidden = s !== id; };
+const show = id => { for (const s of ['menu', 'howto', 'pause', 'end', 'lobby', 'soundlab', 'looklab', 'cammenu', 'settings']) $(s).hidden = s !== id; };
 function setDiff(d) { S.diff = d; saveS(); document.querySelectorAll('[data-diff]').forEach(b => b.setAttribute('aria-pressed', b.dataset.diff === d)); }
 document.querySelectorAll('[data-diff]').forEach(b => b.onclick = () => setDiff(b.dataset.diff));
 setDiff(S.diff);
@@ -7605,7 +7631,7 @@ const loadPendingSfx = async () => { const p = CUSTOM.pendingSfx; if (!p || !AC)
 // ---------------- the menu ----------------
 $('soundLabBtn').onclick = () => { audioInit(); loadPendingSfx().then(soundLabRows); show('soundlab'); };
 $('lookLabBtn').onclick = () => { lookLabRows(); show('looklab'); };
-$('soundLabBack').onclick = $('lookLabBack').onclick = () => { stopLab(); show(match.menu ? 'pause' : 'menu'); };
+$('soundLabBack').onclick = $('lookLabBack').onclick = () => { stopLab(); show('settings'); }; // (the labs live under Settings → Creator tools)
 // sound menu previews: each one plays through its own little channel, so a new one (or leaving the menu) cuts the last one off
 const LABSND = { g: null };
 function stopLab() { const g = LABSND.g; LABSND.g = null; if (!g || !AC) return; try { g.gain.setTargetAtTime(0, AC.currentTime, .015); setTimeout(() => { try { g.disconnect(); } catch (e) {} }, 150); } catch (e) {} }
@@ -7905,6 +7931,69 @@ function open3D(slot) {
     V3D.r.render(V3D.scene, V3D.cam); V3D.raf = requestAnimationFrame(loop); };
   loop();
 }
+
+// ============================================================
+// SETTINGS and the GUIDE. Settings opens from the main menu or the pause menu (and goes back to whichever it came
+// from). The guide has five tabs: controls, blocks, powers, creatures and maps; the power icons are the real ones.
+// ============================================================
+let setFrom = 'menu';
+$('setBtn').onclick = () => { setFrom = 'menu'; show('settings'); };
+$('pSet').onclick = () => { setFrom = 'pause'; show('settings'); };
+$('setBack').onclick = () => show(match.menu ? 'pause' : setFrom);
+const powerIcon = id => { const p = POWERS.find(q => q.id === id); return p ? `<svg viewBox="0 0 24 24" fill="currentColor" style="color:${p.col}">${p.icon}</svg>` : '⭐'; };
+const GI = (ic, name, txt) => `<div class="gi"><div class="ic">${ic}</div><div><b>${name}</b><span>${txt}</span></div></div>`;
+const GUIDE = {
+  controls: () => [
+    GI('•', 'Tap: jump', 'Tap again in the air to double jump (about 3 blocks up)'),
+    GI('✋', 'Hold: stop · keep holding: back up', 'You run forward on your own. Hold and slide to turn on the spot'),
+    GI('↔', 'Swipe left or right: turn', 'Anywhere on the screen'),
+    GI('⇆', 'Double-tap an edge: dodge', 'Two dodges, then a quick reload'),
+    GI('↓', 'Swipe down: grab', 'The block you grab becomes your active block'),
+    GI('↑', 'Swipe up: throw', 'Harder swipe, further throw. A red ring means you\'re locked on'),
+    GI('⏱', 'Tap the clock', 'The map, settings and the guide (the match keeps running)'),
+    `<p class="rules">Knock down their towers, grab one of their 4 flags and carry it into the glowing gateway in your fort. First to 4 flags wins, or most flags when time runs out. Touch your own loose flag to send it home. Hit people in a row to earn powers.</p>`].join(''),
+  blocks: () => [
+    GI('⬜', 'Grey blocks', 'Your ammo. Throw them to knock robots out and knock fort walls down'),
+    GI('💣', 'Bomb block', 'Blasts everything nearby. Walls in the way protect you'),
+    GI('❄', 'Freeze block', 'Freezes everything it lands on for a few seconds (robots slide)'),
+    GI('🎯', 'Homing block', 'Chases whoever you\'re locked on to'),
+    GI('🚩', 'Flags', 'Four per team on their towers. Carry an enemy flag home to score'),
+    GI('⭐', 'Star block', 'Grab it for a random power. On a sky island (Classic) or on the rain clouds (Sky bridge)'),
+    GI('🟨', 'Gold block', 'Sky bridge: appears at the end of the rainbow now and then. 2x speed and 2x jump for 10 seconds'),
+    GI('🧊', 'Ice patches', 'Slippery: you slide and spin a little'),
+  ].join(''),
+  powers: () => [
+    `<div class="gh">EARN THEM WITH HITS IN A ROW</div>`,
+    GI(powerIcon('nuke'), 'Nuke', 'Pick a spot on the map: a huge blast'),
+    GI(powerIcon('air'), 'Ice strike', 'Three icy blasts in a row across the map'),
+    GI(powerIcon('dark'), 'Blackout', 'Lights out for everyone else. You get night-vision goggles'),
+    GI(powerIcon('slow'), 'Slow-mo', 'The other team does everything at half speed for 8 seconds'),
+    GI(powerIcon('invis'), 'Invisible', 'Bots can\'t see you for 8 seconds'),
+    GI(powerIcon('tornado'), 'Tornado', 'A twister that picks up blocks and robots'),
+    GI(powerIcon('dog'), 'Fetch!', 'A dog chases one enemy. Their blocks turn into bones: throw one and it fetches it (3 times at most)'),
+    GI(powerIcon('spring'), 'Springtrap', 'A hidden trap in the ground that flings whoever steps on it off the map'),
+    GI(powerIcon('coop'), 'Chicken coop', '4 hens in your fort. Any enemy who walks in gets mobbed'),
+    GI(powerIcon('shovel'), 'Shovel', 'Dig a big hole right where you stand'),
+    GI('🌀', 'Black hole', 'After a big streak: it swallows everything near the middle'),
+  ].join(''),
+  creatures: () => [
+    GI('🐄', 'Cows and sheep', 'Classic map. Throw one to bowl robots over. Hold one too long and it gets cross'),
+    GI('🐔', 'Chickens', 'From the chicken coop. Carry one to glide when you jump'),
+    GI('🐕', 'The dog', 'From Fetch! Blow it up or freeze it to stop it'),
+    GI('🐧', 'Penguins', 'Sky bridge: hiding in the ice pillars. Throw one and it slides, knocking everyone flat. Hold one too long and it bonks you away'),
+    GI('🐻‍❄️', 'The polar bear', 'Turns up once a match, near the end. Run! Five bombs and it gives up'),
+    GI('🐦', 'Birds', 'Classic map: some trees have nests'),
+  ].join(''),
+  maps: () => [
+    GI('🏝', 'Classic', 'A green island. Purple portals take you corner to corner, trampolines are hidden in the tree groves, speed strips on the sides'),
+    GI('🌈', 'Sky bridge', 'Two halves with an open gorge between them. Cross on the moving clouds, bounce onto the water slides, or ride the rainbow from a pasture island'),
+    GI('🌧', 'Weather (Sky bridge)', 'It starts rainy. Every minute an ice storm hits for 20 seconds (with a countdown); the sun comes out after'),
+    GI('🗺', 'View map', 'On the main menu: look round the whole map, drag to move, pinch to zoom'),
+  ].join(''),
+};
+function guideTab(k) { $('guideBody').innerHTML = GUIDE[k](); document.querySelectorAll('#guideTabs [data-g]').forEach(b => b.classList.toggle('on', b.dataset.g === k)); }
+document.querySelectorAll('#guideTabs [data-g]').forEach(b => b.onclick = () => guideTab(b.dataset.g));
+guideTab('controls');
 
 // ============================================================
 // VOICE CHAT (test version): talk to the people in your room.
