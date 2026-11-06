@@ -240,6 +240,12 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 .labrow button,.labrow .lu{border:0;border-radius:8px;padding:7px 10px;font:600 12px var(--body);cursor:pointer;background:rgba(255,255,255,.12);color:#fff}
 .labrow .lp{background:var(--yellow);color:var(--ink)}.labrow .lr{background:rgba(255,77,64,.35)}
 #soundList h3{font-family:var(--display);font-weight:400;font-size:16px;color:var(--yellow);margin:12px 0 2px}
+.wcards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 10px}
+.wcard{border:2.5px solid var(--ink2);border-radius:14px;overflow:hidden;background:#fff8ec;cursor:pointer;text-align:left;padding:0;box-shadow:0 3px 0 var(--ink2);font:inherit;color:var(--ink2)}
+.wcard i{display:block;height:58px}
+.wcard b{display:block;font:900 14px var(--display,sans-serif);padding:6px 8px 0}
+.wcard span{display:block;font:600 11px var(--body);color:#6b6480;padding:0 8px 8px}
+.wcard[aria-pressed=true]{outline:3px solid var(--yellow);outline-offset:1px}
 .tog{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin:10px 0}
 .tog input{width:22px;height:22px;accent-color:var(--yellow)}
 #endTitle{font-family:var(--display);font-size:clamp(48px,15vw,76px);text-align:center;line-height:1;text-shadow:0 5px 0 rgba(0,0,0,.3)}
@@ -335,10 +341,6 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <div class="sect"><h3>Playing</h3>
       <div class="tog"><label for="sReplay">Instant replay when you're knocked out <small>off = a replay button while you're down</small></label><input id="sReplay" type="checkbox"></div>
       <div class="tog"><label for="sLand">Landscape controls <small>joystick + look, keyboard &amp; mouse, gamepad (offline games, still being tried out)</small></label><input id="sLand" type="checkbox"></div></div>
-    <div class="sect"><h3>Look</h3>
-      <div class="tog"><label for="sAoe">Blast sphere <small>shows the area a bomb, freeze or nuke covers</small></label><input id="sAoe" type="checkbox"></div>
-      <div class="sub">Classic map floor</div>
-      <div class="seg"><button data-floor="classic">Grass</button><button data-floor="mosaic">Soft mosaic</button><button data-floor="lava">Grass &amp; lava</button></div></div>
     <div class="sect"><h3>Creator tools</h3><p class="rules" style="margin:0 0 8px">Change every sound and texture in the game, paint your own, see them in 3D.</p>
       <div class="menurow" style="grid-template-columns:1fr 1fr"><button class="ghost" id="soundLabBtn">🔊 Sound lab</button><button class="ghost" id="lookLabBtn">🎨 Look lab</button></div></div>
     <div class="sect"><h3>Testing</h3>
@@ -377,6 +379,12 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 <div class="sheet" id="looklab" hidden>
   <div class="card" style="width:min(560px,100%)">
     <div class="panel"><h2>Look lab</h2><p class="rules" style="margin:0 0 8px">The textures the game draws with. Tap 🧊 3D to turn any of them round and look; paint your own, or upload a picture (square, 64 to 512 pixels). Kept on this device; export to send.</p>
+      <div class="sub">World style <small style="font-weight:500;color:var(--muted)">the same game on another planet: shapes, shading, ground and sky all change (reloads the game)</small></div>
+      <div id="worldCards" class="wcards"></div>
+      <div class="tog"><label for="sAoe">Blast sphere <small>shows the area a bomb, freeze or nuke covers</small></label><input id="sAoe" type="checkbox"></div>
+      <div class="sub">Classic map floor</div>
+      <div class="seg"><button data-floor="classic">Grass</button><button data-floor="mosaic">Soft mosaic</button><button data-floor="lava">Grass &amp; lava</button></div>
+      <div class="sub" style="margin-top:12px">Textures</div>
       <div id="lookList"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport2">Export my replacements</button><button class="ghost" id="lookLabBack">Back</button></div></div>
   </div>
@@ -436,8 +444,16 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import RAPIER from 'rapier';
 await RAPIER.init();
 // one cheap material for everything so it runs on any phone (PBR-only options are simply dropped)
-class LiteMat extends THREE.MeshLambertMaterial {
-  constructor(o = {}) { const { roughness, metalness, clearcoat, clearcoatRoughness, ...rest } = o; super(rest); }
+// WORLD STYLES (Look lab): some planets change the shading of everything, so the base material is picked here, before
+// anything is built. jelly: glossy, toon: flat anime bands; the rest stay on the cheap Lambert.
+const WORLD = (() => { try { return JSON.parse(localStorage.getItem('nymbo-match') || '{}').world || 'day'; } catch (e) { return 'day'; } })();
+const TOON_GRAD = (() => { const d = new Uint8Array([70, 70, 70, 255, 160, 160, 160, 255, 255, 255, 255, 255]); const t = new THREE.DataTexture(d, 3, 1); t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true; return t; })();
+const LiteBase = WORLD === 'jelly' ? THREE.MeshPhongMaterial : WORLD === 'toon' ? THREE.MeshToonMaterial : THREE.MeshLambertMaterial;
+class LiteMat extends LiteBase {
+  constructor(o = {}) { const { roughness, metalness, clearcoat, clearcoatRoughness, ...rest } = o;
+    if (WORLD === 'jelly') { rest.shininess = rest.shininess ?? 70; rest.specular = rest.specular ?? 0x777777; }
+    if (WORLD === 'toon') rest.gradientMap = TOON_GRAD;
+    super(rest); }
 }
 
 // ---------------- settings ----------------
@@ -586,7 +602,7 @@ const eventQueue = new RAPIER.EventQueue(true);
 const byCollider = new Map();      // collider handle -> { type:'block'|'robot'|'static'|'animal', ref }
 
 // shared geometry
-const cubeGeo = new RoundedBoxGeometry(1, 1, 1, 1, .07); // 1 segment: 108 triangles a block instead of 300 (≈1,960 blocks on screen), same soft edges
+const cubeGeo = WORLD === 'jelly' ? new RoundedBoxGeometry(1, 1, 1, 2, .3) : WORLD === 'clay' ? new RoundedBoxGeometry(1, 1, 1, 2, .2) : WORLD === 'circuit' ? new RoundedBoxGeometry(1, 1, 1, 1, .03) : new RoundedBoxGeometry(1, 1, 1, 1, .07); /* (world styles: squishy jelly, soft clay, sharp chips) */ // // 1 segment: 108 triangles a block instead of 300 (≈1,960 blocks on screen), same soft edges
 const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
 // ============================================================
@@ -1168,13 +1184,13 @@ const MONUMENT = { g: null, top: POLE_H, under: 0, cam: V(0, POLE_H + 1.6, 0) };
   // two signpost arrows under the camera: BLUE points at the blue fort, RED at the red one
   for (const team of ['blue', 'red']) {
     const F = FORT[team], ang = Math.atan2(F.x, F.z), col = team === 'blue' ? 0x2aa2ff : 0xff4d40;
-    const arm = new THREE.Group(); arm.rotation.y = ang; arm.position.y = POLE_H - (team === 'blue' ? 1.3 : 2.9); g.add(arm);
+    const arm = new THREE.Group(); arm.rotation.y = ang; arm.position.y = POLE_H - (team === 'blue' ? 2.05 : 3.55); g.add(arm); /* (below the lantern) */
     // slimmer boards (they looked heavy on the pole); the top trim is the team colour, a shade lighter, never white
     const mat = new LiteMat({ color: col }), trim = new LiteMat({ color: new THREE.Color(col).lerp(new THREE.Color(0xffffff), .25) });
     const nameMat = txt => { const c = document.createElement('canvas'); c.width = 512; c.height = 80; const x = c.getContext('2d'); x.fillStyle = '#' + new THREE.Color(col).getHexString(); x.fillRect(0, 0, 512, 80);
       x.fillStyle = '#ffffff'; x.font = '900 54px "Lilita One", "Arial Black", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 256, 44);
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return new LiteMat({ map: t }); };
-    const NM = team.toUpperCase(), nameMat1 = nameMat(NM + '  ▶'), nameMat2 = nameMat('◀  ' + NM); /* (each face's little arrow points at the tip) */
+    const nameMat1 = nameMat('▶  ▶  ▶'), nameMat2 = nameMat('◀  ◀  ◀'); /* (no words: just arrows pointing the way) */ /* (each face's little arrow points at the tip) */
     const board = new THREE.Mesh(new THREE.BoxGeometry(.55, .75, 5), [nameMat2, nameMat1, mat, mat, mat, mat]); board.position.z = 2.8; board.castShadow = true; arm.add(board);
     for (const z of [.55, 5.0]) { const st = new THREE.Mesh(RB(.66, .86, .3, .08), cream); st.position.set(0, 0, z); st.castShadow = true; arm.add(st); } // (chunky end caps, like block edges)
     const tri = new THREE.Shape(); tri.moveTo(-.6, 0); tri.lineTo(.6, 0); tri.lineTo(0, 1.15); tri.closePath();       // a flat arrowhead the board's thickness
@@ -1791,7 +1807,7 @@ function updateBlocks(dt) {
     const a = typeof renderAlpha === 'number' ? renderAlpha : 1;
     if (e.pt) { tmpV.set(e.pt.x + (t.x - e.pt.x) * a, e.pt.y + (t.y - e.pt.y) * a, e.pt.z + (t.z - e.pt.z) * a); tmpQ.set(e.pq.x, e.pq.y, e.pq.z, e.pq.w).slerp(tmpQ2.set(r.x, r.y, r.z, r.w), a); }
     else { tmpV.set(t.x, t.y, t.z); tmpQ.set(r.x, r.y, r.z, r.w); }
-    if (e.inst >= 0) { tmpS.copy(e.dims); if (e.fading) tmpS.multiplyScalar(Math.max(.01, 1 - e.fading / .6)); tmpM.compose(tmpV, tmpQ, tmpS); plainIM.setMatrixAt(e.inst, tmpM); }
+    if (e.inst >= 0) { if (!e.boneOf) { tmpS.copy(e.dims); if (e.fading) tmpS.multiplyScalar(Math.max(.01, 1 - e.fading / .6)); tmpM.compose(tmpV, tmpQ, tmpS); plainIM.setMatrixAt(e.inst, tmpM); } } /* (a thrown bone draws as a bone, not a block) */
     else { e.mesh.visible = true; e.mesh.position.copy(tmpV); e.mesh.quaternion.copy(tmpQ); }
     if (e.ice) { e.ice.position.set(t.x, t.y, t.z); e.ice.quaternion.set(r.x, r.y, r.z, r.w); }
     if (e.kind === 'flag' && e.atHome && Math.hypot(t.x - e.home.x, t.z - e.home.z) > .9) e.atHome = false; // still on its spot (even if its tower is gone) = home
@@ -1963,7 +1979,7 @@ function flashLight() {}
 const fxList = [];
 const sphereGeo = new THREE.SphereGeometry(1, 20, 14);
 const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 20, 1, true);
-if (S.aoe === undefined) S.aoe = false; // the big see-through blast sphere (area of effect); off by default, toggle in the Look lab
+if (S.aoeV !== 2) { S.aoe = true; S.aoeV = 2; saveS(); } // the big see-through blast sphere (area of effect): on by default now (6 Nov), toggle in the Look lab
 // big blasts aren't perfect balls: a few lumpy shapes to pick from, each one turned a random way, with a second
 // smaller puff off to one side and bits flung out
 const lumpGeos = []; for (let k = 0; k < 6; k++) { const G = new THREE.IcosahedronGeometry(1, 2), P = G.attributes.position, seed = [rr(0, 6), rr(0, 6), rr(0, 6)];
@@ -4618,7 +4634,7 @@ function drawPicker(force) {
     mapHead(g, rx, ry, (r.isPlayer ? 13 : 11) * U, r.color, r.team, st, r.isPlayer);
   }
   // compass rose
-  { const R = 13 * U, cx = x1 - R * 1.6, cy = y0 + R * 1.6; /* (in the corner, out of the way) */ g.fillStyle = 'rgba(255,255,255,.85)'; g.strokeStyle = INK; g.lineWidth = 1.5 * U; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.fill(); g.stroke();
+  { const R = 13 * U, cx = W - R * 1.8, cy = H - R * 1.8; /* (bottom right, out on the sea, off the island) */ g.fillStyle = 'rgba(255,255,255,.85)'; g.strokeStyle = INK; g.lineWidth = 1.5 * U; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.fill(); g.stroke();
     g.fillStyle = '#d6332a'; g.beginPath(); g.moveTo(cx, cy - R * .95); g.lineTo(cx + R * .28, cy); g.lineTo(cx - R * .28, cy); g.fill(); g.fillStyle = INK; g.beginPath(); g.moveTo(cx, cy + R * .95); g.lineTo(cx + R * .28, cy); g.lineTo(cx - R * .28, cy); g.fill(); }
   // where it will land
   if (pickHover && onIsland(pickHover.x, pickHover.z)) {
@@ -4762,19 +4778,33 @@ const ssd = (a, b_, x) => { const t = clamp((x - a) / (b_ - a), 0, 1); return t 
 function skyFor(b) {
   if (!SKY0.off) { SKY0.off = SUN_OFF.clone(); SKY0.col = sun.color.clone(); }
   const o = SKY0.off, L = o.length(), az0 = Math.atan2(o.x, o.z), el0 = Math.asin(o.y / L), k = ssd(0, .6, b), m = ssd(.6, 1, b), d2r = Math.PI / 180;
+  // the comic bit: a big cartoon sun right in front of you drops out of the sky like a stone, and it's dark
+  if (b > 0 && SKY0.azC == null) { const f = camera.getWorldDirection(V()); SKY0.azC = Math.atan2(f.x, f.z); } if (b <= 0) SKY0.azC = null;
+  const azC = SKY0.azC == null ? az0 : SKY0.azC, dA = ((azC - az0 + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+  if (!SKY0.el) { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); g.translate(128, 128);
+    g.fillStyle = '#ffb21e'; for (let i = 0; i < 12; i++) { g.rotate(Math.PI / 6); g.beginPath(); g.moveTo(-14, -78); g.lineTo(0, -122); g.lineTo(14, -78); g.fill(); }
+    const gr = g.createRadialGradient(-20, -20, 10, 0, 0, 80); gr.addColorStop(0, '#fff6a0'); gr.addColorStop(1, '#ffc21e'); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, 78, 0, 7); g.fill(); g.lineWidth = 7; g.strokeStyle = '#e8860c'; g.stroke();
+    g.strokeStyle = '#7a3c08'; g.lineWidth = 7; g.lineCap = 'round'; for (const sx of [-1, 1]) { g.beginPath(); g.arc(sx * 26, -8, 12, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); }
+    g.beginPath(); g.arc(0, 18, 20, Math.PI * .15, Math.PI * .85); g.stroke(); g.fillStyle = 'rgba(255,120,80,.45)'; for (const sx of [-1, 1]) { g.beginPath(); g.arc(sx * 46, 16, 11, 0, 7); g.fill(); }
+    const el_ = document.createElement('div'); el_.id = 'comicSun'; el_.style.cssText = `position:fixed;left:50%;top:0;width:min(34vw,34vh);aspect-ratio:1;margin-left:calc(min(34vw,34vh) / -2);background:url(${c.toDataURL()}) center/contain no-repeat;pointer-events:none;z-index:2;opacity:0;transform:translateY(-120%)`;
+    document.body.appendChild(el_); SKY0.el = el_; SKY0.prevB = 0; }
+  { const E = SKY0.el, up = b === SKY0.prevB ? SKY0.up : b > SKY0.prevB; SKY0.up = up; SKY0.prevB = b; /* the cartoon sun: plops down at the start, creeps back up at the end */
+    if (b > 0 && b < .7 && up) { const q = b / .7, y = -60 + 230 * q * q; E.style.opacity = String(1 - ssd(.75, 1, q)); E.style.transform = `translateY(${y}%) rotate(${-q * 40}deg)`; }
+    else if (b > 0 && !up && b < .6) { const q = 1 - b / .6, y = 170 - 230 * q; E.style.opacity = String(Math.min(1, q * 3) * (1 - ssd(.7, 1, q))); E.style.transform = `translateY(${y}%)`; }
+    else E.style.opacity = '0'; }
   let az, el;
-  if (b < .6) { el = el0 + (1.5 * d2r - el0) * k; az = az0 + .55 * k; sun.color.copy(SKY0.col).lerp(new THREE.Color(0xff7a3a), k); sun.intensity = LIGHT0.sun * (1 - .85 * k) * (1 - ssd(.48, .6, b)); }
-  else { el = 4 * d2r + 36 * d2r * m; az = az0 + Math.PI - .35; sun.color.set(0x9fb8ff); sun.intensity = LIGHT0.sun * .32 * m; }
+  if (b < .6) { el = el0 + (1.5 * d2r - el0) * k; az = az0 + dA * ssd(0, .15, b); sun.color.copy(SKY0.col).lerp(new THREE.Color(0xff7a3a), k); sun.intensity = LIGHT0.sun * (1 - .85 * k) * (1 - ssd(.48, .6, b)); }
+  else { el = 4 * d2r + 36 * d2r * m; az = az0 + Math.PI - .35; sun.color.set(0x9fb8ff); sun.intensity = LIGHT0.sun * .12 * m; }
   const dir = V(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
   SUN_OFF.copy(dir).multiplyScalar(L); SUN_AX.x.set(0, 1, 0).cross(dir).normalize(); SUN_AX.y.copy(dir).cross(SUN_AX.x);
-  if (b < .6) { skyU.sun.value.copy(dir); skyU.sunTint.value.setRGB(1, 1 - .45 * k, 1 - .75 * k).multiplyScalar(1 - ssd(.5, .6, b)); }
+  if (b < .6) { skyU.sun.value.copy(dir); skyU.sunTint.value.setRGB(1, 1 - .45 * k, 1 - .75 * k).multiplyScalar(1 - ssd(0, .04, b)); } /* (the cartoon sun stands in for the sky's own) */
   else { skyU.sun.value.set(0, -1, 0); skyU.sunTint.value.setRGB(0, 0, 0); skyU.moon.value.copy(dir); }
   skyU.moonA.value = m; skyU.dusk.value = ssd(.05, .35, b) * (1 - ssd(.45, .75, b));
   if (b <= 0) { SUN_OFF.copy(SKY0.off); sun.color.copy(SKY0.col); skyU.sunTint.value.setRGB(1, 1, 1); skyU.sun.value.copy(SKY0.off).normalize(); }
 }
 function applyDark(b) {
   const nb = ssd(.25, 1, b), fb = ssd(.45, 1, b); // (the sky and the ground darken a little after the sunset starts; the fog closes in last)
-  if (hemi) hemi.intensity = LIGHT0.hemi * (1 - .9 * nb); skyFor(b);
+  if (hemi) hemi.intensity = LIGHT0.hemi * (1 - .9 * nb); skyFor(Math.max(b, PW.dark)); /* (the sky always goes the whole way, even through night-vision goggles) */
   scene.background = b > .5 ? BLACK : LIGHT0.bg; skyU.dark.value = nb;
   scene.fog.color.copy(LIGHT0.fog).lerp(new THREE.Color(0xff9a5a), .35 * skyU.dusk.value).lerp(BLACK, fb); scene.fog.near = FOG_N + (3 - FOG_N) * fb; scene.fog.far = FOG_F + (26 - FOG_F) * fb;
   for (const r of robots) { const m = r.model.mats[0]; if (r.model.frozen) continue; m.emissive.set(r.color).multiplyScalar(.65 * b); }
@@ -4806,7 +4836,7 @@ function updatePowers(dt) {
   if (PW.slowT > 0) for (const r of robots) if (isSlowed(r) && r.state === 'play' && rnd() < .3) { const c = rPos(r); emit(V(c.x + rr(-.4, .4), c.y + rr(-.2, 1.2), c.z + rr(-.4, .4)), 0xffd400, V(0, .6, 0), .14, .6, 0); } // slowed robots leave a golden shimmer
   if (PW.slowT > 0) { PW.slowT -= dt; if (PW.slowT <= 0) toast('SLOW-MO OVER'); }
   const was = PW.dark;
-  if (PW.darkT > 0) { PW.darkT -= dt; PW.dark = Math.min(1, PW.dark + dt / 2); if (PW.darkT <= 0) sfx('lightsOn'); } /* (2 seconds to night) */
+  if (PW.darkT > 0) { PW.darkT -= dt; PW.dark = Math.min(1, PW.dark + dt / 1.6); if (PW.darkT <= 0) sfx('lightsOn'); } /* (quick: the sun plops down and it's night) */
   else PW.dark = Math.max(0, PW.dark - dt / 10); /* (and 10 seconds for the sun to come back up) */
   if (PW.dark > 0 || was > 0) applyDark(PW.dark);
   if (PW.pick) drawPicker();
@@ -5100,6 +5130,7 @@ function removeDog(D, how) {
   else if (how) fxBurst(at, 0xd08a45, 1.2, .3);
   if (D.fight) { scene.remove(D.fight.cloud); D.fight.r = null; } if (D.target && D.target.inFight) { D.target.inFight = null; D.target.model.g.visible = true; }
   scene.remove(D.m.g); if (D.ice) scene.remove(D.ice); if (D.bone.parent) D.bone.parent.remove(D.bone); scene.remove(D.glow); unBone(D);
+  if (D.fetch) { const fb = D.fetch.b; if (fb && fb.boneOf) unboneBlock(fb); else { scene.remove(D.fetch.mesh); D.fetch = null; } } /* (the dog's gone: its bone turns back into the block it was) */
   DOGS.splice(DOGS.indexOf(D), 1);
 }
 const dogRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 });
@@ -5439,12 +5470,17 @@ function unBone(D) { const r = D.target; if (r && r.boneDog === D) { r.boneDog =
 { const taB = throwAt; throwAt = function (r, ...a) {
     const e = taB(r, ...a); const D = r.boneDog;
     if (!e || !D || !DOGS.includes(D) || (D.eaten || 0) >= 3 || D.fetch || e.kind === 'flag' || e.kind === 'animal' || !e.body) return e;
-    const p = e.body.translation(), lv = e.body.linvel(); destroyBlock(e); // it leaves your hand as a bone
-    const b = newBlock('prop', V(p.x, p.y, p.z), { dims: V(.3, .3, .3), color: new THREE.Color('#fff1d0') }); b.loose = true; b.anchored = false;
+    const p = e.body.translation(), lv = e.body.linvel(), orig = { kind: e.kind, color: e.color && e.color.clone(), dims: e.dims && e.dims.clone() }; destroyBlock(e); // it leaves your hand as a bone
+    const b = newBlock('prop', V(p.x, p.y, p.z), { dims: V(1.3, .3, .3), color: new THREE.Color('#fff1d0') }); b.loose = true; b.anchored = false; b.boneOf = { orig, D }; /* (bone-sized, so it lies on the ground instead of sticking out of it) */
+    hideBlock(b); /* (only the bone shows) */
     b.body.setLinvel({ x: lv.x * .8, y: lv.y, z: lv.z * .8 }, true); b.body.setAngvel({ x: rr(-4, 4), y: rr(-8, 8), z: rr(-4, 4) }, true);
     const mesh = new THREE.Mesh(BIG_BONE, boneMat); mesh.castShadow = true; scene.add(mesh); D.fetch = { b, mesh };
     sfx('bark', V(D.x, D.y + .6, D.z)); if (r.isPlayer) toast('FETCH!'); return e;
   }; }
+// a bone turns back into the block it was: when someone picks it up, or when the dog's gone
+function unboneBlock(b) { const o = b.boneOf; if (!o) return null; const t = b.body ? b.body.translation() : null; if (o.D.fetch && o.D.fetch.b === b) { scene.remove(o.D.fetch.mesh); o.D.fetch = null; }
+  b.boneOf = null; destroyBlock(b); if (!t) return null; return newBlock(o.orig.kind, V(t.x, Math.max(t.y, .6), t.z), { color: o.orig.color || undefined, dims: o.orig.kind === 'stone' ? o.orig.dims : undefined }); }
+{ const gbB = grabBlock; grabBlock = function (r, e, ...a) { if (e && e.boneOf) { const nb = unboneBlock(e); return nb ? gbB(r, nb, ...a) : false; } return gbB(r, e, ...a); }; }
 function updateBones() { for (const D of DOGS) if (D.fetch && D.fetch.b.body) { const t = D.fetch.b.body.translation(), q = D.fetch.b.body.rotation(); D.fetch.mesh.position.set(t.x, t.y, t.z); D.fetch.mesh.quaternion.set(q.x, q.y, q.z, q.w); } }
 
 // ============================================================
@@ -5607,14 +5643,15 @@ function updateShovelBH(dt) { updateBHWarn(dt); if (match.state === 'play') upda
 Object.assign(SFX_SYNTH, { nvon: () => { const t = T0(), o = osc('sine', 600, t, .7), g = AC.createGain(); o.frequency.exponentialRampToValueAtTime(5200, t + .6); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.08, t + .1); g.gain.exponentialRampToValueAtTime(.0001, t + .7); o.connect(g); out(g); clack(1800, .3, .62); clack(2400, .2, .66); } });
 PW.nv = false;
 { const fp2 = firePower; firePower = function (p, at) { if (p.id === 'dark' && match.state === 'play') PW.nv = true; return fp2(p, at); }; }
-{ const ad0 = applyDark; applyDark = function (b) { const nv = PW.nv && b > 0; ad0(nv ? b * .3 : b); $('nv').style.opacity = nv ? Math.min(1, b * 1.4) : 0; updateGoggles(nv && b > .05); }; }
+{ const ad0 = applyDark; applyDark = function (b) { const nv = PW.nv && b > 0; ad0(nv ? b * .3 : b); if (nv) { skyFor(b); sun.intensity = Math.max(sun.intensity, LIGHT0.sun * .35 * ssd(.6, 1, b)); skyU.dark.value = ssd(.25, 1, b) * .8; } /* (with goggles you still see the sun go down and the moon come up) */ $('nv').style.opacity = nv ? Math.min(1, b * 1.4) : 0; updateGoggles(nv && b > .05); }; }
 let goggles = null;
 function updateGoggles(on) {
   if (on && !goggles && P && P.model.eyesN.parent) { const head = P.model.eyesN.parent; goggles = new THREE.Group();
     const frame = new LiteMat({ color: 0x1c1f24 }), lens = new THREE.MeshBasicMaterial({ color: 0x5dff6a });
-    for (const sx of [-1, 1]) { const tube = new THREE.Mesh(new THREE.CylinderGeometry(.13, .15, .22, 14).rotateX(Math.PI / 2), frame); tube.position.set(sx * .19, .02, .58); goggles.add(tube);
-      const l = new THREE.Mesh(new THREE.CircleGeometry(.11, 16), lens); l.position.set(sx * .19, .02, .695); goggles.add(l); }
-    const strap = new THREE.Mesh(new THREE.BoxGeometry(1.02, .1, 1.02), frame); strap.position.set(0, .02, .02); goggles.add(strap);
+    // just a visor across the front of the eyes: a dark frame with a glowing green see-through lens
+    const fr = new THREE.Mesh(new RoundedBoxGeometry(.86, .34, .07, 2, .05), frame); fr.position.set(0, .02, .555); goggles.add(fr);
+    const ln = new THREE.Mesh(new RoundedBoxGeometry(.76, .25, .03, 2, .03), new THREE.MeshBasicMaterial({ color: 0x5dff6a, transparent: true, opacity: .75 })); ln.position.set(0, .02, .59); goggles.add(ln);
+    const gl = new THREE.Mesh(new THREE.BoxGeometry(.5, .03, .01), new THREE.MeshBasicMaterial({ color: 0xd8ffd8, transparent: true, opacity: .6 })); gl.position.set(-.08, .1, .607); goggles.add(gl); // (a little shine)
     head.add(goggles); }
   if (goggles) goggles.visible = on;
   if (on !== !!PW.nvWasOn) { PW.nvWasOn = on; if (on) sfx('nvon'); }
@@ -5825,7 +5862,7 @@ setDiff(S.diff);
 $('playBtn').onclick = () => { audioInit(); startCountdown(); };
 $('howBtn').onclick = () => show('howto');
 document.querySelectorAll('[data-floor]').forEach(b => { b.setAttribute('aria-pressed', b.dataset.floor === S.floor); b.onclick = () => { S.floor = b.dataset.floor; saveS(); paintFloor(); document.querySelectorAll('[data-floor]').forEach(x => x.setAttribute('aria-pressed', x.dataset.floor === S.floor)); }; });
-document.querySelectorAll('[data-world]').forEach(b => { b.setAttribute('aria-pressed', b.dataset.world === (NIGHT ? 'night' : 'day')); b.onclick = () => { if (b.dataset.world === (NIGHT ? 'night' : 'day')) return; S.world = b.dataset.world; saveS(); document.body.style.transition = 'opacity .25s'; document.body.style.opacity = 0; setTimeout(() => restart(false), 260); }; });
+document.querySelectorAll('[data-world]').forEach(b => { b.setAttribute('aria-pressed', b.dataset.world === WORLD); b.onclick = () => { if (b.dataset.world === WORLD) return; S.world = b.dataset.world; saveS(); document.body.style.transition = 'opacity .25s'; document.body.style.opacity = 0; setTimeout(() => restart(false), 260); }; });
 $('howBack').onclick = () => show(match.menu ? 'pause' : 'menu');
 $('mid').onclick = () => pauseGame();
 $('resumeBtn').onclick = () => { show(null); match.menu = false; };
@@ -6020,7 +6057,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -7221,6 +7258,132 @@ function updateBear(dt) {
 { const umB = updateMorePowers; updateMorePowers = function (dt) { umB(dt); updateBear(dt); }; }
 
 // ============================================================
+// WORLD STYLES: the same game on different planets (picked in the Look lab; the page reloads into it).
+// Each one changes the shapes, the shading, the ground, the sky and the light, not just colours:
+//   jelly   - JELLY PLANET: every block a squishy gummy that wobbles, glossy candy colours, pastel sky
+//   circuit - CIRCUIT PLANET: everything is computer parts: dark chips with glowing edges and traces, a motherboard
+//             floor, RGB "trees", a dark teal sky
+//   toon    - TOON WORLD: flat anime shading in hard bands, thick ink outlines round everything, a loud blue sky
+//   clay    - CLAY PLANET: lumpy hand-squashed plasticine blocks, every one a bit different, with fingerprints
+// (Day and Aurora night are the other two; they live in 01_core / 09b_night.)
+// ============================================================
+const WORLD_LIST = [
+  { id: 'day', name: 'Day', tag: 'the classic blocky island', bg: 'linear-gradient(160deg,#7fc4ff,#bfe6ff 55%,#7cd35a 56%,#4fae3b)' },
+  { id: 'night', name: 'Aurora night', tag: 'see-through crystal under an aurora', bg: 'linear-gradient(160deg,#050818,#1f3354 50%,#5ff2cf 51%,#2e3b5c)' },
+  { id: 'jelly', name: 'Jelly planet', tag: 'squishy wobbling gummy blocks, candy colours', bg: 'radial-gradient(circle at 30% 30%,#fff 0 6%,transparent 7%),linear-gradient(160deg,#ffd6ec,#c7e4ff 50%,#ff7ac8 51%,#7ff0c8)' },
+  { id: 'circuit', name: 'Circuit planet', tag: 'made of computer parts: chips, traces, RGB lights', bg: 'linear-gradient(160deg,#02060c,#0d3a3a 50%,#0c3b2e 51%,#0c3b2e),repeating-linear-gradient(90deg,transparent 0 14px,#e8c45a 14px 16px)' },
+  { id: 'toon', name: 'Toon world', tag: 'flat anime shading, thick ink outlines', bg: 'linear-gradient(160deg,#1c6dff,#7fd0ff 50%,#59d24a 51%,#3fae37)' },
+  { id: 'clay', name: 'Clay planet', tag: 'lumpy hand-squashed plasticine everything', bg: 'linear-gradient(160deg,#ffcf9a,#ffe9c9 50%,#8fc760 51%,#6aa646)' },
+];
+const WT = { value: 0 }; // (time, for the wobble)
+if (['jelly', 'circuit', 'toon', 'clay'].includes(WORLD)) {
+  const W = WORLD, C = c => new THREE.Color(c);
+  const STY = {
+    jelly: { sky: ['#5f9cff', '#a9ccff', '#ffd3ec', '#ffc2e2', '#fff6e8'], fog: '#ffcfe8', hemi: ['#fff0fa', '#b9e6ff', .95], sun: ['#fff4e6', 2.0],
+      leaves: ['#ff7ac8', '#7ff0c8', '#c59bff', '#ffd25a'], trunk: ['#ffffff', '#ffc2e2'], ammo: ['#ff5a9d', '#5ad1ff', '#ffd23a', '#7dff8a', '#b77bff', '#ff8a3a'] },
+    circuit: { sky: ['#02060c', '#071a24', '#0d3a3a', '#02080a', '#9ff4ff'], fog: '#06221f', hemi: ['#6fffe0', '#0a1a20', .75], sun: ['#cfe8ff', 1.7],
+      leaves: ['#00e5ff', '#ff2bd6', '#39ff14', '#ffe600'], trunk: ['#3a4048', '#2c3138'], ammo: ['#00e5ff', '#ff2bd6', '#39ff14', '#ffb000', '#7a5cff'] },
+    toon: { sky: ['#1c6dff', '#4fb3ff', '#d9f4ff', '#bfe4ff', '#ffffff'], fog: '#d9f4ff', hemi: ['#ffffff', '#7a9a5a', 1.1], sun: ['#ffffff', 2.9],
+      leaves: ['#3fd14a', '#2fb83a', '#58e05a'], trunk: ['#8a4f26', '#7a4320'], ammo: ['#ff4d4d', '#ffd400', '#3aa0ff', '#ff8a00', '#b44dff'] },
+    clay: { sky: ['#8fbfff', '#cfe3ff', '#ffe9c9', '#ffdcb0', '#fff0d0'], fog: '#ffe6c8', hemi: ['#fff1dc', '#a88e6e', 1.2], sun: ['#ffe6c4', 2.1],
+      leaves: ['#6fbf4a', '#86cf55', '#5aa83e'], trunk: ['#9a6a42', '#a87650'], ammo: ['#e2725b', '#e8c25a', '#6fa8dc', '#9fc96b', '#c48bd6', '#d9a07a'] },
+  }[W];
+  const pick = a => C(a[Math.floor(Math.random() * a.length)]);
+  // ---- sky, fog and light ----
+  ['zen', 'mid', 'hor', 'low', 'sunCol'].forEach((u, i) => skyU[u].value.set(STY.sky[i]));
+  if (typeof WX !== 'undefined' && WX.pal) for (const row of WX.pal) row[1].copy(skyU[row[0]].value); // (the sky map's weather fades from these now)
+  scene.fog.color.set(STY.fog); scene.background = C(STY.sky[2]);
+  if (hemi) { hemi.color.set(STY.hemi[0]); hemi.groundColor.set(STY.hemi[1]); hemi.intensity = STY.hemi[2]; }
+  sun.color.set(STY.sun[0]); sun.intensity = STY.sun[1];
+  Object.assign(LIGHT0, { hemi: hemi ? hemi.intensity : 1, sun: sun.intensity, bg: scene.background, fog: scene.fog.color.clone() });
+  if (typeof WX !== 'undefined' && WX.fog) { WX.fog[0] = LIGHT0.fog.clone(); WX.hemi0 = LIGHT0.hemi; WX.sun0 = LIGHT0.sun; }
+  { const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam) => { prev(r, s, cam); WT.value = now() / 1000; }; }
+  // ---- the ground ----
+  const groundTile = {
+    jelly: g => { const cs = ['#ffd6ec', '#c8f5e0', '#ffe9f5', '#d6f0ff']; for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { g.fillStyle = cs[i * 2 + j]; g.fillRect(i * 32, j * 32, 32, 32); }
+      g.fillStyle = 'rgba(255,255,255,.75)'; for (const [x, y, r] of [[10, 9, 4], [44, 20, 3], [22, 46, 3.5], [54, 52, 2.5]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
+    circuit: g => { g.fillStyle = '#0c3b2e'; g.fillRect(0, 0, 64, 64); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1; g.strokeRect(.5, .5, 63, 63);
+      g.strokeStyle = '#d9b44a'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, 20); g.lineTo(24, 20); g.lineTo(34, 30); g.lineTo(64, 30); g.moveTo(44, 0); g.lineTo(44, 14); g.lineTo(54, 24); g.moveTo(12, 64); g.lineTo(12, 44); g.lineTo(26, 44); g.stroke();
+      g.fillStyle = '#e8c45a'; for (const [x, y] of [[24, 20], [54, 24], [26, 44], [44, 14]]) { g.beginPath(); g.arc(x, y, 3, 0, 7); g.fill(); }
+      g.fillStyle = '#15181d'; g.fillRect(36, 40, 18, 14); g.fillStyle = '#c0c4cc'; for (let k = 0; k < 4; k++) { g.fillRect(38 + k * 4, 37, 2, 3); g.fillRect(38 + k * 4, 54, 2, 3); } },
+    toon: g => { g.fillStyle = '#59d24a'; g.fillRect(0, 0, 64, 64); g.strokeStyle = '#3aa833'; g.lineWidth = 3; g.lineCap = 'round';
+      for (const [x, y] of [[12, 16], [44, 10], [30, 40], [54, 50], [10, 52]]) { g.beginPath(); g.moveTo(x - 4, y + 4); g.lineTo(x - 2, y - 3); g.moveTo(x, y + 4); g.lineTo(x + 1, y - 5); g.moveTo(x + 4, y + 4); g.lineTo(x + 5, y - 2); g.stroke(); } },
+    clay: g => { g.fillStyle = '#86c45c'; g.fillRect(0, 0, 64, 64); for (let k = 0; k < 14; k++) { g.fillStyle = k % 2 ? 'rgba(255,255,230,.13)' : 'rgba(40,70,20,.12)'; g.beginPath(); g.ellipse(Math.random() * 64, Math.random() * 64, 6 + Math.random() * 10, 4 + Math.random() * 6, Math.random() * 3, 0, 7); g.fill(); }
+      g.strokeStyle = 'rgba(40,70,20,.18)'; g.lineWidth = 1; for (let r = 3; r < 14; r += 2.5) { g.beginPath(); g.arc(40, 22, r, .3, 2.6); g.stroke(); } },
+  }[W];
+  { const gm = typeof GROUND_MESH !== 'undefined' && GROUND_MESH ? GROUND_MESH.material : (() => { const sl = scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6); return sl && (Array.isArray(sl.material) ? sl.material[2] : sl.material); })();
+    if (gm && gm.map) { const old = gm.map, t = canvasTex(64, 64, groundTile); t.repeat.copy(old.repeat); t.offset.copy(old.offset); t.magFilter = W === 'clay' || W === 'jelly' ? THREE.LinearFilter : THREE.NearestFilter; gm.map = t; gm.needsUpdate = true; } }
+  // ---- the block shader: each planet's shapes and surfaces ----
+  const VERT_PH = `
+    #ifdef USE_INSTANCING
+      float wPh = instanceMatrix[3].x * 1.37 + instanceMatrix[3].z * .91 + instanceMatrix[3].y * 2.13;
+    #else
+      float wPh = 0.0;
+    #endif
+    vec3 wAn = abs(normal), wPp = position + .5; vWuv = wAn.x > .5 ? wPp.zy : wAn.y > .5 ? wPp.xz : wPp.xy;`;
+  const style = mat => {
+    const prev = mat.onBeforeCompile;
+    mat.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd);
+      sh.uniforms.wT = WT;
+      sh.vertexShader = 'uniform float wT; varying vec2 vWuv;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n' + VERT_PH + ({
+        jelly: `\n    transformed += normal * (.045 * sin(wT * 4.2 + wPh + position.y * 3.5)); transformed.xz *= 1.0 + .035 * sin(wT * 3.1 + wPh); transformed.y *= 1.0 - .035 * sin(wT * 3.1 + wPh);`,
+        clay: `\n    float lump = sin(position.x * 7.0 + wPh) * sin(position.y * 6.0 + wPh * 1.7) * sin(position.z * 6.5 + wPh * .6) + .5 * sin(position.x * 13.0 - wPh * 2.3 + position.z * 11.0);
+    transformed += normal * .045 * lump; transformed.y -= .03 * (position.y + .5) * sin(wPh * 3.0);`,
+      }[W] || ''));
+      sh.fragmentShader = 'uniform float wT; varying vec2 vWuv;\n' + sh.fragmentShader
+        .replace('#include <color_fragment>', '#include <color_fragment>\n  vec3 wGlow = vec3(0.0);' + ({
+          circuit: `
+  { vec3 bc = diffuseColor.rgb; vec2 u = vWuv; float e = max(abs(u.x - .5), abs(u.y - .5));
+    float edge = smoothstep(.41, .47, e); vec2 gg = fract(u * 4.0);
+    float tr = step(.9, gg.x) * step(.22, u.y) * step(u.y, .78) + step(.9, gg.y) * step(.22, u.x) * step(u.x, .78);
+    float chip = 1.0 - step(.2, e), pin = step(.2, e) * step(e, .26) * step(.5, fract(u.x * 10.0 + u.y * 10.0));
+    diffuseColor.rgb = mix(vec3(.05, .07, .08), bc * .25, .45); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.03, .035, .04), chip); diffuseColor.rgb += vec3(.5) * pin * .4;
+    wGlow = bc * (edge * 1.5 + tr * .7 * (1.0 - chip)) + bc * chip * .25 * (.6 + .4 * sin(wT * 3.0 + u.x * 6.0)); }`,
+          clay: `
+  { float fp = sin(length(vWuv - vec2(.35, .4)) * 70.0); diffuseColor.rgb *= .93 + .07 * fp; }`,
+          toon: `
+  { diffuseColor.rgb = pow(diffuseColor.rgb, vec3(.85)) * 1.05; }`,
+          jelly: `
+  { diffuseColor.rgb = pow(diffuseColor.rgb, vec3(1.15)); }`,
+        }[W] || ''))
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += wGlow;' + (W === 'jelly' ? `
+  { float fr = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.2); totalEmissiveRadiance += diffuseColor.rgb * .1 + vec3(1.0, .95, 1.0) * fr * .22; }` : ''));
+    };
+    const key = mat.customProgramCacheKey ? mat.customProgramCacheKey() : ''; mat.customProgramCacheKey = () => key + 'w_' + W; mat.needsUpdate = true; return mat;
+  };
+  plainIM.material = style(new LiteMat({}));
+  for (const o of scene.children) if (o.isInstancedMesh && o !== plainIM && o.geometry === cubeGeo) o.material = style(new LiteMat({}));
+  // ---- recolour: trees, ammo, props for each planet (forts keep their team colours) ----
+  for (const e of blocks) {
+    if (e.inst < 0) continue;
+    if (e.kind === 'tree') { const hsl = {}; e.color.getHSL(hsl); e.color = hsl.h > .15 && hsl.h < .5 && MAP !== 'sky' ? pick(STY.leaves) : MAP === 'sky' ? pick(STY.leaves).lerp(C('#ffffff'), .5) : pick(STY.trunk); }
+    else if (e.kind === 'stone') e.color = pick(STY.ammo);
+    else if (e.kind === 'prop') e.color.lerp(pick(STY.trunk), .5);
+    else if (e.kind === 'fort' && W === 'circuit') e.color.multiplyScalar(1.25);
+    plainIM.setColorAt(e.inst, e.color);
+  }
+  plainIM.instanceColor.needsUpdate = true;
+  { const nb0 = newBlock; newBlock = (kind, pos, o = {}) => nb0(kind, pos, kind === 'stone' && !o.color ? { ...o, color: pick(STY.ammo) } : o); } // (new ammo too)
+  // the cloud blocks: candy floss on the jelly planet, gone on the circuit planet
+  for (const o of scene.children) if (o.isInstancedMesh && o.geometry === boxGeo && typeof cloudCells !== 'undefined' && o.count === cloudCells.length) { if (W === 'circuit') o.visible = false; else if (W === 'jelly') o.material = new LiteMat({ color: 0xffd6ee, emissive: 0x553344, emissiveIntensity: .25 }); }
+  // ---- toon: thick ink outlines round the blocks, the scenery and the robots ----
+  if (W === 'toon') {
+    const ink = (w, inst) => { const m = new THREE.MeshBasicMaterial({ color: 0x14102a, side: THREE.BackSide });
+      m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>\n  transformed += normalize(normal) * ${w.toFixed(3)};`); }; m.customProgramCacheKey = () => 'ink' + w + inst; return m; };
+    const outlineIM = (im, w) => { const o = new THREE.InstancedMesh(im.geometry, ink(w, 1), im.instanceMatrix.count); o.instanceMatrix = im.instanceMatrix; o.count = im.count; o.frustumCulled = false; scene.add(o); return o; };
+    const OL = [[plainIM, outlineIM(plainIM, .06)]];
+    for (const o of [...scene.children]) if (o.isInstancedMesh && o !== plainIM && o.geometry === cubeGeo && o.visible && !o.material.isMeshBasicMaterial) OL.push([o, outlineIM(o, .05)]);
+    const outlineObj = root => root.traverse(m => { if (!m.isMesh || m.isInstancedMesh || m.userData.ink || (m.material && (m.material.transparent || Array.isArray(m.material))) || /Plane|Circle|Ring|Shape/.test(m.geometry.type)) return;
+      const o = new THREE.Mesh(m.geometry, ink(.035, 0)); o.userData.ink = true; o.raycast = () => {}; m.add(o); });
+    for (const r of robots) outlineObj(r.model.g);
+    if (MONUMENT.g) outlineObj(MONUMENT.g);
+    { const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam) => { prev(r, s, cam); for (const [a, b] of OL) { b.count = a.count; b.visible = a.visible; } }; }
+  }
+  // the block on a robot's head matches the planet too
+  { const rhW = refreshHeld; refreshHeld = function (r) { rhW(r); const m = r.model.heldPlainMat; if (m && !m.userData.w) { m.userData.w = 1; style(m); } }; }
+}
+
+// ============================================================
 // ONLINE PLAY (test version, no game server needed)
 // One device HOSTS: it runs the real match exactly like offline play. Friends JOIN with a 4-digit room code;
 // their phones connect straight to the host (WebRTC through PeerJS's free matchmaking service).
@@ -7686,7 +7849,15 @@ async function addCustomTex(slot, file) {
   LAB_DB.put('tex', slot.id, CUSTOM.tex[slot.id].map(u => ({ data: u.file.buffer, fname: u.fname, type: u.type }))); return CUSTOM.tex[slot.id].length - 1;
 }
 function applyTexChoice(slot) { const c = CHOICE.tex[slot.id]; const u = c != null && (CUSTOM.tex[slot.id] || [])[c]; if (u) slot.apply(u.tex); }
+function worldCards() { // the planets: tap one and the game reloads on it
+  const box = $('worldCards'); if (!box) return; box.innerHTML = '';
+  for (const w of WORLD_LIST) { const b = document.createElement('button'); b.className = 'wcard'; b.setAttribute('aria-pressed', w.id === WORLD);
+    b.innerHTML = `<i style="background:${w.bg}"></i><b>${w.name}</b><span>${w.tag}</span>`;
+    b.onclick = () => { if (w.id === WORLD) return; S.world = w.id; saveS(); document.body.style.transition = 'opacity .25s'; document.body.style.opacity = 0; setTimeout(() => location.reload(), 260); };
+    box.appendChild(b); }
+}
 function lookLabRows() {
+  worldCards();
   const box = $('lookList'); box.innerHTML = '';
   for (const s of LOOK_SLOTS) {
     const row = document.createElement('div'); row.className = 'labsnd'; const cur = CHOICE.tex[s.id]; const ups = CUSTOM.tex[s.id] || [];
