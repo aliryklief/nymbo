@@ -657,7 +657,7 @@ const FLOOR_PALS = {
 const cellJit = []; { let seed = 1234567; const rn = () => (seed = (seed * 48271) % 2147483647) / 2147483647; for (let i = 0; i < GW * GD; i++) cellJit.push(rn()); } // its own fixed random sequence (identical on every phone)
 function sideTint(cx, cz) {
   const x = cx - MX + .5, z = (cz ?? 0) - MZ + .5;
-  if (MAP === 'sky' && PASTURE_C.some(pa => Math.hypot(x - pa.x, z - pa.z) < 9.6)) return [62, 122, 48]; // the sky map's pasture islands are still green grass
+  if (MAP === 'sky' && PASTURE_C.some(pa => Math.hypot(x - pa.x, z - pa.z) < 9.6)) return [214, 232, 246]; // the sky map's pasture islands: pale cloud round the pool (no grass left)
   if (MAP === 'sky') return [255, 255, 255];
   if (S.floor === 'classic') return [255, 255, 255]; // the original: plain grass everywhere
   if (PASTURE_C.some(pa => Math.hypot(x - pa.x, z - pa.z) < 7.5 + 1.4)) return [255, 255, 255]; // the pastures keep plain grass
@@ -993,7 +993,7 @@ PASTURES.forEach((pa, i) => ['cow', 'cow', 'sheep', 'sheep'].forEach(kind => ANI
   for (let i = 0; i < 160; i++) { const a = rnd() * 6.28, r = Math.sqrt(rnd()) * 105; g.fillStyle = NIGHT ? ['#ffffff', '#cfe4ff', '#9fffe0'][i % 3] : ['#ffffff', '#ffe14a', '#ff9ad0', '#4f9a35'][i % 4]; g.beginPath(); g.arc(128 + Math.cos(a) * r, 128 + Math.sin(a) * r, i % 4 === 3 ? 3 : 2, 0, 7); g.fill(); }
   const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
   const postMat = new LiteMat({ color: NIGHT ? 0x5b6b8c : 0x9a6a3e }), capMat = new LiteMat({ color: NIGHT ? 0xdfeaff : 0x7a5230 });
-  for (const pa of PASTURES) {
+  for (const pa of PASTURES) { if (MAP === 'sky') continue; /* (the sky map's pastures are pools of water now: 09g_maps) */
     const d = new THREE.Mesh(new THREE.CircleGeometry(PASTURE_R + 1.2, 48).rotateX(-Math.PI / 2), new LiteMat({ map: tx, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
     d.position.set(pa.x, .015, pa.z); d.receiveShadow = true; scene.add(d);
     const n = 18; // (was 22: a little more room between posts so animals don't wedge)
@@ -6612,8 +6612,9 @@ const RBW = { on: MAP === 'sky', H: 30, speed: 28 };
 const rainbowCols = ['#ff3b3b', '#ff9a1f', '#ffe14a', '#4fd64a', '#3aa8ff', '#5a5aff', '#b05cff'];
 if (RBW.on) {
   RBW.A = V(PORTAL_SPOTS[0].x, 0, PORTAL_SPOTS[0].z); RBW.B = V(PORTAL_SPOTS[1].x, 0, PORTAL_SPOTS[1].z); // pasture island to pasture island, right over the middle
-  RBW.at = s => V(RBW.A.x + (RBW.B.x - RBW.A.x) * s, .25 + RBW.H * Math.pow(Math.max(0, Math.sin(Math.PI * s)), .55), RBW.A.z + (RBW.B.z - RBW.A.z) * s); /* (steep at each foot: it lifts straight up over the cloud conveyor going round the pasture) */
-  RBW.samples = []; { let L = 0, p0 = RBW.at(0); for (let k = 0; k <= 240; k++) { const p = RBW.at(k / 240); L += p.distanceTo(p0); p0 = p; RBW.samples.push(p); } RBW.L = L; }
+  RBW.at = s => V(RBW.A.x + (RBW.B.x - RBW.A.x) * s, .25 + RBW.H * Math.pow(Math.max(0, Math.sin(Math.PI * s)), .8), RBW.A.z + (RBW.B.z - RBW.A.z) * s); /* (steep at each foot: it lifts straight up over the cloud conveyor going round the pasture) */
+  RBW.samples = []; RBW.cum = []; { let L = 0, p0 = RBW.at(0); for (let k = 0; k <= 240; k++) { const p = RBW.at(k / 240); L += p.distanceTo(p0); p0 = p; RBW.samples.push(p); RBW.cum.push(L); } RBW.L = L; }
+  RBW.sOf = d => { const C_ = RBW.cum, dd = clamp(d, 0, RBW.L); let lo = 0, hi = C_.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (C_[mid] < dd) lo = mid; else hi = mid; } const f = (dd - C_[lo]) / Math.max(1e-6, C_[hi] - C_[lo]); return (lo + f) / 240; }; /* (distance along the bow -> s, so the ride is the same speed everywhere) */
   const Wd = 3.6, SEG = 160, side = V(-(RBW.B.z - RBW.A.z), 0, RBW.B.x - RBW.A.x).normalize(); RBW.side = side;
   const P2 = [], C2 = [], cv = [], ci = [];
   for (let k = 0; k < SEG; k++) { const p0 = RBW.at(k / SEG), p1 = RBW.at((k + 1) / SEG);
@@ -6621,7 +6622,7 @@ if (RBW.on) {
       const v = (p, o) => [p.x + side.x * o, p.y, p.z + side.z * o];
       for (const q of [v(p0, o0), v(p1, o0), v(p0, o1), v(p0, o1), v(p1, o0), v(p1, o1)]) { P2.push(...q); C2.push(c.r, c.g, c.b); } } }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P2, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C2, 3)); g.computeVertexNormals();
-  const band = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: .92 })); band.renderOrder = 2; scene.add(band); RBW.band = band;
+  const band = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: .92 })); band.renderOrder = 1; scene.add(band); RBW.band = band; /* (drawn before see-through blocks, so a glass block on your head stays in front of it) */
   // it's solid: you can land on it and walk on it (it only carries you if you get on at a pasture end); a thin slab so nobody falls through it
   for (let k = 0; k <= SEG; k++) { const p = RBW.at(k / SEG); for (const o of [-Wd / 2, Wd / 2]) cv.push(p.x + side.x * o, p.y - .05, p.z + side.z * o); }
   for (let k = 0; k < SEG; k++) { const a = k * 2; ci.push(a, a + 2, a + 1, a + 1, a + 2, a + 3, a, a + 1, a + 2, a + 1, a + 3, a + 2); }
@@ -6640,16 +6641,20 @@ const nearestS = p => { let best = 0, bd = 1e9; RBW.samples.forEach((q, k) => { 
 const rbRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
 function rainbowRide(r, dt) {
   if (!RBW.on || !r.body) return;
-  if (r.rb) {
-    const R_ = r.rb; R_.s += R_.dir * RBW.speed * dt / RBW.L;
+  if (r.rb) { // riding: measured in metres along the bow, so it's the same smooth speed up the steep bit and over the top;
+    // it picks up speed after you step on and eases off over the last stretch, so you come down gently at the far end
+    const R_ = r.rb; if (R_.d == null) { R_.d = R_.s >= 1 ? RBW.L : 0; R_.v = 7; }
     if (r.state !== 'play') { r.rb = null; return; }
-    const done = R_.s >= 1 || R_.s <= 0, s = clamp(R_.s, 0, 1), p = RBW.at(s), q = RBW.at(clamp(s + R_.dir * .01, 0, 1)), tan = q.clone().sub(p).normalize();
-    if (R_.jump || done) { // leap off (or reach the far end): you keep the bridge's speed and fly on
-      r.rb = null; r.rbCool = now() + 900; const vh = done ? .35 : .7;
-      r.body.setTranslation({ x: p.x, y: p.y + 1.1, z: p.z }, true);
-      r.body.setLinvel({ x: tan.x * RBW.speed * vh, y: done ? 2 : Math.max(tan.y * RBW.speed * .6, 0) + JUMP_V, z: tan.z * RBW.speed * vh }, true); r.jumps = done ? 0 : 1; r.grounded = false; r.padT = done ? 0 : 2.5;
+    const left = R_.dir > 0 ? RBW.L - R_.d : R_.d, want = left < 14 ? 7 + (RBW.speed - 7) * left / 14 : RBW.speed;
+    R_.v += clamp(want - R_.v, -30 * dt, 22 * dt); R_.d += R_.dir * R_.v * dt;
+    const done = R_.d >= RBW.L || R_.d <= 0, s = RBW.sOf(R_.d), p = RBW.at(s), q = RBW.at(clamp(s + R_.dir * .004, 0, 1)), tan = q.clone().sub(p).normalize();
+    if (R_.jump || done) { // leap off (or step off at the far end): you keep the bow's speed and fly on
+      r.rb = null; r.rbCool = now() + 900; const v = R_.v;
+      r.body.setLinvel({ x: tan.x * v * (done ? .9 : .7), y: done ? 1.5 : Math.max(tan.y * v * .6, 0) + JUMP_V, z: tan.z * v * (done ? .9 : .7) }, true); r.jumps = done ? 0 : 1; r.grounded = false; r.padT = done ? 0 : 2.5;
       return; }
-    r.body.setTranslation({ x: p.x, y: p.y + 1.02, z: p.z }, true); r.body.setLinvel({ x: tan.x * RBW.speed, y: tan.y * RBW.speed, z: tan.z * RBW.speed }, true);
+    const c = r.body.translation(), tx = p.x, ty = p.y + 1.02, tz = p.z, k = 1 / Math.max(dt, 1 / 120);
+    if (Math.hypot(tx - c.x, ty - c.y, tz - c.z) > 2.5) r.body.setTranslation({ x: tx, y: ty, z: tz }, true); // (way off: snap back on)
+    r.body.setLinvel({ x: tan.x * R_.v + (tx - c.x) * k * .5, y: tan.y * R_.v + (ty - c.y) * k * .5 + G * dt, z: tan.z * R_.v + (tz - c.z) * k * .5 }, true); // (glide along it rather than jumping from spot to spot)
     r.grounded = false; r.jumps = 1; // (you can turn round freely while it carries you)
     if (Math.random() < .5) emit(V(p.x, p.y + .2, p.z), [0xff3b3b, 0xffe14a, 0x4fd64a, 0x3aa8ff, 0xb05cff][Math.floor(Math.random() * 5)], V(rr(-1, 1), rr(0, 1), rr(-1, 1)), .18, .6, 0);
     return;
@@ -6730,7 +6735,7 @@ function slideAfter(r, dt) { // the water pushes you down the chute (taken off a
   const mid = S_.at(s), side = V(-dh.z, 0, dh.x), lat = (c.x - mid.x) * side.x + (c.z - mid.z) * side.z; // (and it keeps you in the middle of the chute)
   // glued smoothly to the chute (the round robot used to bump over every panel): unless you're jumping off it
   const surf = mid.y + 1.3 * Math.pow(Math.min(1, Math.abs(lat) / 2.3), 3) + .98, hs = Math.hypot(lv.x + push.x, lv.z + push.z), slope = d.y / Math.max(1e-4, Math.hypot(d.x, d.z)), along = ((lv.x + push.x) * dh.x + (lv.z + push.z) * dh.z);
-  const glue = s < .985 && lv.y < 2.5 && lv.y > (r.wasSlide ? -40 : -6) && c.y < surf + .45 && c.y > surf - 1.2; // (off the end you drop into the pool) // (dropping in fast from a trampoline: you go past it, down to the platform)
+  const glue = !(r.slideNoGlue > now()) && s < .985 && lv.y < 2.5 && lv.y > (r.wasSlide ? -40 : -6) && c.y < surf + .45 && c.y > surf - 1.2; // (off the end you drop into the pool) // (dropping in fast from a trampoline: you go past it, down to the platform)
   if (glue) r.body.setTranslation({ x: c.x, y: surf, z: c.z }, true);
   r.body.setLinvel({ x: lv.x + push.x - side.x * lat, y: glue ? along * slope : lv.y, z: lv.z + push.z - side.z * lat }, true); r.slPush = push; if (glue) r.grounded = true;
   r.onSlide = S_; r.slLay = lay; r.slDir = dh; if (lay) r.slLayT = now() + (s > .95 ? 700 : 350); // (still lying back as you drop off the end into the pool)
@@ -6738,7 +6743,36 @@ function slideAfter(r, dt) { // the water pushes you down the chute (taken off a
   if (Math.random() < .5) emit(V(c.x + rr(-.5, .5), c.y - .7, c.z + rr(-.5, .5)), 0xbdefff, V(rr(-2, 2), rr(1, 3), rr(-2, 2)), .14, .5, 0);
 }
 let slideTip = false;
-function updateSlides(dt) { for (const S_ of SLIDES) S_.wt.offset.y -= dt * 2.2; if (RBW.poolTex) { RBW.poolTex.offset.x += dt * .05; RBW.poolTex.offset.y += dt * .03; } }
+// ---------------------------------------------------------------- the pasture pools (sky map): no grass left up here.
+// Each pasture is a round pool, brimming over: in a few places the water spills across the island's edge and pours off
+// it as a waterfall down into the sky.
+const FALLS = { tex: null, list: [] };
+if (MAP === 'sky' && CH) {
+  const fallTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#8fdcff'; g.fillRect(0, 0, 64, 128);
+    for (let k = 0; k < 26; k++) { g.fillStyle = k % 3 ? 'rgba(255,255,255,.55)' : 'rgba(60,170,230,.5)'; g.fillRect(Math.random() * 64, Math.random() * 128, 2 + Math.random() * 3, 18 + Math.random() * 40); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 3); return t; })();
+  const fadeTex = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 128; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, '#fff'); gr.addColorStop(.55, '#bbb'); gr.addColorStop(1, '#000'); g.fillStyle = gr; g.fillRect(0, 0, 4, 128); return new THREE.CanvasTexture(c); })();
+  FALLS.tex = fallTex; const fallMat = new THREE.MeshBasicMaterial({ map: fallTex, alphaMap: fadeTex, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: .9 });
+  const runMat = new THREE.MeshBasicMaterial({ map: RBW.poolTex, color: 0xd8f4ff, transparent: true, opacity: .88, depthWrite: false });
+  for (const pa of PASTURES) {
+    const y0 = TH(pa.x, pa.z) + .06, pool = new THREE.Mesh(new THREE.CircleGeometry(PASTURE_R + 1.2, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: RBW.poolTex, color: 0xd8f4ff, transparent: true, opacity: .9, depthWrite: false }));
+    pool.position.set(pa.x, y0, pa.z); pool.renderOrder = 1; scene.add(pool);
+    // a lip of little cloud puffs round the pool, with gaps where it overflows
+    const out = Math.atan2(pa.z, pa.x), spill = [out + 1.1, out - 1.2, out + Math.PI * .5 + 1.6].map(a => a); // (away from the portal side)
+    const edgeR = CH.Ri - .15;
+    for (const a of spill) {
+      const dx = Math.cos(a), dz = Math.sin(a);
+      // the overflow running across the bank to the edge
+      const run = new THREE.Mesh(new THREE.PlaneGeometry(2.4, edgeR - PASTURE_R - .9).rotateX(-Math.PI / 2), runMat); run.position.set(pa.x + dx * (PASTURE_R + .9 + edgeR) / 2, y0 + .01, pa.z + dz * (PASTURE_R + .9 + edgeR) / 2); run.rotation.y = Math.atan2(dx, dz); run.renderOrder = 1; scene.add(run);
+      // the fall: a sheet pouring off the edge, fading out far below
+      const H_ = 34, f = new THREE.Mesh(new THREE.PlaneGeometry(2.6, H_, 1, 1), fallMat); f.position.set(pa.x + dx * (edgeR + .25), y0 - H_ / 2 + .05, pa.z + dz * (edgeR + .25)); f.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; f.renderOrder = 1; scene.add(f);
+      const lip = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, 2.6, 10).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xe8f8ff, transparent: true, opacity: .8 })); lip.position.set(pa.x + dx * edgeR, y0 - .05, pa.z + dz * edgeR); lip.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; scene.add(lip);
+      FALLS.list.push({ x: pa.x + dx * (edgeR + .3), y: y0, z: pa.z + dz * (edgeR + .3) });
+    }
+  }
+}
+function updateFalls(dt) { if (!FALLS.tex) return; FALLS.tex.offset.y += dt * 1.4; for (const F_ of FALLS.list) if (Math.random() < dt * 6) emit(V(F_.x + rr(-1, 1), F_.y + .1, F_.z + rr(-1, 1)), Math.random() < .5 ? 0xffffff : 0x9fe2ff, V(rr(-.6, .6), rr(1, 2.5), rr(-.6, .6)), .14, .6, 6); }
+function updateSlides(dt) { updateFalls(dt); for (const S_ of SLIDES) S_.wt.offset.y -= dt * 2.2; if (RBW.poolTex) { RBW.poolTex.offset.x += dt * .05; RBW.poolTex.offset.y += dt * .03; } }
 
 // ---------------------------------------------------------------- rain clouds over the battlefield (solid; some carry power blocks)
 const SKY = { clouds: [], streak: null, streakT: 40 };
@@ -6778,7 +6812,7 @@ function updateSkyClouds(dt) {
 // ---------------------------------------------------------------- the pot of gold: a gold block at the end of the rainbow
 // Every so often (never sooner than a minute) a gold block appears at one end of the rainbow, either side. There's only
 // ever one: the next one doesn't come until it's been picked up. Whoever grabs it runs at 1.5x speed for 10 seconds.
-const GOLD = { e: null, t: rr(60, 100) };
+const GOLD = { e: null, t: 0 }; // (there right from the start of the round)
 const goldMat = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 64, 64);
   gr.addColorStop(0, '#fff6b0'); gr.addColorStop(.45, '#ffd23a'); gr.addColorStop(1, '#c98a00'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); g.strokeStyle = '#fff8d8'; g.lineWidth = 4; g.strokeRect(4, 4, 56, 56);
   g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(10, 10, 18, 5); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return new LiteMat({ map: t, emissive: 0xffb300, emissiveMap: t, emissiveIntensity: .6 }); })();
@@ -6787,7 +6821,7 @@ function updateGold(dt) {
   if (GOLD.e) { const e = GOLD.e; if (e.dead || !e.body) { GOLD.e = null; GOLD.t = rr(60, 120); return; }
     e.mesh.material.emissiveIntensity = .55 + .3 * Math.sin(now() / 160); if (Math.random() < dt * 10) { const p = e.body.translation(); emit(V(p.x + rr(-.6, .6), p.y + rr(-.3, .7), p.z + rr(-.6, .6)), 0xffe27a, V(0, 1, 0), .12, .7, 0); } return; }
   if (match.state !== 'play' || (NET && NET.client) || (GOLD.t -= dt) > 0) return;
-  const E = Math.random() < .5 ? RBW.A : RBW.B, Pz = PASTURES.reduce((m, q) => Math.hypot(q.x - E.x, q.z - E.z) < Math.hypot(m.x - E.x, m.z - E.z) ? q : m), at = E.clone().lerp(V(Pz.x, 0, Pz.z), .35);
+  const Pz = PASTURES[Math.floor(Math.random() * PASTURES.length)], ga = Math.random() * 6.28, gr_ = rr(1.5, 4.5), at = V(Pz.x + Math.cos(ga) * gr_, 0, Pz.z + Math.sin(ga) * gr_); /* (out in one of the pasture pools, away from the rainbow) */
   const e = newBlock('bomb', V(at.x, .6, at.z), { anchored: true }); e.kind = 'gold'; e.mesh.clear(); e.core = null; e.mesh.material = goldMat; e.slot = null; e.origin = null; GOLD.e = e;
   fxBurst(V(at.x, 1.2, at.z), 0xffd84a, 2.2, .4); sfx('powerup', V(at.x, 1, at.z));
 }
@@ -7059,12 +7093,14 @@ function flop(r, t, push) { // hit by a sliding penguin: knocked flat on your ba
     return e;
   }; }
 const _pq = new THREE.Quaternion(), _pe = new THREE.Euler(0, 0, 0, 'YXZ');
-function knockAlong(pos, dir, R, by, hit, strength) { // a heavy penguin: knocks standing blocks loose and sweeps everything aside; anyone it reaches gets bonked
+function knockAlong(pos, dir, R, by, hit, strength, sideways) { // a heavy penguin: knocks standing blocks loose and sweeps everything aside; anyone it reaches gets bonked
   unanchorAround(V(pos.x, pos.y, pos.z), R * .7);
   for (const b of blocks) { if (b.dead || !b.body || b.holder || b.anchored || b.kind === 'flag' || b.peng) continue; const t = b.body.translation(); if (Math.hypot(t.x - pos.x, t.z - pos.z) > R || Math.abs(t.y - pos.y) > 1.5) continue;
     const side = V(t.x - pos.x, 0, t.z - pos.z).normalize(), m = b.body.mass(); b.body.applyImpulse({ x: (dir.x + side.x * .8) * 9 * m, y: 4 * m, z: (dir.z + side.z * .8) * 9 * m }, true); b.live = false; }
   for (const r of robots) { if (r.state !== 'play' || hit.has(r) || r.flopT > 0) continue; const c = rPos(r); if (Math.hypot(c.x - pos.x, c.z - pos.z) > R || Math.abs(c.y - pos.y) > 1.6) continue;
-    hit.add(r); const side = V(c.x - pos.x, 0, c.z - pos.z).normalize(), push = { x: (dir.x * .7 + side.x * .7) * strength, y: 3.5, z: (dir.z * .7 + side.z * .7) * strength }; flop(r, rr(2, 3), push); }
+    hit.add(r); let side = V(c.x - pos.x, 0, c.z - pos.z).normalize();
+    if (sideways) { const n_ = V(-dir.z, 0, dir.x).normalize(); side = n_.multiplyScalar((c.x - pos.x) * n_.x + (c.z - pos.z) * n_.z >= 0 ? 1 : -1); if (!side.lengthSq()) side.set(-dir.z, 0, dir.x); r.slideNoGlue = now() + 900; } /* (on a slide: flung off to the left or right) */
+    const push = sideways ? { x: side.x * strength * 1.4, y: 5, z: side.z * strength * 1.4 } : { x: (dir.x * .7 + side.x * .7) * strength, y: 3.5, z: (dir.z * .7 + side.z * .7) * strength }; flop(r, rr(2, 3), push); }
 }
 function pengSplash(p) { fxBurst(V(p.x, p.y + 1, p.z), 0x8fe0ff, 1.8, .35); fxDebris(V(p.x, p.y + .3, p.z), 0xbfeeff, 18, 5); for (let k = 0; k < 14; k++) emit(V(p.x, p.y + .4, p.z), k % 2 ? 0x6fcff7 : 0xffffff, V(rr(-2, 2), rr(4, 8), rr(-2, 2)), .16, .9, 1); sfx('splash', p); }
 const pengClear = (a, b) => { for (let k = 1; k < 12; k++) { const x = a.x + (b.x - a.x) * k / 12, z = a.z + (b.z - a.z) * k / 12; if (chasmDist(x, z) < .5) return false; } return true; };
@@ -7072,6 +7108,7 @@ function pengGoal(t) { // somewhere to dive away: water, a flag gateway, or an i
   const C = [];
   for (const S_ of SLIDES) if (S_.pool) C.push({ x: S_.pool.x, z: S_.pool.z, r: 4.4, kind: 'water' }); /* (it hops over the cloud rim) */
   if (RBW.on) for (const E of [RBW.A, RBW.B]) C.push({ x: E.x, z: E.z, r: 2.2, kind: 'water' });
+  if (MAP === 'sky') for (const pa of PASTURES) C.push({ x: pa.x, z: pa.z, r: 7, kind: 'water' }); /* (the pasture pools) */
   for (const k in GATES) { const g = GATES[k]; if (g) C.push({ x: g.x, z: g.z, r: 1.4, kind: 'gate', g }); }
   for (const I of ICE) for (const [x, z] of I.cells) if (holeAllowed(x, z)) C.push({ x, z, r: 1, kind: 'ice' });
   let best = null, bd = 1e9, any = null, ad = 1e9;
@@ -7084,7 +7121,19 @@ function pengDive(e, Gl) { // in it goes, head first
   if (Gl.kind === 'gate') Gl.g.flash = 1;
   pengSplash(p); destroyBlock(e);
 }
+function pengPoolRelease() { // holding a penguin and you land in the pool at the top of a water slide: it wriggles free and goes down the slide
+  for (const r of robots) { const e = r.stack[0]; if (!e || e.animal !== 'penguin' || !e.peng || r.state !== 'play' || !r.body) continue; const p = r.body.translation();
+    const Sp = SLIDES.find(S_ => S_.plat && Math.hypot(p.x - S_.plat.c.x, p.z - S_.plat.c.z) < 4.6 && p.y > S_.plat.c.y - .3 && p.y < S_.plat.c.y + 2.2); if (!Sp) continue;
+    const s0 = Sp.at(.02), s1 = Sp.at(.05); throwAt(r, V(s1.x, s1.y, s1.z), 10);
+    if (e.body) { e.body.setTranslation({ x: s0.x, y: s0.y + .6, z: s0.z }, true); e.peng.slide = { dir: V(s1.x - s0.x, 0, s1.z - s0.z).normalize(), sp: 17, by: r, hit: new Set([r]), t: 0 }; e.peng.ride = { S: Sp, s: .02, rb: false, hit: e.peng.slide.hit, by: r }; }
+    sfx('honk', V(p.x, p.y, p.z)); if (r.isPlayer) toast('THE PENGUIN SLID OFF DOWN THE SLIDE!'); }
+}
+// now and then a penguin pops out of one of the sky map's ice pillars by itself
+PENG.randT = rr(20, 35);
+function pengRandom(dt) { if (MAP !== 'sky' || match.state !== 'play' || (NET && NET.client)) return; if ((PENG.randT -= dt) > 0) return; PENG.randT = rr(25, 45);
+  if (PENG.list.length >= 3 || !TREES.length) return; const t = TREES[Math.floor(Math.random() * TREES.length)]; spawnPenguin(V(t.x + rr(-1.2, 1.2), 0, t.z + rr(-1.2, 1.2))); }
 function updatePenguins(dt) {
+  pengPoolRelease(); pengRandom(dt);
   if (!PENG.on) return;
   for (let i = PENG.list.length - 1; i >= 0; i--) {
     const e = PENG.list[i], G_ = e.peng;
@@ -7101,9 +7150,10 @@ function updatePenguins(dt) {
     if (G_.ride) { const R_ = G_.ride, L = R_.rb ? RBW.L : R_.S.L, sp = R_.rb ? RBW.speed : 16, d0 = R_.rb ? R_.dir : 1;
       R_.s += d0 * sp * dt / L; const done = R_.rb ? (R_.s >= 1 || R_.s <= 0) : R_.s >= .97, s1 = clamp(R_.s, 0, 1), at_ = R_.rb ? RBW.at(s1) : R_.S.at(s1), nx = R_.rb ? RBW.at(clamp(s1 + d0 * .01, 0, 1)) : R_.S.at(Math.min(1, s1 + .01)), tan = nx.clone().sub(at_), th = V(tan.x, 0, tan.z).normalize();
       e.body.setTranslation({ x: at_.x, y: at_.y + .5, z: at_.z }, true); e.body.setLinvel({ x: 0, y: 0, z: 0 }, true); G_.yaw = Math.atan2(th.x, th.z);
-      knockAlong(V(at_.x, at_.y + .6, at_.z), th, 1.8, R_.by, R_.hit, 7); // everyone on it gets knocked off
+      knockAlong(V(at_.x, at_.y + .6, at_.z), th, 2.2, R_.by, R_.hit, 7, !R_.rb); // everyone on it gets knocked off (off a water slide: sideways, over the edge)
       if (Math.random() < .7) emit(V(at_.x, at_.y + .2, at_.z), R_.rb ? [0xff3b3b, 0xffe14a, 0x4fd64a, 0x3aa8ff][Math.floor(Math.random() * 4)] : 0xbfeeff, V(rr(-1, 1), rr(.5, 2), rr(-1, 1)), .12, .5, 0);
       _pe.set(Math.PI / 2 - Math.atan2(tan.y, Math.hypot(tan.x, tan.z)) * 0, G_.yaw, 0); e.body.setRotation(_pq.setFromEuler(_pe), true);
+      if (done && !R_.rb && R_.S.pool) { pengDive(e, { kind: 'water', x: R_.S.pool.x, z: R_.S.pool.z }); PENG.list.splice(i, 1); continue; } /* (down the slide and straight into the pool at the bottom: gone) */
       if (done) { G_.ride = null; if (G_.slide) { G_.slide.dir = th; G_.slide.sp = 11; G_.slide.t = 0; } e.body.setTranslation({ x: at_.x + th.x, y: Math.max(at_.y, TH(at_.x, at_.z)) + .6, z: at_.z + th.z }, true); }
       continue; }
     if (G_.slide) { // thrown: sliding on its tummy, sweeping things aside, slowing down over a few blocks
@@ -7178,11 +7228,12 @@ function bolt(at) { // a jagged white bolt from the sky to the ground, gone in a
   let t = 0; const tick = () => { t += 1 / 60; m.material.opacity = glow.material.opacity = Math.max(0, 1 - t / .5) * (Math.random() < .5 ? 1 : .4); if (t < .5) requestAnimationFrame(tick); else { scene.remove(m, glow); m.geometry.dispose(); } }; tick();
 }
 const boltFlash = (() => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;z-index:60;pointer-events:none;background:#f4f8ff;opacity:0'; document.body.appendChild(d); return d; })();
-const flashTwice = () => { for (const [t, a] of [[0, .95], [90, 0], [230, .85], [330, 0]]) setTimeout(() => { boltFlash.style.transition = a ? 'opacity .03s' : 'opacity .28s'; boltFlash.style.opacity = a; }, t); }; // the whole screen goes white, twice
+const flashTwice = () => { for (const [t, a, f] of [[0, .95, .03], [260, .15, .2], [420, 1, .03], [900, .55, .25], [1150, 0, .9]]) setTimeout(() => { boltFlash.style.transition = `opacity ${f}s`; boltFlash.style.opacity = a; }, t); }; /* (longer now: two big white flashes over about two seconds) */
+Object.assign(SFX_SYNTH, { thunderclap: () => { noiseHit(.3, 'highpass', 2600, 1, 0, true, 900, 1); thump(55, 1, .02, 1.4); noiseHit(2.8, 'lowpass', 520, .8, .12, true, 90, 1); noiseHit(1.6, 'lowpass', 300, .5, .9, true, 60, 1); } }); // the whole screen goes white, twice
 function summonBear() {
   let at = null; for (let k = 0; k < 80 && !at; k++) { const [x, z] = freeSpot(); if (CH && chasmDist(x, z) < 4) continue; if (robots.some(r => r.state === 'play' && Math.hypot(rPos(r).x - x, rPos(r).z - z) < 10)) continue; at = V(x, 0, z); }
   if (!at) { const [x, z] = freeSpot(); at = V(x, 0, z); }
-  flashTwice(); bolt(at); sfx('lightning'); shake = Math.max(shake, .8);
+  flashTwice(); bolt(at); sfx('lightning'); sfx('thunderclap'); setTimeout(() => sfx('thunder'), 450); shake = Math.max(shake, .8);
   setTimeout(() => { if (match.state !== 'play') return;
     const m = bearModel(); BEAR.b = { m, x: at.x, z: at.z, y: TH(at.x, at.z), vy: 0, yaw: Math.random() * 6.28, mode: 'rise', riseT: 3, kills: 0, life: 60, hits: 0, target: null, retT: 0, fight: null, leaving: null, flinch: 0, roarT: 1 };
     m.g.position.set(at.x, BEAR.b.y, at.z); fxBurst(V(at.x, BEAR.b.y + 2, at.z), 0xd8f4ff, 4, .6); fxDebris(V(at.x, BEAR.b.y + .5, at.z), 0xffffff, 40, 10); sfx('roar', V(at.x, 2, at.z));
@@ -7193,12 +7244,14 @@ const bearRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 });
 function bearLeave(B, why) {
   if (B.leaving) return; if (B.fight) endBearFight(B, false);
   let best = null, bd = 1e9; for (const t of ['blue', 'red']) { const G_ = GATES[t], d = Math.hypot(G_.x - B.x, G_.z - B.z); if (d < bd) { bd = d; best = { x: G_.x, z: G_.z, gate: true }; } }
+  const W_ = [...SLIDES.filter(S_ => S_.pool).map(S_ => ({ x: S_.pool.x, z: S_.pool.z, r: 4.2 })), ...(MAP === 'sky' ? PASTURES.map(p => ({ x: p.x, z: p.z, r: 6.5 })) : [])]; /* (or any water: it dives in) */
+  for (const w of W_) { const d = Math.hypot(w.x - B.x, w.z - B.z) - w.r; if (d < bd && (!CH || !crossesGorge(V(B.x, 0, B.z), w))) { bd = d; best = { x: w.x, z: w.z, gate: true, water: true, r: w.r }; } }
   const ex = [[MX + 6, B.z], [-MX - 6, B.z], [B.x, MZ + 6], [B.x, -MZ - 6]].map(([x, z]) => ({ x, z, d: Math.hypot(x - B.x, z - B.z) })).sort((a, b) => a.d - b.d)[0];
   B.leaving = ex.d < bd ? { x: ex.x, z: ex.z, gate: false } : best; sfx('roar', V(B.x, 3, B.z)); 
 }
 function endBearFight(B, ko) { const F = B.fight; if (!F) return; scene.remove(F.cloud); B.fight = null; B.m.g.visible = true; const tg = F.r; tg.inFight = null;
   B.mode = 'rise'; B.riseT = 3; B.target = null;
-  if (ko && tg.state === 'play') { const a = Math.random() * 6.28; ragdoll(tg, V(Math.cos(a), .6, Math.sin(a)), null, 4); koPop(F.at, 'BEAR HUG!', '#e8f4ff', true); fxBurst(F.at.clone().setY(F.at.y + 1), 0xffffff, 3.5, .45); fxDebris(F.at, 0xffffff, 40, 10); B.kills++; B.life = 60; }
+  if (ko && tg.state === 'play') { const a = Math.random() * 6.28; ragdoll(tg, V(Math.cos(a), .6, Math.sin(a)), null, 4); if (tg.isPlayer) koPop(F.at, 'BEAR HUG!', '#e8f4ff', true); /* (the label only shows for whoever actually got hugged) */ fxBurst(F.at.clone().setY(F.at.y + 1), 0xffffff, 3.5, .45); fxDebris(F.at, 0xffffff, 40, 10); B.kills++; B.life = 60; }
 }
 function updateBear(dt) {
   if (NET && NET.client) return;
@@ -7231,8 +7284,9 @@ function updateBear(dt) {
   const off = Math.abs(B.x) > MX || Math.abs(B.z) > MZ || (CH && inChasm(B.x, B.z)), below = off ? -60 : TH(B.x, B.z);
   if (B.vy === 0 && B.y < below && B.y > below - 1.5) B.y = below; // (up the slopes)
   if (B.vy !== 0 || B.y > below + .05) { B.vy -= G * dt; B.y += B.vy * dt; if (B.y <= below && below > -50) { B.y = below; B.vy = 0; B.leapV = 0; } }
-  if (B.y < -25 || (B.leaving && Math.abs(B.x) > MX + 4) || (B.leaving && Math.abs(B.z) > MZ + 4) || (B.leaving && B.leaving.gate && L < 1.5)) { // gone
-    if (B.leaving && B.leaving.gate) { fxBurst(V(B.x, B.y + 2, B.z), 0xb36bff, 3, .4); sfx('portal', V(B.x, B.y + 1, B.z)); }
+  if (B.y < -25 || (B.leaving && Math.abs(B.x) > MX + 4) || (B.leaving && Math.abs(B.z) > MZ + 4) || (B.leaving && B.leaving.gate && L < (B.leaving.r || 1.5))) { // gone
+    if (B.leaving && B.leaving.water) { const sp = V(B.x, B.y, B.z); pengSplash(sp); pengSplash(sp.clone().setY(sp.y + 1)); fxBurst(V(B.x, B.y + 1.5, B.z), 0x8fe0ff, 4, .5); }
+    else if (B.leaving && B.leaving.gate) { fxBurst(V(B.x, B.y + 2, B.z), 0xb36bff, 3, .4); sfx('portal', V(B.x, B.y + 1, B.z)); }
     scene.remove(m.g); BEAR.b = null;  return; }
   if (B.leaving && !B.leaving.gate && Math.abs(B.x) > MX - 1 || (B.leaving && !B.leaving.gate && Math.abs(B.z) > MZ - 1)) { if (B.vy === 0) { B.vy = 9; B.leapV = 8; } } // a big jump off the edge
   // the walk: heavy lumbering steps, arms swinging up high, a roar now and then
