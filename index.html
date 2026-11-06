@@ -10,7 +10,7 @@
   /* cartoon-but-grown-up: chunky robotic display letters with a hard dark extrusion, rounded friendly body text */
   --display:'Bungee','Arial Black',Impact,system-ui,sans-serif;
   --body:'Fredoka','Lexend',ui-rounded,system-ui,-apple-system,'Segoe UI',sans-serif;
-  --ink2:#2b1f4e; --c1:#3aa0ff; --c2:#ff7bc0; --c3:#2fb36f; --c4:#ffc41d; --c5:#c88bff; --c6:#ff5a3c;
+  --ink2:#2b1f4e; --c1:#1f86ee; --c2:#ff7bc0; --c3:#2fb36f; --c4:#ffc41d; --c5:#c88bff; --c6:#ff5a3c;
   --ex:0 1px 0 var(--ink2),0 2px 0 var(--ink2),0 3px 0 var(--ink2),0 4px 0 var(--ink2),0 5px 0 var(--ink2),0 9px 18px rgba(0,0,0,.35);
   color-scheme:dark;
 }
@@ -300,7 +300,6 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <div class="warn" id="wl"></div><div class="warn" id="wr"></div><div class="warn" id="wt"></div><div class="warn" id="wb"></div>
   <div id="landUI" hidden><div id="landJoy" hidden><i id="landKnob"></i></div>
     <button class="lb" id="lJump">JUMP</button><button class="lb big" id="lThrow">THROW<i></i></button><button class="lb" id="lGrab">GRAB</button><button class="lb sm" id="lDodgeL">◀</button><button class="lb sm" id="lDodgeR">▶</button></div>
-  <div id="landTip" hidden>↻ Turn your phone sideways for landscape controls</div>
   <div id="lbtns"><div class="lbtn" id="bStop">STOP</div><div class="lbtn" id="bJump">JUMP</div><div class="lbtn" id="bGrab">GRAB</div><div class="lbtn" id="bThrow">THROW</div></div>
 </div>
 
@@ -332,7 +331,6 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <h2>Settings</h2>
     <div class="sect"><h3>Sound &amp; feel</h3>
       <div class="tog"><label for="sSound">Sound effects</label><input id="sSound" type="checkbox"></div>
-      <div class="tog"><label for="sClassic">Original sound set</label><input id="sClassic" type="checkbox"></div>
       <div class="tog"><label for="sBuzz">Vibration</label><input id="sBuzz" type="checkbox"></div></div>
     <div class="sect"><h3>Playing</h3>
       <div class="tog"><label for="sReplay">Instant replay when you're knocked out <small>off = a replay button while you're down</small></label><input id="sReplay" type="checkbox"></div>
@@ -1938,11 +1936,21 @@ const fxList = [];
 const sphereGeo = new THREE.SphereGeometry(1, 20, 14);
 const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 20, 1, true);
 if (S.aoe === undefined) S.aoe = false; // the big see-through blast sphere (area of effect); off by default, toggle in the Look lab
+// big blasts aren't perfect balls: a few lumpy shapes to pick from, each one turned a random way, with a second
+// smaller puff off to one side and bits flung out
+const lumpGeos = []; for (let k = 0; k < 6; k++) { const G = new THREE.IcosahedronGeometry(1, 2), P = G.attributes.position, seed = [rr(0, 6), rr(0, 6), rr(0, 6)];
+  for (let i = 0; i < P.count; i++) { const v = V(P.getX(i), P.getY(i), P.getZ(i)).normalize(); const n = 1 + .16 * Math.sin(v.x * 3.1 + seed[0]) * Math.cos(v.y * 2.7 + seed[1]) + .1 * Math.sin(v.z * 4.3 + seed[2] + v.x * 2) + rr(-.05, .05); P.setXYZ(i, v.x * n, v.y * n * rr(.92, 1), v.z * n); }
+  G.computeVertexNormals(); lumpGeos.push(G); }
 function fxBurst(pos, color, radius, life = .45) {
   if (radius > 2.2 && !S.aoe) { flashLight(pos, color, 60, radius * 4, life * 1.3); return; } // big blasts: keep the light flash, skip the sphere
-  const m = new THREE.Mesh(sphereGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending }));
-  m.position.copy(pos); m.scale.setScalar(.2); scene.add(m);
-  fxList.push({ m, t: 0, life, kind: 'burst', radius });
+  const big = radius > 2.2, m = new THREE.Mesh(big ? lumpGeos[Math.floor(Math.random() * lumpGeos.length)] : sphereGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending }));
+  m.position.copy(pos); m.scale.setScalar(.2); if (big) m.rotation.set(rr(0, 6.3), rr(0, 6.3), rr(0, 6.3)); scene.add(m);
+  fxList.push({ m, t: 0, life: big ? life * rr(.85, 1.2) : life, kind: 'burst', radius: big ? radius * rr(.9, 1.05) : radius });
+  if (big) { // a smaller puff bulging out one side, and pieces shooting out
+    const d = V(rr(-1, 1), rr(-.2, .8), rr(-1, 1)).normalize().multiplyScalar(radius * rr(.35, .55)), m2 = new THREE.Mesh(lumpGeos[Math.floor(Math.random() * lumpGeos.length)], new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .6, depthWrite: false, blending: THREE.AdditiveBlending }));
+    m2.position.copy(pos).add(d); m2.scale.setScalar(.2); m2.rotation.set(rr(0, 6.3), rr(0, 6.3), 0); scene.add(m2); fxList.push({ m: m2, t: 0, life: life * rr(.6, .85), kind: 'burst', radius: radius * rr(.4, .6) });
+    for (let i = 0, n = Math.round(10 + radius * 2.5); i < n; i++) { const v = V(rr(-1, 1), rr(.1, 1.2), rr(-1, 1)).normalize().multiplyScalar(rr(radius * 2.2, radius * 4.5)); emit(pos.clone(), i % 3 ? color : 0xffffff, v, rr(.18, .4), rr(.5, .95), 14); }
+  }
   flashLight(pos, color, 60, radius * 4, life * 1.3);
 }
 function fxBeam(pos, color, life = .9) {
@@ -2937,7 +2945,8 @@ function grabbable(r, maxD = 2.6, groundOnly = false, ok = null) {
       if (groundOnly) continue;
       const lv = e.body.linvel(), rel = V(p.x - t.x, p.y - t.y, p.z - t.z), vv = lv.x * lv.x + lv.y * lv.y + lv.z * lv.z;
       const tca = (rel.x * lv.x + rel.y * lv.y + rel.z * lv.z) / (vv || 1);
-      if (!(tca > 0 && tca < .12)) continue;                           // ~0.12s before it would hit you
+      if (!(tca > 0 && tca < .06)) continue;                           // only in the last ~0.06s before it would hit you
+      if (Math.hypot(t.x + lv.x * tca - p.x, t.y + lv.y * tca - p.y, t.z + lv.z * tca - p.z) > 1.2) continue; // and only one that's really coming at you, not flying past
     } else if (e.live) { const lv = e.body.linvel(); if (lv.x * lv.x + lv.y * lv.y + lv.z * lv.z > 16) continue; } // knocked-about blocks can be grabbed once they slow down
     const s = d - (dx * f.x + dz * f.z) / (d || 1) * .7 + Math.max(0, dy - 1.5) * .5 - (e.kind === 'flag' ? 2 : 0);
     if (s < bs) { bs = s; best = e; }
@@ -4038,13 +4047,14 @@ function placeCross() {
   // lock-on tuning (31 Oct): a NARROWER cone (you have to be pointing at them, ~20°) but a STRONGER pull once locked,
   // to balance shields, walls and the extra defences. Each jump still stretches the reach (up to +70% high in the air).
   const air = clamp((rPos(P).y - .97) * .09, 0, .7), LK = .85, reach = 1 + air;
-  const keep = prevLock && hittable(prevLock) && inLineOne(prevLock, .5, 26 * LK * reach) ? prevLock : null;
-  const pick = keep || inLine(P.yaw, .36, 24 * LK * reach, 3.6);
+  const LANDC = typeof landOn === 'function' && landOn(); // (landscape controls: you aim with the camera yourself, so the lock only helps when you're right on them)
+  const keep = prevLock && hittable(prevLock) && inLineOne(prevLock, LANDC ? .2 : .5, 26 * LK * reach) ? prevLock : null;
+  const pick = keep || inLine(P.yaw, LANDC ? .14 : .36, 24 * LK * reach, 3.6);
   homingTarget = homing ? pick : null;
   lineTarget = a && !homing && a.kind !== 'flag' ? pick : null;
-  const tg = homingTarget || lineTarget, p = rPos(P);
-  if (tg) tmpV.copy(rPos(tg)); else tmpV.copy(p).addScaledVector(fwdOf(P.yaw), 15).setY(p.y + .3);
-  tmpV.project(camera);
+  const tg = homingTarget || lineTarget, p = rPos(P), mp = P.model.g.position; // (drawn from where the robot is SHOWN, not the physics body, so it doesn't jiggle as you move)
+  if (tg) tmpV.copy(tg.model ? tg.model.g.position : rPos(tg)).setY((tg.model ? tg.model.g.position.y : rPos(tg).y) + .3); else tmpV.copy(mp).addScaledVector(fwdOf(P.yaw), 15).setY(mp.y + .3);
+  camera.updateMatrixWorld(); tmpV.project(camera); /* (with this frame's camera) */
   crossEl.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px)`;
   crossEl.classList.toggle('lock', !!homingTarget); crossEl.classList.toggle('line', !!lineTarget);
   const locked = a && a.kind !== 'flag' ? pick : null;
@@ -5691,13 +5701,13 @@ function hazardAt(r, x, z) {
     if (real && ai.goal === aim) ai.goal = real;
     // hard: step round hazards
     if (lvl >= 2 && r.wantSpeed > 0) { const d = r.want; if (hazardAt(r, p.x + d.x * 2.5, p.z + d.z * 2.5)) { for (const a of [.9, -.9, 1.6, -1.6]) { const d2 = d.clone().applyAxisAngle(V(0, 1, 0), a); if (!hazardAt(r, p.x + d2.x * 2.5, p.z + d2.z * 2.5)) { r.want.copy(d2); break; } } } }
-    // catching a block thrown at you (hard: most of the time; normal: sometimes)
+    // catching a block thrown at you (hard: about half the time; normal: now and then)
     if (r.stack.length < MAX_AMMO && !(r.stack[0] && r.stack[0].kind === 'flag') && (ai.catchT = (ai.catchT || 0) - dt) <= 0) {
       for (const e of blocks) { if (!e.live || !e.body || !e.thrower || e.thrower.team === r.team || e.holder) continue;
         const t = e.body.translation(), lv = e.body.linvel(), rel = V(p.x - t.x, p.y - t.y, p.z - t.z), vv = lv.x * lv.x + lv.y * lv.y + lv.z * lv.z; if (vv < 4) continue;
-        const tca = (rel.x * lv.x + rel.y * lv.y + rel.z * lv.z) / vv; if (tca < 0 || tca > .12) continue;
+        const tca = (rel.x * lv.x + rel.y * lv.y + rel.z * lv.z) / vv; if (tca < 0 || tca > .06) continue;
         const miss = Math.hypot(t.x + lv.x * tca - p.x, t.y + lv.y * tca - p.y, t.z + lv.z * tca - p.z); if (miss > 1.4) continue;
-        ai.catchT = .5; if (Math.random() < (lvl >= 2 ? .7 : .25)) grabBlock(r, e); break; }
+        ai.catchT = .5; if (Math.random() < (lvl >= 2 ? .45 : .15)) grabBlock(r, e); break; }
     }
     // a dog after me: bomb it or freeze it if I'm holding one (hard)
     if (lvl >= 2 && r.stack[0] && (r.stack[0].kind === 'bomb' || r.stack[0].kind === 'freeze' || r.stack[0].kind === 'sticky') && ai.cool <= 0) {
@@ -5786,7 +5796,8 @@ function restart(auto) {
   setTimeout(() => location.reload(), NET && NET.host && auto ? 300 : 0);
 }
 const bindRange = (id, key, fmt) => { const el = $(id), v = $(id + 'V'); el.value = S[key]; const sh = () => v.textContent = fmt(S[key]); sh(); el.oninput = () => { S[key] = +el.value; sh(); saveS(); }; };
-for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 'allPowers'], ['sClassic', 'classic'], ['sAoe', 'aoe'], ['sFps', 'fps'], ['sReplay', 'replay'], ['sLand', 'land']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
+S.classic = false; // (the old made-in-code sound set is gone from the settings: always the real sounds)
+for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 'allPowers'], ['sAoe', 'aoe'], ['sFps', 'fps'], ['sReplay', 'replay'], ['sLand', 'land']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
 
 let wakeLock = null;
 const INTRO_T = 8.2; // flyover length; the last 5 seconds show the countdown
@@ -5961,7 +5972,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -6427,7 +6438,7 @@ function readPad(dt) {
     camera.position.copy(LAND.cam); camera.lookAt(head.x + f.x * 4, head.y + .3 - LAND.pitch * 1.5, head.z + f.z * 4);
   }; }
 // a nudge to turn the phone sideways
-setInterval(() => { const tip = $('landTip'); if (tip) tip.hidden = !(S.land && !NET && match.state === 'play' && innerHeight > innerWidth && !matchMedia('(pointer:fine)').matches); }, 700);
+/* (no more "turn your phone sideways" pop-up: the controls work either way up) */
 
 // ============================================================
 // THE SKY BRIDGE MAP (1.4x the classic island). Picked in the menu; the page reloads into it.
@@ -6894,13 +6905,13 @@ Object.assign(SFX_SYNTH, {
 // ---- the model: black back, white tummy, orange beak and feet, little flippers ----
 { const ma0 = makeAnimal; makeAnimal = function (kind) {
     if (kind !== 'penguin') return ma0(kind);
-    const parts = [], add = (w, h, d, x, y, z, c) => { const gg = new THREE.BoxGeometry(w, h, d); gg.translate(x, y, z); const col = new THREE.Color(c), n = gg.attributes.position.count, cs = new Float32Array(n * 3); for (let i = 0; i < n; i++) col.toArray(cs, i * 3); gg.setAttribute('color', new THREE.BufferAttribute(cs, 3)); whiteUV(gg); parts.push(gg); };
-    add(.6, .78, .5, 0, -.08, 0, '#22252c'); add(.46, .62, .06, 0, -.12, .25, '#f4f6fa'); // body, tummy
-    add(.46, .38, .42, 0, .48, .02, '#22252c'); add(.3, .16, .05, 0, .44, .235, '#f4f6fa'); // head, white face
+    const parts = [], add = (w, h, d, x, y, z, c, net) => { const gg = new THREE.BoxGeometry(w, h, d); gg.translate(x, y, z); const col = new THREE.Color(c), n = gg.attributes.position.count, cs = new Float32Array(n * 3); for (let i = 0; i < n; i++) col.toArray(cs, i * 3); gg.setAttribute('color', new THREE.BufferAttribute(cs, 3)); if (net) netUV(gg, net[0], net[1]); else whiteUV(gg); parts.push(gg); }; /* (body and head take a painted skin from the Look lab, like the cows) */
+    add(.6, .78, .5, 0, -.08, 0, '#22252c', [0, 0]); add(.46, .62, .06, 0, -.12, .25, '#f4f6fa'); // body, tummy
+    add(.46, .38, .42, 0, .48, .02, '#22252c', [32, 0]); add(.3, .16, .05, 0, .44, .235, '#f4f6fa'); // head, white face
     add(.07, .07, .02, -.1, .52, .245, '#111'); add(.07, .07, .02, .1, .52, .245, '#111'); // eyes
     add(.14, .08, .18, 0, .42, .3, '#ff9a1f'); // beak
     const geo = mergeGeometries(parts); parts.forEach(p => p.dispose());
-    const mat = new LiteMat({ vertexColors: true }), g = new THREE.Mesh(geo, mat); g.castShadow = true; g.userData.kind = kind;
+    const mat = new LiteMat({ vertexColors: true, map: ANIMAL_TEX.penguin || null }), g = new THREE.Mesh(geo, mat); g.castShadow = true; g.userData.kind = kind;
     const footM = new LiteMat({ color: 0xff9a1f }), flipM = new LiteMat({ color: 0x22252c }), L = [];
     for (const sx of [-1, 1]) { const f = new THREE.Mesh(new THREE.BoxGeometry(.16, .06, .24).translate(0, -.03, .06), footM); f.position.set(sx * .14, -.47, 0); g.add(f); L.push(f); }
     for (const sx of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(.08, .62, .32).translate(0, -.28, 0), flipM); w.position.set(sx * .34, .18, 0); w.castShadow = true; g.add(w); L.push(w); }
@@ -7050,18 +7061,19 @@ Object.assign(SFX_SYNTH, {
     o.connect(lp); o2.connect(lp); lp.connect(g); out(g); noiseHit(1.2, 'bandpass', 500, .35, 0, true, 200, 1.2); },
   lightning: () => { noiseHit(.25, 'highpass', 2500, .5, 0, true, 6000, 1); clack(3200, .4, 0, .02); thump(45, 1, .05, 1.8); noiseHit(2.2, 'lowpass', 300, .6, .1, true, 60, 1); },
 });
+let BEAR_TEX = null; // (a painted skin from the Look lab)
 function bearModel() {
-  const g = new THREE.Group(), fur = new LiteMat({ color: 0xf6f3ea, emissive: 0x6a6a66, emissiveIntensity: .45 }), fur2 = new LiteMat({ color: 0xe9e4d6, emissive: 0x5a5a56, emissiveIntensity: .45 }), blk = new LiteMat({ color: 0x15161a }), add = (w, h, d, x, y, z, m, p = g) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = true; p.add(b); return b; };
+  const g = new THREE.Group(), fur = new LiteMat({ color: 0xf6f3ea, emissive: 0x6a6a66, emissiveIntensity: .45 }), fur2 = new LiteMat({ color: 0xe9e4d6, emissive: 0x5a5a56, emissiveIntensity: .45 }), blk = new LiteMat({ color: 0x15161a }), add = (w, h, d, x, y, z, m, p = g, net) => { const G_ = new THREE.BoxGeometry(w, h, d); if (net) netUV(G_, net[0], net[1]); else whiteUV(G_); const b = new THREE.Mesh(G_, m); b.position.set(x, y, z); b.castShadow = true; p.add(b); return b; };
   // standing upright: legs, a big body, arms up, and a head with a snout (everything ~3x a robot)
   const legs = [-1, 1].map(s => { const l = new THREE.Group(); l.position.set(s * .38, .85, -.05); g.add(l); add(.56, .7, .66, 0, -.3, 0, fur, l); add(.5, .2, .6, 0, -.72, .02, fur2, l); add(.6, .18, .78, 0, -.76, .1, fur2, l); return l; }); // short thick hind legs, big flat paws
   const up = new THREE.Group(); up.position.y = .85; g.add(up); // everything above the hips: stands up, or drops forward onto its front paws
-  const body = add(1.4, 1.1, 1.05, 0, .45, 0, fur, up); add(1.2, .7, .95, 0, 1.25, 0, fur, up); add(.95, .95, .1, 0, .55, .53, fur2, up); // a big round body narrowing to the shoulders, tummy
+  const body = add(1.4, 1.1, 1.05, 0, .45, 0, fur, up, [0, 0]); add(1.2, .7, .95, 0, 1.25, 0, fur, up); add(.95, .95, .1, 0, .55, .53, fur2, up); // a big round body narrowing to the shoulders, tummy
   const arms = [-1, 1].map(s => { const a = new THREE.Group(); a.position.set(s * .72, 1.45, 0); up.add(a); add(.5, .62, .55, 0, -.25, 0, fur, a); add(.44, .5, .5, 0, -.72, .02, fur, a); add(.54, .2, .66, 0, -1.02, .08, fur2, a); for (let k = -1; k <= 1; k++) add(.07, .14, .07, k * .15, -1.14, .38, blk, a); return a; }); // thick forelegs (same length as the back legs, so it runs on all fours), big paws and claws
   const head = new THREE.Group(); head.position.set(0, 1.72, .1); up.add(head);
-  add(.8, .66, .7, 0, .3, 0, fur, head); add(.44, .32, .38, 0, .2, .48, fur2, head); add(.16, .12, .08, 0, .3, .68, blk, head); // head, snout, nose
+  add(.8, .66, .7, 0, .3, 0, fur, head, [32, 0]); add(.44, .32, .38, 0, .2, .48, fur2, head); add(.16, .12, .08, 0, .3, .68, blk, head); // head, snout, nose
   for (const s of [-1, 1]) { add(.09, .09, .04, s * .19, .44, .36, blk, head); add(.2, .2, .14, s * .3, .67, -.05, fur, head); add(.1, .1, .05, s * .3, .67, .03, blk, head); } // eyes, ears
   const mouth = add(.24, .06, .04, 0, .07, .66, new LiteMat({ color: 0x7a2a2a }), head);
-  g.scale.setScalar(1.95); scene.add(g); return { g, up, legs, arms, head, mouth, pitch: 0 };
+  fur.map = fur2.map = BEAR_TEX; g.scale.setScalar(1.95); scene.add(g); return { g, up, legs, arms, head, mouth, pitch: 0, fur, fur2 };
 }
 function bolt(at) { // a jagged white bolt from the sky to the ground, gone in a moment
   const pts = []; let x = at.x + rr(-6, 6), z = at.z + rr(-6, 6); for (let y = 70; y > 0; y -= rr(4, 8)) { pts.push(V(x, y, z)); x += (at.x - x) * .25 + rr(-2.5, 2.5); z += (at.z - z) * .25 + rr(-2.5, 2.5); } pts.push(V(at.x, TH(at.x, at.z), at.z));
@@ -7603,6 +7615,8 @@ const LOOK_SLOTS = [
   { id: 'bomb', name: 'Bomb block', tip: 'the bomb\'s glass shell logo', apply: t => { kindMat.bomb.map = t; kindMat.bomb.emissiveMap = t; kindMat.bomb.needsUpdate = true; } },
   { id: 'freeze', name: 'Freeze block', tip: 'the freeze block\'s logo', apply: t => { kindMat.freeze.map = t; kindMat.freeze.emissiveMap = t; kindMat.freeze.needsUpdate = true; } },
   { id: 'homing', name: 'Homing block', tip: 'the homing block\'s logo', apply: t => { kindMat.homing.map = t; kindMat.homing.emissiveMap = t; kindMat.homing.needsUpdate = true; } },
+  { id: 'streak', name: 'Star block', tip: 'the hit-streak star block', apply: t => paintMat(streakMat, t) },
+  { id: 'gold', name: 'Gold block', tip: 'the gold block under the rainbow', apply: t => paintMat(goldMat, t) },
   { id: 'trampoline', name: 'Trampoline mat', tip: 'the round mat', apply: t => paintMat(tramp.mat, t) },
   { id: 'pasture', name: 'Pasture meadow', tip: 'the round patch under the animals', apply: t => { scene.traverse(o => { if (o.isMesh && o.geometry.type === 'CircleGeometry' && o.material.map && o.geometry.parameters.radius > 8) paintMat(o.material, t); }); } },
 ];
@@ -7819,6 +7833,8 @@ TP_SLOTS.push(
   { id: 'tp_cow', name: 'Cows (paint the net)', tip: 'body and head unfolded', set: animalSet('cow'), net: 'animal' },
   { id: 'tp_sheep', name: 'Sheep (paint the net)', tip: 'body and head unfolded', set: animalSet('sheep'), net: 'animal' },
   { id: 'tp_chicken', name: 'Chickens (paint the net)', tip: 'body and head unfolded', set: animalSet('chicken'), net: 'animal' },
+  { id: 'tp_penguin', name: 'Penguins (paint the net)', tip: 'body and head unfolded', set: animalSet('penguin'), net: 'animal' },
+  { id: 'tp_bear', name: 'Polar bear (paint the net)', tip: 'body and head unfolded', set: t => { BEAR_TEX = t || null; const m = BEAR.b && BEAR.b.m; if (m) for (const M of [m.fur, m.fur2]) { M.map = BEAR_TEX; M.needsUpdate = true; } }, net: 'animal' },
 );
 for (const sl of TP_SLOTS) if (sl.net) try { tpApply(sl); } catch (e) {}
 const PAINT = { w: 16, h: 16, px: null, col: '#ffffff', tool: 'pen', size: 1, mirror: false, slot: null, undo: [], redo: [], faces: null, drag: null };
@@ -7908,7 +7924,7 @@ function view3DModel(id) {
     const b = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), [side, side, topM, side, side, side]); b.position.y = 1.5; b.receiveShadow = b.castShadow = true; g.add(b); };
   const robotOf = team => { const r = robots.find(o => o.team === team) || robots[0], hide = [r.model.held, r.model.ice, r.model.bone].filter(Boolean), was = hide.map(o => o.visible); hide.forEach(o => { o.visible = false; }); const m = r.model.g.clone(true); hide.forEach((o, i) => { o.visible = was[i]; }); m.position.set(0, .97, 0); m.quaternion.identity(); m.rotation.y = Math.PI; m.visible = true; g.add(m); }; // (without whatever it's carrying)
   const animal = kind => { const m = makeAnimal(kind); scene.remove(m); m.position.set(0, kind === 'chicken' || kind === 'penguin' ? .6 : .93, 0); m.rotation.set(0, .5, 0); g.add(m); };
-  const cube = mat => { const b = new THREE.Mesh(cubeGeo, mat); b.scale.setScalar(1.6); b.position.y = .8; b.castShadow = true; g.add(b); };
+  const cube = (mat, kind) => { const b = new THREE.Mesh(cubeGeo, mat); b.scale.setScalar(1.6); b.position.y = .82; b.castShadow = true; b.renderOrder = 2; if (kind) { const c = makeInner(kind); b.add(c); } g.add(b); }; /* (power blocks: with the little core inside, like in the game) */
   switch (id) {
     case 'tp_stone': blocks_([[0, .5, 0, 1, 1, 1, '#b9bcc4', 0], [1.1, .5, .2, 1, 1, 1, '#aeb1b9', 0], [.5, 1.5, .1, 1, 1, 1, '#c2c5cc', 0], [-1.2, .5, -.3, 2, 1, 1, '#b4b7bf', 0], [-.4, .25, 1.2, 2, .5, 2, '#bfc2c9', 0]]); break;
     case 'tp_fort': blocks_(fortWall()); break;
@@ -7918,10 +7934,11 @@ function view3DModel(id) {
     case 'tp_ground': case 'grass': case 'ground_side': case 'pasture': grassBox(); break;
     case 'tp_robot': case 'robot_blue': case 'ball': robotOf('blue'); break;
     case 'robot_red': robotOf('red'); break;
+    case 'tp_penguin': animal('penguin'); break; case 'tp_bear': { const m = bearModel(); scene.remove(m.g); m.g.rotation.y = .5; g.add(m.g); break; } case 'streak': cube(streakMat); break; case 'gold': cube(goldMat); break;
     case 'tp_cow': animal('cow'); break; case 'tp_sheep': animal('sheep'); break; case 'tp_chicken': animal('chicken'); break;
-    case 'flag': cube(flagMat('#3a7bff')); break; case 'bomb': cube(kindMat.bomb); break; case 'freeze': cube(kindMat.freeze); break; case 'homing': cube(kindMat.homing); break;
+    case 'flag': cube(flagMat('#3a7bff')); break; case 'bomb': cube(kindMat.bomb, 'bomb'); break; case 'freeze': cube(kindMat.freeze, 'freeze'); break; case 'homing': cube(kindMat.homing, 'homing'); break;
     case 'trampoline': { const P_ = PADS[0]; if (P_) { const c = P_.g.clone(true); c.position.set(0, 0, 0); c.scale.setScalar(1); c.visible = true; g.add(c); } else cube(new LiteMat({ color: 0x222222 })); break; }
-    default: cube(new LiteMat({ color: 0xcccccc }));
+    default: if (kindMat[id]) cube(kindMat[id], id); else cube(new LiteMat({ color: 0xcccccc })); /* (any other power block, core and all) */
   }
   return g;
 }
@@ -7929,11 +7946,11 @@ function open3D(slot) {
   if (!V3D.el) {
     const el = document.createElement('div'); el.id = 'view3d';
     el.style.cssText = 'position:fixed;inset:0;z-index:80;background:rgba(10,14,24,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;touch-action:none';
-    el.innerHTML = '<div id="v3t" style="font:900 18px var(--display,sans-serif);color:#fff;letter-spacing:.06em"></div><canvas id="v3c" style="width:min(92vw,560px);height:min(62vh,520px);border-radius:18px;background:radial-gradient(#3b4a66,#1a2233);touch-action:none"></canvas><div style="font:600 12px sans-serif;color:#cfd8ea;opacity:.8">drag to spin · pinch or scroll to zoom</div><button id="v3x" style="font:800 15px sans-serif;padding:10px 26px;border-radius:14px;border:0;background:#fff8ec">Close</button>';
+    el.innerHTML = '<div id="v3t" style="font:900 18px var(--display,sans-serif);color:#fff;letter-spacing:.06em"></div><canvas id="v3c" style="width:min(92vw,560px);height:min(62vh,520px);border-radius:18px;background:radial-gradient(#3b4a66,#1a2233);touch-action:none"></canvas><div style="font:600 12px sans-serif;color:#cfd8ea;opacity:.8">drag to spin · pinch or scroll to zoom</div><button id="v3x" style="font:800 15px sans-serif;padding:10px 26px;border-radius:14px;border:0;background:#fff8ec;color:#1b2235">Close</button>';
     document.body.appendChild(el); V3D.el = el;
     const cv = el.querySelector('#v3c'), R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); R.outputColorSpace = renderer.outputColorSpace; R.toneMapping = renderer.toneMapping; R.toneMappingExposure = renderer.toneMappingExposure; R.shadowMap.enabled = true; V3D.r = R;
     const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff, 0x6a7a99, 1.4)); const d = new THREE.DirectionalLight(0xffffff, 1.6); d.position.set(4, 8, 5); d.castShadow = true; sc.add(d);
-    const fl = new THREE.Mesh(new THREE.CircleGeometry(4.5, 40).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x55637d, transparent: true, opacity: .55 })); fl.receiveShadow = true; sc.add(fl); V3D.scene = sc;
+    const fl = new THREE.Mesh(new THREE.CircleGeometry(4.5, 40).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x55637d, transparent: true, opacity: .55 })); fl.receiveShadow = true; fl.position.y = -.02; fl.renderOrder = 0; sc.add(fl); /* (just under the objects, so their bottoms don't flicker against it) */ V3D.scene = sc;
     V3D.cam = new THREE.PerspectiveCamera(40, 1, .05, 200);
     const pts = new Map();
     cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); });
