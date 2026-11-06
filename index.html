@@ -341,11 +341,11 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <div class="sect"><h3>Playing</h3>
       <div class="tog"><label for="sReplay">Instant replay when you're knocked out <small>off = a replay button while you're down</small></label><input id="sReplay" type="checkbox"></div>
       <div class="tog"><label for="sLand">Landscape controls <small>joystick + look, keyboard &amp; mouse, gamepad (offline games, still being tried out)</small></label><input id="sLand" type="checkbox"></div></div>
-    <div class="sect"><h3>Creator tools</h3><p class="rules" style="margin:0 0 8px">Change every sound and texture in the game, paint your own, see them in 3D.</p>
-      <div class="menurow" style="grid-template-columns:1fr 1fr"><button class="ghost" id="soundLabBtn">🔊 Sound lab</button><button class="ghost" id="lookLabBtn">🎨 Look lab</button></div></div>
     <div class="sect"><h3>Testing</h3>
       <div class="tog"><label for="sAllPowers">All powers <small>every power and the black hole, no streak needed</small></label><input id="sAllPowers" type="checkbox"></div>
       <div class="tog"><label for="sFps">Show FPS <small>frames per second, and what the game spends its time on</small></label><input id="sFps" type="checkbox"></div></div>
+    <div class="sect"><h3>Creator tools</h3><p class="rules" style="margin:0 0 8px">Change every sound and texture in the game, paint your own, see them in 3D.</p>
+      <div class="menurow" style="grid-template-columns:1fr 1fr"><button class="ghost" id="soundLabBtn">🔊 Sound lab</button><button class="ghost" id="lookLabBtn">🎨 Look lab</button></div></div>
     <div style="display:grid;gap:8px;margin-top:12px"><button class="ghost" id="setBack">Back</button><button class="ghost" id="resetBtn" style="font-size:12px;padding:8px">Reset all my settings on this phone</button></div>
   </div></div>
 </div>
@@ -6748,7 +6748,7 @@ const FALLS = { tex: null, list: [] };
 if (MAP === 'sky' && CH) {
   const fallTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#8fdcff'; g.fillRect(0, 0, 64, 128);
     for (let k = 0; k < 26; k++) { g.fillStyle = k % 3 ? 'rgba(255,255,255,.55)' : 'rgba(60,170,230,.5)'; g.fillRect(Math.random() * 64, Math.random() * 128, 2 + Math.random() * 3, 18 + Math.random() * 40); }
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 3); return t; })();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 3); return t; })(); /* (two streak widths across the wider falls) */
   const fadeTex = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 128; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, '#fff'); gr.addColorStop(.55, '#bbb'); gr.addColorStop(1, '#000'); g.fillStyle = gr; g.fillRect(0, 0, 4, 128); return new THREE.CanvasTexture(c); })();
   FALLS.tex = fallTex; const fallMat = new THREE.MeshBasicMaterial({ map: fallTex, alphaMap: fadeTex, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: .9 });
   const runMat = new THREE.MeshBasicMaterial({ map: RBW.poolTex, color: 0xd8f4ff, transparent: true, opacity: .88, depthWrite: false });
@@ -6761,15 +6761,15 @@ if (MAP === 'sky' && CH) {
     for (const a of spill) {
       const dx = Math.cos(a), dz = Math.sin(a);
       // the overflow running across the bank to the edge
-      const run = new THREE.Mesh(new THREE.PlaneGeometry(2.4, edgeR - PASTURE_R - .9).rotateX(-Math.PI / 2), runMat); run.position.set(pa.x + dx * (PASTURE_R + .9 + edgeR) / 2, y0 + .01, pa.z + dz * (PASTURE_R + .9 + edgeR) / 2); run.rotation.y = Math.atan2(dx, dz); run.renderOrder = 1; scene.add(run);
+      const run = new THREE.Mesh(new THREE.PlaneGeometry(5.2, edgeR - PASTURE_R - .9).rotateX(-Math.PI / 2), runMat); run.position.set(pa.x + dx * (PASTURE_R + .9 + edgeR) / 2, y0 + .01, pa.z + dz * (PASTURE_R + .9 + edgeR) / 2); run.rotation.y = Math.atan2(dx, dz); run.renderOrder = 1; scene.add(run);
       // the fall: a sheet pouring off the edge, fading out far below
-      const H_ = 34, f = new THREE.Mesh(new THREE.PlaneGeometry(2.6, H_, 1, 1), fallMat); f.position.set(pa.x + dx * (edgeR + .25), y0 - H_ / 2 + .05, pa.z + dz * (edgeR + .25)); f.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; f.renderOrder = 1; scene.add(f);
-      const lip = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, 2.6, 10).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xe8f8ff, transparent: true, opacity: .8 })); lip.position.set(pa.x + dx * edgeR, y0 - .05, pa.z + dz * edgeR); lip.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; scene.add(lip);
+      const H_ = 34, f = new THREE.Mesh(new THREE.PlaneGeometry(5.6, H_, 1, 1), fallMat); f.position.set(pa.x + dx * (edgeR + .25), y0 - H_ / 2 + .05, pa.z + dz * (edgeR + .25)); f.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; f.renderOrder = 1; scene.add(f);
+      const lip = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, 5.6, 10).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xe8f8ff, transparent: true, opacity: .8 })); lip.position.set(pa.x + dx * edgeR, y0 - .05, pa.z + dz * edgeR); lip.rotation.y = Math.atan2(dx, dz) + Math.PI / 2; scene.add(lip);
       FALLS.list.push({ x: pa.x + dx * (edgeR + .3), y: y0, z: pa.z + dz * (edgeR + .3) });
     }
   }
 }
-function updateFalls(dt) { if (!FALLS.tex) return; FALLS.tex.offset.y += dt * 1.4; for (const F_ of FALLS.list) if (Math.random() < dt * 6) emit(V(F_.x + rr(-1, 1), F_.y + .1, F_.z + rr(-1, 1)), Math.random() < .5 ? 0xffffff : 0x9fe2ff, V(rr(-.6, .6), rr(1, 2.5), rr(-.6, .6)), .14, .6, 6); }
+function updateFalls(dt) { if (!FALLS.tex) return; FALLS.tex.offset.y += dt * 1.4; for (const F_ of FALLS.list) if (Math.random() < dt * 11) emit(V(F_.x + rr(-2.6, 2.6), F_.y + .1, F_.z + rr(-2.6, 2.6)), Math.random() < .5 ? 0xffffff : 0x9fe2ff, V(rr(-.6, .6), rr(1, 2.5), rr(-.6, .6)), .14, .6, 6); }
 function updateSlides(dt) { updateFalls(dt); for (const S_ of SLIDES) S_.wt.offset.y -= dt * 2.2; if (RBW.poolTex) { RBW.poolTex.offset.x += dt * .05; RBW.poolTex.offset.y += dt * .03; } }
 
 // ---------------------------------------------------------------- rain clouds over the battlefield (solid; some carry power blocks)
