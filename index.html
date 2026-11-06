@@ -548,17 +548,21 @@ scene.fog = new THREE.Fog(0xd8ebff, FOG_N, FOG_F);
 // the sky: a soft dome (deep blue at the top, bright haze at the horizon, a glowing sun, a few high wisps)
 const SUN_DIR = new THREE.Vector3(-20, 40, 16).normalize();
 const skyU = { zen: { value: new THREE.Color('#2a63d4') }, mid: { value: new THREE.Color('#6fb0ff') }, hor: { value: new THREE.Color('#e8f4ff') }, low: { value: new THREE.Color('#cfe2f8') },
-  sun: { value: SUN_DIR }, sunCol: { value: new THREE.Color('#fff2d0') }, dark: { value: 0 } };
+  sun: { value: SUN_DIR.clone() }, sunCol: { value: new THREE.Color('#fff2d0') }, dark: { value: 0 }, sunTint: { value: new THREE.Color(1, 1, 1) }, moon: { value: new THREE.Vector3(0, 1, 0) }, moonA: { value: 0 }, dusk: { value: 0 } };
 const skyDome = new THREE.Mesh(new THREE.SphereGeometry(380, 32, 16), new THREE.ShaderMaterial({ uniforms: skyU, side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: false,
   vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: `uniform vec3 zen, mid, hor, low, sun, sunCol; uniform float dark; varying vec3 vDir;
+  fragmentShader: `uniform vec3 zen, mid, hor, low, sun, sunCol, sunTint, moon; uniform float dark, moonA, dusk; varying vec3 vDir;
     void main(){ vec3 d = normalize(vDir); float h = d.y; vec3 c;
       if (h > 0.0) { c = mix(hor, mid, smoothstep(0.0, 0.22, h)); c = mix(c, zen, smoothstep(0.2, 0.95, h)); }
       else c = mix(hor, low, smoothstep(0.0, -0.2, h));
       float n = sin(d.x * 11.0 + d.z * 6.0) * sin(d.z * 8.0 - d.x * 4.0 + d.y * 3.0);
       c += vec3(1.0) * smoothstep(0.55, 1.0, n) * smoothstep(0.12, 0.45, h) * smoothstep(0.95, 0.5, h) * 0.07; // faint high wisps
-      float s = max(dot(d, sun), 0.0); c += sunCol * (pow(s, 900.0) * 2.0 + pow(s, 60.0) * 0.18 + pow(s, 6.0) * 0.08);
+      float s = max(dot(d, sun), 0.0); c += sunCol * sunTint * (pow(s, 900.0) * 2.0 + pow(s, 60.0) * 0.18 + pow(s, 6.0) * 0.08);
+      c = mix(c, vec3(1.0, 0.5, 0.22), dusk * (1.0 - smoothstep(-0.05, 0.5, h)) * (0.55 + 0.4 * pow(s, 3.0))); c = mix(c, c * vec3(0.75, 0.6, 0.85), dusk * smoothstep(0.3, 0.9, h)); // (the blackout's quick sunset glow)
       c = mix(c, vec3(0.012, 0.016, 0.03), dark);
+      vec3 q = floor(d * 380.0); float st = fract(sin(dot(q, vec3(12.9898, 78.233, 37.719))) * 43758.5453); // stars come out in the dark
+      c += vec3(0.85, 0.9, 1.0) * step(0.9972, st) * dark * smoothstep(0.03, 0.25, h) * (0.6 + 0.4 * fract(st * 91.0));
+      float mm = max(dot(d, moon), 0.0); c += moonA * (vec3(0.92, 0.95, 1.0) * smoothstep(0.99955, 0.99972, mm) + vec3(0.3, 0.42, 0.7) * pow(mm, 70.0) * 0.3); // the moon
       gl_FragColor = vec4(c, 1.0);
       #include <colorspace_fragment>
     }` }));
@@ -1114,7 +1118,7 @@ function updateLaunchers(dt, visualOnly = false) {
 }
 
 // ============================================================
-// THE CENTRE POLE: a tall flag pole in the middle of the map with a 360° camera on top. The round-start flyover
+// THE CENTRE POLE: a tall tower of stacked blocks in the middle of the map (a 360° camera point on top). The round-start flyover
 // uses the camera, swallowed players spectate from it, and the Camera menu lets you look around the level from it.
 // (A giant animal statue stood here for a day; Ali preferred the pole.)
 // ============================================================
@@ -1122,13 +1126,31 @@ const POLE_H = 10;
 const MONUMENT = { g: null, top: POLE_H, under: 0, cam: V(0, POLE_H + 1.6, 0) };
 {
   const g = new THREE.Group(); MONUMENT.g = g;
-  const stone = new LiteMat({ color: NIGHT ? 0x6d7893 : 0x9a9ea6 }), steel = new LiteMat({ color: NIGHT ? 0xb8c6e6 : 0xd8dbe2 });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(3, .7, 3), stone); base.position.y = .35; base.receiveShadow = base.castShadow = true; g.add(base);
-  const step = new THREE.Mesh(new THREE.BoxGeometry(1.6, .5, 1.6), stone); step.position.y = .95; step.castShadow = true; g.add(step);
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.22, .3, POLE_H - 1.2, 10), steel); pole.position.y = 1.2 + (POLE_H - 1.2) / 2; pole.castShadow = true; g.add(pole);
+  // REDESIGN (6 Nov): built out of the game's own chunky rounded blocks. A stepped plinth with a blue half and a red
+  // half, a column of stacked blocks (each a little turned, like a pile someone stacked carefully), gold bands between
+  // them, and a glowing cube lantern near the top under the weathervane.
+  const RB = (w, h, d, r = .1) => new RoundedBoxGeometry(w, h, d, 2, r);
+  const stone = new LiteMat({ color: NIGHT ? 0x6d7893 : 0xa4a8b2 }), stone2 = new LiteMat({ color: NIGHT ? 0x5d6782 : 0x8f939d }), steel = new LiteMat({ color: NIGHT ? 0xb8c6e6 : 0xe8eaef });
+  const cream = new LiteMat({ color: NIGHT ? 0xd8def0 : 0xf3efe6 }), band = new LiteMat({ color: 0xe0b23a, emissive: 0x5a3a00, emissiveIntensity: .35 });
+  const blueM = new LiteMat({ color: 0x2f8dff }), redM = new LiteMat({ color: 0xff4d40 });
+  const blk = (geo, m, x, y, z, ry = 0) => { const b = new THREE.Mesh(geo, m); b.position.set(x, y, z); b.rotation.y = ry; b.castShadow = b.receiveShadow = true; g.add(b); return b; };
+  // the plinth: a 3x3 slab in two halves (blue towards the blue fort, red towards the red one), then a smaller grey step
+  { const ang = Math.atan2(FORT.blue.x, FORT.blue.z), half = new THREE.Group(); half.rotation.y = ang; g.add(half);
+    for (const [sgn, m] of [[1, blueM], [-1, redM]]) { const b = new THREE.Mesh(RB(3, .7, 1.48, .12), m); b.position.set(0, .35, sgn * .76); b.castShadow = b.receiveShadow = true; half.add(b);
+      for (const sx of [-1, 1]) { const c = new THREE.Mesh(RB(.5, .3, .5, .08), cream); c.position.set(sx * 1.25, .78, sgn * 1.25); c.castShadow = true; half.add(c); } } } // (little corner studs)
+  blk(RB(1.9, .5, 1.9, .12), stone, 0, .95, 0);
+  blk(RB(1.3, .32, 1.3, .1), stone2, 0, 1.36, 0, Math.PI / 4);
+  // the column: stacked blocks from the step up to the lantern
+  const H0 = 1.52, H1 = POLE_H - 1.3, nB = 7, bh = (H1 - H0) / nB;
+  for (let k = 0; k < nB; k++) { const y = H0 + bh * (k + .5), w = .82 - k * .035; blk(RB(w, bh - .1, w, .1), k % 2 ? cream : steel, 0, y, 0, (k % 2 ? .35 : -.2) + k * .07);
+    if (k) blk(new THREE.CylinderGeometry(w * .62, w * .62, .08, 16), band, 0, H0 + bh * k, 0); }
+  // the lantern: a glowing cube in a gold frame, with a cap
+  { const yL = POLE_H - .75; const glow = new THREE.Mesh(RB(.62, .62, .62, .1), new THREE.MeshStandardMaterial({ color: 0x9ff4ff, emissive: 0x5fe6ff, emissiveIntensity: 1.4, roughness: .3 })); glow.position.y = yL; g.add(glow); MONUMENT.lantern = glow;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) blk(new THREE.BoxGeometry(.1, .78, .1), band, sx * .36, yL, sz * .36);
+    blk(RB(.95, .14, .95, .06), band, 0, yL - .45, 0); blk(RB(.95, .16, .95, .06), band, 0, yL + .45, 0); blk(RB(.55, .2, .55, .08), stone, 0, yL + .62, 0); }
   // a farmhouse weathervane on top: N / E / S / W arms, and a black iron rooster on an arrow that swings round with the wind
   const iron = new LiteMat({ color: NIGHT ? 0x2a2f3c : 0x24262c, roughness: .6 }), gold = new LiteMat({ color: 0xd9a930, emissive: 0x5a3a00, emissiveIntensity: .3 });
-  const knob = new THREE.Mesh(new THREE.SphereGeometry(.28, 14, 10), gold); knob.position.y = POLE_H + .1; g.add(knob);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(.2, 14, 10), gold); knob.position.y = POLE_H + .1; g.add(knob);
   const spindle = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.9, 8), iron); spindle.position.y = POLE_H + .95; g.add(spindle);
   const letterMat = ch => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#24262c'; x.font = '900 52px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(ch, 32, 34);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, alphaTest: .3 }); };
@@ -1149,7 +1171,12 @@ const MONUMENT = { g: null, top: POLE_H, under: 0, cam: V(0, POLE_H + 1.6, 0) };
     const arm = new THREE.Group(); arm.rotation.y = ang; arm.position.y = POLE_H - (team === 'blue' ? 1.3 : 2.9); g.add(arm);
     // slimmer boards (they looked heavy on the pole); the top trim is the team colour, a shade lighter, never white
     const mat = new LiteMat({ color: col }), trim = new LiteMat({ color: new THREE.Color(col).lerp(new THREE.Color(0xffffff), .25) });
-    const board = new THREE.Mesh(new THREE.BoxGeometry(.55, .75, 5), mat); board.position.z = 2.8; board.castShadow = true; arm.add(board);
+    const nameMat = txt => { const c = document.createElement('canvas'); c.width = 512; c.height = 80; const x = c.getContext('2d'); x.fillStyle = '#' + new THREE.Color(col).getHexString(); x.fillRect(0, 0, 512, 80);
+      x.fillStyle = '#ffffff'; x.font = '900 54px "Lilita One", "Arial Black", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 256, 44);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return new LiteMat({ map: t }); };
+    const NM = team.toUpperCase(), nameMat1 = nameMat(NM + '  ▶'), nameMat2 = nameMat('◀  ' + NM); /* (each face's little arrow points at the tip) */
+    const board = new THREE.Mesh(new THREE.BoxGeometry(.55, .75, 5), [nameMat2, nameMat1, mat, mat, mat, mat]); board.position.z = 2.8; board.castShadow = true; arm.add(board);
+    for (const z of [.55, 5.0]) { const st = new THREE.Mesh(RB(.66, .86, .3, .08), cream); st.position.set(0, 0, z); st.castShadow = true; arm.add(st); } // (chunky end caps, like block edges)
     const tri = new THREE.Shape(); tri.moveTo(-.6, 0); tri.lineTo(.6, 0); tri.lineTo(0, 1.15); tri.closePath();       // a flat arrowhead the board's thickness
     const tipGeo = new THREE.ExtrudeGeometry(tri, { depth: .55, bevelEnabled: false }); tipGeo.translate(0, 0, -.275);
     tipGeo.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1)); tipGeo.computeVertexNormals(); // shape up/forward, extrusion across
@@ -1157,14 +1184,15 @@ const MONUMENT = { g: null, top: POLE_H, under: 0, cam: V(0, POLE_H + 1.6, 0) };
     const cap = new THREE.Mesh(new THREE.BoxGeometry(.6, .1, 5), trim); cap.position.set(0, .42, 2.8); arm.add(cap);
     // a diagonal brace under the arm: pole, board and brace make a triangle
     const B0 = V(0, -1.15, .25), B1 = V(0, -.37, 2.3), bl = B0.distanceTo(B1);
-    const brace = new THREE.Mesh(new THREE.BoxGeometry(.14, .14, bl), steel); brace.position.copy(B0).add(B1).multiplyScalar(.5); brace.rotation.x = -Math.atan2(B1.y - B0.y, B1.z - B0.z); brace.castShadow = true; arm.add(brace);
+    const brace = new THREE.Mesh(RB(.18, .18, bl, .06), band); brace.position.copy(B0).add(B1).multiplyScalar(.5); brace.rotation.x = -Math.atan2(B1.y - B0.y, B1.z - B0.z); brace.castShadow = true; arm.add(brace);
     (MONUMENT.perch = MONUMENT.perch || {})[team] = V(Math.sin(ang) * 4.4, arm.position.y + .47 + .1, Math.cos(ang) * 4.4); // where the egg bird lands on this arrow
   }
   scene.add(g);
   for (const [w, h, y] of [[3, .7, .35], [1.6, .5, .95]]) { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, h / 2, w / 2).setTranslation(0, y, 0).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); }
-  { const c = world.createCollider(RAPIER.ColliderDesc.cylinder((POLE_H - 1.2) / 2, .28).setTranslation(0, 1.2 + (POLE_H - 1.2) / 2, 0)); byCollider.set(c.handle, { type: 'static' }); }
+  { const c = world.createCollider(RAPIER.ColliderDesc.cylinder((POLE_H - 1.2) / 2, .45).setTranslation(0, 1.2 + (POLE_H - 1.2) / 2, 0)); byCollider.set(c.handle, { type: 'static' }); }
 }
-function updatePole(dt, t) { // the weathervane swings slowly round with the wind, with a little flutter
+function updatePole(dt, t) { // the weathervane swings slowly round with the wind, with a little flutter; the lantern breathes
+  if (MONUMENT.lantern) MONUMENT.lantern.material.emissiveIntensity = 1.2 + .35 * Math.sin(t / 600) + 1.6 * (PW && PW.dark || 0);
   if (MONUMENT.vane) { const s_ = t / 1000, want = Math.sin(s_ * .05) * 2.2 + Math.sin(s_ * .13 + 1) * .9 + Math.sin(s_ * 1.7) * .06; MONUMENT.vane.rotation.y += (want - MONUMENT.vane.rotation.y) * Math.min(1, dt * 1.5); }
 }
 
@@ -4727,10 +4755,28 @@ const isInvisible = r => !!r && r.isPlayer && PW.invisT > 0;
 function endInvis() { if (PW.invisT > 0) { PW.invisT = 0; sfx('visible'); } }
 // ---------- blackout: lights out, everything that matters glows ----------
 const BLACK = new THREE.Color(0x04050a);
+// the blackout's sky: in 2 seconds the sun drops to the horizon (long orange light, then gone) and the moon comes up
+// on the other side, so the light and every shadow swing round with it. Afterwards it all runs backwards over 10 seconds.
+const SKY0 = { off: null, col: null };
+const ssd = (a, b_, x) => { const t = clamp((x - a) / (b_ - a), 0, 1); return t * t * (3 - 2 * t); };
+function skyFor(b) {
+  if (!SKY0.off) { SKY0.off = SUN_OFF.clone(); SKY0.col = sun.color.clone(); }
+  const o = SKY0.off, L = o.length(), az0 = Math.atan2(o.x, o.z), el0 = Math.asin(o.y / L), k = ssd(0, .6, b), m = ssd(.6, 1, b), d2r = Math.PI / 180;
+  let az, el;
+  if (b < .6) { el = el0 + (1.5 * d2r - el0) * k; az = az0 + .55 * k; sun.color.copy(SKY0.col).lerp(new THREE.Color(0xff7a3a), k); sun.intensity = LIGHT0.sun * (1 - .85 * k) * (1 - ssd(.48, .6, b)); }
+  else { el = 4 * d2r + 36 * d2r * m; az = az0 + Math.PI - .35; sun.color.set(0x9fb8ff); sun.intensity = LIGHT0.sun * .32 * m; }
+  const dir = V(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+  SUN_OFF.copy(dir).multiplyScalar(L); SUN_AX.x.set(0, 1, 0).cross(dir).normalize(); SUN_AX.y.copy(dir).cross(SUN_AX.x);
+  if (b < .6) { skyU.sun.value.copy(dir); skyU.sunTint.value.setRGB(1, 1 - .45 * k, 1 - .75 * k).multiplyScalar(1 - ssd(.5, .6, b)); }
+  else { skyU.sun.value.set(0, -1, 0); skyU.sunTint.value.setRGB(0, 0, 0); skyU.moon.value.copy(dir); }
+  skyU.moonA.value = m; skyU.dusk.value = ssd(.05, .35, b) * (1 - ssd(.45, .75, b));
+  if (b <= 0) { SUN_OFF.copy(SKY0.off); sun.color.copy(SKY0.col); skyU.sunTint.value.setRGB(1, 1, 1); skyU.sun.value.copy(SKY0.off).normalize(); }
+}
 function applyDark(b) {
-  if (hemi) hemi.intensity = LIGHT0.hemi * (1 - .9 * b); sun.intensity = LIGHT0.sun * (1 - .96 * b);
-  scene.background = b > .5 ? BLACK : LIGHT0.bg; skyU.dark.value = b;
-  scene.fog.color.copy(LIGHT0.fog).lerp(BLACK, b); scene.fog.near = FOG_N + (3 - FOG_N) * b; scene.fog.far = FOG_F + (26 - FOG_F) * b;
+  const nb = ssd(.25, 1, b), fb = ssd(.45, 1, b); // (the sky and the ground darken a little after the sunset starts; the fog closes in last)
+  if (hemi) hemi.intensity = LIGHT0.hemi * (1 - .9 * nb); skyFor(b);
+  scene.background = b > .5 ? BLACK : LIGHT0.bg; skyU.dark.value = nb;
+  scene.fog.color.copy(LIGHT0.fog).lerp(new THREE.Color(0xff9a5a), .35 * skyU.dusk.value).lerp(BLACK, fb); scene.fog.near = FOG_N + (3 - FOG_N) * fb; scene.fog.far = FOG_F + (26 - FOG_F) * fb;
   for (const r of robots) { const m = r.model.mats[0]; if (r.model.frozen) continue; m.emissive.set(r.color).multiplyScalar(.65 * b); }
   for (const k in flagMats) { flagMats[k].emissive.set(k); flagMats[k].emissiveIntensity = .7 + 1.3 * b; }
   for (const k in kindMat) kindMat[k].emissiveIntensity = (k === 'bomb' ? 0 : .35) + b * 1.2;
@@ -4760,8 +4806,8 @@ function updatePowers(dt) {
   if (PW.slowT > 0) for (const r of robots) if (isSlowed(r) && r.state === 'play' && rnd() < .3) { const c = rPos(r); emit(V(c.x + rr(-.4, .4), c.y + rr(-.2, 1.2), c.z + rr(-.4, .4)), 0xffd400, V(0, .6, 0), .14, .6, 0); } // slowed robots leave a golden shimmer
   if (PW.slowT > 0) { PW.slowT -= dt; if (PW.slowT <= 0) toast('SLOW-MO OVER'); }
   const was = PW.dark;
-  if (PW.darkT > 0) { PW.darkT -= dt; PW.dark = Math.min(1, PW.dark + dt / .6); if (PW.darkT <= 0) sfx('lightsOn'); }
-  else PW.dark = Math.max(0, PW.dark - dt / .9);
+  if (PW.darkT > 0) { PW.darkT -= dt; PW.dark = Math.min(1, PW.dark + dt / 2); if (PW.darkT <= 0) sfx('lightsOn'); } /* (2 seconds to night) */
+  else PW.dark = Math.max(0, PW.dark - dt / 10); /* (and 10 seconds for the sun to come back up) */
   if (PW.dark > 0 || was > 0) applyDark(PW.dark);
   if (PW.pick) drawPicker();
 }
@@ -5974,7 +6020,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
