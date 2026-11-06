@@ -378,13 +378,10 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 </div></div>
 <div class="sheet" id="looklab" hidden>
   <div class="card" style="width:min(560px,100%)">
-    <div class="panel"><h2>Look lab</h2><p class="rules" style="margin:0 0 8px">The textures the game draws with. Tap 🧊 3D to turn any of them round and look; paint your own, or upload a picture (square, 64 to 512 pixels). Kept on this device; export to send.</p>
+    <div class="panel"><h2>Look lab</h2><p class="rules" style="margin:0 0 8px">How the whole game looks. Pick a world, then change any texture: tap 🧊 3D to turn it round and look, paint your own, or upload a picture (square, 64 to 512 pixels). Kept on this device; export to send.</p>
       <div class="sub">World style <small style="font-weight:500;color:var(--muted)">the same game on another planet: shapes, shading, ground and sky all change (reloads the game)</small></div>
       <div id="worldCards" class="wcards"></div>
-      <div class="tog"><label for="sAoe">Blast sphere <small>shows the area a bomb, freeze or nuke covers</small></label><input id="sAoe" type="checkbox"></div>
-      <div class="sub">Classic map floor</div>
-      <div class="seg"><button data-floor="classic">Grass</button><button data-floor="mosaic">Soft mosaic</button><button data-floor="lava">Grass &amp; lava</button></div>
-      <div class="sub" style="margin-top:12px">Textures</div>
+      <div class="sub" style="margin-top:12px">Textures and looks</div>
       <div id="lookList"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport2">Export my replacements</button><button class="ghost" id="lookLabBack">Back</button></div></div>
   </div>
@@ -507,7 +504,7 @@ function netUV(geo, ox, oy) {
     else { s = k(x, bb.min.x, bb.max.x); if (ny > 0) { f = 'top'; t = 1 - k(z, bb.min.z, bb.max.z); } else { f = 'bottom'; t = k(z, bb.min.z, bb.max.z); } }
     const [cx, cy] = PNET.cells[f]; uv.setXY(i, (ox + (cx + s) * C) / W, 1 - (oy + (cy + 1 - t) * C) / H);
   }
-  uv.needsUpdate = true; return geo;
+  uv.needsUpdate = true; geo.userData.net = [ox, oy]; geo.userData.netBB = bb.clone(); return geo;
 }
 function whiteUV(geo) { const uv = geo.attributes.uv; if (!uv) return geo; for (let i = 0; i < uv.count; i++) uv.setXY(i, (PNET.W - 1.5) / PNET.W, 1.5 / PNET.H); uv.needsUpdate = true; return geo; }
 const MAP = (() => { try { const m = localStorage.getItem('nymbo-map'); return m === 'clouds' || m === 'rainbow' || m === 'sky' ? 'sky' : 'classic'; } catch (e) { return 'classic'; } })(); // (the cloud and rainbow maps were merged into one: 'sky')
@@ -950,7 +947,8 @@ function makeAnimal(kind) {
     legGeo.sheep = legGeo.sheep || whiteUV(colGeo(new THREE.BoxGeometry(.26, .36, .26).translate(0, -.18, 0), '#3a3a3f'));
   }
   for (const pg of parts) { if (pg.userData.net) netUV(pg, ...pg.userData.net); else whiteUV(pg); } // body and head can be painted; the rest stays plain
-  const geo = mergeGeometries(parts); parts.forEach(p => p.dispose());
+  const netParts = parts.filter(p => p.userData.netBB).map(p => ({ ox: p.userData.net[0], oy: p.userData.net[1], bb: p.userData.netBB }));
+  const geo = mergeGeometries(parts); parts.forEach(p => p.dispose()); geo.userData.netParts = netParts; /* (for the Look lab's painter: where each painted box sits) */
   const mat = new LiteMat({ vertexColors: true, map: ANIMAL_TEX[kind] || null });
   const g = new THREE.Mesh(geo, mat); g.castShadow = true; g.userData.kind = kind;
   // angry face, only shown when it breaks loose: red face plate, black slanted brows, glowing eyes
@@ -5882,7 +5880,7 @@ function restart(auto) {
 }
 const bindRange = (id, key, fmt) => { const el = $(id), v = $(id + 'V'); el.value = S[key]; const sh = () => v.textContent = fmt(S[key]); sh(); el.oninput = () => { S[key] = +el.value; sh(); saveS(); }; };
 S.classic = false; // (the old made-in-code sound set is gone from the settings: always the real sounds)
-for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 'allPowers'], ['sAoe', 'aoe'], ['sFps', 'fps'], ['sReplay', 'replay'], ['sLand', 'land']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
+for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 'allPowers'], ['sFps', 'fps'], ['sReplay', 'replay'], ['sLand', 'land']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
 
 let wakeLock = null;
 const INTRO_T = 8.2; // flyover length; the last 5 seconds show the countdown
@@ -7040,7 +7038,7 @@ Object.assign(SFX_SYNTH, {
     add(.46, .38, .42, 0, .48, .02, '#22252c', [32, 0]); add(.3, .16, .05, 0, .44, .235, '#f4f6fa'); // head, white face
     add(.07, .07, .02, -.1, .52, .245, '#111'); add(.07, .07, .02, .1, .52, .245, '#111'); // eyes
     add(.14, .08, .18, 0, .42, .3, '#ff9a1f'); // beak
-    const geo = mergeGeometries(parts); parts.forEach(p => p.dispose());
+    const netParts = parts.filter(p => p.userData.netBB).map(p => ({ ox: p.userData.net[0], oy: p.userData.net[1], bb: p.userData.netBB })); const geo = mergeGeometries(parts); parts.forEach(p => p.dispose()); geo.userData.netParts = netParts;
     const mat = new LiteMat({ vertexColors: true, map: ANIMAL_TEX.penguin || null }), g = new THREE.Mesh(geo, mat); g.castShadow = true; g.userData.kind = kind;
     const footM = new LiteMat({ color: 0xff9a1f }), flipM = new LiteMat({ color: 0x22252c }), L = [];
     for (const sx of [-1, 1]) { const f = new THREE.Mesh(new THREE.BoxGeometry(.16, .06, .24).translate(0, -.03, .06), footM); f.position.set(sx * .14, -.47, 0); g.add(f); L.push(f); }
@@ -8074,6 +8072,7 @@ for (const s of TP_SLOTS) try { tpApply(s); } catch (e) {}
 setTimeout(() => { for (const s of TP_SLOTS) try { tpApply(s); } catch (e) {} }, 1500); // (again once your uploads have loaded)
 const thumbOf = v => v.c ? v.c.toDataURL() : '';
 lookLabRows = function () {
+  worldCards(); // (the planets first)
   const box = $('lookList'); box.innerHTML = '';
   // packs: set everything at once
   const pk = document.createElement('div'); pk.className = 'labsnd';
@@ -8085,6 +8084,7 @@ lookLabRows = function () {
     const chip = (val, label, thumb) => `<span class="chip${cur === val || (val === null && cur == null) ? ' on' : ''}">${thumb ? `<i class="thumb" style="background-image:url(${thumb})"></i>` : ''}<button class="cu" data-v='${JSON.stringify(val)}'>${label}</button></span>`;
     const chips = [chip(null, 'Game')];
     if (s.set && !s.net) for (const k of Object.keys(BUILTIN)) chips.push(chip('b:' + k, BUILTIN_NAMES[k], thumbOf(getBuiltin(k))));
+    for (const d of (DZ.L[s.id] || [])) chips.push(chip('d:' + d[0], d[1], thumbOf(DZ.get(s.id, d[0])))); /* (ready-made designs: 11d) */
     if (s.set && EDITS[s.id]) chips.push(chip('edit', 'My painting', EDITS[s.id]));
     ups.forEach((u, i) => chips.push(chip(i, u.fname.replace(/[<'"]/g, ''), u.canvas.toDataURL())));
     row.innerHTML = `<b>${s.name}</b><span class="src">${s.tip}</span><div class="chips">${chips.join('')}${s.set ? '<span class="chip"><button class="ed">✏ Paint</button></span>' : ''}<span class="chip"><button class="v3">🧊 3D</button></span><label class="chip up">+ Upload<input type="file" accept="image/*" hidden></label></div>`;
@@ -8096,6 +8096,12 @@ lookLabRows = function () {
     row.querySelector('input').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const i = await addCustomTex(s, f); CHOICE.tex[s.id] = i; saveChoice(); applyTexChoice(s); toast('NOW USING ' + f.name.toUpperCase()); } catch (x) { toast("COULDN'T READ THAT IMAGE"); } lookLabRows(); };
     box.appendChild(row);
   }
+  // two more looks, the same kind of row: the classic map's floor colours and the blast sphere
+  const optRow = (name, tip, opts, cur, pickFn) => { const row = document.createElement('div'); row.className = 'labsnd';
+    row.innerHTML = `<b>${name}</b><span class="src">${tip}</span><div class="chips">${opts.map(([v, l]) => `<span class="chip${v === cur ? ' on' : ''}"><button class="cu" data-v="${v}">${l}</button></span>`).join('')}</div>`;
+    row.querySelectorAll('.cu').forEach(b => b.onclick = () => { pickFn(b.dataset.v); lookLabRows(); }); box.appendChild(row); };
+  optRow('Map floor', 'the colours of the classic map\'s ground', [['classic', 'Grass'], ['mosaic', 'Soft mosaic'], ['lava', 'Grass &amp; lava']], S.floor, v => { S.floor = v; saveS(); if (typeof paintFloor === 'function') paintFloor(); });
+  optRow('Blast sphere', 'the see-through ball showing what a bomb, freeze or nuke covers', [['on', 'On'], ['off', 'Off']], S.aoe ? 'on' : 'off', v => { S.aoe = v === 'on'; saveS(); });
 };
 
 // ---------------- the painter (✏ Paint) ----------------
@@ -8122,10 +8128,46 @@ TP_SLOTS.push(
 );
 for (const sl of TP_SLOTS) if (sl.net) try { tpApply(sl); } catch (e) {}
 const PAINT = { w: 16, h: 16, px: null, col: '#ffffff', tool: 'pen', size: 1, mirror: false, slot: null, undo: [], redo: [], faces: null, drag: null };
+// the model as it looks right now, unfolded onto the net (shown under your paint, so you can see where the eyes, the beak,
+// the tummy are and just touch up bits). Worked out by looking straight at each face of each painted box.
+const UNDER = {};
+function netUnderlay(slot) {
+  if (UNDER[slot.id]) return UNDER[slot.id];
+  let root = null, cleanup = () => {};
+  try {
+    if (slot.id === 'tp_robot') { const r = robots.find(o => o.team === 'blue') || robots[0]; root = r.model.g; }
+    else if (slot.id === 'tp_bear') { const m = bearModel(); root = m.g; cleanup = () => scene.remove(m.g); }
+    else { const kind = slot.id.slice(3); root = makeAnimal(kind); cleanup = () => scene.remove(root); }
+  } catch (e) { return null; }
+  root.updateMatrixWorld(true);
+  const N = 4, { W, H, C } = PNET, cv = document.createElement('canvas'); cv.width = W * N; cv.height = H * N; const g = cv.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, cv.width, cv.height);
+  const parts = []; root.traverse(o => { if (!o.isMesh || !o.geometry) return; const ud = o.geometry.userData; if (ud.netParts) for (const q of ud.netParts) parts.push({ m: o, ...q }); else if (ud.netBB) parts.push({ m: o, ox: ud.net[0], oy: ud.net[1], bb: ud.netBB }); });
+  const seen = new Set(), rc = new THREE.Raycaster(), meshes = []; root.traverse(o => { if (o.isMesh && !o.userData.ink && o.visible) meshes.push(o); });
+  const col = new THREE.Color(), vc = new THREE.Color();
+  for (const P_ of parts) { const key = P_.ox + ',' + P_.oy; if (seen.has(key)) continue; seen.add(key); // (one arm stands for both)
+    const bb = P_.bb, M = P_.m.matrixWorld, nrm = new THREE.Matrix3().getNormalMatrix(M);
+    for (const [f, [cx, cy]] of Object.entries(PNET.cells)) for (let j = 0; j < C * N; j++) for (let i = 0; i < C * N; i++) {
+      const s = (i + .5) / (C * N), t = 1 - (j + .5) / (C * N), L = (a, b, k) => a + (b - a) * k; let p, n;
+      if (f === 'front') { p = V(L(bb.min.x, bb.max.x, s), L(bb.min.y, bb.max.y, t), bb.max.z); n = V(0, 0, 1); }
+      else if (f === 'back') { p = V(L(bb.max.x, bb.min.x, s), L(bb.min.y, bb.max.y, t), bb.min.z); n = V(0, 0, -1); }
+      else if (f === 'left') { p = V(bb.min.x, L(bb.min.y, bb.max.y, t), L(bb.min.z, bb.max.z, s)); n = V(-1, 0, 0); }
+      else if (f === 'right') { p = V(bb.max.x, L(bb.min.y, bb.max.y, t), L(bb.max.z, bb.min.z, s)); n = V(1, 0, 0); }
+      else if (f === 'top') { p = V(L(bb.min.x, bb.max.x, s), bb.max.y, L(bb.max.z, bb.min.z, t)); n = V(0, 1, 0); }
+      else { p = V(L(bb.min.x, bb.max.x, s), bb.min.y, L(bb.min.z, bb.max.z, t)); n = V(0, -1, 0); }
+      const o = p.clone().addScaledVector(n, .6).applyMatrix4(M), dw = n.clone().applyMatrix3(nrm).normalize().negate();
+      rc.set(o, dw); rc.far = 1.2; const hit = rc.intersectObjects(meshes, false)[0];
+      if (hit) { const mt = Array.isArray(hit.object.material) ? hit.object.material[hit.face.materialIndex] : hit.object.material; col.copy(mt.color || col.set(1, 1, 1));
+        const ca = hit.object.geometry.attributes.color; if (ca && mt.vertexColors) { vc.fromBufferAttribute(ca, hit.face.a); col.multiply(vc); } }
+      else col.set(0xffffff);
+      g.fillStyle = '#' + col.getHexString(); g.fillRect((P_.ox + cx * C) * N + i, (P_.oy + cy * C) * N + j, 1, 1);
+    } }
+  cleanup(); UNDER[slot.id] = cv; return cv;
+}
 function openPainter(slot) {
+  PAINT.under = slot.net ? netUnderlay(slot) : null;
   PAINT.slot = slot; const net = slot.net && NETS[slot.net]; PAINT.w = net ? net.w : 16; PAINT.h = net ? net.h : 16; PAINT.faces = net ? netFaces(slot.net) : null;
   const { w, h } = PAINT;
-  const src = (() => { const v = CHOICE.tex[slot.id]; if (typeof v === 'string' && v.startsWith('b:')) return getBuiltin(v.slice(2)).c; if (v === 'edit' && editTex[slot.id]) return editTex[slot.id].c; const u = (CUSTOM.tex[slot.id] || [])[v]; if (u) return u.canvas; if (slot.id === 'tp_ground' && GROUND0.image) return GROUND0.image; return null; })();
+  const src = (() => { const v = CHOICE.tex[slot.id]; if (typeof v === 'string' && v.startsWith('d:')) { const d = DZ.get(slot.id, v.slice(2)); if (d) return d.c; } if (typeof v === 'string' && v.startsWith('b:')) return getBuiltin(v.slice(2)).c; if (v === 'edit' && editTex[slot.id]) return editTex[slot.id].c; const u = (CUSTOM.tex[slot.id] || [])[v]; if (u) return u.canvas; if (slot.id === 'tp_ground' && GROUND0.image) return GROUND0.image; return null; })();
   const c = tpCanvas(1, () => {}); c.width = w; c.height = h; const g = c.getContext('2d'); g.fillStyle = slot.id === 'tp_leaves' ? '#d6e8cc' : '#ffffff'; g.fillRect(0, 0, w, h); if (src) { g.imageSmoothingEnabled = !net; g.drawImage(src, 0, 0, w, h); }
   PAINT.px = g.getImageData(0, 0, w, h); PAINT.undo = []; PAINT.redo = [];
   const cv = $('paintCv'), sc = Math.max(1, Math.floor(512 / Math.max(w, h))); cv.width = w * sc; cv.height = h * sc; cv.style.aspectRatio = w + ' / ' + h; cv.style.height = 'auto';
@@ -8137,7 +8179,10 @@ function drawPainter() {
   const cv = $('paintCv'), g = cv.getContext('2d'), { w, h } = PAINT, s = cv.width / w, d = PAINT.px.data;
   g.imageSmoothingEnabled = false; g.drawImage(tpCanvas(1, () => {}), 0, 0); const tile = document.createElement('canvas'); tile.width = w; tile.height = h; tile.getContext('2d').putImageData(PAINT.px, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
   if (PAINT.faces) { g.fillStyle = '#2a3046'; g.fillRect(0, 0, cv.width, cv.height); } // unused parts of the net: dark
-  if (PAINT.faces) for (const f of PAINT.faces) g.drawImage(tile, f.x, f.y, f.w, f.h, f.x * s, f.y * s, f.w * s, f.h * s); else g.drawImage(tile, 0, 0, cv.width, cv.height);
+  if (PAINT.faces) for (const f of PAINT.faces) { const U = PAINT.under;
+    if (U) { const k = U.width / w; g.imageSmoothingEnabled = false; g.drawImage(U, f.x * k, f.y * k, f.w * k, f.h * k, f.x * s, f.y * s, f.w * s, f.h * s); g.globalCompositeOperation = 'multiply'; } /* (the model as it is now, under your paint: white paint shows it as it is) */
+    g.drawImage(tile, f.x, f.y, f.w, f.h, f.x * s, f.y * s, f.w * s, f.h * s); g.globalCompositeOperation = 'source-over'; }
+  else g.drawImage(tile, 0, 0, cv.width, cv.height);
   if (s >= 6) { g.strokeStyle = 'rgba(0,0,0,.1)'; g.lineWidth = 1; for (let k = 1; k < w; k++) { g.beginPath(); g.moveTo(k * s, 0); g.lineTo(k * s, cv.height); g.stroke(); } for (let k = 1; k < h; k++) { g.beginPath(); g.moveTo(0, k * s); g.lineTo(cv.width, k * s); g.stroke(); } }
   if (PAINT.faces) { g.font = `bold ${Math.max(8, s * 2.2)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
     for (const f of PAINT.faces) { g.strokeStyle = 'rgba(255,216,74,.9)'; g.lineWidth = 2; g.strokeRect(f.x * s + 1, f.y * s + 1, f.w * s - 2, f.h * s - 2); g.fillStyle = 'rgba(0,0,0,.28)'; g.fillText(f.f === 'front' ? f.label : f.f[0].toUpperCase(), (f.x + f.w / 2) * s, (f.y + f.h / 2) * s); }
@@ -8320,6 +8365,101 @@ const GUIDE = {
 function guideTab(k) { $('guideBody').innerHTML = GUIDE[k](); document.querySelectorAll('#guideTabs [data-g]').forEach(b => b.classList.toggle('on', b.dataset.g === k)); }
 document.querySelectorAll('#guideTabs [data-g]').forEach(b => b.onclick = () => guideTab(b.dataset.g));
 guideTab('controls');
+
+// ============================================================
+// READY-MADE DESIGNS for every row of the Look lab (on top of "Game", your own paintings and uploads).
+// Each design is drawn in code once, the first time it's shown. Picking one is saved like any other choice ('d:<key>').
+// Robots, animals and plain blocks: drawn in greys, so each one keeps its own colour underneath (white = its colour).
+// ============================================================
+const DZ = (() => {
+  const cv = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return c; };
+  const noiseD = (g, w, h, n, a, b) => { for (let i = 0; i < n; i++) { g.fillStyle = i % 2 ? a : b; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2); } };
+  const star = (g, x, y, r, pts = 5) => { g.beginPath(); for (let i = 0; i < pts * 2; i++) { const a = i * Math.PI / pts - Math.PI / 2, rr_ = i % 2 ? r * .45 : r; g.lineTo(x + Math.cos(a) * rr_, y + Math.sin(a) * rr_); } g.closePath(); g.fill(); };
+  const T = (size, draw) => () => cv(size, size, draw);
+  // ---- patterns in greys (they sit on top of each thing's own colour) ----
+  const grey = {
+    stripes: T(64, (g, n) => { g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); g.fillStyle = '#9a9a9a'; for (let k = 0; k < 4; k++) g.fillRect(0, k * 16 + 4, n, 6); }),
+    dots: T(64, (g, n) => { g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); g.fillStyle = '#a8a8a8'; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { g.beginPath(); g.arc(8 + i * 16 + (j % 2) * 8, 8 + j * 16, 4, 0, 7); g.fill(); } }),
+    stars: T(64, (g, n) => { g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); g.fillStyle = '#b0b0b0'; for (const [x, y, r] of [[14, 14, 9], [46, 22, 6], [24, 46, 7], [52, 52, 8]]) star(g, x, y, r); }),
+    hex: T(64, (g, n) => { g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); g.strokeStyle = '#9c9c9c'; g.lineWidth = 2.5; const R = 9; for (let j = -1; j < 5; j++) for (let i = -1; i < 5; i++) { const x = i * R * 1.75 + (j % 2) * R * .87, y = j * R * 1.5; g.beginPath(); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3 + Math.PI / 6; g.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); } g.closePath(); g.stroke(); } }),
+    circuit: T(64, (g, n) => { g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); g.strokeStyle = '#8e8e8e'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, 16); g.lineTo(22, 16); g.lineTo(30, 24); g.lineTo(64, 24); g.moveTo(40, 0); g.lineTo(40, 12); g.moveTo(10, 64); g.lineTo(10, 44); g.lineTo(34, 44); g.lineTo(42, 52); g.lineTo(64, 52); g.stroke(); g.fillStyle = '#8e8e8e'; for (const [x, y] of [[22, 16], [40, 12], [34, 44]]) { g.beginPath(); g.arc(x, y, 3.5, 0, 7); g.fill(); } }),
+    camo: T(64, (g, n) => { g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); for (let i = 0; i < 18; i++) { g.fillStyle = ['#c9c9c9', '#a2a2a2', '#e2e2e2'][i % 3]; g.beginPath(); g.ellipse(Math.random() * n, Math.random() * n, 5 + Math.random() * 9, 3 + Math.random() * 6, Math.random() * 3, 0, 7); g.fill(); } }),
+    zigzag: T(64, (g, n) => { g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); g.strokeStyle = '#a0a0a0'; g.lineWidth = 4; for (let k = 0; k < 4; k++) { g.beginPath(); for (let x = 0; x <= n; x += 8) g.lineTo(x, k * 16 + 6 + ((x / 8) % 2) * 6); g.stroke(); } }),
+    bolts: T(64, (g, n) => { g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); g.strokeStyle = '#bdbdbd'; g.lineWidth = 2; g.strokeRect(3, 3, n - 6, n - 6); g.fillStyle = '#909090'; for (const [x, y] of [[8, 8], [56, 8], [8, 56], [56, 56]]) { g.beginPath(); g.arc(x, y, 3, 0, 7); g.fill(); } }),
+  };
+  // ---- the same patterns laid out on the paint net (robots and animals): every face gets it, the white corner stays white ----
+  const netOf = pat => () => cv(PNET.W, PNET.H, (g, w, h) => { const p = grey[pat](); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+    for (const [, cx, cy] of [['', 0, 0], ['', 32, 0], ['', 0, 24]]) for (const [cx2, cy2] of Object.values(PNET.cells)) g.drawImage(p, 0, 0, 64, 64, cx + cx2 * PNET.C, cy + cy2 * PNET.C, PNET.C, PNET.C);
+    g.fillStyle = '#fff'; g.fillRect(w - 4, h - 4, 4, 4); });
+  const netSpecial = {
+    racing: () => cv(PNET.W, PNET.H, (g, w, h) => { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = '#8c8c8c'; // a racing stripe down the middle of every face
+      for (const [ox, oy] of [[0, 0], [32, 0], [0, 24]]) for (const [cx, cy] of Object.values(PNET.cells)) { const x = ox + cx * PNET.C, y = oy + cy * PNET.C; g.fillRect(x + 3, y, 2, PNET.C); } g.fillStyle = '#fff'; g.fillRect(w - 4, h - 4, 4, 4); }),
+    patch: () => cv(PNET.W, PNET.H, (g, w, h) => { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); for (let i = 0; i < 40; i++) { g.fillStyle = ['#d8d8d8', '#b8b8b8', '#ececec', '#a6a6a6'][i % 4]; g.fillRect(Math.floor(Math.random() * 16) * 4, Math.floor(Math.random() * 12) * 4, 4, 4); } g.fillStyle = '#fff'; g.fillRect(w - 4, h - 4, 4, 4); }),
+  };
+  const NETD = [['stripes', 'Stripes', netOf('stripes')], ['dots', 'Spots', netOf('dots')], ['racing', 'Racing stripe', netSpecial.racing], ['patch', 'Patchwork', netSpecial.patch], ['stars', 'Stars', netOf('stars')], ['camo', 'Camo', netOf('camo')]];
+  // ---- coloured designs ----
+  const icon = (kind, c1, c2, ink, frame) => () => { const t = iconTex(c1, c2, ICON[kind], ink, frame); return t.image; };
+  const iconSet = kind => [['neon', 'Neon', icon(kind, '#1a0b3a', '#3b0f6e', '#39ff14', 'rgba(57,255,20,.7)')], ['candy', 'Candy', icon(kind, '#ff9ad0', '#ffd25a', '#ffffff', 'rgba(255,255,255,.8)')], ['midnight', 'Midnight', icon(kind, '#0b1430', '#1d2c5a', '#9fd8ff', 'rgba(159,216,255,.5)')], ['goldy', 'Gold', icon(kind, '#ffe27a', '#c98a00', '#5a3a00', 'rgba(255,248,216,.8)')]];
+  const ground = {
+    sand: T(64, (g, n) => { g.fillStyle = '#e8d49a'; g.fillRect(0, 0, n, n); noiseD(g, n, n, 400, 'rgba(255,255,255,.35)', 'rgba(150,110,50,.25)'); }),
+    snow: T(64, (g, n) => { g.fillStyle = '#eef6ff'; g.fillRect(0, 0, n, n); noiseD(g, n, n, 200, 'rgba(255,255,255,.9)', 'rgba(150,180,220,.3)'); }),
+    lilies: T(64, (g, n) => { g.fillStyle = '#5fbde8'; g.fillRect(0, 0, n, n); for (const [x, y] of [[16, 18], [46, 40], [20, 50]]) { g.fillStyle = '#3f9a35'; g.beginPath(); g.arc(x, y, 8, .4, 6.0); g.lineTo(x, y); g.fill(); g.fillStyle = '#ff9ad0'; g.beginPath(); g.arc(x + 2, y - 1, 2.5, 0, 7); g.fill(); } }),
+    flowers: T(64, (g, n) => { g.fillStyle = '#7cc45a'; g.fillRect(0, 0, n, n); for (let i = 0; i < 26; i++) { g.fillStyle = ['#ffffff', '#ffe14a', '#ff9ad0', '#b77bff'][i % 4]; g.beginPath(); g.arc(Math.random() * n, Math.random() * n, 2.2, 0, 7); g.fill(); } }),
+    rock: () => cv(32, 192, (g, w, h) => { for (let k = 0; k < 8; k++) { g.fillStyle = ['#8a6a4a', '#7a5a3c', '#9a7a58', '#6a4c32'][k % 4]; g.fillRect(0, k * 24, w, 24); } noiseD(g, w, h, 300, 'rgba(255,255,255,.12)', 'rgba(0,0,0,.15)'); }),
+    icewall: () => cv(32, 192, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#eaf8ff'); gr.addColorStop(1, '#5fa8d8'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(255,255,255,.6)'; for (let i = 0; i < 10; i++) { g.beginPath(); g.moveTo(Math.random() * w, Math.random() * h); g.lineTo(Math.random() * w, Math.random() * h); g.stroke(); } }),
+    lavarock: () => cv(32, 192, (g, w, h) => { g.fillStyle = '#2a1a16'; g.fillRect(0, 0, w, h); g.strokeStyle = '#ff7a1e'; g.lineWidth = 2; for (let i = 0; i < 9; i++) { g.beginPath(); let x = Math.random() * w, y = Math.random() * h; g.moveTo(x, y); for (let k = 0; k < 3; k++) { x += Math.random() * 10 - 5; y += 8; g.lineTo(x, y); } g.stroke(); } }),
+    bricks: () => cv(32, 192, (g, w, h) => { g.fillStyle = '#6c5a4c'; g.fillRect(0, 0, w, h); for (let r = 0; r < 16; r++) for (let k = -1; k < 2; k++) { g.fillStyle = `hsl(20,25%,${38 + Math.random() * 14}%)`; g.fillRect(k * 16 + (r % 2) * 8 + 1, r * 12 + 1, 14, 10); } }),
+  };
+  const ballD = {
+    beach: T(64, (g, n) => { ['#ff4d4d', '#ffffff', '#3aa0ff', '#ffffff', '#ffd400', '#ffffff'].forEach((c, i) => { g.fillStyle = c; g.fillRect(i * n / 6, 0, n / 6 + 1, n); }); }),
+    football: T(64, (g, n) => { g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); g.fillStyle = '#1c1c1e'; for (const [x, y] of [[16, 16], [48, 16], [32, 44], [0, 44], [64, 44]]) { g.beginPath(); for (let k = 0; k < 5; k++) { const a = k * Math.PI * .4 - Math.PI / 2; g.lineTo(x + Math.cos(a) * 9, y + Math.sin(a) * 9); } g.fill(); } }),
+    checker: T(64, (g, n) => { for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { g.fillStyle = (i + j) % 2 ? '#1c1c1e' : '#ffffff'; g.fillRect(i * 16, j * 16, 16, 16); } }),
+    galaxy: T(64, (g, n) => { const gr = g.createLinearGradient(0, 0, n, n); gr.addColorStop(0, '#1a0b3a'); gr.addColorStop(.5, '#5a1f8a'); gr.addColorStop(1, '#0b1430'); g.fillStyle = gr; g.fillRect(0, 0, n, n); g.fillStyle = '#fff'; for (let i = 0; i < 30; i++) g.fillRect(Math.random() * n, Math.random() * n, 1.5, 1.5); }),
+  };
+  const tramp = {
+    target: T(64, (g, n) => { for (let r = 32, k = 0; r > 0; r -= 6, k++) { g.fillStyle = k % 2 ? '#ffffff' : '#ff4d40'; g.beginPath(); g.arc(32, 32, r, 0, 7); g.fill(); } }),
+    spiral: T(64, (g, n) => { g.fillStyle = '#1c1c2e'; g.fillRect(0, 0, n, n); g.strokeStyle = '#ffd400'; g.lineWidth = 4; g.beginPath(); for (let a = 0; a < 20; a += .1) g.lineTo(32 + Math.cos(a) * a * 1.5, 32 + Math.sin(a) * a * 1.5); g.stroke(); }),
+    polka: T(64, (g, n) => { g.fillStyle = '#3aa0ff'; g.fillRect(0, 0, n, n); g.fillStyle = '#ffffff'; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { g.beginPath(); g.arc(8 + i * 16, 8 + j * 16, 4, 0, 7); g.fill(); } }),
+    rainbow: T(64, (g, n) => { ['#ff3b3b', '#ff9a1f', '#ffe14a', '#4fd64a', '#3aa8ff', '#b05cff'].forEach((c, i) => { g.fillStyle = c; g.beginPath(); g.arc(32, 32, 32 - i * 5, 0, 7); g.fill(); }); }),
+  };
+  const gold = {
+    bars: T(64, (g, n) => { g.fillStyle = '#c98a00'; g.fillRect(0, 0, n, n); for (let r = 0; r < 4; r++) for (let k = 0; k < 2; k++) { g.fillStyle = '#ffd23a'; g.fillRect(k * 32 + (r % 2) * 16 - 8 + 3, r * 16 + 3, 26, 10); g.fillStyle = '#fff6b0'; g.fillRect(k * 32 + (r % 2) * 16 - 8 + 5, r * 16 + 4, 10, 3); } }),
+    coins: T(64, (g, n) => { g.fillStyle = '#b07800'; g.fillRect(0, 0, n, n); for (let i = 0; i < 9; i++) { const x = 10 + (i % 3) * 22, y = 10 + Math.floor(i / 3) * 22; g.fillStyle = '#ffd23a'; g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); g.strokeStyle = '#fff2a0'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6, 0, 7); g.stroke(); } }),
+    gem: T(64, (g, n) => { const gr = g.createLinearGradient(0, 0, n, n); gr.addColorStop(0, '#fff6b0'); gr.addColorStop(1, '#e8a800'); g.fillStyle = gr; g.fillRect(0, 0, n, n); g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 2; g.beginPath(); g.moveTo(32, 6); g.lineTo(58, 32); g.lineTo(32, 58); g.lineTo(6, 32); g.closePath(); g.stroke(); g.beginPath(); g.moveTo(6, 32); g.lineTo(58, 32); g.moveTo(32, 6); g.lineTo(32, 58); g.stroke(); }),
+  };
+  const streakD = {
+    galaxy: T(64, (g, n) => { const gr = g.createRadialGradient(32, 32, 4, 32, 32, 40); gr.addColorStop(0, '#ffe066'); gr.addColorStop(1, '#5a1f8a'); g.fillStyle = gr; g.fillRect(0, 0, n, n); g.fillStyle = '#fff'; star(g, 32, 32, 20); for (let i = 0; i < 16; i++) g.fillRect(Math.random() * n, Math.random() * n, 1.5, 1.5); }),
+    bolt: T(64, (g, n) => { g.fillStyle = '#ffb000'; g.fillRect(0, 0, n, n); g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(36, 6); g.lineTo(16, 36); g.lineTo(30, 36); g.lineTo(24, 58); g.lineTo(48, 26); g.lineTo(34, 26); g.closePath(); g.fill(); }),
+    crown: T(64, (g, n) => { g.fillStyle = '#ff9a1f'; g.fillRect(0, 0, n, n); g.fillStyle = '#ffe14a'; g.beginPath(); g.moveTo(10, 46); g.lineTo(10, 20); g.lineTo(22, 32); g.lineTo(32, 14); g.lineTo(42, 32); g.lineTo(54, 20); g.lineTo(54, 46); g.closePath(); g.fill(); g.fillStyle = '#ff3b6b'; for (const x of [20, 32, 44]) { g.beginPath(); g.arc(x, 40, 3, 0, 7); g.fill(); } }),
+  };
+  const L = {
+    ground_side: [['rock', 'Rock layers', ground.rock], ['bricks', 'Bricks', ground.bricks], ['icewall', 'Ice', ground.icewall], ['lavarock', 'Lava rock', ground.lavarock]],
+    robot_blue: [['stripes', 'Stripes', grey.stripes], ['camo', 'Camo', grey.camo], ['dots', 'Spots', grey.dots], ['circuit', 'Circuit', grey.circuit], ['zigzag', 'Zigzag', grey.zigzag]],
+    robot_red: [['stripes', 'Stripes', grey.stripes], ['camo', 'Camo', grey.camo], ['dots', 'Spots', grey.dots], ['circuit', 'Circuit', grey.circuit], ['zigzag', 'Zigzag', grey.zigzag]],
+    ball: [['beach', 'Beach ball', ballD.beach], ['football', 'Football', ballD.football], ['checker', 'Checker', ballD.checker], ['galaxy', 'Galaxy', ballD.galaxy]],
+    flag: iconSet('flag'), bomb: iconSet('bomb'), freeze: iconSet('freeze'), homing: iconSet('homing'),
+    trampoline: [['target', 'Target', tramp.target], ['spiral', 'Spiral', tramp.spiral], ['polka', 'Polka', tramp.polka], ['rainbow', 'Rainbow', tramp.rainbow]],
+    pasture: [['flowers', 'Flowers', ground.flowers], ['lilies', 'Lily pond', ground.lilies], ['sand', 'Sand', ground.sand], ['snow', 'Snow', ground.snow]],
+    streak: [['galaxy', 'Galaxy star', streakD.galaxy], ['bolt', 'Lightning', streakD.bolt], ['crown', 'Crown', streakD.crown]],
+    gold: [['bars', 'Gold bars', gold.bars], ['coins', 'Coins', gold.coins], ['gem', 'Gem', gold.gem]],
+  };
+  for (const id of ['tp_robot', 'tp_cow', 'tp_sheep', 'tp_chicken', 'tp_penguin', 'tp_bear']) L[id] = NETD;
+  const KEEP = new Set(['robot_blue', 'robot_red']); // (patterns in grey: each robot keeps its own colour)
+  const cache = {};
+  const get = (id, k) => { const key = id + ':' + k; if (cache[key]) return cache[key]; const d = (L[id] || []).find(x => x[0] === k); if (!d) return null; const c = d[2]();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; if (id.startsWith('tp_')) t.magFilter = THREE.NearestFilter; return (cache[key] = { c, t }); };
+  return { L, get, KEEP };
+})();
+// applying a design: the texture-pack rows go through their own setter; the other rows use their paint function, except the
+// robot bodies, which take the pattern on top of each robot's own colour
+{ const tp0 = tpApply; tpApply = function (slot) { const v = CHOICE.tex[slot.id]; if (typeof v === 'string' && v.startsWith('d:')) { const d = DZ.get(slot.id, v.slice(2)); if (d) return slot.set(d.t); } return tp0(slot); }; }
+{ const ap0 = applyTexChoice; applyTexChoice = function (slot) { const v = CHOICE.tex[slot.id];
+    if (typeof v === 'string' && v.startsWith('d:')) { const d = DZ.get(slot.id, v.slice(2)); if (!d) return;
+      if (DZ.KEEP.has(slot.id)) { const team = slot.id === 'robot_blue' ? 'blue' : 'red'; for (const r of robots) if (r.team === team) { const m = r.model.mats[0]; m.map = d.t; m.needsUpdate = true; } return; }
+      return slot.apply(d.t); }
+    return ap0(slot); }; }
+for (const s of LOOK_SLOTS) { const v = CHOICE.tex[s.id]; if (typeof v === 'string' && v.startsWith('d:')) try { applyTexChoice(s); } catch (e) {} }
+for (const s of TP_SLOTS) { const v = CHOICE.tex[s.id]; if (typeof v === 'string' && v.startsWith('d:')) try { tpApply(s); } catch (e) {} }
 
 // ============================================================
 // VOICE CHAT (test version): talk to the people in your room.
