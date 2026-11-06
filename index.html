@@ -3990,7 +3990,8 @@ function throwFor(P, power, lineTarget, homingTarget) {
     const dir = V(lead.x - p.x, 0, lead.z - p.z).normalize();
     aim = V(p.x + dir.x * D, c.y, p.z + dir.z * D);
     target = lineTarget; assist = true;
-  } else { const D = 4 + power * 24; aim = V(p.x + f.x * D, p.y - .3, p.z + f.z * D); }
+  } else if (P.isPlayer && typeof landOn === 'function' && landOn()) aim = landAim(power); /* (landscape controls: wherever the crosshair points, up or down) */
+  else { const D = 4 + power * 24; aim = V(p.x + f.x * D, p.y - .3, p.z + f.z * D); }
   endInvis(); // throwing gives you away
   const thrown = throwAt(P, aim, THROW_H, assist ? null : target);
   if (assist && thrown) thrown.assist = target; // a locked throw gets gently guided onto them
@@ -4055,6 +4056,7 @@ function placeCross() {
   const tg = homingTarget || lineTarget, p = rPos(P), mp = P.model.g.position; // (drawn from where the robot is SHOWN, not the physics body, so it doesn't jiggle as you move)
   if (tg) tmpV.copy(tg.model ? tg.model.g.position : rPos(tg)).setY((tg.model ? tg.model.g.position.y : rPos(tg).y) + .3); else tmpV.copy(mp).addScaledVector(fwdOf(P.yaw), 15).setY(mp.y + .3);
   camera.updateMatrixWorld(); tmpV.project(camera); /* (with this frame's camera) */
+  if (!tg && LANDC) tmpV.set(0, 1 - 2 * LAND_CY, 0); /* (landscape controls: the crosshair stays put on the screen, the camera moves it) */
   crossEl.style.transform = `translate(${(tmpV.x * .5 + .5) * innerWidth}px,${(-tmpV.y * .5 + .5) * innerHeight}px)`;
   crossEl.classList.toggle('lock', !!homingTarget); crossEl.classList.toggle('line', !!lineTarget);
   const locked = a && a.kind !== 'flag' ? pick : null;
@@ -5972,7 +5974,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -6369,7 +6371,7 @@ stage.addEventListener('pointerdown', e => {
 stage.addEventListener('pointermove', e => {
   if (!landOn()) return;
   if (LAND.joy && e.pointerId === LAND.joy.id) { e.stopImmediatePropagation(); LAND.joy.x = e.clientX; LAND.joy.y = e.clientY; const dx = e.clientX - LAND.joy.x0, dy = e.clientY - LAND.joy.y0, L = Math.hypot(dx, dy), k = Math.min(1, 44 / (L || 1)); $('landKnob').style.transform = `translate(${dx * k}px,${dy * k}px)`; }
-  else if (LAND.look && e.pointerId === LAND.look.id) { e.stopImmediatePropagation(); LAND.yaw -= (e.clientX - LAND.look.x) * .006; LAND.pitch = clamp(LAND.pitch + (e.clientY - LAND.look.y) * .004, -.3, 1.1); LAND.look.x = e.clientX; LAND.look.y = e.clientY; }
+  else if (LAND.look && e.pointerId === LAND.look.id) { e.stopImmediatePropagation(); LAND.yaw -= (e.clientX - LAND.look.x) * .006; LAND.pitch = clamp(LAND.pitch + (e.clientY - LAND.look.y) * .004, -.75, 1.1); LAND.look.x = e.clientX; LAND.look.y = e.clientY; }
 }, true);
 const landUp = e => { if (!S.land) return;
   if (LAND.joy && e.pointerId === LAND.joy.id) { LAND.joy = null; $('landJoy').hidden = true; $('landKnob').style.transform = ''; e.stopImmediatePropagation(); }
@@ -6383,7 +6385,7 @@ stage.addEventListener('mousedown', e => {
 }, true);
 stage.addEventListener('mouseup', e => { if (landOn() && e.button === 0 && document.pointerLockElement === stage) landThrow(); }, true);
 stage.addEventListener('contextmenu', e => { if (S.land) e.preventDefault(); });
-addEventListener('mousemove', e => { if (landOn() && document.pointerLockElement === stage) { LAND.yaw -= e.movementX * .0025; LAND.pitch = clamp(LAND.pitch + e.movementY * .002, -.3, 1.1); } });
+addEventListener('mousemove', e => { if (landOn() && document.pointerLockElement === stage) { LAND.yaw -= e.movementX * .0025; LAND.pitch = clamp(LAND.pitch + e.movementY * .002, -.75, 1.1); } });
 // ---- keyboard (in front of the normal keys, which turn and auto-run) ----
 document.addEventListener('keydown', e => {
   if (!landOn()) return; const c = e.code;
@@ -6401,7 +6403,7 @@ function readPad(dt) {
   const gp = (navigator.getGamepads ? [...navigator.getGamepads()] : []).find(g => g && g.connected); if (!gp) return null;
   const dz = v => Math.abs(v) < .15 ? 0 : v, ax = gp.axes, b = i => !!(gp.buttons[i] && gp.buttons[i].pressed), was = LAND.gpPrev, press = i => b(i) && !was[i];
   const m = V(dz(ax[0] || 0), 0, dz(ax[1] || 0));
-  LAND.yaw -= dz(ax[2] || 0) * 3 * dt; LAND.pitch = clamp(LAND.pitch + dz(ax[3] || 0) * 2 * dt, -.3, 1.1);
+  LAND.yaw -= dz(ax[2] || 0) * 3 * dt; LAND.pitch = clamp(LAND.pitch + dz(ax[3] || 0) * 2 * dt, -.75, 1.1);
   if (press(0)) playerJump(); if (press(2)) playerGrab(); if (press(4)) playerDodge(-1); if (press(5)) playerDodge(1); if (press(3)) playerShield();
   if (press(9)) { if (match.menu) $('resumeBtn').click(); else pauseGame(); }
   if (press(7)) LAND.charge = now(); if (!b(7) && was[7]) landThrow();
@@ -6424,6 +6426,17 @@ function readPad(dt) {
     else P.wantSpeed = 0;
     $('lThrow').style.setProperty('--k', LAND.charge == null ? 0 : clamp((now() - LAND.charge) / 1000, 0, 1));
   }; }
+// ---- aiming with the camera: the crosshair sits still on the screen and the throw follows it, up or down ----
+const LAND_CY = .42; // (how far down the screen the crosshair sits)
+function landAimRay() { camera.updateMatrixWorld(); const o = camera.position.clone(), d = V(0, 1 - 2 * LAND_CY, .5).unproject(camera).sub(o).normalize(); return { o, d }; }
+function landAim(power) { // where the block should come down: along the crosshair's line, further the longer you hold (but never past a wall or the ground)
+  const { o, d } = landAimRay(), p = rPos(P), toP = V(p.x - o.x, p.y - o.y, p.z - o.z).dot(d), dh = Math.max(.25, Math.hypot(d.x, d.z));
+  let s = Math.max(toP + 1, toP + (5 + power * 26) / dh);
+  probeRay.origin = { x: o.x, y: o.y, z: o.z }; probeRay.dir = { x: d.x, y: d.y, z: d.z };
+  const h = world.castRay(probeRay, s, true, undefined, undefined, P.col);
+  if (h && h.toi > toP + .5) s = Math.min(s, h.toi);
+  return o.addScaledVector(d, s);
+}
 // ---- the camera: orbits behind you wherever you point it ----
 { const uc1 = updateCamera; updateCamera = function (dt) {
     uc1(dt);
