@@ -2132,7 +2132,7 @@ const buzz = name => {
 // The world is an open field, so there's no room reverb on them: close sounds are dry, far ones duller with a faint outdoor echo.
 // Menu / score / bell sounds keep their own little bell room so they stay exactly as they were.
 // ============================================================
-let AC = null, bus = null, master = null, verb = null, field = null, noiseBuf = null, ambBus = null, send = null, PV = 1;
+let GLUE = null; let AC = null, bus = null, master = null, verb = null, field = null, noiseBuf = null, ambBus = null, send = null, PV = 1;
 // screen off / app in the background: everything goes quiet, and comes back when you return
 document.addEventListener('visibilitychange', () => { if (!AC) return; if (document.hidden) { try { AC.suspend(); } catch (e) {} } else { try { AC.resume(); } catch (e) {} } });
 function audioInit() {
@@ -2142,7 +2142,7 @@ function audioInit() {
     // master chain: gentle "glue" compressor, then a fast limiter so loud moments never crackle
     const lim = AC.createDynamicsCompressor(); lim.threshold.value = -6; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = .003; lim.release.value = .16; lim.connect(AC.destination); // softer knee + headroom: no crackle on phone speakers
     const glue = AC.createDynamicsCompressor(); glue.threshold.value = -20; glue.knee.value = 12; glue.ratio.value = 2.5; glue.attack.value = .012; glue.release.value = .25; glue.connect(lim);
-    master = AC.createGain(); master.gain.value = .72; master.connect(glue);
+    master = AC.createGain(); master.gain.value = .72; master.connect(glue); GLUE = glue;
     verb = AC.createConvolver(); verb.buffer = makeIR(1.7); const vg = AC.createGain(); vg.gain.value = .5; verb.connect(vg); vg.connect(master);
     field = AC.createConvolver(); field.buffer = makeFieldIR(); const fg = AC.createGain(); fg.gain.value = .8; field.connect(fg); fg.connect(master);
     noiseBuf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
@@ -5984,21 +5984,33 @@ function rwRestore(F) {
   // the score goes back too (a goal in those 10 seconds never happened)
   score.blue = F.score.blue; score.red = F.score.red; renderHud(true);
 }
+// REWIND in two parts, 6 seconds in all: first everything slows down to a stop (3 s), then time runs backwards, slowly at
+// first and faster and faster, back to 10 seconds ago (3 s). The match clock keeps running the whole time.
 function startRewind(team) {
   if (RW.playing || RW.frames.length < 3) { sfx('denied'); return; }
-  RW.used[team] = true; RW.playing = true; RW.pt = 0; RW.snap = RW.frames.slice(); RW.frames = [];
-  const t0 = RW.snap[0].t; RW.movers = blocks.filter(e => (e.rwMoved || 0) >= t0 && !e.dead && e.kind !== 'animal');
-  bigToast('REWIND', 'blue'); sfx('rewind'); mixDuck(.5, .4); document.body.classList.add('rewinding');
+  RW.used[team] = true; RW.playing = true; RW.phase = 'slow'; RW.pt = 0;
+  bigToast('REWIND', 'blue'); document.body.classList.add('rewinding'); rwaSlow();
+}
+function rewindBack() { // (the stop: from here it runs backwards)
+  RW.phase = 'back'; RW.pt = 0; RW.snap = RW.frames.slice(); RW.frames = [];
+  const t0 = RW.snap[0].t; RW.movers = blocks.filter(e => (e.rwMoved || 0) >= t0 && !e.dead && e.kind !== 'animal'); rwaBack();
 }
 function rewindTick(dt) {
-  RW.pt += dt; const k = Math.min(1, RW.pt / RW.dur), fr = RW.snap, N = fr.length - 1, x = N * (1 - k * k * (3 - 2 * k)), i = Math.floor(x), f = x - i; // (eases in and out)
+  RW.pt += dt; const k = Math.min(1, RW.pt / RW.dur), fr = RW.snap, N = fr.length - 1, x = N * (1 - k * k * k), i = Math.floor(x), f = x - i; // (slow to start, faster and faster)
   rwApplyVisual(fr[Math.min(N, i)], fr[Math.min(N, i + 1)], f);
   if (match.state === 'play') { match.time -= dt; if (match.time <= 0) { match.time = 0; } } // (the clock keeps running)
   for (const r of robots) { r.wantSpeed = 0; if (r.body) syncRobot(r); }
   updateBlocks(0); updateFx(dt); updateCamera(dt);
-  if (k >= 1) { rwRestore(fr[0]); RW.playing = false; RW.snap = null; RW.movers = null; document.body.classList.remove('rewinding'); sfx('swoop'); }
+  if (k >= 1) { rwRestore(fr[0]); RW.playing = false; RW.phase = null; RW.snap = null; RW.movers = null; document.body.classList.remove('rewinding'); rwaEnd(); sfx('swoop'); }
 }
-{ const tk0 = tick; tick = function (dt, t) { if (RW.playing) return rewindTick(dt); const res = tk0(dt, t); if (match.state === 'play' && !(NET && NET.client)) { RW.clock += dt; rwRecord(); } return res; }; }
+RW.dur = 3;
+{ const tk0 = tick; tick = function (dt, t) {
+    if (RW.playing && RW.phase === 'back') return rewindTick(dt);
+    let s = 1; if (RW.playing) { RW.pt += dt; const u = Math.min(1, RW.pt / 3); s = Math.max(.02, (1 - u) * (1 - u)); } // (slowing to a stop)
+    const res = tk0(dt * s, t);
+    if (match.state === 'play' && !(NET && NET.client)) { if (s < 1) match.time = Math.max(0, match.time - dt * (1 - s)); RW.clock += dt * s; rwRecord(); }
+    if (RW.playing && RW.pt >= 3) rewindBack();
+    return res; }; }
 { const sc0 = startCountdown; startCountdown = function (...a) { RW.used = { blue: false, red: false }; RW.frames = []; RW.recAt = 0; RW.clock = 0; RW.playing = false; return sc0(...a); }; }
 // its sound: a tape being pulled backwards, sweeping down
 Object.assign(SFX_SYNTH, { rewind: () => { noiseHit(1.6, 'bandpass', 2400, .7, 0, true, 300, 1); noiseHit(1.2, 'bandpass', 900, .5, .3, true, 120, 1); thump(140, .6, .02, .9); } });
@@ -6007,6 +6019,43 @@ Object.assign(SFX_SYNTH, { rewind: () => { noiseHit(1.6, 'bandpass', 2400, .7, 0
 body.rewinding::after{content:'⏪';position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:min(18vw,96px);color:#bfeaff;text-shadow:0 0 18px #3aa0ff;pointer-events:none;z-index:30;animation:rwpulse .5s infinite alternate}
 body.rewinding::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(160,220,255,.08) 0 2px,transparent 2px 5px);pointer-events:none;z-index:29}
 @keyframes rwpulse{from{opacity:.55}to{opacity:1}}`; document.head.appendChild(st); }
+
+// ---- the rewind's sound is the game's own sound: the last few seconds of everything you heard are kept (a rolling
+// recording of the speaker output). Press rewind and that sound slows down like a tape stopping (the live sound fades
+// out), then it plays BACKWARDS, slowly at first and faster and faster, squeaking up in pitch, as time runs back.
+const RWA = { on: false, sp: null, gate: null, L: null, R: null, n: 0, w: 0, src: null };
+function rwaInit() {
+  if (RWA.on || !AC || !master || !GLUE || !AC.createScriptProcessor) return; RWA.on = true;
+  try {
+    const gate = AC.createGain(); master.disconnect(); master.connect(gate); gate.connect(GLUE); RWA.gate = gate; // (the live sound, so it can be faded out)
+    RWA.n = Math.round(AC.sampleRate * 12); RWA.L = new Float32Array(RWA.n); RWA.R = new Float32Array(RWA.n);
+    const sp = AC.createScriptProcessor(4096, 2, 1), z = AC.createGain(); z.gain.value = 0; master.connect(sp); sp.connect(z); z.connect(AC.destination); RWA.sp = sp;
+    sp.onaudioprocess = e => { if (RW.playing || match.state !== 'play') return; const a = e.inputBuffer.getChannelData(0), b = e.inputBuffer.numberOfChannels > 1 ? e.inputBuffer.getChannelData(1) : a, n = RWA.n;
+      for (let i = 0; i < a.length; i++) { const j = (RWA.w + i) % n; RWA.L[j] = a[i]; RWA.R[j] = b[i]; } RWA.w += a.length; };
+  } catch (e) { RWA.on = false; }
+}
+function rwaClip(sec, reverse) { // the last `sec` seconds of what was heard, as a sound
+  const n = Math.min(Math.round(sec * AC.sampleRate), RWA.w, RWA.n); if (n < 2048) return null;
+  const B = AC.createBuffer(2, n, AC.sampleRate), l = B.getChannelData(0), r = B.getChannelData(1), s0 = RWA.w - n;
+  for (let i = 0; i < n; i++) { const j = (s0 + i) % RWA.n, k = reverse ? n - 1 - i : i; l[k] = RWA.L[j]; r[k] = RWA.R[j]; }
+  const f = Math.min(800, n >> 3); for (let i = 0; i < f; i++) { const g = i / f; l[i] *= g; r[i] *= g; l[n - 1 - i] *= g; r[n - 1 - i] *= g; } // (no clicks)
+  return B;
+}
+function rwaPlay(B, curve, dur, vol) { const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = B; g.gain.value = vol; s.connect(g); g.connect(GLUE); const t = AC.currentTime + .01;
+  s.playbackRate.setValueCurveAtTime(curve, t, dur); s.start(t); s.stop(t + dur + .05); return s; }
+function rwaSlow() { // a tape stopping: what you just heard slows to a halt, dropping in pitch
+  rwaInit(); if (!RWA.on) { sfx('rewind'); return; } const t = AC.currentTime;
+  RWA.gate.gain.cancelScheduledValues(t); RWA.gate.gain.setValueAtTime(RWA.gate.gain.value, t); RWA.gate.gain.linearRampToValueAtTime(0, t + .35);
+  const B = rwaClip(1.1, false); if (!B) return; const c = new Float32Array(48); for (let i = 0; i < 48; i++) { const u = i / 47; c[i] = Math.max(.03, (1 - u) * (1 - u)); }
+  RWA.src = rwaPlay(B, c, 3, 1.1);
+}
+function rwaBack() { // everything heard in the last 10 seconds, backwards, speeding up
+  if (!RWA.on) { sfx('rewind'); return; } const L = Math.min(11, RWA.w / AC.sampleRate), B = rwaClip(L, true); if (!B) { sfx('rewind'); return; }
+  const c = new Float32Array(64); for (let i = 0; i < 64; i++) { const u = (i + .5) / 64; c[i] = Math.max(.25, L * u * u); } // (position = L·(t/3)³, so the speed is L·(t/3)²)
+  RWA.src = rwaPlay(B, c, RW.dur, 1);
+}
+function rwaEnd() { if (!RWA.on) return; const t = AC.currentTime; RWA.gate.gain.cancelScheduledValues(t); RWA.gate.gain.setValueAtTime(0, t); RWA.gate.gain.linearRampToValueAtTime(1, t + .25); RWA.w = 0; }
+{ const rr0 = rwRecord; rwRecord = function () { if (!RWA.on && AC) rwaInit(); return rr0(); }; }
 
 // ============================================================
 // MATCH FLOW + MAIN LOOP
@@ -8667,7 +8716,7 @@ const GUIDE = {
     GI(powerIcon('nuke'), 'Nuke', 'Pick a spot on the map: a huge blast'),
     GI(powerIcon('air'), 'Ice strike', 'Three icy blasts in a row across the map'),
     GI(powerIcon('dark'), 'Blackout', 'Lights out for everyone else. You get night-vision goggles'),
-    GI(powerIcon('rewind'), 'Rewind', 'Everything goes back 10 seconds: everyone, goals too (not the clock). Once a round per team'),
+    GI(powerIcon('rewind'), 'Rewind', 'Time slows to a stop, then runs backwards 10 seconds (sound too): everyone, goals too (not the clock). Once a round per team'),
     GI(powerIcon('invis'), 'Invisible', 'For 8 seconds nobody can see you, chase you or hurt you. Throwing ends it'),
     GI(powerIcon('tornado'), 'Tornado', 'A twister that picks up blocks and robots'),
     GI(powerIcon('dog'), 'Fetch!', 'A dog chases one enemy. Their blocks turn into bones: throw one and it fetches it (3 times at most)'),
