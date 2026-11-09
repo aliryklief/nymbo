@@ -1748,15 +1748,16 @@ for (const t of TREES) {
       for (let y = 1; y < H; y++) mk(V(t.x, y + .5, t.z), V(1, 1, 1), y % 2 ? '#c4e8fb' : '#aedcf6');
       mk(V(t.x, H + .35, t.z), V(.7, .7, .7), '#eefaff');
     } else if (DESERT) { // the desert: tall cacti with arms, and date palms
+      const y0 = TH(t.x, t.z), mkS = (p, ...r) => mk(p.setY(p.y + y0), ...r); // (standing on the sand, wherever the dunes put it)
       if ((Math.round(t.x * 7 + t.z * 3) & 1) === 0) { const H = t.h + 2, g = ['#3f8a3a', '#4b9a44', '#367a33'];
-        for (let y = 0; y < H; y++) mk(V(t.x, y + .5, t.z), V(.9, 1, .9), g[y % 3]); mk(V(t.x, H + .2, t.z), V(.7, .4, .7), '#ffd36a'); // (a flower on top)
-        const ax = (Math.round(t.z) & 1) ? 1 : -1; mk(V(t.x + ax, 2.5, t.z), V(1.1, .7, .7), g[1]); mk(V(t.x + ax * 1.35, 3.5, t.z), V(.7, 1.4, .7), g[0]);
-        mk(V(t.x, 3.3, t.z - ax), V(.7, .7, 1.1), g[2]); mk(V(t.x, 4.2, t.z - ax * 1.35), V(.7, 1.2, .7), g[1]);
+        for (let y = 0; y < H; y++) mkS(V(t.x, y + .5, t.z), V(.9, 1, .9), g[y % 3]); mkS(V(t.x, H + .2, t.z), V(.7, .4, .7), '#ffd36a'); // (a flower on top)
+        const ax = (Math.round(t.z) & 1) ? 1 : -1; mkS(V(t.x + ax, 2.5, t.z), V(1.1, .7, .7), g[1]); mkS(V(t.x + ax * 1.35, 3.5, t.z), V(.7, 1.4, .7), g[0]);
+        mkS(V(t.x, 3.3, t.z - ax), V(.7, .7, 1.1), g[2]); mkS(V(t.x, 4.2, t.z - ax * 1.35), V(.7, 1.2, .7), g[1]);
       } else { const H = t.h + 3;
-        for (let y = 0; y < H; y++) mk(V(t.x, y + .5, t.z), V(.8, 1, .8), y % 2 ? '#9a7348' : '#8a6640');
-        mk(V(t.x, H + .3, t.z), V(1.2, .6, 1.2), '#7a5a32'); // (the crown, with dates)
-        for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) mk(V(t.x + fx * 1.8, H + .2, t.z + fz * 1.8), V(fx ? 2.6 : .9, .25, fz ? 2.6 : .9), '#4c9a3a');
-        for (const [fx, fz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) mk(V(t.x + fx * 1.2, H - .1, t.z + fz * 1.2), V(1.2, .25, 1.2), '#5aab45');
+        for (let y = 0; y < H; y++) mkS(V(t.x, y + .5, t.z), V(.8, 1, .8), y % 2 ? '#9a7348' : '#8a6640');
+        mkS(V(t.x, H + .3, t.z), V(1.2, .6, 1.2), '#7a5a32'); // (the crown, with dates)
+        for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) mkS(V(t.x + fx * 1.8, H + .2, t.z + fz * 1.8), V(fx ? 2.6 : .9, .25, fz ? 2.6 : .9), '#4c9a3a');
+        for (const [fx, fz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) mkS(V(t.x + fx * 1.2, H - .1, t.z + fz * 1.2), V(1.2, .25, 1.2), '#5aab45');
       }
     } else {
     for (let y = 0; y < t.h; y++) mk(V(t.x, y + .5, t.z), V(1, 1, 1), '#6b4526');
@@ -4498,7 +4499,7 @@ function sheepLoose(a, r) {
 }
 function woolHeap(p) {
   netEv(['wool', +p.x.toFixed(2), +p.z.toFixed(2)]);
-  const g = new THREE.Group(); g.position.set(p.x, 0, p.z);
+  const g = new THREE.Group(); g.position.set(p.x, TH(p.x, p.z), p.z); // (on top of the sand on the desert's dunes)
   for (let i = 0; i < 95; i++) { // a huge fluffy heap, thickest in the middle
     const m = new THREE.Mesh(woolGeo, woolMat); const ang = rnd() * 6.28, d = Math.sqrt(rnd()) * WOOL_R * .92, s = rr(.7, 1.6) * (1.25 - d / WOOL_R * .6);
     m.position.set(Math.cos(ang) * d, s * .3 + (d < 2.5 ? rr(0, .6) : 0), Math.sin(ang) * d); m.scale.set(s * rr(1, 1.6), s * .7, s * rr(1, 1.6)); m.rotation.y = rnd() * 3; m.castShadow = i % 4 === 0; g.add(m);
@@ -4507,7 +4508,7 @@ function woolHeap(p) {
   WOOL.push({ x: p.x, z: p.z, t: WOOL_TIME, g });
   fxDebris(V(p.x, p.y + 1, p.z), 0xffffff, 60, 8);
 }
-const inWool = p => p.y < 2 && WOOL.some(w => Math.hypot(p.x - w.x, p.z - w.z) < WOOL_R);
+const inWool = p => WOOL.some(w => Math.hypot(p.x - w.x, p.z - w.z) < WOOL_R && p.y - TH(p.x, p.z) < 2.2); // (measured from the ground there, so it works on top of a dune too)
 function updateWool(dt) {
   for (let k = WOOL.length - 1; k >= 0; k--) {
     const w = WOOL[k]; w.t -= dt;
@@ -5934,7 +5935,7 @@ function hazardAt(r, x, z) {
 // How: the game keeps a recording of the whole world, 10 times a second, for the last 10 seconds (blocks that are lying
 // still cost almost nothing to record). The host's game does it all, so in a network match it looks the same for everyone.
 // ============================================================
-const RW = { clock: 0, frames: [], recAt: 0, playing: false, pt: 0, dur: 2.5, used: { blue: false, red: false }, movers: null };
+const RW = { q2: new THREE.Quaternion(), resumeT: 0, clock: 0, frames: [], recAt: 0, playing: false, pt: 0, dur: 2.5, used: { blue: false, red: false }, movers: null };
 const RW_KEEP = 10, RW_EVERY = .1, RW_NB = 14;
 function rwRecord() {
   const t = RW.clock; if (t - RW.recAt < RW_EVERY) return; RW.recAt = t; // (game time: a slow frame doesn't shorten the 10 seconds)
@@ -5956,10 +5957,10 @@ function rwRecord() {
 function rwApplyVisual(F, G, k) { // somewhere between two recorded moments
   for (let i = 0; i < robots.length; i++) { const r = robots[i], a = F.rob[i], b = G.rob[i]; if (!r.body) continue;
     r.body.setTranslation({ x: a.p[0] + (b.p[0] - a.p[0]) * k, y: a.p[1] + (b.p[1] - a.p[1]) * k, z: a.p[2] + (b.p[2] - a.p[2]) * k }, false); r.body.setLinvel({ x: 0, y: 0, z: 0 }, false);
-    r.yaw = r.yawT = a.yaw + (b.yaw - a.yaw) * k; r.pt = null; }
+    const dy = Math.atan2(Math.sin(b.yaw - a.yaw), Math.cos(b.yaw - a.yaw)); r.yaw = r.yawT = a.yaw + dy * k; r.pt = null; } // (the short way round)
   for (const e of RW.movers) { if (e.dead || !e.body || e.holder) continue; const i = F.idx.get(e), j = G.idx.get(e); if (i == null || j == null) continue;
     const A = i * RW_NB, B = j * RW_NB, L = (o) => F.d[A + o] + (G.d[B + o] - F.d[A + o]) * k;
-    e.body.setTranslation({ x: L(0), y: L(1), z: L(2) }, false); e.body.setRotation({ x: F.d[A + 3], y: F.d[A + 4], z: F.d[A + 5], w: F.d[A + 6] }, false); e.body.setLinvel({ x: 0, y: 0, z: 0 }, false); e.pt = null; e.pq = null; }
+    e.body.setTranslation({ x: L(0), y: L(1), z: L(2) }, false); tmpQ.set(F.d[A + 3], F.d[A + 4], F.d[A + 5], F.d[A + 6]).slerp(RW.q2.set(G.d[B + 3], G.d[B + 4], G.d[B + 5], G.d[B + 6]), k); e.body.setRotation({ x: tmpQ.x, y: tmpQ.y, z: tmpQ.z, w: tmpQ.w }, false); e.body.setLinvel({ x: 0, y: 0, z: 0 }, false); e.pt = null; e.pq = null; }
 }
 // ---- putting the world back exactly as it was at the oldest moment kept ----
 function rwRestore(F) {
@@ -6006,7 +6007,7 @@ function startRewind(team) {
   bigToast('REWIND', 'blue'); document.body.classList.add('rewinding'); rwaSlow();
 }
 function rewindBack() { // (the stop: from here it runs backwards)
-  RW.phase = 'back'; RW.pt = 0; RW.snap = RW.frames.slice(); RW.frames = [];
+  RW.phase = 'back'; RW.pt = 0; RW.recAt = -1e9; rwRecord(); RW.snap = RW.frames.slice(); RW.frames = []; // (the very latest moment too, so it turns round without a jump)
   const t0 = RW.snap[0].t; RW.movers = blocks.filter(e => (e.rwMoved || 0) >= t0 && !e.dead && e.kind !== 'animal'); rwaBack();
 }
 function rewindTick(dt) {
@@ -6015,12 +6016,13 @@ function rewindTick(dt) {
   if (match.state === 'play') { match.time -= dt; if (match.time <= 0) { match.time = 0; } } // (the clock keeps running)
   for (const r of robots) { r.wantSpeed = 0; if (r.body) syncRobot(r); }
   updateBlocks(0); updateFx(dt); updateCamera(dt);
-  if (k >= 1) { rwRestore(fr[0]); RW.playing = false; RW.phase = null; RW.snap = null; RW.movers = null; document.body.classList.remove('rewinding'); rwaEnd(); sfx('swoop'); }
+  if (k >= 1) { rwRestore(fr[0]); RW.playing = false; RW.phase = null; RW.snap = null; RW.movers = null; document.body.classList.remove('rewinding'); rwaEnd(); sfx('swoop'); RW.resumeT = .8; } // (then time speeds back up to normal, rather than snapping)
 }
 RW.dur = 3;
 { const tk0 = tick; tick = function (dt, t) {
     if (RW.playing && RW.phase === 'back') return rewindTick(dt);
     let s = 1; if (RW.playing) { RW.pt += dt; const u = Math.min(1, RW.pt / 3); s = Math.max(.02, (1 - u) * (1 - u)); } // (slowing to a stop)
+    else if (RW.resumeT > 0) { RW.resumeT -= dt; const u = 1 - Math.max(0, RW.resumeT) / .8; s = Math.max(.05, u * u * (3 - 2 * u)); } // (picking back up)
     const res = tk0(dt * s, t);
     if (match.state === 'play' && !(NET && NET.client)) { if (s < 1) match.time = Math.max(0, match.time - dt * (1 - s)); RW.clock += dt * s; rwRecord(); }
     if (RW.playing && RW.pt >= 3) rewindBack();
