@@ -337,6 +337,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <h2>Settings</h2>
     <div class="sect"><h3>Sound &amp; feel</h3>
       <div class="tog"><label for="sSound">Sound effects</label><input id="sSound" type="checkbox"></div>
+      <div class="tog"><label for="sOden">Oden V1 <small>a voice and sound pack: an announcer, your robot's voice, eight bot characters, whispers from the flags, new effects</small></label><input id="sOden" type="checkbox"></div>
       <div class="tog"><label for="sBuzz">Vibration</label><input id="sBuzz" type="checkbox"></div></div>
     <div class="sect"><h3>Playing</h3>
       <div class="tog"><label for="sReplay">Instant replay when you're knocked out <small>off = a replay button while you're down</small></label><input id="sReplay" type="checkbox"></div>
@@ -429,7 +430,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 <div id="loading">NYMBO</div>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/","rapier":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/rapier.es.js"}}</script>
-<script>window.NYMBO_FILES=["alert", "alert_2", "alert_3", "amb_bed", "amb_birds", "amb_grass", "amb_night", "amb_night_2", "amb_night_3", "amb_trees", "amb_wind", "amb_wind_2", "amb_wind_3", "baa1", "baa2", "baa3", "baa4", "baa5", "baa6", "baa7", "baa8", "baa9", "beep", "blackout", "blackout_2", "blackout_3", "boom", "boom1", "boom2", "boom_2", "boom_3", "boom_big", "boom_big_2", "boom_big_3", "boom_tail", "boom_tail_2", "boost", "boost_2", "boost_3", "catch", "catch_2", "catch_3", "cheer", "chimes", "chirp_blue", "chirp_blue_2", "chirp_blue_3", "chirp_red", "chirp_red_2", "chirp_red_3", "clonk", "clonk1", "clonk2", "clonk3", "clonk_2", "clonk_3", "clonk_big", "clonk_big_2", "clonk_big_3", "cloth", "confirm", "crow", "crow_2", "crow_3", "crumble", "crumble1", "crumble2", "crumble_2", "crumble_3", "defeat", "defeat_2", "denied", "denied_2", "denied_3", "dodge", "dodge_2", "dodge_3", "flagDrop", "flagDrop_2", "flagDrop_3", "flagGrab", "flagGrab_2", "flagGrab_3", "flagdrop", "freeze", "freeze_2", "freeze_3", "full", "full_2", "full_3", "glock", "go", "go_2", "go_3", "gong", "grab", "grab1", "grab2", "grab3", "grab_2", "grab_3", "grab_bomb", "grab_bomb_2", "grab_bomb_3", "grab_freeze", "grab_freeze_2", "grab_freeze_3", "grab_homing", "grab_homing_2", "heart", "hit", "hit1", "hit2", "hit3", "hit_2", "hit_3", "hole", "hoof", "hoof_2", "hoof_3", "ice_crack", "ice_crack_2", "ice_crack_3", "impact_stone", "impact_stone_2", "impact_stone_3", "impact_wood", "impact_wood_2", "impact_wood_3", "intro", "intro_2", "intro_3", "invis", "invis_2", "invis_3", "jet", "jet_2", "jump", "jump2", "jump_2", "jump_3", "ko", "ko_2", "ko_3", "land", "land2", "land_2", "land_3", "lightsOn", "lightsOn_2", "lightsOn_3", "lock", "lose", "lose_2", "lose_3", "moo1", "moo2", "moo3", "moo4", "moo5", "nuke", "nuke_rumble", "pad", "pad_2", "pad_3", "plop", "pop", "portal", "portal_2", "portal_3", "portal_hum", "powerdown", "powerup", "reload", "reload_2", "reload_3", "repair", "repair_2", "repair_3", "respawn", "respawn_2", "respawn_3", "roll", "score", "score_2", "score_3", "servo", "servo_2", "servo_3", "shatter", "shatter1", "shatter2", "shatter_2", "shatter_3", "siren", "slide", "slide_2", "slowmo", "slowmo_2", "streak", "streak_2", "streak_3", "swoop", "throw", "throw1", "throw2", "throw3", "throw_2", "throw_3", "tick", "tornado", "tramp", "ui", "v2_alert", "v2_amb_bed", "v2_amb_grass", "v2_amb_trees", "v2_baa1", "v2_baa2", "v2_baa3", "v2_baa4", "v2_baa5", "v2_baa6", "v2_baa7", "v2_baa8", "v2_baa9", "v2_boom1", "v2_boom2", "v2_boom_tail", "v2_cheer", "v2_chimes", "v2_clonk1", "v2_clonk2", "v2_clonk3", "v2_clonk_big", "v2_cloth", "v2_confirm", "v2_crumble1", "v2_crumble2", "v2_denied", "v2_dodge", "v2_flagdrop", "v2_freeze", "v2_full", "v2_glock", "v2_gong", "v2_grab1", "v2_grab2", "v2_grab3", "v2_grab_bomb", "v2_grab_freeze", "v2_grab_homing", "v2_heart", "v2_hit1", "v2_hit2", "v2_hit3", "v2_hoof", "v2_ice_crack", "v2_impact_stone", "v2_impact_wood", "v2_jump", "v2_jump2", "v2_ko", "v2_land", "v2_land2", "v2_lock", "v2_moo1", "v2_moo2", "v2_moo3", "v2_moo4", "v2_moo5", "v2_nuke_rumble", "v2_plop", "v2_pop", "v2_portal", "v2_powerdown", "v2_powerup", "v2_reload", "v2_respawn", "v2_roll", "v2_shatter1", "v2_shatter2", "v2_siren", "v2_throw1", "v2_throw2", "v2_throw3", "v2_tick", "v2_tramp", "v2_ui", "v2_v_cow", "v2_v_dark", "v2_v_frozen", "v2_v_gotit", "v2_v_ice", "v2_v_invis", "v2_v_nuke", "v2_v_oops", "v2_v_ouch", "v2_v_returned", "v2_v_run", "v2_v_scored", "v2_v_slow", "v2_v_stolen", "v2_v_theyscored", "v2_v_tornado", "v2_v_visible", "v2_vjump1", "v2_vjump2", "v2_vjump3", "v2_whoosh_big", "v2_whoosh_long", "v_cow", "v_dark", "v_frozen", "v_gotit", "v_ice", "v_invis", "v_nuke", "v_oops", "v_ouch", "v_returned", "v_run", "v_scored", "v_slow", "v_stolen", "v_theyscored", "v_tornado", "v_visible", "visible", "visible_2", "vjump1", "vjump2", "vjump3", "whoosh_big", "whoosh_big_2", "whoosh_big_3", "whoosh_long", "win", "win_2"]</script>
+<script>window.NYMBO_FILES=["alert", "alert_2", "alert_3", "amb_bed", "amb_birds", "amb_grass", "amb_night", "amb_night_2", "amb_night_3", "amb_trees", "amb_wind", "amb_wind_2", "amb_wind_3", "baa1", "baa2", "baa3", "baa4", "baa5", "baa6", "baa7", "baa8", "baa9", "beep", "blackout", "blackout_2", "blackout_3", "boom", "boom1", "boom2", "boom_2", "boom_3", "boom_big", "boom_big_2", "boom_big_3", "boom_tail", "boom_tail_2", "boost", "boost_2", "boost_3", "catch", "catch_2", "catch_3", "cheer", "chimes", "chirp_blue", "chirp_blue_2", "chirp_blue_3", "chirp_red", "chirp_red_2", "chirp_red_3", "clonk", "clonk1", "clonk2", "clonk3", "clonk_2", "clonk_3", "clonk_big", "clonk_big_2", "clonk_big_3", "cloth", "confirm", "crow", "crow_2", "crow_3", "crumble", "crumble1", "crumble2", "crumble_2", "crumble_3", "defeat", "defeat_2", "denied", "denied_2", "denied_3", "dodge", "dodge_2", "dodge_3", "flagDrop", "flagDrop_2", "flagDrop_3", "flagGrab", "flagGrab_2", "flagGrab_3", "flagdrop", "freeze", "freeze_2", "freeze_3", "full", "full_2", "full_3", "glock", "go", "go_2", "go_3", "gong", "grab", "grab1", "grab2", "grab3", "grab_2", "grab_3", "grab_bomb", "grab_bomb_2", "grab_bomb_3", "grab_freeze", "grab_freeze_2", "grab_freeze_3", "grab_homing", "grab_homing_2", "heart", "hit", "hit1", "hit2", "hit3", "hit_2", "hit_3", "hole", "hoof", "hoof_2", "hoof_3", "ice_crack", "ice_crack_2", "ice_crack_3", "impact_stone", "impact_stone_2", "impact_stone_3", "impact_wood", "impact_wood_2", "impact_wood_3", "intro", "intro_2", "intro_3", "invis", "invis_2", "invis_3", "jet", "jet_2", "jump", "jump2", "jump_2", "jump_3", "ko", "ko_2", "ko_3", "land", "land2", "land_2", "land_3", "lightsOn", "lightsOn_2", "lightsOn_3", "lock", "lose", "lose_2", "lose_3", "moo1", "moo2", "moo3", "moo4", "moo5", "nuke", "nuke_rumble", "oden_ann_countdown", "oden_ann_critical_hit", "oden_ann_defeat", "oden_ann_draw", "oden_ann_final_countdown", "oden_ann_first_hit", "oden_ann_game_opening", "oden_ann_match_start", "oden_ann_nex_recovered", "oden_ann_nex_returned", "oden_ann_nex_stolen", "oden_ann_prepare", "oden_ann_sixty_seconds", "oden_ann_victory", "oden_bot_aurinym_01", "oden_bot_aurinym_02", "oden_bot_aurinym_03", "oden_bot_aurinym_04", "oden_bot_aurinym_05", "oden_bot_cronym_01", "oden_bot_cronym_02", "oden_bot_cronym_03", "oden_bot_cronym_04", "oden_bot_cronym_05", "oden_bot_fernym_01", "oden_bot_fernym_02", "oden_bot_fernym_03", "oden_bot_fernym_04", "oden_bot_fernym_05", "oden_bot_nymbus_01", "oden_bot_nymbus_02", "oden_bot_nymbus_03", "oden_bot_nymbus_04", "oden_bot_nymbus_05", "oden_bot_penzonym_01", "oden_bot_penzonym_02", "oden_bot_penzonym_03", "oden_bot_penzonym_04", "oden_bot_penzonym_05", "oden_bot_piconym_01", "oden_bot_piconym_02", "oden_bot_piconym_03", "oden_bot_piconym_04", "oden_bot_piconym_05", "oden_bot_rezinym_01", "oden_bot_rezinym_02", "oden_bot_rezinym_03", "oden_bot_rezinym_04", "oden_bot_rezinym_05", "oden_bot_vionym_01", "oden_bot_vionym_02", "oden_bot_vionym_03", "oden_bot_vionym_04", "oden_bot_vionym_05", "oden_cv_blackhole", "oden_cv_bomb", "oden_cv_dodge", "oden_cv_freeze", "oden_cv_hit_opponent", "oden_cv_homing", "oden_cv_miss_throw", "oden_cv_pickup_block", "oden_cv_respawn", "oden_cv_take_damage", "oden_cv_throw_block", "oden_cv_win", "oden_nex_01", "oden_nex_02", "oden_nex_03", "oden_nex_04", "oden_nex_05", "oden_nex_06", "oden_nex_07", "oden_nex_08", "oden_sfx_blackhole_vortex", "oden_sfx_block_impact", "oden_sfx_block_throw", "oden_sfx_bomb_explosion", "oden_sfx_defeat_shutdown", "oden_sfx_dodge_dash", "oden_sfx_freeze_burst", "oden_sfx_homing_lock", "oden_sfx_magnetic_pickup", "oden_sfx_menu_select", "oden_sfx_nex_capture", "oden_sfx_nex_signal", "oden_sfx_respawn", "oden_sfx_victory_fanfare", "pad", "pad_2", "pad_3", "plop", "pop", "portal", "portal_2", "portal_3", "portal_hum", "powerdown", "powerup", "reload", "reload_2", "reload_3", "repair", "repair_2", "repair_3", "respawn", "respawn_2", "respawn_3", "roll", "score", "score_2", "score_3", "servo", "servo_2", "servo_3", "shatter", "shatter1", "shatter2", "shatter_2", "shatter_3", "siren", "slide", "slide_2", "slowmo", "slowmo_2", "streak", "streak_2", "streak_3", "swoop", "throw", "throw1", "throw2", "throw3", "throw_2", "throw_3", "tick", "tornado", "tramp", "ui", "v2_alert", "v2_amb_bed", "v2_amb_grass", "v2_amb_trees", "v2_baa1", "v2_baa2", "v2_baa3", "v2_baa4", "v2_baa5", "v2_baa6", "v2_baa7", "v2_baa8", "v2_baa9", "v2_boom1", "v2_boom2", "v2_boom_tail", "v2_cheer", "v2_chimes", "v2_clonk1", "v2_clonk2", "v2_clonk3", "v2_clonk_big", "v2_cloth", "v2_confirm", "v2_crumble1", "v2_crumble2", "v2_denied", "v2_dodge", "v2_flagdrop", "v2_freeze", "v2_full", "v2_glock", "v2_gong", "v2_grab1", "v2_grab2", "v2_grab3", "v2_grab_bomb", "v2_grab_freeze", "v2_grab_homing", "v2_heart", "v2_hit1", "v2_hit2", "v2_hit3", "v2_hoof", "v2_ice_crack", "v2_impact_stone", "v2_impact_wood", "v2_jump", "v2_jump2", "v2_ko", "v2_land", "v2_land2", "v2_lock", "v2_moo1", "v2_moo2", "v2_moo3", "v2_moo4", "v2_moo5", "v2_nuke_rumble", "v2_plop", "v2_pop", "v2_portal", "v2_powerdown", "v2_powerup", "v2_reload", "v2_respawn", "v2_roll", "v2_shatter1", "v2_shatter2", "v2_siren", "v2_throw1", "v2_throw2", "v2_throw3", "v2_tick", "v2_tramp", "v2_ui", "v2_v_cow", "v2_v_dark", "v2_v_frozen", "v2_v_gotit", "v2_v_ice", "v2_v_invis", "v2_v_nuke", "v2_v_oops", "v2_v_ouch", "v2_v_returned", "v2_v_run", "v2_v_scored", "v2_v_slow", "v2_v_stolen", "v2_v_theyscored", "v2_v_tornado", "v2_v_visible", "v2_vjump1", "v2_vjump2", "v2_vjump3", "v2_whoosh_big", "v2_whoosh_long", "v_cow", "v_dark", "v_frozen", "v_gotit", "v_ice", "v_invis", "v_nuke", "v_oops", "v_ouch", "v_returned", "v_run", "v_scored", "v_slow", "v_stolen", "v_theyscored", "v_tornado", "v_visible", "visible", "visible_2", "vjump1", "vjump2", "vjump3", "whoosh_big", "whoosh_big_2", "whoosh_big_3", "whoosh_long", "win", "win_2"]</script>
 <script type="module">
 // ============================================================
 // NYMBO · match test build
@@ -1030,17 +1031,30 @@ const tramp = (() => {
     rimGeo: new THREE.TorusGeometry(1.5, .17, 10, 40).rotateX(Math.PI / 2), matGeo: new THREE.CylinderGeometry(1.42, 1.42, .04, 40),
     springGeo: new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, .022, 5), baseGeo: new THREE.TorusGeometry(1.5, .07, 6, 40).rotateX(Math.PI / 2) };
 })();
-function trampoline(x, z) {
+// the slide trampoline (sky map): its own look, aqua and white with a water drop, because it does something different:
+// it fires you on a fixed arc straight into the pool at the top of the water slide
+const trampSlide = (() => {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 16; const g = c.getContext('2d');
+  for (let i = 0; i < 16; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#18c8e8'; g.fillRect(i * 16, 0, 16, 16); }
+  const rimTex = new THREE.CanvasTexture(c); rimTex.colorSpace = THREE.SRGBColorSpace;
+  const m = document.createElement('canvas'); m.width = m.height = 256; const h = m.getContext('2d');
+  const gr = h.createRadialGradient(128, 128, 20, 128, 128, 128); gr.addColorStop(0, '#2bb7e8'); gr.addColorStop(1, '#0b4f86'); h.fillStyle = gr; h.fillRect(0, 0, 256, 256);
+  h.strokeStyle = 'rgba(255,255,255,.55)'; h.lineWidth = 7; for (const r_ of [96, 70]) { h.beginPath(); for (let a = 0; a <= 6.3; a += .05) h.lineTo(128 + Math.cos(a) * (r_ + 5 * Math.sin(a * 8)), 128 + Math.sin(a) * (r_ + 5 * Math.sin(a * 8))); h.stroke(); }
+  h.fillStyle = '#ffffff'; h.beginPath(); h.moveTo(128, 82); h.bezierCurveTo(150, 116, 160, 132, 160, 148); h.arc(128, 148, 32, 0, Math.PI); h.bezierCurveTo(96, 132, 106, 116, 128, 82); h.fill(); /* (a water drop) */
+  const matTex = new THREE.CanvasTexture(m); matTex.colorSpace = THREE.SRGBColorSpace; matTex.userData.cv = m;
+  return { rim: new LiteMat({ map: rimTex, emissive: 0x0a3a48, emissiveIntensity: .4 }), mat: new LiteMat({ map: matTex }) };
+})();
+function trampoline(x, z, slide = false) {
   const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
   // set INTO the ground (flush, nothing to bump into): a dark pit ring, the striped rim barely sticking out, the mat level with the grass
   const pit = new THREE.Mesh(new THREE.CircleGeometry(1.85, 40).rotateX(-Math.PI / 2), tramp.base); pit.position.y = .012; g.add(pit);
   const top = new THREE.Group(); top.position.y = 0; g.add(top);
-  const rim = new THREE.Mesh(tramp.rimGeo, tramp.rim.clone()); /* own material: each rim flashes on its own */ rim.position.y = -.07; rim.scale.set(1, .7, 1); top.add(rim);
-  const mat = new THREE.Mesh(tramp.matGeo, tramp.mat); mat.position.y = .02; mat.receiveShadow = true; top.add(mat);
+  const rim = new THREE.Mesh(tramp.rimGeo, (slide ? trampSlide : tramp).rim.clone()); /* own material: each rim flashes on its own */ rim.position.y = -.07; rim.scale.set(1, .7, 1); top.add(rim);
+  const mat = new THREE.Mesh(tramp.matGeo, slide ? trampSlide.mat : tramp.mat); mat.position.y = .02; mat.receiveShadow = true; top.add(mat);
   const springs = [];
   // no collider at all: thrown blocks, rubble and animals pass straight over it like it's not there
   staticBoxes.push({ x0: x - 2, y0: 0, z0: z - 2, x1: x + 2, y1: .2, z1: z + 2, foot: true });
-  PADS.push({ x, z, g, top, mat, rim, springs, sq: 0, sqv: 0, broken: false, back: 0, grow: 1 });
+  PADS.push({ x, z, g, top, mat, rim, springs, sq: 0, sqv: 0, broken: false, back: 0, grow: 1, slide });
 }
 // a bomb (or nuke) landing on a trampoline smashes it: the rim and mat burst into pieces that tumble about,
 // then, like the fort towers, it builds itself back after a while
@@ -1083,7 +1097,7 @@ function speedStrip(x, z, dx, dz, team) {
   for (let i = 0; i < 3; i++) { const p = V(x + dir.x * i * 4, .03, z + dir.z * i * 4); ARROWS.push({ p, dir, i }); } // boost zones (unchanged)
   staticBoxes.push({ x0: Math.min(x, x + dir.x * 8) - 2.5, y0: 0, z0: Math.min(z, z + dir.z * 8) - 2.5, x1: Math.max(x, x + dir.x * 8) + 2.5, y1: .1, z1: Math.max(z, z + dir.z * 8) + 2.5, foot: true });
 }
-for (const t of TRAMP_SPOTS) trampoline(t.x, t.z);
+for (const t of TRAMP_SPOTS) trampoline(t.x, t.z, !!(t.slide && CH));
 for (const S_ of STRIP_SPOTS) speedStrip(S_.x, S_.z, S_.dx, S_.dz, S_.team); // mirrored (point-symmetric): blue panel on our side, red on theirs
 // the mat's rings slide inwards and shrink (it's pulling you in): same look, just alive
 function animateMat(t) {
@@ -1118,6 +1132,12 @@ function updateLaunchers(dt, visualOnly = false) {
         const T = 2 * PAD_UP / G, land = o => V(c.x + f.x * o * T * .82, 0, c.z + f.z * o * T * .82);
         const bad = q => Math.abs(q.x) > MX - 5 || Math.abs(q.z) > MZ - 5 || Object.values(FORT).some(F => Math.abs(q.x - F.x) < FORT_RX + 3 && Math.abs(q.z - F.z) < FORT_RZ + 3);
         while (out > 1 && bad(land(out))) out -= .5;
+        const SP = Pd.slide && typeof SLIDES !== 'undefined' && SLIDES.find(S_ => S_.plat && Math.hypot(S_.T.x - Pd.x, S_.T.z - Pd.z) < 1);
+        if (SP) { // the slide trampoline: one fixed arc, straight into the pool at the top of the slide; no steering on the way
+          // unless you jump (then you're on your own)
+          const tg = SP.plat.c, Tf = 1.7, dy = tg.y + .5 - c.y;
+          r.body.setLinvel({ x: (tg.x - c.x) / Tf, y: (dy + .5 * G * Tf * Tf) / Tf, z: (tg.z - c.z) / Tf }, true); r.padLock = now() + Tf * 1000 + 150;
+          r.jumps = 0; r.grounded = false; r.padT = 2.9; r.model.sq = -.35; r.model.sqv = 7; Pd.sqv = -9; sfx('pad', V(Pd.x, .5, Pd.z)); fxBurst(V(Pd.x, .6, Pd.z), 0x5fe0ff, 1.6, .3); continue; }
         r.body.setLinvel({ x: f.x * out, y: PAD_UP, z: f.z * out }, true); r.jumps = 0; /* both your jumps are still there after a trampoline */ r.grounded = false; r.padT = 2.9;
         r.model.sq = -.35; r.model.sqv = 7; Pd.sqv = -9; sfx('pad', V(Pd.x, .5, Pd.z)); fxBurst(V(Pd.x, .6, Pd.z), 0xffd21f, 1.6, .3);
       }
@@ -3132,7 +3152,8 @@ function updateRobot(r, dt) {
   if (r.boost) { des.add(r.boost); r.boost.multiplyScalar(Math.exp(-1.3 * dt)); if (r.boost.lengthSq() < .3) r.boost = null; } // speed arrows
   if (r.gasT > 0) r.gasT -= dt; // (in the stink cloud: crawling)
   if (r.padT > 0) { r.padT -= dt; if (r.grounded && r.padT < 2.4) r.padT = 0; } // landed: normal steering straight back
-  const k = 1 - Math.exp(-(r.grounded ? (onIce(rPos(r)) ? 1.3 : 14) : r.padT > 0 ? .45 : 4) * dt); // launched by a pad: you keep the launch, steering only a little // ice slick: almost no grip
+  if (r.padLock && (r.grounded || r.jumpReq || now() > r.padLock)) r.padLock = 0; /* (the slide trampoline's arc: locked until you land, jump, or it's done) */
+  const k = r.padLock ? 0 : 1 - Math.exp(-(r.grounded ? (onIce(rPos(r)) ? 1.3 : 14) : r.padT > 0 ? .45 : 4) * dt); // launched by a pad: you keep the launch, steering only a little // ice slick: almost no grip
   let vy = lv.y;
   if (r.jumpReq) {
     r.jumpReq = false;
@@ -5880,7 +5901,7 @@ function restart(auto) {
 }
 const bindRange = (id, key, fmt) => { const el = $(id), v = $(id + 'V'); el.value = S[key]; const sh = () => v.textContent = fmt(S[key]); sh(); el.oninput = () => { S[key] = +el.value; sh(); saveS(); }; };
 S.classic = false; // (the old made-in-code sound set is gone from the settings: always the real sounds)
-for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sAllPowers', 'allPowers'], ['sFps', 'fps'], ['sReplay', 'replay'], ['sLand', 'land']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); }; }
+for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sOden', 'oden'], ['sAllPowers', 'allPowers'], ['sFps', 'fps'], ['sReplay', 'replay'], ['sLand', 'land']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); if (key === 'oden' && S.oden) odenLoad(); }; }
 
 let wakeLock = null;
 const INTRO_T = 8.2; // flyover length; the last 5 seconds show the countdown
@@ -6055,7 +6076,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -8526,6 +8547,89 @@ function joinerVoiceStart() {
 $('micBtn').onclick = voiceToggle;
 $('lobbyMic').onclick = voiceToggle;
 setInterval(() => { const inRoom = !!NET; $('micBtn').hidden = !inRoom || match.state === 'menu' && $('lobby').hidden; $('lobbyMic').hidden = !inRoom; const on = VOICE.on; for (const b of [$('micBtn'), $('lobbyMic')]) { b.classList.toggle('on', on); b.textContent = on ? '🎤 on' : '🎤 off'; } if (NET && NET.host && !VOICE.hostReady && NET.peer) { hostVoiceStart(); } }, 500);
+
+// ============================================================
+// ODEN V1 (Settings > Sound & feel): a voice and sound pack that was sent in ("NYMBO Powerful Voices 2.0").
+//  - an announcer for the round: opening, get ready, countdown, go, one minute left, final countdown, first hit,
+//    flag stolen / recovered / returned, victory / defeat / draw
+//  - your own robot talks: picking up, throwing (bombs, freezes, homing blocks), dodging, hitting someone, getting hit,
+//    coming back, a black hole, winning
+//  - eight bot characters (Penzonym, Nymbus, Fernym, Rezinym, Cronym, Aurinym, Vionym, Piconym), each with five lines,
+//    heard from where that bot is
+//  - whispers from the flags when you're close to theirs or carrying it
+//  - its own sound effects for throws, pickups, hits, knockouts, bombs, freezes, dodges, homing, black hole, scoring, winning
+// Only loaded when it's switched on. One voice line at a time, so they never pile up.
+// ============================================================
+if (S.oden === undefined) S.oden = false;
+const ODEN = { loaded: false, busyUntil: 0, busyPrio: 0, firstHit: false, last60: false, last10: false, whisperT: 12, next: null };
+const ODEN_BOTS = ['penzonym', 'nymbus', 'fernym', 'rezinym', 'cronym', 'aurinym', 'vionym', 'piconym'];
+const ODEN_FILES = [
+  ...['countdown', 'critical_hit', 'defeat', 'draw', 'final_countdown', 'first_hit', 'game_opening', 'match_start', 'nex_recovered', 'nex_returned', 'nex_stolen', 'prepare', 'sixty_seconds', 'victory'].map(n => 'oden_ann_' + n),
+  ...['blackhole', 'bomb', 'dodge', 'freeze', 'hit_opponent', 'homing', 'miss_throw', 'pickup_block', 'respawn', 'take_damage', 'throw_block', 'win'].map(n => 'oden_cv_' + n),
+  ...ODEN_BOTS.flatMap(b => [1, 2, 3, 4, 5].map(k => `oden_bot_${b}_0${k}`)),
+  ...[1, 2, 3, 4, 5, 6, 7, 8].map(k => 'oden_nex_0' + k),
+  ...['blackhole_vortex', 'block_impact', 'block_throw', 'bomb_explosion', 'defeat_shutdown', 'dodge_dash', 'freeze_burst', 'homing_lock', 'magnetic_pickup', 'menu_select', 'nex_capture', 'nex_signal', 'respawn', 'victory_fanfare'].map(n => 'oden_sfx_' + n)];
+function odenLoad() {
+  if (ODEN.loaded || !AC) return; ODEN.loaded = true;
+  for (const n of ODEN_FILES) (window.NYMBO_SOUNDS && NYMBO_SOUNDS[n] ? Promise.resolve(Uint8Array.from(atob(NYMBO_SOUNDS[n]), c => c.charCodeAt(0)).buffer) : fetch('sounds/' + n + '.mp3').then(r => r.ok ? r.arrayBuffer() : Promise.reject()))
+    .then(a => AC.decodeAudioData(a)).then(b => { BUF[n] = b; }).catch(() => {});
+}
+setInterval(() => { if (S.oden && AC && !ODEN.loaded) odenLoad(); }, 500);
+const odenOn = () => S.oden && S.sound && AC;
+// a voice line (not from anywhere in the world): one at a time; a more important line can cut in
+function odenSay(n, prio = 1, vol = 1, delay = 0) {
+  if (!odenOn() || !BUF[n]) return; const t = now();
+  if (t < ODEN.busyUntil && prio <= ODEN.busyPrio) return;
+  say(n, delay, vol); ODEN.busyUntil = t + (BUF[n].duration + delay) * 1000 + 250; ODEN.busyPrio = prio;
+}
+const odenPick = a => a[Math.floor(Math.random() * a.length)];
+// the effects: these names play Oden's recording instead (through the same 3D field as every other sound)
+const ODEN_SFX = { throw: 'block_throw', grab: 'magnetic_pickup', respawn: 'respawn', ui: 'menu_select', lock: 'homing_lock', boom: 'bomb_explosion', dodge: 'dodge_dash', ko: 'defeat_shutdown',
+  score: 'nex_capture', freeze: 'freeze_burst', anomaly: 'blackhole_vortex', hit: 'block_impact', impact: 'block_impact', flagGrab: 'nex_signal', win: 'victory_fanfare' };
+{ const pk0 = pickSfxFn; pickSfxFn = function (name) {
+    if (S.oden) { if (name === 'odenBot' && ODEN.next && BUF[ODEN.next]) { const n = ODEN.next; return () => play(n, 1.1, 1, 0, false); }
+      const k = ODEN_SFX[name]; if (k && BUF['oden_sfx_' + k]) return () => play('oden_sfx_' + k, .9); }
+    return pk0(name); }; }
+// a bot says something, from where it is (each bot is one of the eight characters)
+function odenBot(r, line) { if (!odenOn() || !r || r.isPlayer || !r.body) return; const who = ODEN_BOTS[robots.indexOf(r) % ODEN_BOTS.length], n = `oden_bot_${who}_0${line || 1 + Math.floor(Math.random() * 5)}`;
+  if (!BUF[n] || (r.odenT || 0) > now()) return; r.odenT = now() + 9000; ODEN.next = n; const p = r.body.translation(); sfx('odenBot', V(p.x, p.y + 1, p.z)); }
+// ---- the round: announcer ----
+{ const sf0 = sfx; sfx = function (name, pos, arg) {
+    if (odenOn()) {
+      if (name === 'intro') { ODEN.firstHit = false; ODEN.last60 = ODEN.last10 = false; odenSay('oden_ann_game_opening', 3, 1, .4); }
+      else if (name === 'beep' && match.state === 'count') { const n = Math.ceil(match.count); if (n === 5) odenSay('oden_ann_prepare', 3); else if (n === 3) odenSay('oden_ann_countdown', 3); }
+      else if (name === 'go') { odenSay('oden_ann_match_start', 4); setTimeout(() => { const b = robots.filter(r => !r.isPlayer && r.state === 'play'); if (b.length) odenBot(odenPick(b), 1); }, 1800); }
+      else if (name === 'streak') odenSay('oden_ann_critical_hit', 3);
+    }
+    return sf0(name, pos, arg); }; }
+setInterval(() => { if (!odenOn() || match.state !== 'play') return;
+  if (!ODEN.last60 && match.time <= 60 && match.time > 50) { ODEN.last60 = true; odenSay('oden_ann_sixty_seconds', 3); }
+  if (!ODEN.last10 && match.time <= 11 && match.time > 5) { ODEN.last10 = true; odenSay('oden_ann_final_countdown', 4); } }, 250);
+{ const ft0 = onFlagTaken; onFlagTaken = function (f, r) { ft0(f, r); if (f.team === P.team) odenSay('oden_ann_nex_stolen', 3); else if (r.isPlayer) odenSay('oden_nex_0' + (1 + Math.floor(Math.random() * 8)), 2, .85); }; }
+{ const fr0 = flagReturnedToast; flagReturnedToast = function (team, by) { fr0(team, by); odenSay(team === P.team ? 'oden_ann_nex_recovered' : 'oden_ann_nex_returned', 3); }; }
+{ const em0 = endMatch; endMatch = function () { const was = match.state; em0(); if (was === 'end') return; const mine = score[P.team], theirs = score[other(P.team)];
+    if (mine > theirs) { odenSay('oden_ann_victory', 5, 1, .8); setTimeout(() => odenSay('oden_cv_win', 5), 2600); } else odenSay(mine < theirs ? 'oden_ann_defeat' : 'oden_ann_draw', 5, 1, .8); }; }
+// ---- your robot talks, and the bots answer back ----
+{ const ta0 = throwAt; throwAt = function (r, ...a) { const e = r && r.stack && r.stack[0], res = ta0(r, ...a);
+    if (r && r.isPlayer && e) { const k = { bomb: 'bomb', freeze: 'freeze', homing: 'homing' }[e.kind]; if (k) odenSay('oden_cv_' + k, 2); else if (Math.random() < .25) odenSay('oden_cv_throw_block', 1); }
+    else if (r && !r.isPlayer && Math.random() < .06) odenBot(r); return res; }; }
+{ const gb0 = grabBlock; grabBlock = function (r, e, ...a) { const ok = gb0(r, e, ...a); if (ok && r && r.isPlayer && Math.random() < .2) odenSay('oden_cv_pickup_block', 1); return ok; }; }
+{ const rg0 = ragdoll; ragdoll = function (r, dir, by, ...a) { const was = r && r.state, res = rg0(r, dir, by, ...a);
+    if (odenOn() && r && was === 'play' && r.state !== 'play') {
+      if (!ODEN.firstHit && by && by !== r) { ODEN.firstHit = true; odenSay('oden_ann_first_hit', 3); }
+      else if (r.isPlayer) odenSay('oden_cv_take_damage', 2);
+      else if (by && by.isPlayer) odenSay('oden_cv_hit_opponent', 2);
+      if (by && !by.isPlayer && Math.random() < .45) setTimeout(() => odenBot(by), 500); }
+    return res; }; }
+{ const dg0 = dodge; dodge = function (r, ...a) { const res = dg0(r, ...a); if (r && r.isPlayer && Math.random() < .35) odenSay('oden_cv_dodge', 1); return res; }; }
+{ const rs0 = respawnRobot; respawnRobot = function (r, ...a) { const res = rs0(r, ...a); if (r && r.isPlayer) odenSay('oden_cv_respawn', 1, 1, .3); else if (Math.random() < .15) setTimeout(() => odenBot(r), 700); return res; }; }
+// (the black hole's own sound is swapped above; your robot reacts when it's yours)
+setInterval(() => { if (!odenOn() || typeof BHW === 'undefined') return; if (BHW.on && !ODEN.bh) { ODEN.bh = true; if (BHW.team === P.team) odenSay('oden_cv_blackhole', 3); } if (!BHW.on) ODEN.bh = false; }, 200);
+// ---- the flags whisper to you when you're near theirs, or carrying it ----
+setInterval(() => { if (!odenOn() || match.state !== 'play' || !P || P.state !== 'play' || !P.body) return; ODEN.whisperT -= .5; if (ODEN.whisperT > 0) return;
+  const p = P.body.translation(), carrying = P.stack.some(x => x.kind === 'flag'), F = blocks.find(b => b.kind === 'flag' && !b.dead && b.team !== P.team && b.body && !b.holder);
+  const near = F && Math.hypot(F.body.translation().x - p.x, F.body.translation().z - p.z) < 14;
+  if (carrying || near) { ODEN.whisperT = rr(14, 22); odenSay('oden_nex_0' + (1 + Math.floor(Math.random() * 8)), 1, .8); } else ODEN.whisperT = 3; }, 500);
 
 document.getElementById('loading').hidden = true;
 </script>
