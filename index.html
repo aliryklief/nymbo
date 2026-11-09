@@ -337,7 +337,6 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <h2>Settings</h2>
     <div class="sect"><h3>Sound &amp; feel</h3>
       <div class="tog"><label for="sSound">Sound effects</label><input id="sSound" type="checkbox"></div>
-      <div class="tog"><label for="sOden">Oden V1 <small>a voice and sound pack: an announcer, your robot's voice, eight bot characters, whispers from the flags, new effects</small></label><input id="sOden" type="checkbox"></div>
       <div class="tog"><label for="sBuzz">Vibration</label><input id="sBuzz" type="checkbox"></div></div>
     <div class="sect"><h3>Playing</h3>
       <div class="tog"><label for="sReplay">Instant replay when you're knocked out <small>off = a replay button while you're down</small></label><input id="sReplay" type="checkbox"></div>
@@ -363,6 +362,9 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 <div class="sheet" id="soundlab" hidden>
   <div class="card" style="width:min(560px,100%)">
     <div class="panel"><h2>Sound lab</h2><p class="rules" style="margin:0 0 8px">Every sound in the game. Tap ▶ to hear it. Upload your own file to replace one (it's kept on this device; export the zip and send it to be put in the game for everyone).</p>
+      <div class="sub">Sound packs</div>
+      <div class="tog"><label for="sOden">Oden V1 <small>a voice and sound pack: an announcer, your robot's voice, eight bot characters, whispers from the flags, new effects</small></label><input id="sOden" type="checkbox"></div>
+      <div class="sub" style="margin-top:10px">Every sound</div>
       <div id="soundList"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport">Export my replacements</button><button class="ghost" id="soundLabBack">Back</button></div></div>
   </div>
