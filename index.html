@@ -201,7 +201,7 @@ details.friends[open]{padding-bottom:10px}details.friends .net{margin-top:8px}
 .panel .sect h3{margin:0 0 6px;font:400 15px var(--display);letter-spacing:.04em;color:#bfe8ff}
 .panel .sub{font:700 11px var(--body);letter-spacing:.14em;color:var(--muted);margin:8px 0 6px;text-transform:uppercase}
 .tog label small{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:2px}
-.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:#fff8ec;padding:4px;border-radius:14px;border:2.5px solid var(--ink2);margin:6px 0 10px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#fff8ec;padding:4px;border-radius:14px;border:2.5px solid var(--ink2);margin:6px 0 10px}
 .tabs button{border:0;border-radius:10px;padding:8px 0;font:700 12px var(--body);background:transparent;color:#6b6480;cursor:pointer}.tabs button.on{background:var(--c1);color:#fff}
 #guideBody{display:grid;gap:7px;max-height:min(58vh,560px);overflow:auto;padding-right:2px}
 .gi{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;background:rgba(255,255,255,.05);border-radius:12px;padding:8px 10px}
@@ -405,7 +405,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 <div class="sheet" id="howto" hidden>
   <div class="card" style="width:min(560px,100%)"><div class="panel">
     <h2>Guide</h2>
-    <div class="tabs" id="guideTabs"><button data-g="controls">Controls</button><button data-g="blocks">Blocks</button><button data-g="powers">Powers</button><button data-g="creatures">Creatures</button><button data-g="maps">Maps</button></div>
+    <div class="tabs" id="guideTabs"><button data-g="controls">Controls</button><button data-g="blocks">Blocks</button><button data-g="powers">Powers</button><button data-g="creatures">Creatures</button><button data-g="maps">Maps</button><button data-g="story">Story</button></div>
     <div id="guideBody"></div>
     <button class="ghost" id="howBack" style="margin-top:12px">Back</button>
   </div></div>
@@ -4466,7 +4466,7 @@ const POWERS = [
   { id: 'nuke', name: 'NUKE', col: '#ff5a2a', cd: 4, pick: 1, icon: '<circle cx="12" cy="12" r="2.6"/><path d="M12 9.4 9 4.2a8.8 8.8 0 0 1 6 0zM14.3 13.3l5.9-.1a8.8 8.8 0 0 1-3 5.2zM9.7 13.3l-2.9 5.1a8.8 8.8 0 0 1-3-5.2z"/>' },
   { id: 'air', name: 'ICE STRIKE', col: '#7fd4ff', cd: 4, pick: 3, icon: '<path d="M6 3v7M4 6.5h4M12 3v7M10 6.5h4M18 3v7M16 6.5h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M4 14h4l-2 6zM10 14h4l-2 6zM16 14h4l-2 6z"/>' },
   { id: 'dark', name: 'BLACKOUT', col: '#b36bff', cd: 4, icon: '<path d="M15 3a9 9 0 1 0 6 13A7.5 7.5 0 0 1 15 3z"/>' },
-  { id: 'slow', name: 'SLOW-MO', col: '#ffd400', cd: 4, icon: '<path d="M6 3h12M6 21h12M7 3c0 5 5 6 5 9s-5 4-5 9M17 3c0 5-5 6-5 9s5 4 5 9" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M9 19l3-3 3 3z"/>' },
+  { id: 'rewind', name: 'REWIND', col: '#5fd0ff', cd: 4, icon: '<path d="M11 6L3 12l8 6zM21 6l-8 6 8 6z"/>' }, // (replaced slow-mo: everything goes back 10 seconds; once a round per team)
   { id: 'invis', name: 'INVISIBLE', col: '#39ff14', cd: 4, icon: '<path d="M12 3c-4 0-7 3-7 7v11l2.3-2 2.4 2 2.3-2 2.3 2 2.4-2 2.3 2V10c0-4-3-7-7-7z" opacity=".55"/><circle cx="9.3" cy="10" r="1.6" fill="#0a0e1a"/><circle cx="14.7" cy="10" r="1.6" fill="#0a0e1a"/>' },
   { id: 'tornado', name: 'TORNADO', col: '#d9d2c3', cd: 4, pick: 1, icon: '<path d="M3 5h18M5 9h14M7 13h10M9 17h6M11 21h3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/>' },
 ];
@@ -4496,7 +4496,9 @@ function renderTray() {
   for (const p of POWERS) p.el = null;
   for (const sl of PW.slots) pwTray.appendChild(sl.el);
 }
-function rollWeighted() { const tot = POWERS.reduce((a, p) => a + (POWER_WEIGHT[p.id] || 1), 0); let r = rnd() * tot; for (const p of POWERS) { r -= POWER_WEIGHT[p.id] || 1; if (r <= 0) return p; } return POWERS[POWERS.length - 1]; }
+function rollWeighted() { // (rewind only comes up if your team hasn't used it this round and you aren't already holding one)
+  const pool = POWERS.filter(p => p.id !== 'rewind' || (typeof RW === 'undefined' || (!RW.used[P.team] && !PW.slots.some(s => s.id === 'rewind'))));
+  const tot = pool.reduce((a, p) => a + (POWER_WEIGHT[p.id] || 1), 0); let r = rnd() * tot; for (const p of pool) { r -= POWER_WEIGHT[p.id] || 1; if (r <= 0) return p; } return pool[pool.length - 1]; }
 function rollPower() { // a new slot that flashes through the icons and settles on the one you got
   if (NET) return; // (powers aren't networked yet: offline only for now)
   if (PW.slots.length >= MAX_TOKENS) { toast('POWERS FULL'); return; }
@@ -4528,6 +4530,7 @@ function firePower(p, at) {
   if (p.id === 'nuke') nukeAt(at);
   else if (p.id === 'air') airStrikeAt(at);
   else if (p.id === 'dark') { PW.darkT = DARK_T; sfx('blackout'); bigToast('BLACKOUT', 'blue'); }
+  else if (p.id === 'rewind') startRewind(P.team);
   else if (p.id === 'slow') { PW.slowT = SLOW_T; sfx('slowmo'); mixDuck(.5, .3); bigToast('SLOW-MO', 'blue'); for (const r of robots) if (isSlowed(r) && r.state === 'play') koPop(rPos(r), 'SLOW', '#ffd400'); }
   else if (p.id === 'invis') { PW.invisT = INVIS_T; sfx('invis'); toast('INVISIBLE · THROWING ENDS IT'); }
   else if (p.id === 'tornado') startTornado(at);
@@ -5858,6 +5861,105 @@ function hazardAt(r, x, z) {
 { const fzI = freezeArea; freezeArea = function (pos, team, by, ...a) { const was = P ? P.frozenT : 0; const out = fzI(pos, team, by, ...a); if (P && isInvisible(P) && P.frozenT > was) { P.frozenT = was; setIce(P, false); } return out; }; }
 
 // ============================================================
+// REWIND (replaces slow-mo): everything goes back to how it was 10 seconds ago. Everyone, the one who used it too.
+//  - you watch the last 10 seconds run backwards for about 2.5 seconds, then play carries on from back then
+//  - robots go back to where they were, holding what they held (a flag carrier is carrying it again), knocked-out ones
+//    are back up (or down again, if they were down back then), hit streaks go back to what they were
+//  - goals scored in those 10 seconds are undone; blocks that were thrown, blown up or used come back
+//  - the match clock does NOT go back (it's a stasis power, not a clock power), and the animals aren't touched
+//  - each team gets it at most once a round: after a team uses it, it never comes up for that team again that round
+// How: the game keeps a recording of the whole world, 10 times a second, for the last 10 seconds (blocks that are lying
+// still cost almost nothing to record). The host's game does it all, so in a network match it looks the same for everyone.
+// ============================================================
+const RW = { clock: 0, frames: [], recAt: 0, playing: false, pt: 0, dur: 2.5, used: { blue: false, red: false }, movers: null };
+const RW_KEEP = 10, RW_EVERY = .1, RW_NB = 14;
+function rwRecord() {
+  const t = RW.clock; if (t - RW.recAt < RW_EVERY) return; RW.recAt = t; // (game time: a slow frame doesn't shorten the 10 seconds)
+  const prev = RW.frames[RW.frames.length - 1], prevIdx = prev ? prev.idx : null;
+  const list = blocks.filter(e => !e.dead && e.kind !== 'animal'), n = list.length, d = new Float32Array(n * RW_NB), hold = new Int8Array(n), idx = new Map();
+  for (let i = 0; i < n; i++) { const e = list[i], o = i * RW_NB; idx.set(e, i);
+    hold[i] = e.holder ? robots.indexOf(e.holder) : -1;
+    const b = e.body, pi = prevIdx && prevIdx.get(e);
+    if (b && pi != null && b.isSleeping() && (prev.d[pi * RW_NB + 13] & 4)) { d.set(prev.d.subarray(pi * RW_NB, pi * RW_NB + RW_NB), o); continue; } // (lying still: same as last time)
+    if (b) { const p = b.translation(), q = b.rotation(), v = b.linvel(), a = b.angvel(); d[o] = p.x; d[o + 1] = p.y; d[o + 2] = p.z; d[o + 3] = q.x; d[o + 4] = q.y; d[o + 5] = q.z; d[o + 6] = q.w; d[o + 7] = v.x; d[o + 8] = v.y; d[o + 9] = v.z; d[o + 10] = a.x; d[o + 11] = a.y; d[o + 12] = a.z; if (!b.isSleeping()) e.rwMoved = t; }
+    d[o + 13] = (e.anchored ? 1 : 0) | (e.live ? 2 : 0) | (b ? 4 : 0);
+  }
+  const rob = robots.map(r => { const b = r.body, p = b.translation(), q = b.rotation(), v = b.linvel();
+    return { p: [p.x, p.y, p.z], q: [q.x, q.y, q.z, q.w], v: [v.x, v.y, v.z], yaw: r.yaw, state: r.state, ragT: r.ragT || 0, frozenT: r.frozenT || 0, streak: r.streak || 0, stack: r.stack.filter(x => x.kind !== 'animal'), ghostT: r.ghostT || 0 }; });
+  RW.frames.push({ t, list, d, hold, idx, rob, score: { blue: score.blue, red: score.red }, scored: blocks.filter(e => e.kind === 'flag' && e.scored) });
+  while (RW.frames.length && t - RW.frames[0].t > RW_KEEP) RW.frames.shift();
+}
+// ---- the backwards playback: the bodies are put where they were, newest to oldest, and nothing else runs ----
+function rwApplyVisual(F, G, k) { // somewhere between two recorded moments
+  for (let i = 0; i < robots.length; i++) { const r = robots[i], a = F.rob[i], b = G.rob[i]; if (!r.body) continue;
+    r.body.setTranslation({ x: a.p[0] + (b.p[0] - a.p[0]) * k, y: a.p[1] + (b.p[1] - a.p[1]) * k, z: a.p[2] + (b.p[2] - a.p[2]) * k }, false); r.body.setLinvel({ x: 0, y: 0, z: 0 }, false);
+    r.yaw = r.yawT = a.yaw + (b.yaw - a.yaw) * k; r.pt = null; }
+  for (const e of RW.movers) { if (e.dead || !e.body || e.holder) continue; const i = F.idx.get(e), j = G.idx.get(e); if (i == null || j == null) continue;
+    const A = i * RW_NB, B = j * RW_NB, L = (o) => F.d[A + o] + (G.d[B + o] - F.d[A + o]) * k;
+    e.body.setTranslation({ x: L(0), y: L(1), z: L(2) }, false); e.body.setRotation({ x: F.d[A + 3], y: F.d[A + 4], z: F.d[A + 5], w: F.d[A + 6] }, false); e.body.setLinvel({ x: 0, y: 0, z: 0 }, false); e.pt = null; e.pq = null; }
+}
+// ---- putting the world back exactly as it was at the oldest moment kept ----
+function rwRestore(F) {
+  const revived = new Map(), keep = new Set(F.list);
+  // anything that didn't exist back then goes (fresh ammo, new power blocks...); held blocks are let go first
+  for (const r of robots) { const animals = r.stack.filter(x => x.kind === 'animal'); for (const e of r.stack) if (e.kind !== 'animal') e.holder = null; r.stack = animals; }
+  for (const e of [...blocks]) if (!e.dead && e.kind !== 'animal' && !keep.has(e)) destroyBlock(e);
+  // blocks back where they were (the ones that were used up or blown away come back)
+  for (let i = 0; i < F.list.length; i++) { let e = F.list[i]; const o = i * RW_NB, d = F.d, fl = d[o + 13];
+    if (e.dead) { const ne = newBlock(e.kind, V(d[o], d[o + 1], d[o + 2]), { color: '#' + e.color.getHexString(), dims: e.dims, team: e.team, home: e.home, owner: e.owner }); ne.home = e.home; ne.atHome = false;
+      if (e.kind === 'flag' && FLAGS[e.team]) { const k = FLAGS[e.team].indexOf(e); if (k >= 0) FLAGS[e.team][k] = ne; }
+      if (ne.body) dropBody(ne); revived.set(e, ne); e = ne; }
+    e.scored = false; e.live = !!(fl & 2); if (e.frozenT > 0 && typeof thawBlock === 'function') thawBlock(e);
+    if (F.hold[i] >= 0) { dropBody(e); hideBlock(e); continue; } // (it's in someone's hands: see below)
+    if (!(fl & 4)) { dropBody(e); continue; }
+    const wantAnch = !!(fl & 1); if (e.body && e.anchored !== wantAnch) dropBody(e); e.anchored = wantAnch;
+    const pos = V(d[o], d[o + 1], d[o + 2]), rot = { x: d[o + 3], y: d[o + 4], z: d[o + 5], w: d[o + 6] };
+    if (!e.body) makeBody(e, pos, rot, { x: d[o + 7], y: d[o + 8], z: d[o + 9] }, { x: d[o + 10], y: d[o + 11], z: d[o + 12] });
+    else { e.body.setTranslation(pos, true); e.body.setRotation(rot, true); if (!e.anchored) { e.body.setLinvel({ x: d[o + 7], y: d[o + 8], z: d[o + 9] }, true); e.body.setAngvel({ x: d[o + 10], y: d[o + 11], z: d[o + 12] }, true); } }
+    e.pt = null; e.pq = null; e.drawn = false;
+  }
+  // robots: where they were, the way they were (up or knocked down), holding what they held, with the streak they had
+  for (let i = 0; i < robots.length; i++) { const r = robots[i], a = F.rob[i];
+    if (a.state === 'play') {
+      if (r.state !== 'play') { makeRobotBody(r, V(a.p[0], a.p[1], a.p[2])); r.state = 'play'; r.ragT = 0; r.model.eyesX.visible = false; r.model.eyesN.visible = true; }
+      r.body.setTranslation({ x: a.p[0], y: a.p[1], z: a.p[2] }, true); r.body.setLinvel({ x: a.v[0], y: a.v[1], z: a.v[2] }, true);
+    } else { // knocked down back then: down again, with the same time left before coming back
+      if (r.state === 'play') { r.state = 'rag'; r.body.setEnabledRotations(true, true, true, true); r.body.setAngularDamping(.6); r.body.setLinearDamping(.35); r.model.eyesN.visible = false; r.model.eyesX.visible = true; }
+      r.ragT = a.ragT; r.body.setTranslation({ x: a.p[0], y: a.p[1], z: a.p[2] }, true); r.body.setRotation({ x: a.q[0], y: a.q[1], z: a.q[2], w: a.q[3] }, true); r.body.setLinvel({ x: a.v[0], y: a.v[1], z: a.v[2] }, true); }
+    r.yaw = r.yawT = a.yaw; r.streak = a.streak; r.ghostT = a.ghostT; r.pt = null; r.dashV = 0; r.padT = 0;
+    if (a.frozenT <= 0 && r.frozenT > 0 && typeof unfreezeRobot === 'function') unfreezeRobot(r);
+    const st = a.stack.map(e => revived.get(e) || e).filter(e => !e.dead);
+    for (const e of st) { dropBody(e); hideBlock(e); e.holder = r; e.live = false; }
+    r.stack = [...st, ...r.stack.filter(x => x.kind === 'animal')]; refreshHeld(r);
+  }
+  // the score goes back too (a goal in those 10 seconds never happened)
+  score.blue = F.score.blue; score.red = F.score.red; renderHud(true);
+}
+function startRewind(team) {
+  if (RW.playing || RW.frames.length < 3) { sfx('denied'); return; }
+  RW.used[team] = true; RW.playing = true; RW.pt = 0; RW.snap = RW.frames.slice(); RW.frames = [];
+  const t0 = RW.snap[0].t; RW.movers = blocks.filter(e => (e.rwMoved || 0) >= t0 && !e.dead && e.kind !== 'animal');
+  bigToast('REWIND', 'blue'); sfx('rewind'); mixDuck(.5, .4); document.body.classList.add('rewinding');
+}
+function rewindTick(dt) {
+  RW.pt += dt; const k = Math.min(1, RW.pt / RW.dur), fr = RW.snap, N = fr.length - 1, x = N * (1 - k * k * (3 - 2 * k)), i = Math.floor(x), f = x - i; // (eases in and out)
+  rwApplyVisual(fr[Math.min(N, i)], fr[Math.min(N, i + 1)], f);
+  if (match.state === 'play') { match.time -= dt; if (match.time <= 0) { match.time = 0; } } // (the clock keeps running)
+  for (const r of robots) { r.wantSpeed = 0; if (r.body) syncRobot(r); }
+  updateBlocks(0); updateFx(dt); updateCamera(dt);
+  if (k >= 1) { rwRestore(fr[0]); RW.playing = false; RW.snap = null; RW.movers = null; document.body.classList.remove('rewinding'); sfx('swoop'); }
+}
+{ const tk0 = tick; tick = function (dt, t) { if (RW.playing) return rewindTick(dt); const res = tk0(dt, t); if (match.state === 'play' && !(NET && NET.client)) { RW.clock += dt; rwRecord(); } return res; }; }
+{ const sc0 = startCountdown; startCountdown = function (...a) { RW.used = { blue: false, red: false }; RW.frames = []; RW.recAt = 0; RW.clock = 0; RW.playing = false; return sc0(...a); }; }
+// its sound: a tape being pulled backwards, sweeping down
+Object.assign(SFX_SYNTH, { rewind: () => { noiseHit(1.6, 'bandpass', 2400, .7, 0, true, 300, 1); noiseHit(1.2, 'bandpass', 900, .5, .3, true, 120, 1); thump(140, .6, .02, .9); } });
+// the screen during it: a cool tint with scan lines and a big ⏪
+{ const st = document.createElement('style'); st.textContent = `body.rewinding canvas{filter:sepia(.35) hue-rotate(170deg) saturate(1.3) contrast(1.05)}
+body.rewinding::after{content:'⏪';position:fixed;left:50%;top:22%;transform:translateX(-50%);font-size:min(18vw,96px);color:#bfeaff;text-shadow:0 0 18px #3aa0ff;pointer-events:none;z-index:30;animation:rwpulse .5s infinite alternate}
+body.rewinding::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(160,220,255,.08) 0 2px,transparent 2px 5px);pointer-events:none;z-index:29}
+@keyframes rwpulse{from{opacity:.55}to{opacity:1}}`; document.head.appendChild(st); }
+
+// ============================================================
 // MATCH FLOW + MAIN LOOP
 // ============================================================
 for (const team of ['blue', 'red']) for (let i = 0; i < 4; i++) createRobot(team, i);
@@ -6078,7 +6180,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { scoreFlag, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -6643,7 +6745,8 @@ if (RBW.on) {
       const v = (p, o) => [p.x + side.x * o, p.y, p.z + side.z * o];
       for (const q of [v(p0, o0), v(p1, o0), v(p0, o1), v(p0, o1), v(p1, o0), v(p1, o1)]) { P2.push(...q); C2.push(c.r, c.g, c.b); } } }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P2, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C2, 3)); g.computeVertexNormals();
-  const band = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: .92 })); band.renderOrder = 1; scene.add(band); RBW.band = band; /* (drawn before see-through blocks, so a glass block on your head stays in front of it) */
+  const band = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })); /* (solid now, not see-through) */
+  { const sc = new THREE.Mesh(g, new THREE.ShadowMaterial({ opacity: .32, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); sc.receiveShadow = true; sc.renderOrder = 2; scene.add(sc); } /* (a see-through layer that only shows shadows: yours lands on the rainbow instead of falling through it) */ band.renderOrder = 1; scene.add(band); RBW.band = band; /* (drawn before see-through blocks, so a glass block on your head stays in front of it) */
   // it's solid: you can land on it and walk on it (it only carries you if you get on at a pasture end); a thin slab so nobody falls through it
   for (let k = 0; k <= SEG; k++) { const p = RBW.at(k / SEG); for (const o of [-Wd / 2, Wd / 2]) cv.push(p.x + side.x * o, p.y - .05, p.z + side.z * o); }
   for (let k = 0; k < SEG; k++) { const a = k * 2; ci.push(a, a + 2, a + 1, a + 1, a + 2, a + 3, a, a + 1, a + 2, a + 1, a + 3, a + 2); }
@@ -6652,7 +6755,22 @@ if (RBW.on) {
   // a little pool of water inside the ring of cloud at each foot of the rainbow
   RBW.poolTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#6fcff7'; g.fillRect(0, 0, 64, 64); g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 2;
     for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(Math.random() * 64, Math.random() * 64, 4 + Math.random() * 9, 0, 7); g.stroke(); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 2); return t; })();
-  for (const E of [RBW.A, RBW.B]) { const w = new THREE.Mesh(new THREE.CircleGeometry(2.7, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: RBW.poolTex, transparent: true, opacity: .85 })); w.position.set(E.x, TH(E.x, E.z) + .22, E.z); scene.add(w); }
+  // REAL WATER (10 Nov): every pool is shaded like the rest of the world now: a glossy surface catching the sun, ripples
+  // drifting across it (a moving bump texture), gentle waves rolling through it, and you can see a little way into it
+  RBW.waterN = (() => { const S = 128, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), img = g.createImageData(S, S), h = new Float32Array(S * S);
+    const waves = Array.from({ length: 7 }, () => [rr(1, 4) * (Math.random() < .5 ? -1 : 1), rr(1, 4) * (Math.random() < .5 ? -1 : 1), rr(0, 6.28), rr(.4, 1)]);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { let v = 0; for (const [a, b, ph, am] of waves) v += am * Math.sin((a * x + b * y) / S * 6.2832 + ph); h[y * S + x] = v; }
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const dx = h[y * S + (x + 1) % S] - h[y * S + (x + S - 1) % S], dy = h[((y + 1) % S) * S + x] - h[((y + S - 1) % S) * S + x], n = V(-dx * .6, -dy * .6, 1).normalize(), i = (y * S + x) * 4;
+      img.data[i] = (n.x * .5 + .5) * 255; img.data[i + 1] = (n.y * .5 + .5) * 255; img.data[i + 2] = (n.z * .5 + .5) * 255; img.data[i + 3] = 255; }
+    g.putImageData(img, 0, 0); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3); return t; })();
+  RBW.waterT = { value: 0 };
+  RBW.water = (o = {}) => { const m = new THREE.MeshPhongMaterial({ color: 0x3fb2e4, specular: 0xffffff, shininess: 110, emissive: 0x0a3a5a, emissiveIntensity: .35, transparent: true, opacity: o.opacity || .84, normalMap: RBW.waterN, normalScale: new THREE.Vector2(.55, .55), depthWrite: false });
+    m.onBeforeCompile = sh => { sh.uniforms.wT = RBW.waterT; sh.vertexShader = 'uniform float wT;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      vec4 wp_ = modelMatrix * vec4(position, 1.0); transformed.y += .03 * sin(wp_.x * 1.3 + wT * 2.1) + .025 * cos(wp_.z * 1.7 + wT * 1.6) + .03;`); };
+    m.customProgramCacheKey = () => 'water'; return m; };
+  RBW.waterGeo = R => new THREE.CircleGeometry(R, 48, 0, Math.PI * 2).rotateX(-Math.PI / 2); // (rings of vertices for the waves:)
+  { const g0 = RBW.waterGeo; RBW.waterGeo = R => { const G = new THREE.RingGeometry(0, R, 48, Math.max(4, Math.round(R * 1.2))).rotateX(-Math.PI / 2); return G; }; }
+  for (const E of [RBW.A, RBW.B]) { const w = new THREE.Mesh(RBW.waterGeo(2.7), RBW.water()); w.position.set(E.x, TH(E.x, E.z) + .22, E.z); w.renderOrder = 1; scene.add(w); }
   for (const E of [RBW.A, RBW.B]) for (let k = 0; k < 9; k++) { const m = new THREE.Mesh(puffGeo, puffM); const a = k / 9 * 6.28; m.position.set(E.x + Math.cos(a) * 2.6, .4 + rr(0, .6), E.z + Math.sin(a) * 2.6); m.scale.set(rr(1, 1.5), rr(.6, .9), rr(1, 1.5)); scene.add(m); }
   for (let k = 0; k < 4; k++) { const a = k / 4 * 6.28 + .4, R = MX * 2.2, cx = Math.cos(a) * R, cz = Math.sin(a) * R * .8; // soft rainbows far out in the sky
     const arcG = new THREE.Group(); arcG.position.set(cx, -10, cz); arcG.lookAt(0, -10, 0); scene.add(arcG);
@@ -6682,7 +6800,11 @@ function rainbowRide(r, dt) {
   }
   if (r.state !== 'play' || (r.rbCool || 0) > now()) return;
   const c = rPos(r);
-  for (const [E, s, dir] of [[RBW.A, 0, 1], [RBW.B, 1, -1]]) if (Math.hypot(c.x - E.x, c.z - E.z) < 2.2 && c.y - TH(c.x, c.z) < 3) { r.rb = { s, dir }; sfx('swoop', c); if (r.isPlayer) toast('WHEEE! JUMP TO LEAP OFF'); return; }
+  for (const [E, s, dir] of [[RBW.A, 0, 1], [RBW.B, 1, -1]]) { if (!(Math.hypot(c.x - E.x, c.z - E.z) < 2.2 && c.y - TH(c.x, c.z) < 3)) continue;
+    // only stepping on from the outside, heading in: walking up to it from underneath the bow does nothing
+    const O = dir > 0 ? RBW.B : RBW.A, ix = O.x - E.x, iz = O.z - E.z, il = Math.hypot(ix, iz) || 1, lv = r.body.linvel();
+    if ((c.x - E.x) * ix / il + (c.z - E.z) * iz / il > .5 || (lv.x * ix + lv.z * iz) / il < .5) continue;
+    r.rb = { s, dir }; sfx('swoop', c); if (r.isPlayer) toast('WHEEE! JUMP TO LEAP OFF'); return; }
 }
 
 // ---------------------------------------------------------------- water slides: one by each trampoline
@@ -6732,7 +6854,7 @@ for (const S_ of SLIDES) for (const p of S_.samples) { if (p.y - TH(p.x, p.z) > 
   for (const e of blocks) if (e.kind === 'tree' && !e.dead && e.body) { const t = e.body.translation(); if (Math.hypot(t.x - p.x, t.z - p.z) < 3.4) destroyBlock(e); }
   for (let i = TREES.length - 1; i >= 0; i--) if (Math.hypot(TREES[i].x - p.x, TREES[i].z - p.z) < 3.4) TREES.splice(i, 1); }
 function cloudPool(c, R, top) { // a ring of cloud with a pool of water in it (like the foot of the rainbow); solid, so you can stand in it
-  const w = new THREE.Mesh(new THREE.CircleGeometry(R, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: RBW.poolTex || null, color: 0xd8f4ff, transparent: true, opacity: .9 })); w.position.set(c.x, top + .02, c.z); scene.add(w);
+  const w = new THREE.Mesh(RBW.waterGeo ? RBW.waterGeo(R) : new THREE.CircleGeometry(R, 32).rotateX(-Math.PI / 2), RBW.water ? RBW.water() : new THREE.MeshBasicMaterial({ color: 0x6fcff7, transparent: true, opacity: .9 })); w.position.set(c.x, top + .02, c.z); w.renderOrder = 1; scene.add(w);
   const pm = new LiteMat({ color: 0xffffff, emissive: 0x8a9ab8, emissiveIntensity: .3 });
   for (let k = 0; k < 13; k++) { const a = k / 13 * 6.28, m = new THREE.Mesh(puffGeo, pm); m.position.set(c.x + Math.cos(a) * (R + .3), top - .15 + rr(0, .3), c.z + Math.sin(a) * (R + .3)); m.scale.set(rr(.9, 1.2), rr(.55, .75), rr(.9, 1.2)); scene.add(m); }
   for (let k = 0; k < 5; k++) { const m = new THREE.Mesh(puffGeo, pm); m.position.set(c.x + rr(-1, 1) * R * .6, top - .9, c.z + rr(-1, 1) * R * .6); m.scale.set(rr(1.4, 2), rr(.7, 1), rr(1.4, 2)); scene.add(m); }
@@ -6767,17 +6889,23 @@ let slideTip = false;
 // ---------------------------------------------------------------- the pasture pools (sky map): no grass left up here.
 // Each pasture is a round pool, brimming over: in a few places the water spills across the island's edge and pours off
 // it as a waterfall down into the sky.
-const FALLS = { tex: null, list: [] };
+const FALLS = { tex: null, list: [], pads: [] };
 if (MAP === 'sky' && CH) {
   const fallTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#8fdcff'; g.fillRect(0, 0, 64, 128);
     for (let k = 0; k < 26; k++) { g.fillStyle = k % 3 ? 'rgba(255,255,255,.55)' : 'rgba(60,170,230,.5)'; g.fillRect(Math.random() * 64, Math.random() * 128, 2 + Math.random() * 3, 18 + Math.random() * 40); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 3); return t; })(); /* (two streak widths across the wider falls) */
   const fadeTex = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 128; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, '#fff'); gr.addColorStop(.55, '#bbb'); gr.addColorStop(1, '#000'); g.fillStyle = gr; g.fillRect(0, 0, 4, 128); return new THREE.CanvasTexture(c); })();
   FALLS.tex = fallTex; const fallMat = new THREE.MeshBasicMaterial({ map: fallTex, alphaMap: fadeTex, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: .9 });
-  const runMat = new THREE.MeshBasicMaterial({ map: RBW.poolTex, color: 0xd8f4ff, transparent: true, opacity: .88, depthWrite: false });
+  const runMat = RBW.water({ opacity: .8 });
   for (const pa of PASTURES) {
-    const y0 = TH(pa.x, pa.z) + .06, pool = new THREE.Mesh(new THREE.CircleGeometry(PASTURE_R + 1.2, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: RBW.poolTex, color: 0xd8f4ff, transparent: true, opacity: .9, depthWrite: false }));
+    const y0 = TH(pa.x, pa.z) + .16, pool = new THREE.Mesh(RBW.waterGeo(PASTURE_R + 1.2), RBW.water());
     pool.position.set(pa.x, y0, pa.z); pool.renderOrder = 1; scene.add(pool);
+    // real lily pads floating on it (a round leaf with a notch, a few with a pink flower), bobbing gently
+    for (let k = 0; k < 7; k++) { const a = rr(0, 6.28), rd = rr(1.5, PASTURE_R - .2), sz = rr(.45, .8), lp = new THREE.Group();
+      const leaf = new THREE.Mesh(new THREE.CylinderGeometry(sz, sz, .05, 20, 1, false, .35, Math.PI * 2 - .7), new LiteMat({ color: [0x3f9a35, 0x4fae3e, 0x5bbf47][k % 3] })); leaf.castShadow = false; leaf.receiveShadow = true; lp.add(leaf);
+      if (k % 3 === 0) { const fl = new THREE.Group(); for (let q = 0; q < 6; q++) { const pt = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), new LiteMat({ color: 0xffa8d8 })); pt.scale.set(.7, .5, 1.4); const qa = q / 6 * 6.28; pt.position.set(Math.sin(qa) * .11, .07, Math.cos(qa) * .11); pt.rotation.y = qa; fl.add(pt); }
+        const ct = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), new LiteMat({ color: 0xffe14a })); ct.position.y = .1; fl.add(ct); fl.position.set(sz * .2, 0, -sz * .1); lp.add(fl); }
+      lp.position.set(pa.x + Math.cos(a) * rd, y0 + .05, pa.z + Math.sin(a) * rd); lp.rotation.y = rr(0, 6.28); scene.add(lp); FALLS.pads.push({ g: lp, y: y0 + .05, ph: rr(0, 6.28) }); }
     // a lip of little cloud puffs round the pool, with gaps where it overflows
     const out = Math.atan2(pa.z, pa.x), spill = [out + 1.1, out - 1.2, out + Math.PI * .5 + 1.6].map(a => a); // (away from the portal side)
     const edgeR = CH.Ri - .15;
@@ -6792,7 +6920,7 @@ if (MAP === 'sky' && CH) {
     }
   }
 }
-function updateFalls(dt) { if (!FALLS.tex) return; FALLS.tex.offset.y += dt * 1.4; for (const F_ of FALLS.list) if (Math.random() < dt * 11) emit(V(F_.x + rr(-2.6, 2.6), F_.y + .1, F_.z + rr(-2.6, 2.6)), Math.random() < .5 ? 0xffffff : 0x9fe2ff, V(rr(-.6, .6), rr(1, 2.5), rr(-.6, .6)), .14, .6, 6); }
+function updateFalls(dt) { if (RBW.waterT) { RBW.waterT.value += dt; if (RBW.waterN) { RBW.waterN.offset.x += dt * .03; RBW.waterN.offset.y += dt * .02; } } for (const L of FALLS.pads) { L.g.position.y = L.y + .03 * Math.sin(RBW.waterT.value * 1.6 + L.ph); L.g.rotation.y += dt * .05 * Math.sin(L.ph); } if (!FALLS.tex) return; FALLS.tex.offset.y += dt * 1.4; for (const F_ of FALLS.list) if (Math.random() < dt * 11) emit(V(F_.x + rr(-2.6, 2.6), F_.y + .1, F_.z + rr(-2.6, 2.6)), Math.random() < .5 ? 0xffffff : 0x9fe2ff, V(rr(-.6, .6), rr(1, 2.5), rr(-.6, .6)), .14, .6, 6); }
 function updateSlides(dt) { updateFalls(dt); for (const S_ of SLIDES) S_.wt.offset.y -= dt * 2.2; if (RBW.poolTex) { RBW.poolTex.offset.x += dt * .05; RBW.poolTex.offset.y += dt * .03; } }
 
 // ---------------------------------------------------------------- rain clouds over the battlefield (solid; some carry power blocks)
@@ -8337,6 +8465,24 @@ $('setBack').onclick = () => show(match.menu ? 'pause' : setFrom);
 const powerIcon = id => { const p = POWERS.find(q => q.id === id); return p ? `<svg viewBox="0 0 24 24" fill="currentColor" style="color:${p.col}">${p.icon}</svg>` : '⭐'; };
 const GI = (ic, name, txt) => `<div class="gi"><div class="ic">${ic}</div><div><b>${name}</b><span>${txt}</span></div></div>`;
 const GUIDE = {
+  story: () => `<div class="story"><p style="font-size:11px;opacity:.7;margin:0 0 8px">For the people building Nymbo: the story so far (not shown to players yet).</p>
+<h3 style="margin:4px 0 8px">NYMBO: The Lost Nym</h3>
+<p>Far away, on a mysterious planet called <b>Nymora</b>, lived the Nym: small, intelligent, white robotic beings.</p>
+<p>One day, a colossal living anomaly known as <b>the Tardigrade</b> swallowed them. After carrying them across several light-years, the creature rejected them and expelled them into the unknown.</p>
+<p>But something strange had happened.</p>
+<p>Like white light separating into different colours, each Nym had split into two coloured beings, losing all memory of their original identity.</p>
+<p>Scattered across different planets and forgotten worlds, the Nym began building bases and protecting mysterious devices known as <b>chonks</b>.</p>
+<p>Nobody knows what the chonks contain, but every Nym feels an irresistible signal drawing them towards the chonks of others.</p>
+<p>Unable to explain this connection, the Nym battle one another, throwing blocks to defeat their rivals, defending their bases, and stealing enemy chonks.</p>
+<p>Their battles take place across abandoned cities, floating islands, alien landscapes, and mysterious worlds.</p>
+<p><b>But the Nym are unaware of one extraordinary truth…</b></p>
+<p>The rivals they fight may be more connected than they could ever imagine.</p>
+<p><i>NYMBO: Every Rival Has a Secret.</i></p>
+<h3 style="margin:14px 0 8px">The chonks</h3>
+<p>Core, then piece, then chunk, then chonk. Each one looks like a fat piece of a motherboard block with metal parts. Two matching chonks click together like a puzzle: a rectangle broken in half, with cuboids sticking out of each half that lock into the other, painted over with circuit boards and lights to hide that they fit.</p>
+<p>When they landed, each Nym was holding one, and each wanted another Nym's. The reddish ones are drawn to the blueish ones, but none of them knows which one is their exact match. So they teamed up, and defended theirs with walls and high towers.</p>
+<h3 style="margin:14px 0 8px">The Nymbots</h3>
+<p>Nymbus (blue), Cronym (cyan), Penzonym (lime), Vionym (violet), Rezinym (red), Fernym (blaze), Aurinym (gold), Piconym (pink).</p></div>`,
   controls: () => [
     GI('•', 'Tap: jump', 'Tap again in the air to double jump (about 3 blocks up)'),
     GI('✋', 'Hold: stop · keep holding: back up', 'You run forward on your own. Hold and slide to turn on the spot'),
@@ -8361,7 +8507,7 @@ const GUIDE = {
     GI(powerIcon('nuke'), 'Nuke', 'Pick a spot on the map: a huge blast'),
     GI(powerIcon('air'), 'Ice strike', 'Three icy blasts in a row across the map'),
     GI(powerIcon('dark'), 'Blackout', 'Lights out for everyone else. You get night-vision goggles'),
-    GI(powerIcon('slow'), 'Slow-mo', 'The other team does everything at half speed for 8 seconds'),
+    GI(powerIcon('rewind'), 'Rewind', 'Everything goes back 10 seconds: everyone, goals too (not the clock). Once a round per team'),
     GI(powerIcon('invis'), 'Invisible', 'For 8 seconds nobody can see you, chase you or hurt you. Throwing ends it'),
     GI(powerIcon('tornado'), 'Tornado', 'A twister that picks up blocks and robots'),
     GI(powerIcon('dog'), 'Fetch!', 'A dog chases one enemy. Their blocks turn into bones: throw one and it fetches it (3 times at most)'),
