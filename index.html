@@ -513,7 +513,7 @@ function netUV(geo, ox, oy) {
 }
 function whiteUV(geo) { const uv = geo.attributes.uv; if (!uv) return geo; for (let i = 0; i < uv.count; i++) uv.setXY(i, (PNET.W - 1.5) / PNET.W, 1.5 / PNET.H); uv.needsUpdate = true; return geo; }
 const MAP = (() => { try { const m = localStorage.getItem('nymbo-map'); return m === 'clouds' || m === 'rainbow' || m === 'sky' ? 'sky' : m === 'desert' ? 'desert' : 'classic'; } catch (e) { return 'classic'; } })(); // (the cloud and rainbow maps were merged into one: 'sky')
-const MS = MAP === 'sky' ? 1.3 : 1; // (the desert is the classic island's size)
+const MS = MAP === 'sky' ? 1.3 : MAP === 'desert' ? 1.3 : 1; // (the desert: as big as the sky map, a good deal bigger than the classic island)
 const DESERT = MAP === 'desert'; // THE DESERT (Mars-like planet, Earth animals): dunes, pyramids, an oasis, sandstorms, mirages, heat haze (09m_desert.js)
    // map scale
 const MX = Math.round(67 * MS), MZ = Math.round(46 * MS); // half-size of the island (classic: 1.2x the first test map)
@@ -534,18 +534,18 @@ const TEAMS = {
 };
 const other = t => t === 'blue' ? 'red' : 'blue';
 // forts sit near opposite corners (with room to walk round them); portals take the other two corners
-const FORT = DESERT ? { blue: { x: -14, z: 22 }, red: { x: 14, z: -22 } } /* the desert: across the map, each a little off-centre, sunk in its own crater */ : { blue: { x: Math.round(-45 * MS), z: Math.round(25 * MS) }, red: { x: Math.round(45 * MS), z: Math.round(-25 * MS) } }; // near the corners with room to walk behind
+const FORT = DESERT ? { blue: { x: Math.round(-14 * MS), z: Math.round(22 * MS) }, red: { x: Math.round(14 * MS), z: Math.round(-22 * MS) } } /* the desert: across the map, each a little off-centre, sunk in its own crater */ : { blue: { x: Math.round(-45 * MS), z: Math.round(25 * MS) }, red: { x: Math.round(45 * MS), z: Math.round(-25 * MS) } }; // near the corners with room to walk behind
 const FORT_RX = 17, FORT_RZ = 14;  // fort half-size (outer wall): a rectangle, longer towards the middle
 const FORT_R = FORT_RX;            // the bigger half-size, for rough 'near the fort' checks
 const FOG_N = 62 * MS, FOG_F = 150 * MS;     // haze distances (bigger map: see further)
-const PORTAL_SPOTS = DESERT ? [{ x: -57, z: -8 }, { x: 57, z: 8 }] /* (the desert: out at the two ends of the map) */ : [{ x: Math.round(-56 * MS), z: Math.round(-34 * MS) }, { x: Math.round(56 * MS), z: Math.round(34 * MS) }];
+const PORTAL_SPOTS = DESERT ? [{ x: Math.round(-57 * MS), z: Math.round(-8 * MS) }, { x: Math.round(57 * MS), z: Math.round(8 * MS) }] /* (the desert: out at the two ends of the map) */ : [{ x: Math.round(-56 * MS), z: Math.round(-34 * MS) }, { x: Math.round(56 * MS), z: Math.round(34 * MS) }];
 // speed strips (start x, z, direction, team). Classic: out on the flanks. Sky map: on the LEFT of each base (looking out
 // towards the middle), near the map's edge, pointing at the foot of the rainbow on that side
 const STRIP_SPOTS = MAP === 'sky' ? [['blue', -1], ['red', 1]].map(([team, s]) => { const x = Math.round(s * 58 * MS), z = Math.round(-s * 8 * MS), P_ = PORTAL_SPOTS[s < 0 ? 0 : 1], d = Math.hypot(P_.x - x, P_.z - z); return { x, z, dx: (P_.x - x) / d, dz: (P_.z - z) / d, team }; })
-  : DESERT ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 46, z: s * 16, dx: 0, dz: -s, team })) /* (the desert: down the flank from your crater towards theirs) */
+  : DESERT ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: Math.round(-s * 46 * MS), z: Math.round(s * 16 * MS), dx: 0, dz: -s, team })) /* (the desert: down the flank from your crater towards theirs) */
   : [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: Math.round(-s * 13 * MS), z: Math.round(s * 42 * MS), dx: s, dz: 0, team }));
 // two power-block hubs, each the same distance from both forts (fair for both teams)
-const HUBS = DESERT ? [{ x: 30, z: 19 }, { x: -30, z: -19 }] /* (each exactly as far from both forts) */ : [{ x: Math.round(8 * MS), z: Math.round(16 * MS) }, { x: Math.round(-8 * MS), z: Math.round(-16 * MS) }];
+const HUBS = DESERT ? [{ x: Math.round(30 * MS), z: Math.round(19 * MS) }, { x: Math.round(-30 * MS), z: Math.round(-19 * MS) }] /* (each exactly as far from both forts) */ : [{ x: Math.round(8 * MS), z: Math.round(16 * MS) }, { x: Math.round(-8 * MS), z: Math.round(-16 * MS) }];
 
 // ---------------- renderer / scene ----------------
 const stage = $('stage');
@@ -752,7 +752,7 @@ const TRAMP_SPOTS = MAP === 'sky' ? (() => { const A = PORTAL_SPOTS[1], L = Math
       for (const [gx, gz] of [[-20, -23], [20, 23]]) { const X = Math.round(gx * MS), Z = Math.round(gz * MS); if (Math.hypot(x - X, z - Z) < 26) { x = X; z = Z; const o = Math.sign(x * CH.n.x + z * CH.n.z) || 1; for (let k = 0; k < 12 && chasmDist(x, z) < 8; k++) { x = Math.round(X + CH.n.x * o * k); z = Math.round(Z + CH.n.z * o * k); } } } /* (the ones out by the map's edge sit in the middle of the ice-pillar grove instead) */
       const T_ = one(x, z, false); T_.grove = Math.hypot(x, z) < 45; return T_; });
     return [...main, ...flank]; })()
-  : DESERT ? [{ x: 34, z: -4 }, { x: -34, z: 4 }]
+  : DESERT ? [{ x: Math.round(34 * MS), z: Math.round(-4 * MS) }, { x: Math.round(-34 * MS), z: Math.round(4 * MS) }]
   : [{ x: Math.round(18 * MS), z: Math.round(26 * MS) }, { x: Math.round(-18 * MS), z: Math.round(-26 * MS) }];
 // TERRAIN (sky bridge map only): each fort stands on a plateau 4 blocks up that slopes gently down towards the gorge,
 // and the groves are on low rolling hills. Everything else (the middle, the hubs, the trampolines, the speed strips,
@@ -762,7 +762,7 @@ const HILLS = MAP === 'sky' ? [[-20, -23], [20, 23], [-5, 33], [5, -33]].map(([x
 // the desert's dunes: long ridges lying across the wind, a gentle slope on the windward side and a steep slip face on the
 // other (that's the one you can slide down), mirrored so both halves of the map get the same ones
 const DUNES = DESERT ? (() => { const L = [[40, 34, 16, 6, 3, .3], [54, 22, 11, 5, 2.6, 1.3], [-56, 30, 12, 5, 2.6, .6], [20, 4, 10, 5, 2.4, -.5], [44, -2, 10, 5, 2.2, 1.6], [-44, 40, 10, 4, 2, .2], [6, 40, 9, 4, 2, .1]];
-  return [...L, ...L.map(([x, z, l, w, h, a]) => [-x, -z, l, w, h, a + Math.PI])].map(([x, z, l, w, h, a]) => ({ x, z, l, w, h, a })); })() : [];
+  return [...L, ...L.map(([x, z, l, w, h, a]) => [-x, -z, l, w, h, a + Math.PI])].map(([x, z, l, w, h, a]) => [x * MS, z * MS, l * MS, w, h, a]).map(([x, z, l, w, h, a]) => ({ x, z, l, w, h, a })); })() : [];
 const _sm = s => s * s * (3 - 2 * s);
 // the desert's craters: each fort sits in the bowl of an old meteor crater. A ring of sand around it, gentle on the outside,
 // steep on the inside (slide down into your fort!), with three gaps you can just walk through: towards the middle and either side
@@ -827,7 +827,7 @@ function tree(x, z, h) {
 }
 // trees: two groves on the flanks give cover for sneaking round, plus a few loners. The middle stays open.
 // same 27 trees as before, spread wider: smaller groves, a few round each pasture (the corners looked empty), more loners
-const GROVES = (DESERT ? [{ x: 42, z: 26, n: 5 }, { x: -42, z: -26, n: 5 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
+const GROVES = (DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
 for (const p of PORTAL_SPOTS) { const L = Math.hypot(p.x, p.z), pa = { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; // trees scattered round the pasture fence, never in the portal's way
   for (let i = 0, n = 0; i < 120 && n < 4; i++) { const a = rnd() * Math.PI * 2, d = rr(11, 16), x = Math.round(pa.x + Math.cos(a) * d), z = Math.round(pa.z + Math.sin(a) * d);
     if (Math.hypot(x - p.x, z - p.z) < 7 || !clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue; tree(x, z, 2 + Math.floor(rnd() * 3)); n++; } }
@@ -3209,7 +3209,7 @@ function updateRobot(r, dt) {
   const hit = world.castRay(groundRay, 1.08, true, undefined, undefined, r.col);
   const lv = r.body.linvel();
   const was = r.grounded; r.grounded = !!hit && lv.y < 1.5;
-  if (r.grounded && !was) { r.jumps = 0; const imp = Math.max(0, -(r.lastVy || 0)); if (imp > 3) { r.model.sqv -= imp * .09; if (r.isPlayer) sfx('land'); } }
+  if (r.grounded && !was) { r.jumps = 0; const imp = (r.softLand || 0) > now() ? 0 : Math.max(0, -(r.lastVy || 0)); if (imp > 3) { r.model.sqv -= imp * .09; if (r.isPlayer) sfx('land'); } }
   r.lastVy = lv.y;
   r.yaw += angDiff(r.yaw, r.yawT) * Math.min(1, dt * (r.isPlayer ? 14 : 9));
   if (r.dashT > 0) r.dashT -= dt; else r.dashV *= Math.pow(.001, dt);
@@ -6202,7 +6202,7 @@ function updateCamera(dt) {
   // snap the shadow area to whole shadow texels so shadow edges don't shimmer/crawl as you move. The sun shines in at an
   // angle, so the snapping has to happen along the sun's own sideways/up directions, not the map's x and z
   { const tx = (sun.shadow.camera.right - sun.shadow.camera.left) / sun.shadow.mapSize.width;
-    const a = SUN_AX.x.dot(_sunP.set(p.x, 0, p.z)), b = SUN_AX.y.dot(_sunP);
+    const a = SUN_AX.x.dot(_sunP.set(p.x, Math.max(0, p.y - 2), p.z)), b = SUN_AX.y.dot(_sunP); // (centred on you, height too: up on the rainbow the shadows aren't cut off)
     _sunP.addScaledVector(SUN_AX.x, Math.round(a / tx) * tx - a).addScaledVector(SUN_AX.y, Math.round(b / tx) * tx - b);
     sun.target.position.copy(_sunP); sun.position.copy(_sunP).add(SUN_OFF); }
 }
@@ -6859,7 +6859,11 @@ RBW.waterT = { value: 0 };
 RBW.water = (o = {}) => { const m = HD ? new THREE.MeshStandardMaterial({ color: 0x1f7fae, roughness: .06, metalness: 0, envMapIntensity: 1.6, emissive: 0x06283a, emissiveIntensity: .5, transparent: true, opacity: o.opacity || .86, normalMap: RBW.waterN, normalScale: new THREE.Vector2(.45, .45), depthWrite: false }) /* (HD: glassy, reflects the sky, bright at a low angle) */
     : new THREE.MeshPhongMaterial({ color: 0x3fb2e4, specular: 0xffffff, shininess: 110, emissive: 0x0a3a5a, emissiveIntensity: .35, transparent: true, opacity: o.opacity || .84, normalMap: RBW.waterN, normalScale: new THREE.Vector2(.55, .55), depthWrite: false });
   m.onBeforeCompile = sh => { sh.uniforms.wT = RBW.waterT; sh.vertexShader = 'uniform float wT;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
-    vec4 wp_ = modelMatrix * vec4(position, 1.0); transformed.y += .03 * sin(wp_.x * 1.3 + wT * 2.1) + .025 * cos(wp_.z * 1.7 + wT * 1.6) + .03;`); };
+    vec4 wp_ = modelMatrix * vec4(position, 1.0); float edgeK = 1.0 - smoothstep(.72, .98, length(uv - .5) * 2.0); /* (calm right at the rim, so the edge always meets the bank) */
+    transformed.y += (.03 * sin(wp_.x * 1.3 + wT * 2.1) + .025 * cos(wp_.z * 1.7 + wT * 1.6)) * edgeK + .03;
+    #ifdef USE_NORMALMAP
+    vNormalMapUv = (normalMapTransform * vec3(wp_.xz * .16, 1.0)).xy; /* (ripples the same size on every pool, big or small) */
+    #endif`); };
   m.customProgramCacheKey = () => 'water' + (HD ? 'hd' : ''); return m; };
 RBW.waterGeo = R => new THREE.CircleGeometry(R, 48, 0, Math.PI * 2).rotateX(-Math.PI / 2); // (rings of vertices for the waves:)
 { const g0 = RBW.waterGeo; RBW.waterGeo = R => { const G = new THREE.RingGeometry(0, R, 48, Math.max(4, Math.round(R * 1.2))).rotateX(-Math.PI / 2); return G; }; }
@@ -6905,13 +6909,13 @@ function rainbowRide(r, dt) {
     R_.v += clamp(want - R_.v, -30 * dt, 22 * dt); R_.d += R_.dir * R_.v * dt;
     const done = R_.d >= RBW.L || R_.d <= 0, s = RBW.sOf(R_.d), p = RBW.at(s), q = RBW.at(clamp(s + R_.dir * .004, 0, 1)), tan = q.clone().sub(p).normalize();
     if (R_.jump || done) { // leap off (or step off at the far end): you keep the bow's speed and fly on
-      r.rb = null; r.rbCool = now() + 900; const v = R_.v;
+      r.rb = null; r.rbCool = now() + 900; r.softLand = now() + 900; r.lastVy = 0; const v = R_.v; // (touching down off the bow: no thud)
       r.body.setLinvel({ x: tan.x * v * (done ? .9 : .7), y: done ? 1.5 : Math.max(tan.y * v * .6, 0) + JUMP_V, z: tan.z * v * (done ? .9 : .7) }, true); r.jumps = done ? 0 : 1; r.grounded = false; r.padT = done ? 0 : 2.5;
       return; }
     const c = r.body.translation(), tx = p.x, ty = p.y + 1.02, tz = p.z, k = 1 / Math.max(dt, 1 / 120);
     if (Math.hypot(tx - c.x, ty - c.y, tz - c.z) > 2.5) r.body.setTranslation({ x: tx, y: ty, z: tz }, true); // (way off: snap back on)
     r.body.setLinvel({ x: tan.x * R_.v + (tx - c.x) * k * .5, y: tan.y * R_.v + (ty - c.y) * k * .5 + G * dt, z: tan.z * R_.v + (tz - c.z) * k * .5 }, true); // (glide along it rather than jumping from spot to spot)
-    r.grounded = false; r.jumps = 1; // (you can turn round freely while it carries you)
+    r.grounded = false; r.jumps = 1; r.softLand = now() + 500; // (you can turn round freely while it carries you)
     if (Math.random() < .5) emit(V(p.x, p.y + .2, p.z), [0xff3b3b, 0xffe14a, 0x4fd64a, 0x3aa8ff, 0xb05cff][Math.floor(Math.random() * 5)], V(rr(-1, 1), rr(0, 1), rr(-1, 1)), .18, .6, 0);
     return;
   }
@@ -7026,6 +7030,11 @@ if (MAP === 'sky' && CH) {
     // a lip of little cloud puffs round the pool, with gaps where it overflows
     const out = Math.atan2(pa.z, pa.x), spill = [out + 1.1, out - 1.2, out + Math.PI * .5 + 1.6].map(a => a); // (away from the portal side)
     const edgeR = CH.Ri - .15;
+    { // a bank of soft cloud puffs all round the rim (like the little pools at the slides), open where it spills over, and
+      // lining both sides of each overflow, so the water's edges are tucked in everywhere
+      const pm = new LiteMat({ color: 0xffffff, emissive: 0x8a9ab8, emissiveIntensity: .3 }), R0 = PASTURE_R + 1.2, puff = (x, z, s) => { const m = new THREE.Mesh(puffGeo, pm); m.position.set(x, y0 - .12 + rr(0, .2), z); m.scale.set(s * rr(.9, 1.15), s * rr(.5, .65), s * rr(.9, 1.15)); m.receiveShadow = true; scene.add(m); };
+      const n = Math.round(R0 * 2 * Math.PI / 1.7); for (let k = 0; k < n; k++) { const a = k / n * 6.283; if (spill.some(b => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < .3)) continue; puff(pa.x + Math.cos(a) * (R0 + .35), pa.z + Math.sin(a) * (R0 + .35), rr(1, 1.25)); }
+      for (const a of spill) { const dx = Math.cos(a), dz = Math.sin(a), nx = -dz, nz = dx; for (let d = R0 - .3; d < edgeR - .6; d += 1.5) for (const sd of [-1, 1]) puff(pa.x + dx * d + nx * sd * 3.05, pa.z + dz * d + nz * sd * 3.05, rr(.85, 1.05)); } }
     for (const a of spill) {
       const dx = Math.cos(a), dz = Math.sin(a);
       // the overflow running across the bank to the edge
@@ -7413,7 +7422,7 @@ function updatePenguins(dt) {
       for (const S_ of SLIDES) { const s0 = slideSF(S_, t), m = S_.at(s0); if (Math.hypot(m.x - t.x, m.z - t.z) < 2.4 && t.y - m.y < 2.8 && t.y - m.y > -1.2 && s0 < .95) { G_.ride = { S: S_, s: s0, rb: false, hit: G_.slide.hit, by: G_.slide.by }; break; } }
       if (!G_.ride && RBW.on) { const s0 = nearestS(V(t.x, t.y, t.z)), m = RBW.at(s0); if (m.distanceTo(V(t.x, t.y, t.z)) < 1.8) { const tan = RBW.at(Math.min(1, s0 + .01)).sub(RBW.at(Math.max(0, s0 - .01))); G_.ride = { s: s0, rb: true, dir: tan.x * G_.slide.dir.x + tan.z * G_.slide.dir.z >= 0 ? 1 : -1, hit: G_.slide.hit, by: G_.slide.by }; } }
     }
-    if (G_.ride) { const R_ = G_.ride, L = R_.rb ? RBW.L : R_.S.L, sp = R_.rb ? RBW.speed : 16, d0 = R_.rb ? R_.dir : 1;
+    if (G_.ride) { const R_ = G_.ride, L = R_.rb ? RBW.L : R_.S.L, sp = R_.rb ? RBW.speed : 25.6, /* (down a water slide: fast!) */ d0 = R_.rb ? R_.dir : 1;
       R_.s += d0 * sp * dt / L; const done = R_.rb ? (R_.s >= 1 || R_.s <= 0) : R_.s >= .97, s1 = clamp(R_.s, 0, 1), at_ = R_.rb ? RBW.at(s1) : R_.S.at(s1), nx = R_.rb ? RBW.at(clamp(s1 + d0 * .01, 0, 1)) : R_.S.at(Math.min(1, s1 + .01)), tan = nx.clone().sub(at_), th = V(tan.x, 0, tan.z).normalize();
       e.body.setTranslation({ x: at_.x, y: at_.y + .5, z: at_.z }, true); e.body.setLinvel({ x: 0, y: 0, z: 0 }, true); G_.yaw = Math.atan2(th.x, th.z);
       knockAlong(V(at_.x, at_.y + .6, at_.z), th, 2.2, R_.by, R_.hit, 7, !R_.rb); // everyone on it gets knocked off (off a water slide: sideways, over the edge)
@@ -9211,6 +9220,30 @@ function hdGroundTex() {
   for (const x of [t, nt]) { x.wrapS = x.wrapT = THREE.RepeatWrapping; x.anisotropy = renderer.capabilities.getMaxAnisotropy(); x.magFilter = THREE.LinearFilter; x.minFilter = THREE.LinearMipmapLinearFilter; }
   return { t, nt };
 }
+
+// ---- the ground, made to look looked-after rather than one tile repeated: the grass (or sand) picture is mixed with a
+// turned, rescaled copy of itself in big soft patches so it never lines up, then whole areas are tinted differently
+// (lush dark grass, sun-dried yellow patches, worn dirt paths between the forts, the middle and the portals; on the
+// desert: wind-blown pale sand, darker red grit and rocky patches). The grass blades use the same map: they grow
+// thinner on the paths and take the colour of the patch they're in.
+const HD_GROUND_SEGS = (() => { if (MAP !== 'classic') return []; const c = { x: 0, z: 0 }; return [[FORT.blue, c], [FORT.red, c], [PORTAL_SPOTS[0], c], [PORTAL_SPOTS[1], c], [HUBS[0], FORT.blue], [HUBS[1], FORT.red]]; })();
+const HD_GROUND_U = { gSeg: { value: Array.from({ length: 6 }, (_, i) => { const s = HD_GROUND_SEGS[i]; return s ? new THREE.Vector4(s[0].x, s[0].z, s[1].x, s[1].z) : new THREE.Vector4(); }) }, gSegN: { value: HD_GROUND_SEGS.length }, gHalf: { value: new THREE.Vector2(MX, MZ) } };
+const HD_GROUND_GLSL = `
+uniform vec4 gSeg[6]; uniform int gSegN; uniform vec2 gHalf;
+float gH2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float gN2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(gH2(i), gH2(i + vec2(1, 0)), f.x), mix(gH2(i + vec2(0, 1)), gH2(i + vec2(1, 1)), f.x), f.y); }
+float gF2(vec2 p) { return .5 * gN2(p) + .3 * gN2(p * 2.1 + 3.7) + .2 * gN2(p * 4.3 + 1.3); }
+float gSegD(vec2 p, vec2 a, vec2 b) { vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * h); }
+float gPath(vec2 w) { vec2 q = w + (vec2(gN2(w * .06), gN2(w * .06 + 9.0)) - .5) * 7.0; float d = 99.0; for (int i = 0; i < 6; i++) { if (i >= gSegN) break; d = min(d, gSegD(q, gSeg[i].xy, gSeg[i].zw)); }
+  return 1.0 - smoothstep(.5, 1.3 + .7 * gN2(w * 1.3), d); }
+vec3 gTint(vec2 w) {
+  float big = gF2(w * .035), dry = smoothstep(.56, .74, gF2(w * .022 + 17.0)), fine = gN2(w * .7);
+  ${DESERT ? `vec3 t = mix(vec3(.84, .8, .76), vec3(1.1, 1.04, .96), big); t = mix(t, vec3(1.16, 1.08, .98), dry * .7);
+  float rock = smoothstep(.66, .8, gF2(w * .05 + 41.0)); t = mix(t, vec3(.62, .42, .34), rock * .75); t *= .92 + .16 * fine;`
+  : `vec3 t = mix(vec3(.74, .86, .7), vec3(1.06, 1.06, .98), big); t = mix(t, vec3(1.3, 1.16, .66), dry * .75);
+  float clover = smoothstep(.7, .85, gF2(w * .09 + 5.0)); t = mix(t, vec3(.7, .95, .66), clover * .5); t *= .9 + .2 * fine;`}
+  return t; }
+`;
 if (HD) {
   // ---- light from the sky itself: a blurred picture of the sky (with the sun in it) that every material reflects ----
   { const es = new THREE.Scene(), sd = sun.position.clone().normalize();
@@ -9236,6 +9269,18 @@ if (HD) {
   // ---- the ground ----
   { const gm = GROUND_MESH ? GROUND_MESH.material : (() => { const sl = scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6); return sl && sl.material[2]; })();
     const T_ = hdGroundTex(); if (gm && gm.map && T_) { const o = gm.map; T_.nt.repeat.copy(o.repeat); o.image = T_.t.image; o.magFilter = THREE.LinearFilter; o.minFilter = THREE.LinearMipmapLinearFilter; o.needsUpdate = true; /* (the same texture object gets the new picture, so the Look lab's 'Game' ground stays HD) */ gm.normalMap = T_.nt; gm.normalScale = new THREE.Vector2(.8, .8); gm.roughness = .95; gm.needsUpdate = true; } }
+  { const gm = GROUND_MESH ? GROUND_MESH.material : (() => { const sl = scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6); return sl && sl.material[2]; })();
+    if (gm && MAP !== 'sky') { const prev = gm.onBeforeCompile; gm.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd); Object.assign(sh.uniforms, HD_GROUND_U);
+        sh.fragmentShader = HD_GROUND_GLSL + sh.fragmentShader.replace('#include <map_fragment>', `
+  #ifdef USE_MAP
+    vec2 gw = vec2(vMapUv.x * 2.0 - gHalf.x, gHalf.y - vMapUv.y * 2.0);
+    vec4 gA = texture2D(map, vMapUv), gB = texture2D(map, mat2(.8, -.6, .6, .8) * vMapUv * .61 + vec2(.37, .11)), gC = texture2D(map, mat2(-.5, .87, -.87, -.5) * vMapUv * 1.37 + vec2(.71, .29));
+    float gb = smoothstep(.3, .7, gN2(gw * .09)), gc = smoothstep(.55, .8, gN2(gw * .13 + 31.0));
+    vec4 sampledDiffuseColor = mix(mix(gA, gB, gb), gC, gc * .6);
+    diffuseColor *= sampledDiffuseColor; diffuseColor.rgb *= gTint(gw);
+    float gp = gPath(gw); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.36, .27, .17) * (.75 + .5 * gN2(gw * 2.3)) * (.9 + .2 * gA.g), gp * .9);
+  #endif`); };
+      const key = gm.customProgramCacheKey ? gm.customProgramCacheKey() : ''; gm.customProgramCacheKey = () => key + 'hdground'; gm.needsUpdate = true; } }
   // ---- grass blades (the island only): a patch round the camera that wraps as you move ----
   if (MAP === 'classic') {
     const touch = matchMedia('(pointer: coarse)').matches, N = touch ? 7000 : 15000, T = 28;
@@ -9249,19 +9294,19 @@ if (HD) {
     const U = { uCam: { value: V() }, uP: { value: V(0, -99, 0) }, uT: { value: 0 }, cellTex: { value: cellTex }, uMap: { value: new THREE.Vector2(GW, GD) } };
     const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .8, side: THREE.DoubleSide });
     mat.onBeforeCompile = sh => { Object.assign(sh.uniforms, U);
-      sh.vertexShader = `attribute vec3 aOff; uniform vec3 uCam, uP; uniform float uT; uniform sampler2D cellTex; uniform vec2 uMap; varying vec3 vGc;\n` + sh.vertexShader
+      Object.assign(sh.uniforms, HD_GROUND_U); sh.vertexShader = `attribute vec3 aOff; uniform vec3 uCam, uP; uniform float uT; uniform sampler2D cellTex; uniform vec2 uMap; varying vec3 vGc;\n` + HD_GROUND_GLSL + sh.vertexShader
         .replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);')
         .replace('#include <begin_vertex>', `
   vec2 wp = aOff.xy + ${T.toFixed(1)} * floor((uCam.xz - aOff.xy) / ${T.toFixed(1)} + .5);
   float dc = length(wp - uCam.xz), fade = 1.0 - smoothstep(${(T * .3).toFixed(1)}, ${(T * .48).toFixed(1)}, dc);
   vec2 cuv = vec2((wp.x + uMap.x * .5) / uMap.x, 1.0 - (wp.y + uMap.y * .5) / uMap.y);
   vec4 cc = texture(cellTex, cuv); float inside = step(0.0, cuv.x) * step(cuv.x, 1.0) * step(0.0, cuv.y) * step(cuv.y, 1.0) * step(.5, cc.a);
-  float h = (.2 + .24 * aOff.z) * fade * inside, a = aOff.z * 40.0, y = position.y;
+  float gp = gPath(wp); float h = (.2 + .24 * aOff.z) * fade * inside * (1.0 - .85 * gp) * (.75 + .5 * gN2(wp * .2)), a = aOff.z * 40.0, y = position.y;
   vec2 dir = vec2(cos(a), sin(a)); vec3 transformed = vec3(wp.x + dir.x * position.x * .07, y * h, wp.y + dir.y * position.x * .07);
   vec2 bend = vec2(.6, .3) * (.5 + .5 * sin(uT * 1.6 + wp.x * .31 + wp.y * .23)) * .12 + .03 * vec2(sin(uT * 3.1 + aOff.z * 20.0), cos(uT * 2.7 + aOff.z * 13.0));
   vec2 dv = wp - uP.xz; float dl = length(dv); if (dl < .9 && abs(uP.y) < 2.0) bend += dv / max(dl, .01) * (.9 - dl) * .45;
   transformed.xz += bend * y * y * h * 3.0; transformed.y -= length(bend) * y * y * h * .6;
-  vGc = mix(vec3(.12, .26, .06), vec3(.36, .6, .16) * (.8 + .4 * fract(aOff.z * 7.3)), y) * mix(vec3(1.0), cc.rgb, .85);`);
+  vGc = mix(vec3(.12, .26, .06), vec3(.36, .6, .16) * (.8 + .4 * fract(aOff.z * 7.3)), y) * mix(vec3(1.0), cc.rgb, .85) * gTint(wp);`);
       sh.fragmentShader = 'varying vec3 vGc;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n  diffuseColor.rgb *= vGc;');
     };
     mat.customProgramCacheKey = () => 'hdgrass';
