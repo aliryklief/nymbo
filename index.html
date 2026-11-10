@@ -1585,6 +1585,10 @@ function hasSupport(e) {
   return false;
 }
 function checkSupport() {
+  // trees: if a block of a tree has been pulled out, knocked loose or swallowed, everything of that tree above it comes down too
+  for (let q = 0; q < 4 && TREE_GROUPS.length; q++) { const G = TREE_GROUPS[TREE_GROUPS.ti = ((TREE_GROUPS.ti || 0) + 1) % TREE_GROUPS.length]; let low = Infinity;
+    for (const e of G) if (e.dead || e.holder || !e.anchored) low = Math.min(low, e.spawnPos.y);
+    if (low < Infinity) for (const e of G) if (e.anchored && !e.dead && e.body && e.spawnPos.y > low - .05) unanchor(e); }
   const n = blocks.length; if (!n) return;
   for (let k = 0; k < Math.min(40, n); k++) {
     const e = blocks[supI = (supI + 1) % n];
@@ -1792,8 +1796,10 @@ function updateAnimals(dt) {
   }
 }
 // trees: brown trunk blocks and two big leaf slabs; knock the trunk and the whole thing comes down
+const TREE_GROUPS = []; // (each tree's blocks, so pulling one out brings the rest down)
 for (const t of TREES) {
-  const mk = (pos, dims, col) => { const e = newBlock('tree', pos, { dims, color: new THREE.Color(col).offsetHSL(0, 0, rr(-.05, .05)) }); return e; };
+  const grp = []; TREE_GROUPS.push(grp);
+  const mk = (pos, dims, col) => { const e = newBlock('tree', pos, { dims, color: new THREE.Color(col).offsetHSL(0, 0, rr(-.05, .05)) }); grp.push(e); e.treeGrp = grp; return e; };
   const sleepNew = (fn) => { const b0 = blocks.length; fn(); for (let k = b0; k < blocks.length; k++) { const e = blocks[k]; e.anchored = true; dropBody(e); makeBody(e, e.spawnPos); } };
   sleepNew(() => {
     if (MAP === 'sky') { // the sky map: ice pillars instead of trees (a chunky base, a tall icy column, a frosty tip)
@@ -1801,7 +1807,7 @@ for (const t of TREES) {
       for (let y = 1; y < H; y++) mk(V(t.x, y + .5, t.z), V(1, 1, 1), y % 2 ? '#c4e8fb' : '#aedcf6');
       mk(V(t.x, H + .35, t.z), V(.7, .7, .7), '#eefaff');
     } else if (DESERT) { // the desert: tall cacti with arms, and date palms
-      const y0 = TH(t.x, t.z), mkS = (p, ...r) => mk(p.setY(p.y + y0), ...r); // (standing on the sand, wherever the dunes put it)
+      const y0 = TH(t.x, t.z), mkS = (p, ...r) => mk(p.setY(p.y + y0 - TH(p.x, p.z)), ...r); // (the whole tree stands on the sand at its trunk: newBlock lifts each block by the sand right under it, so that's taken back off for arms and fronds that stick out over a slope)
       if ((Math.round(t.x * 7 + t.z * 3) & 1) === 0) { const H = t.h + 2, g = ['#3f8a3a', '#4b9a44', '#367a33'];
         for (let y = 0; y < H; y++) mkS(V(t.x, y + .5, t.z), V(.9, 1, .9), g[y % 3]); mkS(V(t.x, H + .2, t.z), V(.7, .4, .7), '#ffd36a'); // (a flower on top)
         const ax = (Math.round(t.z) & 1) ? 1 : -1; mkS(V(t.x + ax, 2.5, t.z), V(1.1, .7, .7), g[1]); mkS(V(t.x + ax * 1.35, 3.5, t.z), V(.7, 1.4, .7), g[0]);
@@ -6054,6 +6060,9 @@ function rwRestore(F) {
 }
 // REWIND in two parts, 6 seconds in all: first everything slows down to a stop (3 s), then time runs backwards, slowly at
 // first and faster and faster, back to 10 seconds ago (3 s). The match clock keeps running the whole time.
+// how far back time has run (0 → 1) as the rewind goes on: speeding up for the first 70%, then slowing to a gentle stop
+// (no sudden halt at the end), so it glides into the second where time speeds back up to normal
+const rwCurve = k => k < .7 ? k * k / .7 : 1 - (1 - k) * (1 - k) / .3, rwCurveD = k => k < .7 ? 2 * k / .7 : 2 * (1 - k) / .3;
 function startRewind(team) {
   if (RW.playing || RW.frames.length < 3) { sfx('denied'); return; }
   RW.used[team] = true; RW.playing = true; RW.phase = 'slow'; RW.pt = 0;
@@ -6064,18 +6073,18 @@ function rewindBack() { // (the stop: from here it runs backwards)
   const t0 = RW.snap[0].t; RW.movers = blocks.filter(e => (e.rwMoved || 0) >= t0 && !e.dead && e.kind !== 'animal'); rwaBack();
 }
 function rewindTick(dt) {
-  RW.pt += dt; const k = Math.min(1, RW.pt / RW.dur), fr = RW.snap, N = fr.length - 1, x = N * (1 - k * k * k), i = Math.floor(x), f = x - i; // (slow to start, faster and faster)
+  RW.pt += dt; const k = Math.min(1, RW.pt / RW.dur), fr = RW.snap, N = fr.length - 1, x = N * (1 - rwCurve(k)), i = Math.floor(x), f = x - i; // (slow to start, faster and faster, then easing to a stop)
   rwApplyVisual(fr[Math.min(N, i)], fr[Math.min(N, i + 1)], f);
   if (match.state === 'play') { match.time -= dt; if (match.time <= 0) { match.time = 0; } } // (the clock keeps running)
   for (const r of robots) { r.wantSpeed = 0; if (r.body) syncRobot(r); }
   updateBlocks(0); updateFx(dt); updateCamera(dt);
-  if (k >= 1) { rwRestore(fr[0]); RW.playing = false; RW.phase = null; RW.snap = null; RW.movers = null; document.body.classList.remove('rewinding'); rwaEnd(); sfx('swoop'); RW.resumeT = .8; } // (then time speeds back up to normal, rather than snapping)
+  if (k >= 1) { rwRestore(fr[0]); RW.playing = false; RW.phase = null; RW.snap = null; RW.movers = null; document.body.classList.remove('rewinding'); rwaEnd(); sfx('swoop'); RW.resumeT = 1; } // (then time takes a full second to speed back up to normal, rather than snapping)
 }
 RW.dur = 3;
 { const tk0 = tick; tick = function (dt, t) {
     if (RW.playing && RW.phase === 'back') return rewindTick(dt);
     let s = 1; if (RW.playing) { RW.pt += dt; const u = Math.min(1, RW.pt / 3); s = Math.max(.02, (1 - u) * (1 - u)); } // (slowing to a stop)
-    else if (RW.resumeT > 0) { RW.resumeT -= dt; const u = 1 - Math.max(0, RW.resumeT) / .8; s = Math.max(.05, u * u * (3 - 2 * u)); } // (picking back up)
+    else if (RW.resumeT > 0) { RW.resumeT -= dt; const u = 1 - Math.max(0, RW.resumeT); s = Math.max(.02, u * u * (3 - 2 * u)); } // (picking back up)
     const res = tk0(dt * s, t);
     if (match.state === 'play' && !(NET && NET.client)) { if (s < 1) match.time = Math.max(0, match.time - dt * (1 - s)); RW.clock += dt * s; rwRecord(); }
     if (RW.playing && RW.pt >= 3) rewindBack();
@@ -6120,7 +6129,7 @@ function rwaSlow() { // a tape stopping: what you just heard slows to a halt, dr
 }
 function rwaBack() { // everything heard in the last 10 seconds, backwards, speeding up
   if (!RWA.on) { sfx('rewind'); return; } const L = Math.min(11, RWA.w / AC.sampleRate), B = rwaClip(L, true); if (!B) { sfx('rewind'); return; }
-  const c = new Float32Array(64); for (let i = 0; i < 64; i++) { const u = (i + .5) / 64; c[i] = Math.max(.25, L * u * u); } // (position = L·(t/3)³, so the speed is L·(t/3)²)
+  const c = new Float32Array(64); for (let i = 0; i < 64; i++) { const u = (i + .5) / 64; c[i] = Math.max(.15, L * rwCurveD(u) / RW.dur); } // (the sound runs back exactly as fast as time does)
   RWA.src = rwaPlay(B, c, RW.dur, 1);
 }
 function rwaEnd() { if (!RWA.on) return; const t = AC.currentTime; RWA.gate.gain.cancelScheduledValues(t); RWA.gate.gain.setValueAtTime(0, t); RWA.gate.gain.linearRampToValueAtTime(1, t + .25); RWA.w = 0; }
@@ -6347,7 +6356,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { scoreFlag, get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { scoreFlag, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
