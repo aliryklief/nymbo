@@ -7476,8 +7476,16 @@ function pengPoolRelease() { // holding a penguin and you land in the pool at th
 PENG.randT = rr(20, 35);
 function pengRandom(dt) { if (MAP !== 'sky' || match.state !== 'play' || (NET && NET.client)) return; if ((PENG.randT -= dt) > 0) return; PENG.randT = rr(25, 45);
   if (PENG.list.length >= 3 || !TREES.length) return; const t = TREES[Math.floor(Math.random() * TREES.length)]; spawnPenguin(V(t.x + rr(-1.2, 1.2), 0, t.z + rr(-1.2, 1.2))); }
+function pengRainbowRelease() { // holding a penguin when you get on the rainbow: it wriggles free and whizzes across ahead of you
+  if (!RBW.on) return;
+  for (const r of robots) { const e = r.stack[0]; if (!e || e.animal !== 'penguin' || !e.peng || !r.rb || r.state !== 'play') continue;
+    const s0 = clamp(r.rb.s + r.rb.dir * .03, 0, 1), at_ = RBW.at(s0); throwAt(r, at_, 10);
+    if (e.body) { e.body.setTranslation({ x: at_.x, y: at_.y + .5, z: at_.z }, true); const hit = new Set([r]);
+      e.peng.slide = { dir: V(RBW.B.x - RBW.A.x, 0, RBW.B.z - RBW.A.z).normalize().multiplyScalar(r.rb.dir), sp: 0, by: r, hit, t: 0 }; e.peng.ride = { s: s0, rb: true, dir: r.rb.dir, hit, by: r }; }
+    sfx('honk', at_); }
+}
 function updatePenguins(dt) {
-  pengPoolRelease(); pengRandom(dt);
+  pengPoolRelease(); pengRainbowRelease(); pengRandom(dt);
   if (!PENG.on) return;
   for (let i = PENG.list.length - 1; i >= 0; i--) {
     const e = PENG.list[i], G_ = e.peng;
@@ -7491,12 +7499,13 @@ function updatePenguins(dt) {
       for (const S_ of SLIDES) { const s0 = slideSF(S_, t), m = S_.at(s0); if (Math.hypot(m.x - t.x, m.z - t.z) < 2.4 && t.y - m.y < 2.8 && t.y - m.y > -1.2 && s0 < .95) { G_.ride = { S: S_, s: s0, rb: false, hit: G_.slide.hit, by: G_.slide.by }; break; } }
       if (!G_.ride && RBW.on) { const s0 = nearestS(V(t.x, t.y, t.z)), m = RBW.at(s0); if (m.distanceTo(V(t.x, t.y, t.z)) < 1.8) { const tan = RBW.at(Math.min(1, s0 + .01)).sub(RBW.at(Math.max(0, s0 - .01))); G_.ride = { s: s0, rb: true, dir: tan.x * G_.slide.dir.x + tan.z * G_.slide.dir.z >= 0 ? 1 : -1, hit: G_.slide.hit, by: G_.slide.by }; } }
     }
-    if (G_.ride) { const R_ = G_.ride, L = R_.rb ? RBW.L : R_.S.L, sp = R_.rb ? RBW.speed : 25.6, /* (down a water slide: fast!) */ d0 = R_.rb ? R_.dir : 1;
+    if (G_.ride) { const R_ = G_.ride, L = R_.rb ? RBW.L : R_.S.L, sp = 25.6, /* (down a water slide or across the rainbow: fast!) */ d0 = R_.rb ? R_.dir : 1;
       R_.s += d0 * sp * dt / L; const done = R_.rb ? (R_.s >= 1 || R_.s <= 0) : R_.s >= .97, s1 = clamp(R_.s, 0, 1), at_ = R_.rb ? RBW.at(s1) : R_.S.at(s1), nx = R_.rb ? RBW.at(clamp(s1 + d0 * .01, 0, 1)) : R_.S.at(Math.min(1, s1 + .01)), tan = nx.clone().sub(at_), th = V(tan.x, 0, tan.z).normalize();
       e.body.setTranslation({ x: at_.x, y: at_.y + .5, z: at_.z }, true); e.body.setLinvel({ x: 0, y: 0, z: 0 }, true); G_.yaw = Math.atan2(th.x, th.z);
       knockAlong(V(at_.x, at_.y + .6, at_.z), th, 2.2, R_.by, R_.hit, 7, !R_.rb); // everyone on it gets knocked off (off a water slide: sideways, over the edge)
       if (Math.random() < .7) emit(V(at_.x, at_.y + .2, at_.z), R_.rb ? [0xff3b3b, 0xffe14a, 0x4fd64a, 0x3aa8ff][Math.floor(Math.random() * 4)] : 0xbfeeff, V(rr(-1, 1), rr(.5, 2), rr(-1, 1)), .12, .5, 0);
       _pe.set(Math.PI / 2 - Math.atan2(tan.y, Math.hypot(tan.x, tan.z)) * 0, G_.yaw, 0); e.body.setRotation(_pq.setFromEuler(_pe), true);
+      if (done && R_.rb) { const E = R_.s >= 1 ? RBW.B : RBW.A; pengDive(e, { kind: 'water', x: E.x, z: E.z }); PENG.list.splice(i, 1); continue; } /* (across the rainbow and down into the pool at the far end: gone) */
       if (done && !R_.rb && R_.S.pool) { pengDive(e, { kind: 'water', x: R_.S.pool.x, z: R_.S.pool.z }); PENG.list.splice(i, 1); continue; } /* (down the slide and straight into the pool at the bottom: gone) */
       if (done) { G_.ride = null; if (G_.slide) { G_.slide.dir = th; G_.slide.sp = 11; G_.slide.t = 0; } e.body.setTranslation({ x: at_.x + th.x, y: Math.max(at_.y, TH(at_.x, at_.z)) + .6, z: at_.z + th.z }, true); }
       continue; }
