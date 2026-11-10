@@ -3081,7 +3081,8 @@ function makeRobotBody(r, p) {
   byCollider.set(r.col.handle, { type: 'robot', ref: r });
 }
 const rPos = r => { const t = r.body.translation(); return V(t.x, t.y, t.z); };
-const canAct = r => r.state === 'play' && r.frozenT <= 0 && !(r.peckT > 0) && !(r.flopT > 0); // (chickens on you: no grabbing, throwing, jumping or dodging...)
+var RW_LOCK = false; // (true while time is being rewound: nobody can grab, throw, jump, dodge or use a power)
+const canAct = r => !RW_LOCK && r.state === 'play' && r.frozenT <= 0 && !(r.peckT > 0) && !(r.flopT > 0); // (chickens on you: no grabbing, throwing, jumping or dodging...)
 const canMove = r => r.state === 'play' && r.frozenT <= 0 && !(r.flopT > 0);                   // (...but you can still struggle along)
 const hittable = r => r.state === 'play' && r.ghostT <= 0 && !isInvisible(r); // (invisible: nothing can hit you, lock on to you, or home in on you)
 
@@ -3272,7 +3273,7 @@ function updateRobot(r, dt) {
   r.lastVy = lv.y;
   r.yaw += angDiff(r.yaw, r.yawT) * Math.min(1, dt * (r.isPlayer ? 14 : 9));
   if (r.dashT > 0) r.dashT -= dt; else r.dashV *= Math.pow(.001, dt);
-  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1) * (r.peckT > 0 ? .3 : 1) * (r.spatT > 0 ? .5 : 1) * (r.goldT > 0 ? 2 : 1) * (r.grounded && onIce(rPos(r)) ? 1.35 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
+  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1) * (r.peckT > 0 ? .3 : 1) * (r.spatT > 0 ? .5 : 1) * (RW_LOCK ? 0 : 1) * (r.goldT > 0 ? 2 : 1) * (r.grounded && onIce(rPos(r)) ? 1.35 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
   if (r.pull) { des.add(r.pull); } // the black hole's drag
   if (r.boost) { des.add(r.boost); r.boost.multiplyScalar(Math.exp(-1.3 * dt)); if (r.boost.lengthSq() < .3) r.boost = null; } // speed arrows
   if (r.gasT > 0) r.gasT -= dt; // (in the stink cloud: crawling)
@@ -6029,7 +6030,8 @@ function rwRestore(F) {
   for (const e of [...blocks]) if (!e.dead && e.kind !== 'animal' && !keep.has(e)) destroyBlock(e);
   // blocks back where they were (the ones that were used up or blown away come back)
   for (let i = 0; i < F.list.length; i++) { let e = F.list[i]; const o = i * RW_NB, d = F.d, fl = d[o + 13];
-    if (e.dead) { const ne = newBlock(e.kind, V(d[o], d[o + 1], d[o + 2]), { color: '#' + e.color.getHexString(), dims: e.dims, team: e.team, home: e.home, owner: e.owner }); ne.home = e.home; ne.atHome = false;
+    if (e.dead) { let ne; if (e.kind === 'streak') { if (!ISLAND.e || ISLAND.e.dead) spawnStreakBlock(); ne = ISLAND.e; } // (the star block comes back as the star block, made the island's own way)
+      else { ne = newBlock(e.kind, V(d[o], d[o + 1], d[o + 2]), { color: '#' + e.color.getHexString(), dims: e.dims, team: e.team, home: e.home, owner: e.owner }); ne.home = e.home; ne.atHome = false; }
       if (e.kind === 'flag' && FLAGS[e.team]) { const k = FLAGS[e.team].indexOf(e); if (k >= 0) FLAGS[e.team][k] = ne; }
       if (ne.body) dropBody(ne); revived.set(e, ne); e = ne; }
     e.scored = false; e.live = !!(fl & 2); if (e.frozenT > 0 && typeof thawBlock === 'function') thawBlock(e);
@@ -6065,7 +6067,7 @@ function rwRestore(F) {
 const rwCurve = k => k < .7 ? k * k / .7 : 1 - (1 - k) * (1 - k) / .3, rwCurveD = k => k < .7 ? 2 * k / .7 : 2 * (1 - k) / .3;
 function startRewind(team) {
   if (RW.playing || RW.frames.length < 3) { sfx('denied'); return; }
-  RW.used[team] = true; RW.playing = true; RW.phase = 'slow'; RW.pt = 0;
+  RW.used[team] = true; RW.playing = true; RW_LOCK = true; // (nobody can do anything until it's over) RW.phase = 'slow'; RW.pt = 0;
   bigToast('REWIND', 'blue'); document.body.classList.add('rewinding'); rwaSlow();
 }
 function rewindBack() { // (the stop: from here it runs backwards)
@@ -6084,12 +6086,12 @@ RW.dur = 3;
 { const tk0 = tick; tick = function (dt, t) {
     if (RW.playing && RW.phase === 'back') return rewindTick(dt);
     let s = 1; if (RW.playing) { RW.pt += dt; const u = Math.min(1, RW.pt / 3); s = Math.max(.02, (1 - u) * (1 - u)); } // (slowing to a stop)
-    else if (RW.resumeT > 0) { RW.resumeT -= dt; const u = 1 - Math.max(0, RW.resumeT); s = Math.max(.02, u * u * (3 - 2 * u)); } // (picking back up)
+    else if (RW.resumeT > 0) { RW.resumeT -= dt; const u = 1 - Math.max(0, RW.resumeT); s = Math.max(.02, u * u * (3 - 2 * u)); if (RW.resumeT <= 0) RW_LOCK = false; } // (picking back up)
     const res = tk0(dt * s, t);
     if (match.state === 'play' && !(NET && NET.client)) { if (s < 1) match.time = Math.max(0, match.time - dt * (1 - s)); RW.clock += dt * s; rwRecord(); }
     if (RW.playing && RW.pt >= 3) rewindBack();
     return res; }; }
-{ const sc0 = startCountdown; startCountdown = function (...a) { RW.used = { blue: false, red: false }; RW.frames = []; RW.recAt = 0; RW.clock = 0; RW.playing = false; return sc0(...a); }; }
+{ const sc0 = startCountdown; startCountdown = function (...a) { RW.used = { blue: false, red: false }; RW.frames = []; RW.recAt = 0; RW.clock = 0; RW.playing = false; RW.resumeT = 0; RW_LOCK = false; return sc0(...a); }; }
 // its sound: a tape being pulled backwards, sweeping down
 Object.assign(SFX_SYNTH, { rewind: () => { noiseHit(1.6, 'bandpass', 2400, .7, 0, true, 300, 1); noiseHit(1.2, 'bandpass', 900, .5, .3, true, 120, 1); thump(140, .6, .02, .9); } });
 // the screen during it: a cool tint with scan lines and a big ⏪
@@ -7973,7 +7975,7 @@ function updateDust(dt) {
 // MUMMY ROBOTS (Look lab → Mummy robots; on by default in the desert): every robot wrapped head to toe in old
 // bandages (still in its team colour), with a couple of loose ends flapping in the wind behind it.
 // ============================================================
-if (S.mummy == null) S.mummy = DESERT;
+if (S.mummy == null) S.mummy = true; // (the desert only: on the other maps the robots are never mummies)
 const MUMMY = { tex: null, ribbons: [] };
 function mummify(M, col) {
   if (!M || !M.mats || M.mummy) return; M.mummy = true;
@@ -7997,7 +7999,7 @@ function mummify(M, col) {
   const rm = new LiteMat({ map: MUMMY.tex, color: b.color.clone(), side: THREE.DoubleSide });
   for (const [px, py, len] of [[.3, .95, 1.1], [-.45, .25, .8]]) { const geo = new THREE.PlaneGeometry(.12, len, 1, 6); geo.translate(0, -len / 2, 0); const m = new THREE.Mesh(geo, rm); m.position.set(px, py, -.35); (M.torso || M.g).add(m); MUMMY.ribbons.push({ m, base: geo.attributes.position.array.slice(), ph: rr(0, 6) }); }
 }
-if (S.mummy) { for (const r of robots) mummify(r.model, r.color); const rmM = robotModel; robotModel = function (...a) { const M = rmM(...a); try { mummify(M); } catch (e) {} return M; }; }
+if (DESERT && S.mummy) { for (const r of robots) mummify(r.model, r.color); const rmM = robotModel; robotModel = function (...a) { const M = rmM(...a); try { mummify(M); } catch (e) {} return M; }; }
 function updateMummy() { if (!MUMMY.ribbons.length) return; const t = now() / 1000; for (const R of MUMMY.ribbons) { if (!R.m.parent || !R.m.visible) continue; const p = R.m.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const y = R.base[i * 3 + 1], k = -y; p.setZ(i, -k * k * .35 - k * .15 * (1 + Math.sin(t * 7 + R.ph + k * 4))); p.setX(i, R.base[i * 3] + Math.sin(t * 5 + R.ph + k * 3) * .08 * k); } p.needsUpdate = true; } }
 { const ump4 = updateMorePowers; updateMorePowers = function (dt) { ump4(dt); if (DESERT) { updateSpit(dt); updateDust(dt); } updateMummy(); }; }
 
@@ -9418,7 +9420,7 @@ if (HD && DESERT) { const st0 = sideTint; sideTint = function (cx, cz) { return 
 // Look lab: the mummy switch
 { const ll = lookLabRows; lookLabRows = function () { ll(); const box = $('lookList'); if (!box) return;
     const row = document.createElement('div'); row.className = 'labsnd';
-    row.innerHTML = `<b>Mummy robots</b><span class="src">every robot wrapped up in old bandages, loose ends flapping (on by default in the red desert; changes after a reload)</span><div class="chips"><span class="chip${S.mummy ? ' on' : ''}"><button class="cu" data-m="1">On</button></span><span class="chip${S.mummy ? '' : ' on'}"><button class="cu" data-m="0">Off</button></span></div>`;
+    row.innerHTML = `<b>Mummy robots</b><span class="src">in the red desert, every robot is wrapped up in old bandages, loose ends flapping (changes after a reload)</span><div class="chips"><span class="chip${S.mummy ? ' on' : ''}"><button class="cu" data-m="1">On</button></span><span class="chip${S.mummy ? '' : ' on'}"><button class="cu" data-m="0">Off</button></span></div>`;
     row.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { S.mummy = b.dataset.m === '1'; saveS(); toast('MUMMY ROBOTS ' + (S.mummy ? 'ON' : 'OFF') + ' (AFTER A RELOAD)'); lookLabRows(); });
     box.insertBefore(row, box.firstChild); }; }
 
