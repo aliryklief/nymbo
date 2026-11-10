@@ -6024,6 +6024,8 @@ function rwApplyVisual(F, G, k) { // somewhere between two recorded moments
 }
 // ---- putting the world back exactly as it was at the oldest moment kept ----
 function rwRestore(F) {
+  // powers you got after that moment are taken back (the rewind itself is used up, so it doesn't come back)
+  { const n0 = PW.slots.length; PW.slots = PW.slots.filter(sl => !(sl.at > F.t) || sl === PW.pendingSlot); if (PW.slots.length !== n0) { renderTray(); toast('POWERS FROM THE LAST 10 SECONDS ARE GONE'); } }
   const revived = new Map(), keep = new Set(F.list);
   // anything that didn't exist back then goes (fresh ammo, new power blocks...); held blocks are let go first
   for (const r of robots) { const animals = r.stack.filter(x => x.kind === 'animal'); for (const e of r.stack) if (e.kind !== 'animal') e.holder = null; r.stack = animals; }
@@ -6136,6 +6138,9 @@ function rwaBack() { // everything heard in the last 10 seconds, backwards, spee
 }
 function rwaEnd() { if (!RWA.on) return; const t = AC.currentTime; RWA.gate.gain.cancelScheduledValues(t); RWA.gate.gain.setValueAtTime(0, t); RWA.gate.gain.linearRampToValueAtTime(1, t + .25); RWA.w = 0; }
 { const rr0 = rwRecord; rwRecord = function () { if (!RWA.on && AC) rwaInit(); return rr0(); }; }
+
+// every power you earn is stamped with the moment you got it (so a rewind knows which ones to take back)
+{ const rp0 = rollPower; rollPower = function (...a) { const n = PW.slots.length; const res = rp0(...a); if (PW.slots.length > n) PW.slots[PW.slots.length - 1].at = RW.clock; return res; }; }
 
 // ============================================================
 // MATCH FLOW + MAIN LOOP
