@@ -7537,7 +7537,7 @@ function updatePenguins(dt) {
 { const um0 = updateMorePowers; updateMorePowers = function (dt) { um0(dt); updatePenguins(dt); }; }
 
 // ============================================================
-// THE POLAR BEAR: once a match, at a random moment towards the end, lightning strikes (the screen flashes twice) and a
+// THE POLAR BEAR: once a match, at a random moment towards the end, lightning strikes (three big flashes over a couple of seconds) and a
 // huge polar bear appears where it hit: three times a robot's height, up on its hind legs. It goes after whoever is
 // nearest (either team), barging through anything in its way. Catch someone and there's a big brawl in a cloud of dust,
 // and they're out. After 3 knockouts, or a minute without catching anyone (the minute starts again after every catch),
@@ -7571,12 +7571,12 @@ function bolt(at) { // a jagged white bolt from the sky to the ground, gone in a
   let t = 0; const tick = () => { t += 1 / 60; m.material.opacity = glow.material.opacity = Math.max(0, 1 - t / .5) * (Math.random() < .5 ? 1 : .4); if (t < .5) requestAnimationFrame(tick); else { scene.remove(m, glow); m.geometry.dispose(); } }; tick();
 }
 const boltFlash = (() => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;z-index:60;pointer-events:none;background:#f4f8ff;opacity:0'; document.body.appendChild(d); return d; })();
-const flashTwice = () => { for (const [t, a, f] of [[0, .95, .03], [260, .15, .2], [420, 1, .03], [900, .55, .25], [1150, 0, .9]]) setTimeout(() => { boltFlash.style.transition = `opacity ${f}s`; boltFlash.style.opacity = a; }, t); }; /* (longer now: two big white flashes over about two seconds) */
+const flashTwice = () => { for (const t0 of [0, 1000, 2300]) for (const [t, a, f] of [[0, 1, .03], [90, .25, .08], [160, .95, .03], [330, 0, .45]]) setTimeout(() => { boltFlash.style.transition = `opacity ${f}s`; boltFlash.style.opacity = a; }, t0 + t); }; /* (three big flashes, each with a flicker, spread out over a couple of seconds so you notice them) */
 Object.assign(SFX_SYNTH, { thunderclap: () => { noiseHit(.3, 'highpass', 2600, 1, 0, true, 900, 1); thump(55, 1, .02, 1.4); noiseHit(2.8, 'lowpass', 520, .8, .12, true, 90, 1); noiseHit(1.6, 'lowpass', 300, .5, .9, true, 60, 1); } }); // the whole screen goes white, twice
 function summonBear() {
   let at = null; for (let k = 0; k < 80 && !at; k++) { const [x, z] = freeSpot(); if (CH && chasmDist(x, z) < 4) continue; if (robots.some(r => r.state === 'play' && Math.hypot(rPos(r).x - x, rPos(r).z - z) < 10)) continue; at = V(x, 0, z); }
   if (!at) { const [x, z] = freeSpot(); at = V(x, 0, z); }
-  flashTwice(); bolt(at); sfx('lightning'); sfx('thunderclap'); setTimeout(() => sfx('thunder'), 450); shake = Math.max(shake, .8);
+  flashTwice(); bolt(at); for (const t of [1000, 2300]) setTimeout(() => bolt(at.clone().add(V(rr(-6, 6), 0, rr(-6, 6)))), t); // (a bolt with each flash) sfx('lightning'); sfx('thunderclap'); setTimeout(() => sfx('thunder'), 450); shake = Math.max(shake, .8);
   setTimeout(() => { if (match.state !== 'play') return;
     const m = bearModel(); BEAR.b = { m, x: at.x, z: at.z, y: TH(at.x, at.z), vy: 0, yaw: Math.random() * 6.28, mode: 'rise', riseT: 3, kills: 0, life: 60, hits: 0, target: null, retT: 0, fight: null, leaving: null, flinch: 0, roarT: 1 };
     m.g.position.set(at.x, BEAR.b.y, at.z); fxBurst(V(at.x, BEAR.b.y + 2, at.z), 0xd8f4ff, 4, .6); fxDebris(V(at.x, BEAR.b.y + .5, at.z), 0xffffff, 40, 10); sfx('roar', V(at.x, 2, at.z));
