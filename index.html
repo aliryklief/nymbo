@@ -6025,7 +6025,7 @@ function rwApplyVisual(F, G, k) { // somewhere between two recorded moments
 // ---- putting the world back exactly as it was at the oldest moment kept ----
 function rwRestore(F) {
   // powers you got after that moment are taken back (the rewind itself is used up, so it doesn't come back)
-  { const n0 = PW.slots.length; PW.slots = PW.slots.filter(sl => !(sl.at > F.t) || sl === PW.pendingSlot); if (PW.slots.length !== n0) { renderTray(); toast('POWERS FROM THE LAST 10 SECONDS ARE GONE'); } }
+  { const n0 = PW.slots.length; PW.slots = PW.slots.filter(sl => !(sl.at > F.t) || sl === PW.pendingSlot); if (PW.slots.length !== n0) renderTray(); }
   const revived = new Map(), keep = new Set(F.list);
   // anything that didn't exist back then goes (fresh ammo, new power blocks...); held blocks are let go first
   for (const r of robots) { const animals = r.stack.filter(x => x.kind === 'animal'); for (const e of r.stack) if (e.kind !== 'animal') e.holder = null; r.stack = animals; }
@@ -7220,11 +7220,10 @@ function updateWeather(dt) {
   if (!WX.on) return;
   const cam = camera.position; WX.t += dt;
   const { storm, warn } = stormClock();
-  if (storm && !WX.storming) { WX.storming = true; bigToast('ICE STORM!', 'red'); sfx('icestorm'); shake = Math.max(shake, .3); }
+  if (storm && !WX.storming) { WX.storming = true; sfx('icestorm'); shake = Math.max(shake, .3); }
   if (!storm && WX.storming) { WX.storming = false; WX.sunny = true;  } // (not at the very end of the match)
   if (match.state !== 'play' && match.state !== 'end') { WX.sunny = false; WX.storming = false; }
-  wxWarn.style.display = warn && !REPLAY.on ? 'block' : 'none'; if (warn) wxWarn.textContent = '❄ ICE STORM IN ' + warn;
-  if (warn && warn !== WX.lastWarn) sfx('tick'); WX.lastWarn = warn;
+  wxWarn.style.display = 'none'; // (no countdown and no announcement: the storm just arrives)
   const target = WX.storming ? 1 : WX.sunny ? 0 : .35; WX.gloom += (target - WX.gloom) * Math.min(1, dt * (target > WX.gloom ? 1.2 : .5));
   const G_ = WX.gloom, rain = clamp(G_ / .35, 0, 1);
   WX.drops.m.visible = rain > .02; WX.drops.m.material.opacity = .45 * rain; if (WX.drops.m.visible) moveFall(WX.drops, cam, 26, dt);
@@ -7865,8 +7864,7 @@ function updateDesert(dt) {
   if (DS.storm > 0) DS.storm -= dt;
   const k = DS.storm > 0 ? Math.min(1, (18 - DS.storm) / 2, DS.storm / 2) : 0; DS.k = k; // (blows in over 2 seconds, dies away over 2)
   const warn = DS.storm <= 0 && DS.stormT <= 10 && DS.stormT > 0 && match.state === 'play' ? Math.ceil(DS.stormT) : 0;
-  if (wxWarnD) { wxWarnD.style.display = warn && !REPLAY.on ? 'block' : 'none'; if (warn) wxWarnD.textContent = '🌪 SANDSTORM IN ' + warn; }
-  if (warn && warn !== DS.lastWarn) sfx('tick'); DS.lastWarn = warn;
+  if (wxWarnD) wxWarnD.style.display = 'none'; // (no countdown and no announcement: the sandstorm just blows in)
   if (!(PW.dark > 0) && (k > 0 || DS.wasK)) { DS.wasK = k > 0; scene.fog.near = FOG_N + (3 - FOG_N) * k; scene.fog.far = FOG_F + (30 - FOG_F) * k; scene.fog.color.copy(LIGHT0.fog).lerp(new THREE.Color(0xc8783e), k); sun.intensity = LIGHT0.sun * (1 - .6 * k); }
   // the flying sand
   const S_ = DS.sand; if (S_) { S_.im.visible = k > .02; if (S_.im.visible) { S_.im.material.opacity = .6 * k; const w = DS.wind;
