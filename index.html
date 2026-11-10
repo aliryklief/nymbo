@@ -172,9 +172,17 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 .sheet{position:fixed;inset:0;display:grid;place-items:center;z-index:20;overflow:auto;background:linear-gradient(180deg,rgba(10,16,30,.25),rgba(10,16,30,.7));
   padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 16px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .card{width:min(400px,100%);display:grid;gap:14px}
-.logo{font-family:var(--display);font-size:clamp(56px,19vw,92px);line-height:.95;text-align:center;letter-spacing:.02em;color:#fff;text-shadow:var(--ex);transform:rotate(-2deg)}
+.logo{font-family:var(--display);font-size:clamp(56px,19vw,92px);line-height:.95;text-align:center;letter-spacing:.04em;color:#fff;text-shadow:var(--ex);transform:rotate(-2deg)}
 .logo span{color:var(--c4)}
-.logo i{font-style:normal}.logo i:nth-child(1){color:var(--c1)}.logo i:nth-child(2){color:var(--c2)}.logo i:nth-child(3){color:var(--c3)}.logo i:nth-child(4){color:var(--c4)}.logo i:nth-child(5){color:var(--c5)}
+/* the letters: the robots' own colours, blue team on the left, red team on the right, the M split down the middle like
+   the app icon; a thick dark outline like the robots have, each letter tipped a little and bobbing like a robot on its ball */
+.logo i{font-style:normal;display:inline-block;-webkit-text-stroke:.07em #1a2340;paint-order:stroke fill;animation:lgBob 1.6s ease-in-out infinite alternate}
+.logo i:nth-child(1){color:#008CFF;transform:rotate(-6deg)}.logo i:nth-child(2){color:#00E5FF;transform:rotate(4deg);animation-delay:-.3s}
+.logo i:nth-child(3){position:relative;color:#39FF14;animation-delay:-.6s}.logo i:nth-child(3) b{position:absolute;left:0;top:0;color:#FF7A00;clip-path:inset(0 0 0 50%);font-weight:inherit}
+.logo i:nth-child(4){color:#FF2D2D;transform:rotate(-4deg);animation-delay:-.9s}.logo i:nth-child(5){color:#FFD400;transform:rotate(6deg);animation-delay:-1.2s}
+@keyframes lgBob{to{translate:0 -4px}}
+.logoBot{display:block;width:clamp(64px,20vw,92px);margin:0 auto -6px;filter:drop-shadow(0 5px 0 #2b1f4e) drop-shadow(0 8px 12px rgba(0,0,0,.3));animation:lgBot 2.4s ease-in-out infinite}
+@keyframes lgBot{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(4deg) translateY(-5px)}}
 .tag{text-align:center;font-size:12px;letter-spacing:.3em;color:#eaf2ff;margin-top:-4px}
 .go{width:100%;border:3px solid var(--ink2);border-radius:18px;padding:16px;font-family:var(--display);font-size:26px;letter-spacing:.04em;background:var(--c4);color:var(--ink2);cursor:pointer;box-shadow:0 6px 0 var(--ink2),0 14px 30px rgba(0,0,0,.3)}
 .go:active{transform:translateY(4px);box-shadow:0 2px 0 var(--ink2)}
@@ -328,10 +336,22 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   <canvas id="pickCv"></canvas>
   <button id="pickX">CANCEL</button>
 </div>
-<div class="sheet" id="tapGo" hidden style="cursor:pointer"><div class="card" style="text-align:center"><div class="logo"><i>N</i><i>Y</i><i>M</i><i>B</i><i>O</i></div><button class="go">TAP TO PLAY</button></div></div>
+<div class="sheet" id="tapGo" hidden style="cursor:pointer"><div class="card" style="text-align:center"><svg class="logoBot" viewBox="40 30 432 400" aria-hidden="true"><defs><clipPath id="lgL"><rect x="0" y="0" width="256" height="512"/></clipPath><clipPath id="lgR"><rect x="256" y="0" width="256" height="512"/></clipPath></defs>
+<g clip-path="url(#lgL)"><rect x="248" y="70" width="16" height="52" fill="#1a2340"/><circle cx="256" cy="70" r="24" fill="#008CFF" stroke="#1a2340" stroke-width="10"/><rect x="103" y="127" width="306" height="266" rx="78" fill="#008CFF" stroke="#1a2340" stroke-width="14"/></g>
+<g clip-path="url(#lgR)"><rect x="248" y="70" width="16" height="52" fill="#1a2340"/><circle cx="256" cy="70" r="24" fill="#FF2D2D" stroke="#1a2340" stroke-width="10"/><rect x="103" y="127" width="306" height="266" rx="78" fill="#FF2D2D" stroke="#1a2340" stroke-width="14"/></g>
+<rect x="132" y="190" width="248" height="140" rx="52" fill="#1a2340"/>
+<path d="M167 277A31 31 0 0 1 229 277" fill="none" stroke="#8fe4ff" stroke-width="22"/>
+<circle cx="315" cy="243" r="37" fill="#ff8a7a"/><path d="M270 196H362V222L270 266Z" fill="#1a2340"/>
+<path d="M256 40V420" stroke="#1a2340" stroke-width="10"/></svg><div class="logo"><i>N</i><i>Y</i><i>M<b>M</b></i><i>B</i><i>O</i></div><button class="go">TAP TO PLAY</button></div></div>
 <div class="sheet" id="menu">
   <div class="card">
-    <div><div class="logo"><i>N</i><i>Y</i><i>M</i><i>B</i><i>O</i></div><div class="tag">THROW · STEAL · SCORE</div></div>
+    <div><svg class="logoBot" viewBox="40 30 432 400" aria-hidden="true"><defs><clipPath id="lgL2"><rect x="0" y="0" width="256" height="512"/></clipPath><clipPath id="lgR2"><rect x="256" y="0" width="256" height="512"/></clipPath></defs>
+<g clip-path="url(#lgL2)"><rect x="248" y="70" width="16" height="52" fill="#1a2340"/><circle cx="256" cy="70" r="24" fill="#008CFF" stroke="#1a2340" stroke-width="10"/><rect x="103" y="127" width="306" height="266" rx="78" fill="#008CFF" stroke="#1a2340" stroke-width="14"/></g>
+<g clip-path="url(#lgR2)"><rect x="248" y="70" width="16" height="52" fill="#1a2340"/><circle cx="256" cy="70" r="24" fill="#FF2D2D" stroke="#1a2340" stroke-width="10"/><rect x="103" y="127" width="306" height="266" rx="78" fill="#FF2D2D" stroke="#1a2340" stroke-width="14"/></g>
+<rect x="132" y="190" width="248" height="140" rx="52" fill="#1a2340"/>
+<path d="M167 277A31 31 0 0 1 229 277" fill="none" stroke="#8fe4ff" stroke-width="22"/>
+<circle cx="315" cy="243" r="37" fill="#ff8a7a"/><path d="M270 196H362V222L270 266Z" fill="#1a2340"/>
+<path d="M256 40V420" stroke="#1a2340" stroke-width="10"/></svg><div class="logo"><i>N</i><i>Y</i><i>M<b>M</b></i><i>B</i><i>O</i></div><div class="tag">THROW · STEAL · SCORE</div></div>
     <button class="go" id="playBtn">PLAY</button>
     <div class="lbl">PICK A MAP</div>
     <div class="maps"><button class="mapcard" data-map="classic"><svg viewBox="0 0 120 70" aria-hidden="true"><rect width="120" height="70" fill="#9fd4ff"/><rect x="8" y="9" width="104" height="52" rx="8" fill="#5cb43a" stroke="#14111f" stroke-width="2.5"/><rect x="14" y="14" width="22" height="16" rx="2" fill="none" stroke="#3a7bff" stroke-width="3"/><rect x="84" y="40" width="22" height="16" rx="2" fill="none" stroke="#ff4d40" stroke-width="3"/><circle cx="96" cy="20" r="5" fill="none" stroke="#b36bff" stroke-width="2.5"/><circle cx="24" cy="50" r="5" fill="none" stroke="#b36bff" stroke-width="2.5"/><g fill="#2f7a2a"><circle cx="50" cy="22" r="4"/><circle cx="57" cy="26" r="3.5"/><circle cx="66" cy="46" r="4"/><circle cx="73" cy="42" r="3.5"/></g><rect x="58.5" y="30" width="3" height="10" fill="#d8dbe2"/></svg><b>Classic</b><span>Green island · portals · tree groves</span></button><button class="mapcard" data-map="sky"><svg viewBox="0 0 120 70" aria-hidden="true"><rect width="120" height="70" fill="#c9dcf2"/><polygon points="8,9 112,9 112,61 8,61" fill="#eef3fb" stroke="#14111f" stroke-width="2.5"/><polygon points="8,47 112,13 112,27 8,61" fill="#a9d6ff"/><g fill="#fff" stroke="#9fb3cf" stroke-width="1"><rect x="30" y="44" width="8" height="4" rx="2"/><rect x="58" y="34" width="10" height="4" rx="2"/><rect x="86" y="25" width="7" height="4" rx="2"/></g><circle cx="15" cy="55" r="6" fill="#5cb43a"/><circle cx="105" cy="17" r="6" fill="#5cb43a"/><path d="M15 55 Q60 -18 105 17" fill="none" stroke="#ff4d40" stroke-width="2.4"/><path d="M15 55 Q60 -14 105 17" fill="none" stroke="#ffd23a" stroke-width="2.4"/><path d="M15 55 Q60 -10 105 17" fill="none" stroke="#4fd64a" stroke-width="2.4"/><path d="M15 55 Q60 -6 105 17" fill="none" stroke="#3aa8ff" stroke-width="2.4"/><path d="M40 22 q8 6 2 14 q-5 8 4 14" fill="none" stroke="#2f8fe8" stroke-width="3" stroke-linecap="round"/></svg><b>Sky bridge</b><span>Rainbow · water slides · ice storms</span></button><button class="mapcard" data-map="desert"><svg viewBox="0 0 120 70" aria-hidden="true"><rect width="120" height="70" fill="#e8a070"/><circle cx="98" cy="14" r="5" fill="#fff4d8"/><circle cx="20" cy="12" r="2" fill="#f7d9c0"/><polygon points="8,9 112,9 112,61 8,61" fill="#d99a5e" stroke="#14111f" stroke-width="2.5"/><path d="M8 40 Q30 28 50 38 T112 32 L112 61 8 61z" fill="#c7834c"/><path d="M8 52 Q40 44 70 52 T112 48 L112 61 8 61z" fill="#b8703f"/><polygon points="16,30 30,16 44,30" fill="#e6c08a" stroke="#7a5a3a" stroke-width="1.5"/><polygon points="76,52 90,38 104,52" fill="#e6c08a" stroke="#7a5a3a" stroke-width="1.5"/><ellipse cx="60" cy="28" rx="9" ry="4" fill="#4fb8e8"/><rect x="55" y="17" width="1.6" height="9" fill="#8a6640"/><path d="M50 18 q6 -4 12 0" stroke="#4c9a3a" stroke-width="2.4" fill="none"/></svg><b>Red desert</b><span>Crater pyramids · dust devil · spitting camels</span></button></div>
