@@ -4415,7 +4415,7 @@ function updateHeldAnimals(dt) {
     a.heldT = (a.heldT || 0) + (r.state === 'play' ? dt * (a.animal === 'chicken' ? .5 : 1) : 0); // a chicken puts up with you for 20 s
     const k = clamp((a.heldT - 6) / 4, 0, 1); // the cow gets redder for the last 4 seconds
     if (a.animal === 'cow') a.mesh.material.emissive.setRGB(k * .55, 0, 0);
-    if (k > 0 && !a.angerWarned && r.isPlayer) { a.angerWarned = true; toast(a.animal === 'cow' ? 'THE COW IS GETTING ANGRY…' : a.animal === 'chicken' ? 'THE CHICKEN IS GETTING CROSS…' : a.animal === 'penguin' ? 'THE PENGUIN IS GETTING GRUMPY…' : 'THE SHEEP IS GETTING RESTLESS…'); }
+    if (k > 0 && !a.angerWarned && r.isPlayer) { a.angerWarned = true; toast(a.animal === 'cow' ? (DESERT ? 'THE CAMEL IS GETTING GRUMPY…' : 'THE COW IS GETTING ANGRY…') : a.animal === 'chicken' ? 'THE CHICKEN IS GETTING CROSS…' : a.animal === 'penguin' ? 'THE PENGUIN IS GETTING GRUMPY…' : 'THE SHEEP IS GETTING RESTLESS…'); }
     // it hates being carried: loud moos / screaming baas, more and more often
     a.voiceT = (a.voiceT ?? 1) - dt;
     if (a.voiceT <= 0 && r.stack[0] === a) { a.voiceT = Math.max(.9, rr(2, 2.8) - a.heldT * .12); sfx(voiceOf(a, true), rPos(r)); }
@@ -4483,7 +4483,7 @@ function calmDown(a) {
   const t = a.body.translation(); a.wander.home = V(t.x, 0, t.z); a.wander.t = 2; a.wander.speed = 0;
   a.heldT = ANGER_AT - .3; // still fuming: it calms down slowly, and anyone who grabs it soon gets charged almost straight away
   if (!a.upright) { a.body.setEnabledRotations(true, true, true, true); }
-  if (R && R.target && R.target.isPlayer && R.target.state === 'play') toast(a.animal === 'cow' ? 'THE COW CALMED DOWN' : 'THE SHEEP CALMED DOWN');
+  if (R && R.target && R.target.isPlayer && R.target.state === 'play') toast(a.animal === 'cow' ? (DESERT ? 'THE CAMEL CALMED DOWN' : 'THE COW CALMED DOWN') : 'THE SHEEP CALMED DOWN');
 }
 
 // the sheep doesn't charge: it wriggles free, sheds a big pile of wool where you're standing and runs off.
