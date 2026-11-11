@@ -6571,7 +6571,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { scoreFlag, get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { scoreFlag, get ESC() { return ESC; }, escTrace: p => escapeTrace(p), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -9116,7 +9116,7 @@ function pxOut(P_) { const Q = PX.ports[PX.link[P_.i]]; pxPos(Q); return { Q, at
 function pxWhum() { sfx('whum', V(0, 5, 0)); for (const P_ of PX.ports) { if (P_.hidden) continue; P_.flash = 1; } }
 // ---- the twins ----
 function twinDrop(T, throwIt) {
-  const r = T.held; if (!r) return; T.held = null; r.glitchHeld = null; if (!r.body) return;
+  const r = T.held; if (!r) return; if (r.isPlayer) escapeEnd(); T.botEscape = 0; T.held = null; r.glitchHeld = null; if (!r.body) return;
   if (throwIt) { // out towards the nearest edge of the platform, and a little up
     const o = T.o, ex = o.hx - Math.abs(T.lx), ez = o.hz - Math.abs(T.lz), d = ex < ez ? V(Math.sign(T.lx) || 1, 0, 0) : V(0, 0, Math.sign(T.lz) || 1);
     r.body.setLinvel({ x: d.x * 11, y: 8, z: d.z * 11 }, true); r.jumps = 1; r.padT = .7; r.grounded = false; sfx('glitch', rPos(r));
@@ -9140,12 +9140,13 @@ function updateTwin(T, dt, t) {
   T.cool -= dt; let sp = 0;
   if (T.mode === 'crash') { T.crashT -= dt; if (T.crashT <= 0) { T.mode = 'wander'; T.ice = false; M.ice.visible = false; T.cool = 2; } if (Math.random() < dt * 6 && !T.ice) emit(V(T.x, T.y + 1.4, T.z), Math.random() < .5 ? 0xffe14a : 0x9a7aff, V(rr(-2, 2), rr(1, 4), rr(-2, 2)), .1, .4, 12); }
   else if (T.held) { // carrying someone to the edge
-    T.t -= dt; const ex = o.hx - Math.abs(T.lx), ez = o.hz - Math.abs(T.lz); T.wx = ex < ez ? (Math.sign(T.lx) || 1) : 0; T.wz = ex < ez ? 0 : (Math.sign(T.lz) || 1); sp = 2.2;
-    if (T.t <= 0 || Math.min(ex, ez) < 1.6 || T.held.state !== 'play') twinDrop(T, T.held.state === 'play');
+    if (T.botEscape > 0 && (T.botEscape -= dt) <= 0) { twinDrop(T, false); T.cool = 3; } else {
+    T.t -= dt; const ex = o.hx - Math.abs(T.lx), ez = o.hz - Math.abs(T.lz); T.wx = ex < ez ? (Math.sign(T.lx) || 1) : 0; T.wz = ex < ez ? 0 : (Math.sign(T.lz) || 1); sp = T.held.isPlayer ? .9 : 2.2;
+    if (T.t <= 0 || (Math.min(ex, ez) < 1.6 && !T.held.isPlayer) || T.held.state !== 'play') twinDrop(T, T.held.state === 'play'); }
   } else if (live) {
     let tgt = null, bd = 9; if (T.cool <= 0) for (const r of robots) { if (r.state !== 'play' || !r.body || r.glitchHeld || !hittable(r)) continue; const p = r.body.translation(); if (platUnder(p.x, p.z, p.y - .5) !== o) continue; const d = Math.hypot(p.x - T.x, p.z - T.z); if (d < bd && Math.abs(p.y - (T.y + .97)) < 2) { bd = d; tgt = r; } }
     if (tgt) { const p = tgt.body.translation(); T.wx = p.x - T.x; T.wz = p.z - T.z; const L = Math.hypot(T.wx, T.wz) || 1; T.wx /= L; T.wz /= L; sp = 3.3; T.mode = 'chase';
-      if (bd < 1.35 && T.hide <= 0) { T.held = tgt; tgt.glitchHeld = T; T.t = 1.1; T.mode = 'carry'; sfx('glitch', V(T.x, T.y + 1, T.z)); if (tgt.isPlayer) { toast('A GLITCH TWIN GRABBED YOU!'); buzz('lock'); } } }
+      if (bd < 1.35 && T.hide <= 0) { T.held = tgt; tgt.glitchHeld = T; T.t = tgt.isPlayer ? 2.5 : 1.1; T.mode = 'carry'; if (tgt.isPlayer) escapeStart(T); else if (Math.random() < .3) T.botEscape = rr(.6, 1.0); sfx('glitch', V(T.x, T.y + 1, T.z)); if (tgt.isPlayer) { toast('A GLITCH TWIN GRABBED YOU!'); buzz('lock'); } } }
     else { T.mode = 'wander'; T.wt -= dt; if (T.wt <= 0) { const a = Math.random() * 6.28; T.wx = Math.cos(a); T.wz = Math.sin(a); T.wt = rr(1.5, 3.5); T.stand = Math.random() < .35; } sp = T.stand ? 0 : 1.6; }
   }
   // walk (local to the platform, so it rides along with it), never off the edge
@@ -9162,6 +9163,71 @@ function updateTwin(T, dt, t) {
   T.head.rotation.z = tw > 0 ? rr(-.5, .5) : Math.sin(t * 2.3) * .08; T.head.rotation.y = tw > 0 ? rr(-.6, .6) : 0;
   if (Math.random() < dt * 3) emit(V(T.x + rr(-.4, .4), T.y + rr(.2, 2), T.z + rr(-.4, .4)), T.k ? 0xff2a3a : 0x9ad8ff, V(0, rr(.2, .8), 0), .09, .5, 0); // (shedding pixels)
 }
+// ---- GETTING FREE: grabbed by a twin, you're held up on your back, squirming. A shape appears on the screen (a different
+// one every time): trace it with your finger before you're thrown. Your line snaps onto the shape as you go — but you
+// only just have time.
+// (on a keyboard, a mouse or a game controller there's nothing to draw with: you get a quick string of buttons to press instead)
+let INPUT_MODE = matchMedia('(pointer: coarse)').matches ? 'touch' : 'keys';
+addEventListener('pointerdown', e => { INPUT_MODE = e.pointerType === 'touch' || e.pointerType === 'pen' ? 'touch' : 'keys'; }, true);
+addEventListener('keydown', () => { INPUT_MODE = 'keys'; }, true);
+const ESC_KEYS = [['↑', ['ArrowUp', 'KeyW']], ['↓', ['ArrowDown', 'KeyS']], ['←', ['ArrowLeft', 'KeyA']], ['→', ['ArrowRight', 'KeyD']], ['SPACE', ['Space']]];
+const ESC_PAD = [['A', 0], ['B', 1], ['X', 2], ['Y', 3], ['↑', 12], ['↓', 13], ['←', 14], ['→', 15]];
+addEventListener('keydown', e => { if (!ESC.on || !ESC.seq) return; e.preventDefault(); e.stopImmediatePropagation(); if (e.repeat) return; escapeKey(k => ESC_KEYS.find(q => q[0] === k)[1].includes(e.code)); }, true);
+function escapeKey(isIt) { // the next button in the string: right, and you're one closer; wrong, and you start again
+  const want = ESC.seq[ESC.prog]; if (isIt(want)) { ESC.prog++; sfx('tick'); } else { ESC.prog = 0; ESC.miss = now(); sfx('dodge'); }
+  if (ESC.prog >= ESC.seq.length) { const T = ESC.T; escapeEnd(); if (T && T.held && T.held.isPlayer) { twinDrop(T, false); T.cool = 4; toast('YOU WRIGGLED FREE!'); buzz('lock'); } } }
+const ESC = { on: false, el: null, cv: null, pts: null, prog: 0, T: null, t0: 0, dur: 0 };
+const ESC_SHAPES = {
+  triangle: () => [[.5, .1], [.9, .85], [.1, .85], [.5, .1]], square: () => [[.15, .15], [.85, .15], [.85, .85], [.15, .85], [.15, .15]],
+  circle: () => { const a = []; for (let k = 0; k <= 40; k++) { const t = -Math.PI / 2 + k / 40 * Math.PI * 2; a.push([.5 + .38 * Math.cos(t), .5 + .38 * Math.sin(t)]); } return a; },
+  zigzag: () => [[.08, .3], [.3, .72], [.5, .3], [.7, .72], [.92, .3]], wave: () => { const a = []; for (let k = 0; k <= 40; k++) a.push([.08 + k / 40 * .84, .5 + .25 * Math.sin(k / 40 * Math.PI * 3)]); return a; },
+  star: () => { const a = []; for (let k = 0; k <= 5; k++) { const t = -Math.PI / 2 + k * Math.PI * 4 / 5; a.push([.5 + .4 * Math.cos(t), .53 + .4 * Math.sin(t)]); } return a; },
+  check: () => [[.12, .5], [.38, .8], [.88, .18]], z: () => [[.15, .18], [.85, .18], [.15, .82], [.85, .82]],
+  heart: () => { const a = []; for (let k = 0; k <= 40; k++) { const t = k / 40 * Math.PI * 2; a.push([.5 + .024 * 16 * Math.sin(t) ** 3, .44 - .024 * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))]); } return a; },
+  spiral: () => { const a = []; for (let k = 0; k <= 50; k++) { const t = k / 50 * Math.PI * 4, r = .05 + .33 * k / 50; a.push([.5 + r * Math.cos(t), .5 + r * Math.sin(t)]); } return a; } };
+function escapeStart(T) {
+  const keys = Object.keys(ESC_SHAPES); let name; do name = keys[Math.floor(Math.random() * keys.length)]; while (name === ESC.last && keys.length > 1); ESC.last = name;
+  const raw = ESC_SHAPES[name](), pts = []; for (let i = 0; i < raw.length - 1; i++) { const [ax, ay] = raw[i], [bx, by] = raw[i + 1], n = Math.max(2, Math.ceil(Math.hypot(bx - ax, by - ay) / .01)); for (let k = 0; k < n; k++) pts.push([ax + (bx - ax) * k / n, ay + (by - ay) * k / n]); } pts.push(raw[raw.length - 1]);
+  if (!ESC.el) { const el = document.createElement('div'); el.style.cssText = 'position:fixed;inset:0;z-index:60;touch-action:none;display:flex;align-items:center;justify-content:center;background:rgba(10,8,30,.25)';
+    const cv = document.createElement('canvas'); cv.style.cssText = 'width:min(78vw,62vh);height:min(78vw,62vh);touch-action:none'; el.appendChild(cv); document.body.appendChild(el); ESC.el = el; ESC.cv = cv;
+    const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
+    const stop = e => { e.preventDefault(); e.stopPropagation(); };
+    el.addEventListener('pointerdown', e => { stop(e); ESC.down = true; escapeTrace(pos(e)); }, true); el.addEventListener('pointermove', e => { stop(e); if (ESC.down) escapeTrace(pos(e)); }, true);
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, e => { stop(e); ESC.down = false; }, true);
+    for (const ev of ['touchstart', 'touchmove', 'touchend', 'mousedown', 'click']) el.addEventListener(ev, stop, { capture: true, passive: false }); }
+  const pad = (navigator.getGamepads ? [...navigator.getGamepads()] : []).find(g => g && g.connected);
+  if (pad && INPUT_MODE !== 'touch') INPUT_MODE = 'pad';
+  ESC.seq = null; if (INPUT_MODE !== 'touch') { const L = INPUT_MODE === 'pad' ? ESC_PAD : ESC_KEYS, n = 6; ESC.seq = []; for (let k = 0; k < n; k++) { let q; do q = L[Math.floor(Math.random() * L.length)][0]; while (k && q === ESC.seq[k - 1]); ESC.seq.push(q); } ESC.padPrev = null; }
+  ESC.on = true; ESC.pts = pts; ESC.prog = 0; ESC.T = T; ESC.t0 = now(); ESC.dur = T.t; ESC.down = false; ESC.el.hidden = false; ESC.el.style.display = 'flex'; ESC.name = name; escapeDraw();
+}
+function escapeTrace([x, y]) { // your finger only counts on the shape, just ahead of where you've got to: the line snaps along it
+  if (!ESC.on || ESC.seq) return; const P_ = ESC.pts, tol = .085, ahead = 12; let best = ESC.prog;
+  for (let i = ESC.prog; i < Math.min(P_.length, ESC.prog + ahead + 1); i++) if (Math.hypot(P_[i][0] - x, P_[i][1] - y) < tol) best = i;
+  if (ESC.prog === 0 && Math.hypot(P_[0][0] - x, P_[0][1] - y) > tol) return; // (start at the dot)
+  if (best > ESC.prog) { ESC.prog = best; if (Math.random() < .3) sfx('tick'); }
+  if (ESC.prog >= P_.length - 2) { const T = ESC.T; escapeEnd(); if (T && T.held && T.held.isPlayer) { twinDrop(T, false); T.cool = 4; toast('YOU WRIGGLED FREE!'); buzz('lock'); } }
+}
+function escapeDraw() {
+  if (!ESC.on) return; const cv = ESC.cv, d = Math.min(2, devicePixelRatio || 1), W = cv.clientWidth * d; if (cv.width !== W) { cv.width = cv.height = W; } const g = cv.getContext('2d'); g.clearRect(0, 0, W, W);
+  const P_ = ESC.pts, X = p => p[0] * W, Y = p => p[1] * W, left = Math.max(0, 1 - (now() - ESC.t0) / (ESC.dur * 1000));
+  if (ESC.seq) { // the button string: big key caps, done ones lit up, the next one pulsing
+    if (INPUT_MODE === 'pad') { const gp = (navigator.getGamepads ? [...navigator.getGamepads()] : []).find(q => q && q.connected); if (gp) { const now_ = gp.buttons.map(b => b.pressed);
+        if (ESC.padPrev) for (let i = 0; i < now_.length; i++) if (now_[i] && !ESC.padPrev[i]) { const m = ESC_PAD.find(q => q[1] === i); if (m) { escapeKey(k => ESC_PAD.find(q => q[0] === k && q[1] === i)); if (!ESC.on) return; } }
+        ESC.padPrev = now_; } }
+    const n = ESC.seq.length, cw = W * .14, gap = W * .02, x0 = W / 2 - (n * cw + (n - 1) * gap) / 2, y0 = W / 2 - cw / 2, shake_ = now() - (ESC.miss || 0) < 250 ? Math.sin(now() / 20) * W * .015 : 0;
+    g.font = `bold ${Math.round(cw * .45)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    ESC.seq.forEach((k, i) => { const x = x0 + i * (cw + gap) + shake_, done = i < ESC.prog, cur = i === ESC.prog, s = cur ? 1 + .08 * Math.sin(now() / 80) : 1;
+      g.save(); g.translate(x + cw / 2, y0 + cw / 2); g.scale(s, s); g.fillStyle = done ? '#7affc8' : cur ? '#ffffff' : 'rgba(255,255,255,.35)'; g.beginPath(); g.roundRect(-cw / 2, -cw / 2, cw, cw, cw * .2); g.fill();
+      g.fillStyle = '#1a1440'; g.font = `bold ${Math.round(cw * (k.length > 2 ? .22 : .5))}px sans-serif`; g.fillText(k, 0, cw * .03); g.restore(); });
+    g.strokeStyle = left < .3 ? '#ff4a5a' : '#ffd23a'; g.lineWidth = W * .02; g.beginPath(); g.arc(W / 2, W / 2, W * .48, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); g.stroke();
+    g.fillStyle = '#ffffff'; g.font = `bold ${Math.round(W * .05)}px sans-serif`; g.textBaseline = 'alphabetic'; g.fillText('PRESS IN ORDER TO GET FREE!', W / 2, W * .3); return; }
+  g.lineCap = g.lineJoin = 'round'; g.setLineDash([W * .025, W * .03]); g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = W * .035; g.beginPath(); P_.forEach((p, i) => i ? g.lineTo(X(p), Y(p)) : g.moveTo(X(p), Y(p))); g.stroke(); g.setLineDash([]);
+  if (ESC.prog > 0) { g.strokeStyle = '#7affc8'; g.shadowColor = '#7affc8'; g.shadowBlur = W * .03; g.lineWidth = W * .05; g.beginPath(); for (let i = 0; i <= ESC.prog; i++) i ? g.lineTo(X(P_[i]), Y(P_[i])) : g.moveTo(X(P_[i]), Y(P_[i])); g.stroke(); g.shadowBlur = 0; }
+  g.fillStyle = '#7affc8'; g.beginPath(); g.arc(X(P_[ESC.prog]), Y(P_[ESC.prog]), W * .04, 0, 7); g.fill(); // (where to put your finger)
+  g.strokeStyle = left < .3 ? '#ff4a5a' : '#ffd23a'; g.lineWidth = W * .02; g.beginPath(); g.arc(W / 2, W / 2, W * .48, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); g.stroke(); // (time running out)
+  g.fillStyle = '#ffffff'; g.font = `bold ${Math.round(W * .055)}px sans-serif`; g.textAlign = 'center'; g.fillText('TRACE IT TO BREAK FREE!', W / 2, W * .06);
+}
+function escapeEnd() { ESC.on = false; ESC.down = false; if (ESC.el) { ESC.el.hidden = true; ESC.el.style.display = 'none'; } }
 function twinHold() { // (every physics step) keep held robots up over the twins' heads
   for (const T of PX.tw) { const r = T.held; if (!r || !r.body) continue; r.body.setTranslation({ x: T.x, y: T.y + 2.35, z: T.z }, true); r.body.setLinvel({ x: 0, y: 0, z: 0 }, true); r.yaw = r.yawT = T.yaw; }
 }
@@ -9184,6 +9250,7 @@ if (PLAT) {
 // ---- every frame ----
 function updatePortalMap(dt) {
   if (!PLAT) return;
+  if (ESC.on) { if (!ESC.T || !ESC.T.held || !ESC.T.held.isPlayer || match.state !== 'play') escapeEnd(); else escapeDraw(); }
   const t = now() / 1000, play = match.state === 'play' && !RW_LOCK;
   if (!PX.rh.length) pxShuffle();
   // the rhythm: a new set of links every 20 seconds of play (the rings flicker for the last two seconds first)
@@ -9244,7 +9311,8 @@ function updatePortalMap(dt) {
 function pxStar() { const S_ = PX.S, at = V(S_.px + .8, S_.py + .55, S_.pz); const s = newBlock('bomb', at, { anchored: true }); s.kind = 'streak'; s.mesh.clear(); s.core = null; s.mesh.material = streakMat; s.mesh.renderOrder = 0; s.slot = null; s.origin = null; s.onTaken = () => { PX.star = null; PX.starT = 90; }; PX.star = s; }
 if (PLAT) pxStar();
 // head over heels out of a portal now and then
-{ const sr0 = syncRobot; syncRobot = function (r) { sr0(r); if (PLAT && r.flipT > 0) { r.flipT -= lastDt || 1 / 60; const k = 1 - Math.max(0, r.flipT) / .7; r.model.g.rotateX(-k * Math.PI * 2); } }; }
+{ const sr0 = syncRobot; syncRobot = function (r) { sr0(r); if (r.glitchHeld) { const t = now() / 1000; r.model.g.rotateX(-Math.PI / 2 + Math.sin(t * 17) * .25); r.model.g.rotateZ(Math.sin(t * 13) * .35); for (const A_ of r.model.arms) A_.rotation.x = -1.6 + Math.sin(t * 21 + A_.position.x * 5) * .9; } // (on your back, squirming)
+  if (PLAT && r.flipT > 0) { r.flipT -= lastDt || 1 / 60; const k = 1 - Math.max(0, r.flipT) / .7; r.model.g.rotateX(-k * Math.PI * 2); } }; }
 // bombs and freezes crash the twins
 { const ex0 = explode; explode = function (pos, team, by, scale = 1) { const res = ex0(pos, team, by, scale); if (PLAT) for (const T of PX.tw) if (T.o && T.mode !== 'crash' && Math.hypot(pos.x - T.x, pos.y - (T.y + 1), pos.z - T.z) < BOMB_R0 * scale * .8) { twinCrash(T, 7, false); if (by && by.isPlayer) toast('GLITCH TWIN CRASHED!'); } return res; }; }
 { const fa0 = freezeArea; freezeArea = function (pos, team, by, R = FREEZE_R0) { const res = fa0(pos, team, by, R); if (PLAT) for (const T of PX.tw) if (T.o && T.mode !== 'crash' && Math.hypot(pos.x - T.x, pos.y - (T.y + 1), pos.z - T.z) < R + 1) { twinCrash(T, 6, true); if (by && by.isPlayer) toast('GLITCH TWIN FROZE UP!'); } return res; }; }
