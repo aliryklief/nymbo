@@ -600,14 +600,25 @@ const FORT = ICEMAP ? { blue: { x: -52, z: 22 }, red: { x: 52, z: -22 } } /* the
   : PLAT ? { blue: { x: -64, z: 0 }, red: { x: 64, z: 0 } } /* (portal platforms: each fort on its own big floating platform, at different heights) */
   : TOY ? { blue: { x: -62, z: 0 }, red: { x: 62, z: 0 } } /* (the toy room: either end of the room, so the bed and the wardrobe by the far wall are the same distance from both) */
   : DESERT ? { blue: { x: Math.round(-14 * MS), z: Math.round(22 * MS) }, red: { x: Math.round(14 * MS), z: Math.round(-22 * MS) } } /* the desert: across the map, each a little off-centre, sunk in its own crater */ : { blue: { x: Math.round(-45 * MS), z: Math.round(25 * MS) }, red: { x: Math.round(45 * MS), z: Math.round(-25 * MS) } }; // near the corners with room to walk behind
-const FORT_RX = JUNGLE ? 21 : 17, FORT_RZ = JUNGLE ? 17 : 14;  // fort half-size (outer wall): a rectangle, longer towards the middle
+const FORT_RX = JUNGLE ? 21 : ICEMAP ? 13 : 17, FORT_RZ = JUNGLE ? 17 : ICEMAP ? 13 : 14;  // fort half-size (outer wall): a rectangle, longer towards the middle
 const FORT_R = FORT_RX;            // the bigger half-size, for rough 'near the fort' checks
+// THE FROZEN LAKE's ski resort: each team's igloo stands on a snowy mountain top (a round plateau with steep sides). On
+// your left (looking out from the igloo) a long icy SKI RUN winds down round the mountain onto the lake; on your right a
+// CABLE CAR goes up and down, and down at the bottom on that side is the PORTAL that comes out inside your igloo.
+// All of it worked out here for blue; red's is the same turned round the middle of the map. (Built in 02f_ice.js / 09s.)
+const ICE_MH = 11, ICE_RP = 18, ICE_RC = 23, ICE_IR = 8.5; // mountain height, plateau radius, foot of the cliffs, igloo radius
+const ICEP = (() => { if (!ICEMAP) return null; const out = {};
+  for (const t of ['blue', 'red']) { const F = FORT[t], L = Math.hypot(F.x, F.z), f = { x: -F.x / L, z: -F.z / L }, a0 = Math.atan2(f.z, f.x), at = (a, r) => ({ x: F.x + Math.cos(a) * r, z: F.z + Math.sin(a) * r });
+    const bot = at(a0 + .55, 30), igl = { x: F.x - f.x * 5.2, z: F.z - f.z * 5.2 }, bl = Math.hypot(bot.x, bot.z);
+    const ski = []; for (let k = 0; k <= 60; k++) { const s = k / 60, a = a0 - 2 + 1.8 * s, r = 18.5 + 11.5 * s, p = at(a, r); ski.push({ x: p.x, z: p.z, h: ICE_MH * Math.max(0, 1 - s / .92), s }); } // (the ski run: down and round to the lake)
+    out[t] = { F, f, a0, right: { x: -f.z, z: f.x }, bot: { ...bot, n: { x: -bot.x / bl, z: -bot.z / bl } }, igl: { ...igl, n: f }, cabB: at(a0 + 1, 36.5), cabT: at(a0 + 1, 20), ski }; }
+  return out; })();
 const FOG_N = TOY ? 260 : JUNGLE ? 110 : 62 * MS, FOG_F = TOY ? 700 : JUNGLE ? 280 : 150 * MS; /* (indoors in the toy room: hardly any haze) */     // haze distances (bigger map: see further)
-const PORTAL_SPOTS = PLAT ? [{ x: 0, z: -70 }, { x: 0, z: 70 }] /* (not used: the platforms have their own portals, 09r) */ : ICEMAP ? [{ x: -6, z: -44 }, { x: 6, z: 44 }] : VOLC ? [{ x: -22, z: -46 }, { x: 22, z: 46 }] : JUNGLE ? [{ x: -49.5, z: 27 }, { x: 49.5, z: -27 }] /* (inside the maze) */ : TOY ? [{ x: -62, z: -36 }, { x: 62, z: 36 }] : DESERT ? [{ x: Math.round(-57 * MS), z: Math.round(-8 * MS) }, { x: Math.round(57 * MS), z: Math.round(8 * MS) }] /* (the desert: out at the two ends of the map) */ : [{ x: Math.round(-56 * MS), z: Math.round(-34 * MS) }, { x: Math.round(56 * MS), z: Math.round(34 * MS) }];
+const PORTAL_SPOTS = PLAT ? [{ x: 0, z: -70 }, { x: 0, z: 70 }] /* (not used: the platforms have their own portals, 09r) */ : ICEMAP ? [ICEP.blue.bot, ICEP.blue.igl, ICEP.red.bot, ICEP.red.igl] /* (two linked pairs: bottom of the mountain ↔ inside the igloo, one each side) */ : VOLC ? [{ x: -22, z: -46 }, { x: 22, z: 46 }] : JUNGLE ? [{ x: -49.5, z: 27 }, { x: 49.5, z: -27 }] /* (inside the maze) */ : TOY ? [{ x: -62, z: -36 }, { x: 62, z: 36 }] : DESERT ? [{ x: Math.round(-57 * MS), z: Math.round(-8 * MS) }, { x: Math.round(57 * MS), z: Math.round(8 * MS) }] /* (the desert: out at the two ends of the map) */ : [{ x: Math.round(-56 * MS), z: Math.round(-34 * MS) }, { x: Math.round(56 * MS), z: Math.round(34 * MS) }];
 // speed strips (start x, z, direction, team). Classic: out on the flanks. Sky map: on the LEFT of each base (looking out
 // towards the middle), near the map's edge, pointing at the foot of the rainbow on that side
 const STRIP_SPOTS = PLAT ? [] : MAP === 'sky' ? [['blue', -1], ['red', 1]].map(([team, s]) => { const x = Math.round(s * 58 * MS), z = Math.round(-s * 8 * MS), P_ = PORTAL_SPOTS[s < 0 ? 0 : 1], d = Math.hypot(P_.x - x, P_.z - z); return { x, z, dx: (P_.x - x) / d, dz: (P_.z - z) / d, team }; })
-  : ICEMAP ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 36, z: s * 40, dx: s, dz: 0, team })) /* (along the north/south shore towards the other side) */
+  : ICEMAP ? [] /* (the ski runs are the fast way down) */
   : VOLC ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 40, z: -s * 40, dx: s, dz: 0, team }))
   : JUNGLE ? [] /* (the jungle maze: no speed strips) */
   : TOY ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 38, z: -s * 30, dx: s, dz: 0, team }))
@@ -735,8 +746,8 @@ const cellData = new Uint8Array(GW * GD * 4).fill(255);
 // each half of the field is tinted a touch towards its team (blue side cooler, red side warmer) so you always know which way is home
 // two grasses: the field is split DIAGONALLY along the line between the two portals, blue's half cool, red's half warm,
 // blending over a few cells at the seam. Pastures and the stone pads keep their own look.
-const PASTURE_C = PORTAL_SPOTS.map(p => { const L = Math.hypot(p.x, p.z); return { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; });
-const SPLIT = (() => { const A = PORTAL_SPOTS[0], B = PORTAL_SPOTS[1], dx = B.x - A.x, dz = B.z - A.z, L = Math.hypot(dx, dz); const nx = -dz / L, nz = dx / L; const sgn = Math.sign(FORT.blue.x * nx + FORT.blue.z * nz) || 1; return { nx: nx * sgn, nz: nz * sgn }; })(); // (x,z)·n > 0 = blue side
+const PASTURE_C = (ICEMAP ? [] : PORTAL_SPOTS).map(p => { const L = Math.hypot(p.x, p.z); return { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; });
+const SPLIT = (() => { const A = PORTAL_SPOTS[0], B = PORTAL_SPOTS[ICEMAP ? 2 : 1], dx = B.x - A.x, dz = B.z - A.z, L = Math.hypot(dx, dz); const nx = -dz / L, nz = dx / L; const sgn = Math.sign(FORT.blue.x * nx + FORT.blue.z * nz) || 1; return { nx: nx * sgn, nz: nz * sgn }; })(); // (x,z)·n > 0 = blue side
 // the floor runs through Ali's palette from deep green (blue's end) through yellow to deep red (red's end), in diagonal
 // bands that wave rather than run straight, and every cell is nudged a step up or down at random so it reads as a mosaic
 if (!['mosaic', 'lava', 'classic'].includes(S.floor)) S.floor = 'classic'; // 'mosaic' (soft green→yellow→red), 'lava' (grass one side, lava the other), 'classic' (plain grass). Look lab → Floor
@@ -774,7 +785,7 @@ function sideTint(cx, cz) {
     if (Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 3 && Math.abs(z - F.z) < FORT_RZ + 3)) { const v = 70 + j * 18 | 0; return [v, v - 6, v - 4]; } // (the forts' black lava shelves)
     if (ld < 1.9) { const k = clamp(1 - (ld - 1) / .9, 0, 1); return [200 + 55 * k | 0, 120 - 20 * k | 0, 90 - 30 * k | 0]; } // (scorched, glowing banks)
     const v = (h > 0 ? 150 - h * 4 : 170) + (j - .5) * 26 | 0; return [v + 10, v, v - 6]; }
-  if (ICEMAP) { const j = cellJit[(cz ?? 0) * GW + cx] || .5; if (lakeD(x, z) < 1) { const v = 150 + (j - .5) * 18 | 0; return [v - 30, v + 40, 245]; } const v = 238 + (j - .5) * 12 | 0; return [v - 6, v, 255]; } // (the lake: clear blue ice; the shore: snow)
+  if (ICEMAP) { const j = cellJit[(cz ?? 0) * GW + cx] || .5; if (lakeD(x, z) < 1) { const v = 150 + (j - .5) * 18 | 0; return [v - 30, v + 40, 245]; } const K = iceSki(x, z); if (K && K.w < 3.1 && K.s < .97) { const v = 200 + (j - .5) * 14 | 0; return [v - 28, v + 12, 255]; } const v = 238 + (j - .5) * 12 | 0; return [v - 6, v, 255]; } // (the lake: clear blue ice; the ski runs: icy blue; the rest: snow)
   if (DESERT) { const j = cellJit[(cz ?? 0) * GW + cx] || .5, v = 238 + (j - .5) * 30 | 0; return [Math.min(255, v + 8), v, Math.max(0, v - 14)]; } // (the sand: every square a touch different)
   if (S.floor === 'classic') return [255, 255, 255]; // the original: plain grass everywhere
   if (PASTURE_C.some(pa => Math.hypot(x - pa.x, z - pa.z) < 7.5 + 1.4)) return [255, 255, 255]; // the pastures keep plain grass
@@ -874,7 +885,7 @@ const TRAMP_SPOTS = PLAT ? [] : MAP === 'sky' ? (() => { const A = PORTAL_SPOTS[
 // TERRAIN (sky bridge map only): each fort stands on a plateau 4 blocks up that slopes gently down towards the gorge,
 // and the groves are on low rolling hills. Everything else (the middle, the hubs, the trampolines, the speed strips,
 // the gorge edges) stays flat. TH(x, z) = how high the ground is there.
-const TERRAIN = MAP === 'sky' || DESERT || VOLC || PLAT; // (portal platforms: TH = the top of the fixed platform there)
+const TERRAIN = MAP === 'sky' || DESERT || VOLC || PLAT || ICEMAP; // (portal platforms: TH = the top of the fixed platform there)
 const HILLS = MAP === 'sky' ? [[-20, -23], [20, 23], [-5, 33], [5, -33]].map(([x, z]) => ({ x: x * MS, z: z * MS, r: 15, h: 2 })) : [];
 // the desert's dunes: long ridges lying across the wind, a gentle slope on the windward side and a steep slip face on the
 // other (that's the one you can slide down), mirrored so both halves of the map get the same ones
@@ -905,8 +916,17 @@ function volcRough(x, z) {
   k = Math.min(k, clamp((MX - Math.abs(x)) / 5 - .4, 0, 1), clamp((MZ - Math.abs(z)) / 5 - .4, 0, 1));
   return 4.2 * n * k;
 }
+// the frozen lake's mountains: a flat round top, steep snowy sides; and the ski run winding down round each one
+function iceSki(x, z) { // the nearest point on a ski run: { h: its height there, w: how far to the side of it, s: how far down it, t: team }
+  let best = null; for (const t of ['blue', 'red']) { const K = ICEP[t].ski; for (let i = 0; i < K.length - 1; i++) { const a = K[i], b = K[i + 1], dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz, u = clamp(((x - a.x) * dx + (z - a.z) * dz) / L2, 0, 1), px = a.x + dx * u, pz = a.z + dz * u, w = Math.hypot(x - px, z - pz);
+    if (!best || w < best.w) best = { w, h: a.h + (b.h - a.h) * u, s: a.s + (b.s - a.s) * u, t, dir: { x: dx / Math.sqrt(L2), z: dz / Math.sqrt(L2) } }; } } return best; }
+function iceH(x, z) {
+  let h = 0; for (const t of ['blue', 'red']) { const F = FORT[t], d = Math.hypot(x - F.x, z - F.z); if (d < ICE_RP) h = Math.max(h, ICE_MH); else if (d < ICE_RC) h = Math.max(h, ICE_MH * _sm(1 - (d - ICE_RP) / (ICE_RC - ICE_RP))); }
+  const K = iceSki(x, z); if (K && K.w < 4.6) h = Math.max(h, K.h * (K.w < 2.9 ? 1 : _sm(1 - (K.w - 2.9) / 1.7)));
+  return h; }
 function TH(x, z) {
   if (!TERRAIN) return 0;
+  if (ICEMAP) return iceH(x, z);
   if (PLAT) { const o = plStaticAt(x, z); return o ? o.y : 0; }
   if (VOLC) return Math.max(volcanoH(x, z), volcRough(x, z));
   if (DESERT) { let h = duneH(x, z), c = craterH(x, z); if (h <= 0 && c <= 0) return 0; let k = 1;
@@ -948,7 +968,7 @@ const keepClear = [ // places scenery must avoid
   { x: 0, z: 0, r: 9 }, // the animal monument in the middle
   ...TRAMP_SPOTS.map(t => ({ x: t.x, z: t.z, r: MAP === 'sky' && !t.grove ? 5 : 2.5 })), /* (the grove ones keep their ice pillars close round them) */
   ...(MAP === 'sky' ? STRIP_SPOTS.map(S_ => ({ x: S_.x + S_.dx * 4, z: S_.z + S_.dz * 4, r: 8 })) : []),
-  ...PORTAL_SPOTS.map(p => { const L = Math.hypot(p.x, p.z); return { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5, r: 10 }; }), // the pastures
+  ...(ICEMAP ? [] : PORTAL_SPOTS).map(p => { const L = Math.hypot(p.x, p.z); return { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5, r: 10 }; }), // the pastures
 ];
 const clearAt = (x, z, pad = 0) => (!TERRAIN || pad < 0 || TH(x, z) < .05 || pad === 2) && keepClear.every(k => Math.hypot(x - k.x, z - k.z) > k.r + pad) && Math.abs(x) < MX - 3 && Math.abs(z) < MZ - 3 && chasmDist(x, z) > 2.5 + Math.max(0, pad);
 // trees are made of real blocks now (built in the blocks file, asleep until something hits them)
@@ -965,7 +985,7 @@ function tree(x, z, h) {
 // trees: two groves on the flanks give cover for sneaking round, plus a few loners. The middle stays open.
 // same 27 trees as before, spread wider: smaller groves, a few round each pasture (the corners looked empty), more loners
 const GROVES = (TOY ? [{ x: -70, z: 30, n: 3 }, { x: 70, z: -30, n: 3 }, { x: -40, z: -40, n: 3 }, { x: 40, z: 40, n: 3 }] : JUNGLE ? [{ x: -112, z: 34, n: 2 }, { x: 112, z: -34, n: 2 }, { x: -112, z: -34, n: 2 }, { x: 112, z: 34, n: 2 }] : VOLC ? [{ x: -62, z: -38, n: 5 }, { x: 62, z: 38, n: 5 }, { x: -36, z: 44, n: 4 }, { x: 36, z: -44, n: 4 }] : ICEMAP ? [{ x: -64, z: -38, n: 4 }, { x: 64, z: 38, n: 4 }, { x: -28, z: 46, n: 3 }, { x: 28, z: -46, n: 3 }] : DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
-for (const p of PORTAL_SPOTS) { const L = Math.hypot(p.x, p.z), pa = { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; // trees scattered round the pasture fence, never in the portal's way
+for (const p of (ICEMAP ? [] : PORTAL_SPOTS)) { const L = Math.hypot(p.x, p.z), pa = { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; // trees scattered round the pasture fence, never in the portal's way
   for (let i = 0, n = 0; i < 120 && n < 4; i++) { const a = rnd() * Math.PI * 2, d = rr(11, 16), x = Math.round(pa.x + Math.cos(a) * d), z = Math.round(pa.z + Math.sin(a) * d);
     if (Math.hypot(x - p.x, z - p.z) < 7 || !clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue; tree(x, z, 2 + Math.floor(rnd() * 3)); n++; } }
 for (const gv of GROVES) for (let i = 0, n = 0; i < 80 && n < gv.n; i++) {
@@ -1037,11 +1057,11 @@ const inGate = (team, p) => { const g = GATES[team]; return Math.abs(p.x - g.x) 
 
 // ---- linked portals ----
 const PORTALS = (MAP === 'sky' || PLAT ? [] : PORTAL_SPOTS).map((sp, i) => { // (the rainbow map has a rainbow bridge instead)
-  const n = V(-sp.x, 0, -sp.z).normalize(), t = V(-n.z, 0, n.x);
-  for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) staticCells.push([sp.x + a, -.47, sp.z + b, new THREE.Color('#74767e').offsetHSL(0, 0, rr(-.04, .04))]);
+  const n = sp.n ? V(sp.n.x, 0, sp.n.z).normalize() : V(-sp.x, 0, -sp.z).normalize(), t = V(-n.z, 0, n.x), by = TH(sp.x, sp.z); // (by: the ground it stands on)
+  for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) staticCells.push([sp.x + a, -.47 + by, sp.z + b, new THREE.Color(ICEMAP ? '#c8d8ea' : '#74767e').offsetHSL(0, 0, rr(-.04, .04))]);
   // stone feet either side of the ring
   for (const s of [-1, 1]) staticBox(Math.round(sp.x + t.x * 2.2 * s), 0, Math.round(sp.z + t.z * 2.2 * s), 1, 1, 1, '#8a8c94');
-  const g = new THREE.Group(); g.position.set(sp.x, 2.05, sp.z); g.rotation.y = Math.atan2(n.x, n.z); scene.add(g);
+  const g = new THREE.Group(); g.position.set(sp.x, 2.05 + by, sp.z); g.rotation.y = Math.atan2(n.x, n.z); scene.add(g);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(1.6, .2, 14, 48), new LiteMat({ color: 0xc58bff, emissive: 0xa040ff, emissiveIntensity: 2 }));
   g.add(ring);
   const c = document.createElement('canvas'); c.width = c.height = 256; const cg = c.getContext('2d');
@@ -1055,13 +1075,13 @@ const PORTALS = (MAP === 'sky' || PLAT ? [] : PORTAL_SPOTS).map((sp, i) => { // 
   const cool = new THREE.Mesh(new THREE.RingGeometry(1.7, 1.95, 48, 1, 0, Math.PI * 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .8, side: THREE.DoubleSide }));
   cool.visible = false; g.add(cool);
   const light = null;
-  return { i, pos: V(sp.x, 2.05, sp.z), n, t, g, ring, disc, cool, light };
+  return { i, pos: V(sp.x, 2.05 + by, sp.z), n, t, g, ring, disc, cool, light };
 });
 let portalCool = 0; // players can't use either portal for 3s after someone goes through; blocks always can
 function portalCheck(p) { // is point p inside a portal's doorway? returns the portal
   for (const P of PORTALS) {
     const d = tmpV.copy(p).sub(P.pos), dn = d.dot(P.n), dt = d.dot(P.t);
-    if (Math.abs(dn) < .45 && Math.abs(dt) < 1.35 && p.y > .1 && p.y < 3.6) return P;
+    if (Math.abs(dn) < .45 && Math.abs(dt) < 1.35 && p.y - P.pos.y > -1.95 && p.y - P.pos.y < 1.55) return P;
   }
   return null;
 }
@@ -1191,7 +1211,7 @@ function animateLegs(e, mode, sp = 0) {
 }
 const ANIMAL_SPOTS = [];
 // pastures: one fenced meadow next to each portal. Its animals live there and always try to walk back home.
-const PASTURE_R = 7.5, PASTURES = PORTAL_SPOTS.map(p => { const L = Math.hypot(p.x, p.z); return V(p.x - p.x / L * 8.5, 0, p.z - p.z / L * 8.5); });
+const PASTURE_R = 7.5, PASTURES = (ICEMAP ? [] /* (the seals live out on the lake: 09s) */ : PORTAL_SPOTS).map(p => { const L = Math.hypot(p.x, p.z); return V(p.x - p.x / L * 8.5, 0, p.z - p.z / L * 8.5); });
 PASTURES.forEach((pa, i) => (VOLC ? ['cow', 'cow', 'cow'] /* (the volcano: goats only) */ : ['cow', 'cow', 'sheep', 'sheep']).forEach(kind => ANIMAL_SPOTS.push({ kind, pasture: pa, home: V(pa.x + rr(-4, 4), 0, pa.z + rr(-4, 4)) })));
 { // meadow patch (clover and little flowers) and a ring of short wooden fence posts with wide gaps
   const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
@@ -1726,6 +1746,30 @@ function jmMend(dt) {
 }
 
 // ============================================================
+// THE FROZEN LAKE (map), part 1: each team's base is a big IGLOO of real snow blocks on its mountain top (knock it
+// about: it rebuilds like any fort). The dome is open at the very top (it's all seen from above), with a tunnel into
+// it facing the lake. Inside: your flag gateway in the middle, and at the back the PORTAL down to the bottom of the
+// mountain. Your four flags stand on snow posts round the outside. (The mountains themselves: TH in 02_world.)
+// ============================================================
+function buildIgloo(team) {
+  const P_ = ICEP[team], F = P_.F, f = P_.f, a0 = P_.a0, T = TEAMS[team], R = ICE_IR, HD = 7.6;
+  const snow = () => new THREE.Color('#eef5ff').lerp(new THREE.Color(T.cols[Math.floor(rnd() * 4)]), .1).offsetHSL(0, 0, rr(-.04, .02));
+  const B = (x, y, z, w, h, d, yaw, c) => newBlock('fort', V(F.x + x, y, F.z + z), { color: c || snow(), team, dims: V(w, h, d), anchored: true, rot: yaw ? new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), yaw) : null });
+  const ang = q => Math.atan2(Math.sin(q - a0), Math.cos(q - a0)); // (how far round from the front)
+  // the dome: rings of blocks, each a little smaller than the one below, staggered like brickwork; the doorway at the front
+  for (let k = 0; k < 7; k++) { const y = k + .5, r = R * Math.sqrt(1 - (y / HD) ** 2) - .5, n = Math.max(6, Math.round(2 * Math.PI * r / 1.6)), L = 2 * Math.PI * r / n + .04;
+    for (let i = 0; i < n; i++) { const q = (i + (k % 2) * .5) / n * Math.PI * 2; if (k < 3 && Math.abs(ang(q)) * r < 1.9) continue; // (the doorway)
+      B(Math.cos(q) * r, y, Math.sin(q) * r, L, 1, 1, -q - Math.PI / 2); } }
+  // the entrance tunnel: two snow walls out towards the lake (no roof)
+  const side = { x: -f.z, z: f.x }, yawF = Math.atan2(f.x, f.z);
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) for (let j = 0; j < 2; j++) { const d = R - .2 + j * 2 + (k % 2) * .5 - .25, x = f.x * d + side.x * s * 2.2, z = f.z * d + side.z * s * 2.2; B(x, k + .5, z, 1, 1, 2, yawF); }
+  // the flags: each on a snow post outside, the two at the front first (player order)
+  [a0 + .55, a0 - .55, a0 + 2.35, a0 - 2.35].forEach((q, i) => { const x = Math.cos(q) * 11.6, z = Math.sin(q) * 11.6, c = new THREE.Color(T.cols[i]).lerp(new THREE.Color('#dfe8f2'), .5);
+    for (let y = 0; y < 3; y++) newBlock('fort', V(F.x + x, y + .5, F.z + z), { color: c.clone().offsetHSL(0, 0, rr(-.04, .03)), team, dims: V(y === 2 ? 1.5 : 1.2, 1, y === 2 ? 1.5 : 1.2), anchored: true });
+    const home = V(F.x + x, 3.5, F.z + z); const fl = newBlock('flag', home.clone(), { team, color: T.cols[i], home, owner: i }); FLAGS[team].push(fl); });
+}
+
+// ============================================================
 // BLOCKS: every movable block is a physics body. Forts, towers, flags, ammo, power blocks.
 // ============================================================
 const blocks = [];
@@ -1957,7 +2001,7 @@ function newBlock(kind, pos, o = {}) {
   else if (kind === 'animal') { e.mesh = makeAnimal(o.animal); e.animal = o.animal; e.home = null; e.wander = { t: rr(1, 4), dir: rnd() * 6.28, speed: 0, home: pos.clone() }; e.upright = true; e.restT = 0; }
   else { e.mesh = new THREE.Mesh(cubeGeo, kind === 'flag' ? flagMat(o.color) : kindMat[kind]); e.mesh.scale.copy(e.dims); e.mesh.castShadow = e.mesh.receiveShadow = true; scene.add(e.mesh); }
   if (isPower(kind)) decoratePower(e);
-  e.spawnPos = pos.clone(); e.anchored = !!o.anchored;
+  e.spawnPos = pos.clone(); e.spawnRot = o.rot || null; e.anchored = !!o.anchored;
   makeBody(e, pos, o.rot);
   blocks.push(e); return e;
 }
@@ -2048,6 +2092,7 @@ const TOWER_H = 12; // flags high up: you can spot them from anywhere on the map
 // a doorway in the middle of each side, two inner wall pieces, and four tall towers carrying the flags.
 function buildFort(team) {
   if (JUNGLE) return buildTemple(team); // (the jungle: an Aztec step temple, 02e)
+  if (ICEMAP) return buildIgloo(team); // (the ski resort: a big igloo on the mountain top, 02f)
   const { x: cx, z: cz } = FORT[team], cols = TEAMS[team].cols.map(fadeCol), RX = FORT_RX, RZ = FORT_RZ;
   const pick = () => { const c = new THREE.Color(cols[Math.floor(rnd() * 4)]); c.offsetHSL(0, 0, rr(-.05, .05)); return c; };
   const cells = new Set(), key = (x, z) => x + ',' + z;
@@ -2180,7 +2225,7 @@ function updateAnimals(dt) {
       const hsp = Math.hypot(lv.x, lv.z); w.stuck = hsp < .5 && w.speed > 1 ? (w.stuck || 0) + dt : 0;
       if (w.side > 0) w.side -= dt; else if (w.stuck > 1.2) { w.side = 1.1; w.sideDir = rnd() < .5 ? -1 : 1; w.stuck = 0; }
       let goal = pa; // a portal can be the short way home: walk in one side, pop out next to the pasture on the other
-      for (let i = 0; i < PORTALS.length; i++) { const A = PORTALS[i], Bq = PORTALS[1 - i], via = Math.hypot(A.pos.x - t.x, A.pos.z - t.z) + Math.hypot(Bq.pos.x - pa.x, Bq.pos.z - pa.z); if (via + 8 < away) goal = A.pos.clone().addScaledVector(A.n, Math.hypot(A.pos.x - t.x, A.pos.z - t.z) > 4 ? 2.5 : -1); }
+      for (let i = 0; i < PORTALS.length; i++) { const A = PORTALS[i], Bq = PORTALS[i ^ 1], via = Math.hypot(A.pos.x - t.x, A.pos.z - t.z) + Math.hypot(Bq.pos.x - pa.x, Bq.pos.z - pa.z); if (via + 8 < away) goal = A.pos.clone().addScaledVector(A.n, Math.hypot(A.pos.x - t.x, A.pos.z - t.z) > 4 ? 2.5 : -1); }
       w.dir = Math.atan2(goal.x - t.x, goal.z - t.z) + Math.sin(now() / 700 + e.id) * .25 + (w.side > 0 ? w.sideDir * 1.4 : 0);
       w.speed = away > 18 ? 4.4 : 3.4; w.t = .5;
       w.callT -= dt; if (w.callT <= 0) { w.callT = rr(4, 8); if (P && rPos(P).distanceTo(V(t.x, t.y, t.z)) < 40) sfx(voiceOf(e), V(t.x, t.y, t.z)); }
@@ -2225,10 +2270,14 @@ for (const t of TREES) {
       mk(V(t.x, H - 3.6, t.z - ax * 1.1), V(.45, .45, 1.5), '#2e2624'); mk(V(t.x, H - 2.9, t.z - ax * 1.7), V(.4, 1.1, .4), '#3a302c');
       mk(V(t.x - ax * .9, H - 1.3, t.z + ax * .8), V(1.1, .4, .4), '#3a302c');
       mk(V(t.x, H + .2, t.z), V(2, .4, 2), '#4a3a34'); t.perch = H + .4; // (the goat's seat)
-    } else if (ICEMAP) { // the frozen lake: snowy pine trees (a dark trunk, three tiers of branches getting smaller, snow on each)
-      const H = t.h; for (let y = 0; y < H; y++) mk(V(t.x, y + .5, t.z), V(.8, 1, .8), '#5a3a22');
-      let y = H; for (const [w, c] of [[3.4, '#2f6b45'], [2.4, '#357a4d'], [1.4, '#3c8756']]) { mk(V(t.x, y + .4, t.z), V(w, .8, w), c); mk(V(t.x, y + .9, t.z), V(w * .8, .22, w * .8), '#f4f8fc'); y += 1.1; }
-      mk(V(t.x, y + .3, t.z), V(.5, .6, .5), '#f4f8fc');
+    } else if (ICEMAP) { // the ski resort: tall Christmas firs (a dark trunk, five snowy tiers getting smaller, a few baubles, a star on top of some)
+      const y0 = TH(t.x, t.z), mkS = (p, ...r) => mk(p.setY(p.y + y0 - TH(p.x, p.z)), ...r); // (the whole tree on the ground at its trunk)
+      const H = 2 + (t.h > 3 ? 1 : 0); for (let y = 0; y < H; y++) mkS(V(t.x, y + .5, t.z), V(.9, 1, .9), '#4a2e1a');
+      let y = H, k = 0; const ball = ['#ff3a3a', '#ffd23a', '#3ab0ff', '#ff6ad0'], fancy = (Math.round(t.x * 3 + t.z * 5) & 3) !== 0;
+      for (const w of [5.2, 4.3, 3.5, 2.7, 1.9, 1.2]) { mkS(V(t.x, y + .55, t.z), V(w, 1.1, w), ['#1f5a36', '#256640', '#2b7048'][k % 3]); mkS(V(t.x, y + 1.17, t.z), V(w * .78, .2, w * .78), '#f4f8fc');
+        if (fancy && w > 1.5) for (let q = 0; q < 2; q++) { const a = (k * 1.7 + q * 3.1) % 6.28; mkS(V(t.x + Math.cos(a) * w * .5, y + .35, t.z + Math.sin(a) * w * .5), V(.32, .32, .32), ball[(k + q) % 4]); }
+        y += 1.2; k++; }
+      mkS(V(t.x, y + .35, t.z), V(.5, .7, .5), fancy ? '#ffe14a' : '#f4f8fc'); t.tall = y + .7;
     } else if (DESERT) { // the desert: tall cacti with arms, and date palms
       const y0 = TH(t.x, t.z), mkS = (p, ...r) => mk(p.setY(p.y + y0 - TH(p.x, p.z)), ...r); // (the whole tree stands on the sand at its trunk: newBlock lifts each block by the sand right under it, so that's taken back off for arms and fronds that stick out over a slope)
       if ((Math.round(t.x * 7 + t.z * 3) & 1) === 0) { const H = t.h + 2, g = ['#3f8a3a', '#4b9a44', '#367a33'];
@@ -2263,7 +2312,7 @@ const freeSpot = (pad = 1) => {
   if (PLAT) { const L = PL_DEF.filter(o => !o.mv && o.kind !== 'fort'); for (let k = 0; k < 200; k++) { const o = L[Math.floor(rnd() * L.length)], x = o.x + rr(-o.hx + 2.5, o.hx - 2.5), z = o.z + rr(-o.hz + 2.5, o.hz - 2.5); if (HUBS.some(h => Math.hypot(x - h.x, z - h.z) < 5) || staticBoxes.some(b => x > b.x0 - pad && x < b.x1 + pad && z > b.z0 - pad && z < b.z1 + pad) || Math.abs(x - o.x) > o.hx - 2.5 || Math.abs(z - o.z) > o.hz - 2.5 || plPortals(o).some(q => Math.hypot(x - o.x - q.lx, z - o.z - q.lz) < 3.5 + pad) || (o.kind === 'hub' && Math.hypot(x - o.x, z - o.z + Math.sign(o.z) * (o.hz - 2)) < 3.5 + pad) || blocks.some(b => !b.dead && b.spawnPos && b.kind !== 'fort' && Math.hypot(b.spawnPos.x - x, b.spawnPos.z - z) < 2.2 + pad)) continue; return [x, z]; } return [L[0].x, L[0].z]; } // (portal platforms: on one of the fixed platforms, away from its edges and its portals)
   for (let k = 0; k < 200; k++) {
     const x = rr(-MX + 3, MX - 3), z = rr(-MZ + 3, MZ - 3);
-    if (!clearAt(x, z, -2) || TH(x, z) > .05 || Object.values(FORT).some(f => (Math.abs(x - f.x) < FORT_RX + 4 && Math.abs(z - f.z) < FORT_RZ + 4))) continue; // never inside a fort's square (corners too)
+    if (!clearAt(x, z, -2) || TH(x, z) > .05 || (TERRAIN && pad >= 2 && [[2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]].some(([a, b]) => TH(x + a, z + b) > .05)) || (ICEMAP && iceSki(x, z).w < 5) || Object.values(FORT).some(f => (Math.abs(x - f.x) < FORT_RX + 4 && Math.abs(z - f.z) < FORT_RZ + 4))) continue; // never inside a fort's square (corners too)
     if (staticBoxes.some(b => x > b.x0 - pad && x < b.x1 + pad && z > b.z0 - pad && z < b.z1 + pad)) continue;
     return [x, z];
   }
@@ -2298,7 +2347,8 @@ for (let i = 0; i < 3; i++) { slotAt(...freeSpot(), 'bomb'); slotAt(...freeSpot(
 }
 // (everything below is placed on the ground)
 // a few grey blocks just outside each fort so you can start fighting straight away
-for (const t of ['blue', 'red']) { const f = FORT[t], s = t === 'blue' ? 1 : -1; const dz = [-10, -7.5, -5, 5, 7.5, 10]; for (let i = 0; i < 6; i++) newBlock('stone', V(f.x + s * (FORT_RX + 6 + (i % 2) * 2.4), .6, f.z + dz[i]), /* clear lane in front of the door */ { dims: ammoDims(), rot: new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), (i % 2) * Math.PI / 2) }); } // spaced out so they don't spawn inside each other
+if (ICEMAP) for (const t of ['blue', 'red']) { const P_ = ICEP[t]; for (let i = 0; i < 6; i++) { const q = P_.a0 + (i - 2.5) * .22, r = 14.5 + (i % 2) * 1.2; newBlock('stone', V(P_.F.x + Math.cos(q) * r, .6, P_.F.z + Math.sin(q) * r), { dims: V(1, 1, 1) }); } } /* (the ski resort: on the mountain top in front of the igloo) */
+else for (const t of ['blue', 'red']) { const f = FORT[t], s = t === 'blue' ? 1 : -1; const dz = [-10, -7.5, -5, 5, 7.5, 10]; for (let i = 0; i < 6; i++) newBlock('stone', V(f.x + s * (FORT_RX + 6 + (i % 2) * 2.4), .6, f.z + dz[i]), /* clear lane in front of the door */ { dims: ammoDims(), rot: new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), (i % 2) * Math.PI / 2) }); } // spaced out so they don't spawn inside each other
 
 // power blocks disintegrate when they go off; a fresh one appears later in an empty slot of the same kind
 const respawnQ = [];
@@ -2383,7 +2433,7 @@ function updateBlocks(dt) {
     if (e.pcool <= 0 && e.frozenT <= 0) {
       const P = portalCheck(t);
       if (P) {
-        const Q = PORTALS[1 - P.i], lv = e.body.linvel(), sp = Math.hypot(lv.x, lv.y, lv.z);
+        const Q = PORTALS[P.i ^ 1], lv = e.body.linvel(), sp = Math.hypot(lv.x, lv.y, lv.z);
         if (sp > 1.5) {
           const out = Q.pos.clone().addScaledVector(Q.n, 1.2);
           e.body.setTranslation(out, true); e.body.setLinvel({ x: Q.n.x * Math.hypot(lv.x, lv.z), y: lv.y, z: Q.n.z * Math.hypot(lv.x, lv.z) }, true);
@@ -2412,7 +2462,7 @@ const FORT_SPOTS = { blue: [], red: [] };
   const cellMap = new Map(), ck = (x, y, z) => x + ',' + y + ',' + z;
   for (const e of blocks) {
     if (e.kind !== 'fort') continue;
-    const p = e.spawnPos, y = Math.floor(p.y), spot = { e, team: e.team, pos: p.clone(), dims: e.dims.clone(), color: e.color.clone(), y, cells: [], below: new Set(), missT: 0, state: 'ok' };
+    const p = e.spawnPos, y = Math.floor(p.y), spot = { e, team: e.team, pos: p.clone(), rot: e.spawnRot, dims: e.dims.clone(), color: e.color.clone(), y, cells: [], below: new Set(), missT: 0, state: 'ok' };
     for (let i = 0; i < Math.round(e.dims.x); i++) for (let j = 0; j < Math.round(e.dims.z); j++) {
       const cx = Math.round(p.x - e.dims.x / 2 + .5 + i), cz = Math.round(p.z - e.dims.z / 2 + .5 + j);
       spot.cells.push([cx, y, cz]); cellMap.set(ck(cx, y, cz), spot);
@@ -2486,7 +2536,7 @@ function updateRepair(dt) {
   for (let i = flying.length - 1; i >= 0; i--) {
     const F = flying[i]; F.t += dt; const k = Math.min(1, F.t / F.dur), e = F.s.e, ease = k * k * (3 - 2 * k);
     tmpV.copy(F.from).lerp(F.s.pos, ease); tmpV.y += Math.sin(k * Math.PI) * F.arc;
-    tmpQ.copy(F.q0).slerp(tmpQ2.identity(), ease);
+    tmpQ.copy(F.q0).slerp(F.s.rot ? tmpQ2.copy(F.s.rot) : tmpQ2.identity(), ease);
     if (e.inst >= 0) { tmpM.compose(tmpV, tmpQ, tmpS.copy(e.dims)); plainIM.setMatrixAt(e.inst, tmpM); plainIM.instanceMatrix.needsUpdate = true; }
     if (k >= 1) { flying.splice(i, 1); liftFlags(F.s); lockHome(F.s); }
   }
@@ -2494,7 +2544,7 @@ function updateRepair(dt) {
 const flying = [];
 function lockHome(s) {
   const e = s.e; e.dead = false; e.live = false; e.holder = null; e.loose = false; e.restT = 0; e.fading = 0; e.frozenT = 0; if (e.ice) { scene.remove(e.ice); e.ice = null; }
-  e.anchored = true; ANCH.dirty = true; dropBody(e); makeBody(e, s.pos.clone()); e.drawn = false; s.state = 'ok'; s.missT = 0;
+  e.anchored = true; ANCH.dirty = true; dropBody(e); makeBody(e, s.pos.clone(), s.rot || null); e.drawn = false; s.state = 'ok'; s.missT = 0;
   if (e.inst >= 0) { plainIM.setColorAt(e.inst, s.color); plainIM.instanceColor.needsUpdate = true; }
   fxBurst(s.pos, s.fx ?? (s.team === 'blue' ? 0x7fc8ff : 0xff8a7a), .9, .3); if (!s.quiet || Math.random() < .15) sfx('repair', s.pos);
 }
@@ -2510,7 +2560,7 @@ function bringHome(s) {
   }
   if (e && e.holder) { s.state = 'missing'; return; } // someone's carrying it: leave that one for later
   lockHome(s); // gone (vaporised, faded, fell off the map): a fresh one pops in
-  if (e.inst >= 0) { const sc = { k: 0 }; const grow = () => { sc.k = Math.min(1, sc.k + .12); tmpM.compose(s.pos, tmpQ2.identity(), tmpS.copy(s.dims).multiplyScalar(.3 + .7 * sc.k)); plainIM.setMatrixAt(e.inst, tmpM); plainIM.instanceMatrix.needsUpdate = true; if (sc.k < 1) requestAnimationFrame(grow); }; grow(); }
+  if (e.inst >= 0) { const sc = { k: 0 }; const grow = () => { sc.k = Math.min(1, sc.k + .12); tmpM.compose(s.pos, s.rot ? tmpQ2.copy(s.rot) : tmpQ2.identity(), tmpS.copy(s.dims).multiplyScalar(.3 + .7 * sc.k)); plainIM.setMatrixAt(e.inst, tmpM); plainIM.instanceMatrix.needsUpdate = true; if (sc.k < 1) requestAnimationFrame(grow); }; grow(); }
 }
 
 // our own fort rubble lying in a spot that's being rebuilt: it flies home too if it can, otherwise it puffs away (and comes back later)
@@ -3640,7 +3690,7 @@ function respawnRobot(r) {
   const f = FORT[r.team], own = FLAGS[r.team][r.idx];
   const pickI = own && !own.holder ? r.idx : FLAGS[r.team].findIndex(fl => !fl.holder);
   let spot = pickI >= 0 ? flagSpot(r.team, pickI) : V(f.x + rr(-1, 1), 0, f.z + 3);
-  const y0_ = 14 + (PLAT ? TH(spot.x, spot.z) : 0), hit = world.castRay(new RAPIER.Ray({ x: spot.x, y: y0_, z: spot.z }, { x: 0, y: -1, z: 0 }), 30, true);
+  const y0_ = 14 + (PLAT || ICEMAP ? TH(spot.x, spot.z) : 0), hit = world.castRay(new RAPIER.Ray({ x: spot.x, y: y0_, z: spot.z }, { x: 0, y: -1, z: 0 }), 30, true);
   const y = hit ? y0_ - hit.toi : TH(spot.x, spot.z);
   makeRobotBody(r, V(spot.x, y + 1.0, spot.z));
   r.state = 'play'; r.ghostT = GHOST_TIME; r.frozenT = 0; setIce(r, false); r.jumps = 0; r.dashV = 0; r.boost = null; r.padT = 0;
@@ -3716,12 +3766,12 @@ function updateRobot(r, dt) {
   r.body.setLinvel({ x: lv.x + (des.x - lv.x) * k, y: vy, z: lv.z + (des.z - lv.z) * k }, true);
   r.vel.set(lv.x, 0, lv.z);
   // portals: players go through unless someone just used one
-  if (portalCool <= 0) {
+  if (ICEMAP ? !(r.portT > now()) : portalCool <= 0) { // (the ski resort's four portals: each robot just waits a moment)
     const P = portalCheck(t);
     if (P) {
-      const Q = PORTALS[1 - P.i], sp = Math.max(RUN, Math.hypot(lv.x, lv.z)), out = Q.pos.clone().addScaledVector(Q.n, 1.8);
-      r.body.setTranslation({ x: out.x, y: 1.0, z: out.z }, true); r.body.setLinvel({ x: Q.n.x * sp, y: 0, z: Q.n.z * sp }, true);
-      r.yaw = r.yawT = yawTo(Q.n.x, Q.n.z); portalCool = PORTAL_COOL;
+      const Q = PORTALS[P.i ^ 1], sp = Math.max(RUN, Math.hypot(lv.x, lv.z)), out = Q.pos.clone().addScaledVector(Q.n, 1.8);
+      r.body.setTranslation({ x: out.x, y: Q.pos.y - 1.05, z: out.z }, true); r.body.setLinvel({ x: Q.n.x * sp, y: 0, z: Q.n.z * sp }, true);
+      r.yaw = r.yawT = yawTo(Q.n.x, Q.n.z); if (ICEMAP) r.portT = now() + 1500; else portalCool = PORTAL_COOL;
       fxBurst(P.pos, 0xb36bff, 1.8, .35); fxBurst(Q.pos, 0xb36bff, 1.8, .35);
       sfx('portal', Q.pos); if (r.isPlayer) { snapCamera = true; toast('PORTAL'); }
     }
@@ -4326,7 +4376,7 @@ function decide(r, p, D) {
     const fl = flags[0];
     if (fl) {
       const fp = flagPos(fl);
-      if (fp.y < 4.2) { ai.mode = 'steal'; ai.flag = fl; ai.goal = fp; ai.stopAt = 0; return; }
+      if (fp.y - TH(fp.x, fp.z) < 4.2) { ai.mode = "steal"; ai.flag = fl; ai.goal = fp; ai.stopAt = 0; return; }
       const tb = towerBlockUnder(fl);
       if (tb) {
         ai.mode = 'topple'; ai.tower = tb; ai.flag = fl;
@@ -4901,10 +4951,10 @@ const ANGER_AT = 10, RAGE_TIME = 10, RAGE_SPEED = RUN * 1.3;
 function updateHeldAnimals(dt) {
   for (const r of robots) for (const a of r.stack) {
     if (a.kind !== 'animal') continue;
-    a.heldT = (a.heldT || 0) + (r.state === 'play' ? dt * (a.animal === 'chicken' ? .5 : a.animal === 'cow' && ICEMAP ? 4 : 1) : 0); /* (a seal won't stay held: it wriggles free in a couple of seconds) */ // a chicken puts up with you for 20 s
+    a.heldT = (a.heldT || 0) + (r.state === 'play' ? dt * (a.animal === 'chicken' ? .5 : a.animal === 'cow' && ICEMAP ? 1 : 1) : 0); /* (a seal won't stay held: it wriggles free in a couple of seconds) */ // a chicken puts up with you for 20 s
     const k = clamp((a.heldT - 6) / 4, 0, 1); // the cow gets redder for the last 4 seconds
     if (a.animal === 'cow') a.mesh.material.emissive.setRGB(k * .55, 0, 0);
-    if (k > 0 && !a.angerWarned && r.isPlayer) { a.angerWarned = true; toast(a.animal === 'cow' ? (DESERT ? 'THE CAMEL IS GETTING GRUMPY…' : ICEMAP ? 'THE SEAL IS WRIGGLING…' : VOLC ? 'THE GOAT IS GETTING CROSS…' : 'THE COW IS GETTING ANGRY…') : a.animal === 'chicken' ? 'THE CHICKEN IS GETTING CROSS…' : a.animal === 'penguin' ? 'THE PENGUIN IS GETTING GRUMPY…' : 'THE SHEEP IS GETTING RESTLESS…'); }
+    if (k > 0 && !a.angerWarned && r.isPlayer) { a.angerWarned = true; toast(a.animal === 'cow' ? (DESERT ? 'THE CAMEL IS GETTING GRUMPY…' : ICEMAP ? 'THE SEAL IS GETTING GRUMPY…' : VOLC ? 'THE GOAT IS GETTING CROSS…' : 'THE COW IS GETTING ANGRY…') : a.animal === 'chicken' ? 'THE CHICKEN IS GETTING CROSS…' : a.animal === 'penguin' ? 'THE PENGUIN IS GETTING GRUMPY…' : 'THE SHEEP IS GETTING RESTLESS…'); }
     // it hates being carried: loud moos / screaming baas, more and more often
     a.voiceT = (a.voiceT ?? 1) - dt;
     if (a.voiceT <= 0 && r.stack[0] === a) { a.voiceT = Math.max(.9, rr(2, 2.8) - a.heldT * .12); sfx(voiceOf(a, true), rPos(r)); }
@@ -4938,7 +4988,7 @@ function updateRage(a, dt) {
   const g = rPos(tg); let aim = g;
   // if you went through a portal, it follows you through whichever way is shorter (straight at you, or via a portal)
   { let best = Math.hypot(g.x - t.x, g.z - t.z);
-    for (const Pn of PORTALS) { const Q = PORTALS[1 - Pn.i], via = Math.hypot(Pn.pos.x - t.x, Pn.pos.z - t.z) + Math.hypot(g.x - Q.pos.x, g.z - Q.pos.z) + 6;
+    for (const Pn of PORTALS) { const Q = PORTALS[Pn.i ^ 1], via = Math.hypot(Pn.pos.x - t.x, Pn.pos.z - t.z) + Math.hypot(g.x - Q.pos.x, g.z - Q.pos.z) + 6;
       if (via < best) { best = via; const front = (t.x - Pn.pos.x) * Pn.n.x + (t.z - Pn.pos.z) * Pn.n.z; // walk round to the front of the ring first, then straight in
         aim = front > 1.2 || Math.hypot(t.x - Pn.pos.x, t.z - Pn.pos.z) < 3 ? Pn.pos : Pn.pos.clone().addScaledVector(Pn.n, 4); } } }
   const dir = V(aim.x - t.x, 0, aim.z - t.z); dir.normalize(); const dist = Math.hypot(g.x - t.x, g.z - t.z);
@@ -5747,7 +5797,7 @@ function updateDogs(dt) {
     if (isInvisible(tg)) { D.m.head.rotation.y = Math.sin(t * 3) * .7; D.m.tail.rotation.y = Math.sin(t * 6) * .3; D.m.legs.forEach(l => { l.rotation.x *= .8; }); D.m.g.position.set(D.x, D.y, D.z); continue; } // lost them: it stands there sniffing about
     // where to run: straight at them, or through a portal if that's shorter (same as the angry cow)
     const g = rPos(tg); let aim = g, best = Math.hypot(g.x - D.x, g.z - D.z);
-    for (const Pn of PORTALS) { const Q = PORTALS[1 - Pn.i], via = Math.hypot(Pn.pos.x - D.x, Pn.pos.z - D.z) + Math.hypot(g.x - Q.pos.x, g.z - Q.pos.z) + 6;
+    for (const Pn of PORTALS) { const Q = PORTALS[Pn.i ^ 1], via = Math.hypot(Pn.pos.x - D.x, Pn.pos.z - D.z) + Math.hypot(g.x - Q.pos.x, g.z - Q.pos.z) + 6;
       if (via < best) { best = via; const front = (D.x - Pn.pos.x) * Pn.n.x + (D.z - Pn.pos.z) * Pn.n.z; aim = front > 1.2 || Math.hypot(D.x - Pn.pos.x, D.z - Pn.pos.z) < 3 ? Pn.pos : Pn.pos.clone().addScaledVector(Pn.n, 4); } }
     if (PLAT) { const a2 = pxDogAim(D, g); if (a2) aim = a2; } // (portal platforms: through the portals, the way the bots go)
     if (CH) { const sk = skyDogAim(D, g); if (sk) { aim = sk; if (dogRideStart(D)) continue; } } /* the other side of the gorge: over the rainbow */
@@ -5778,7 +5828,7 @@ function updateDogs(dt) {
     if (D.y < -16) { removeDog(D, null); continue; } // fell off the island
     // portals
     if (PLAT) pxDogPortal(D);
-    if (D.pcool > 0) D.pcool -= dt; else { const Pn = portalCheck(V(D.x, D.y + .6, D.z)); if (Pn) { const Q = PORTALS[1 - Pn.i], o = Q.pos.clone().addScaledVector(Q.n, 1.6); D.x = o.x; D.z = o.z; D.y = Math.max(0, groundAt(o.x, o.z, 4)); D.vy = 0; D.pcool = .8; D.yaw = Math.atan2(Q.n.x, Q.n.z); fxBurst(Q.pos, 0xb36bff, 1.4, .3); sfx('portal', Q.pos); } }
+    if (D.pcool > 0) D.pcool -= dt; else { const Pn = portalCheck(V(D.x, D.y + .6, D.z)); if (Pn) { const Q = PORTALS[Pn.i ^ 1], o = Q.pos.clone().addScaledVector(Q.n, 1.6); D.x = o.x; D.z = o.z; D.y = Math.max(0, groundAt(o.x, o.z, 4)); D.vy = 0; D.pcool = .8; D.yaw = Math.atan2(Q.n.x, Q.n.z); fxBurst(Q.pos, 0xb36bff, 1.4, .3); sfx('portal', Q.pos); } }
     D.m.g.position.set(D.x, D.y, D.z); D.m.g.rotation.y = D.yaw;
     D.m.legs.forEach((l, k) => { l.rotation.x = D.grounded ? Math.sin(t * 24 + (k < 2 ? 0 : Math.PI)) * .95 : (k < 2 ? -.9 : .9); }); D.m.tail.rotation.y = Math.sin(t * 18) * .5; // a gallop: front legs together, back legs together
     if (D.grounded) { D.m.g.position.y = D.y + Math.abs(Math.sin(t * 24)) * .18; D.m.g.rotation.x = Math.sin(t * 24) * .08; D.m.head.rotation.x = Math.sin(t * 24) * .12; } else D.m.g.rotation.x = D.vy > 0 ? -.25 : .2;
@@ -6347,7 +6397,7 @@ function botUsePower(r, p) {
 function routeAim(r, p, goal, lvl) {
   let best = Math.hypot(goal.x - p.x, goal.z - p.z), aim = null;
   if (best < 25) return null;
-  for (const Pn of PORTALS) { const Q = PORTALS[1 - Pn.i], via = Math.hypot(Pn.pos.x - p.x, Pn.pos.z - p.z) + Math.hypot(goal.x - Q.pos.x, goal.z - Q.pos.z) + 8;
+  for (const Pn of PORTALS) { const Q = PORTALS[Pn.i ^ 1], via = Math.hypot(Pn.pos.x - p.x, Pn.pos.z - p.z) + Math.hypot(goal.x - Q.pos.x, goal.z - Q.pos.z) + 8;
     if (via < best) { best = via; const front = (p.x - Pn.pos.x) * Pn.n.x + (p.z - Pn.pos.z) * Pn.n.z; aim = front > 1.2 || Math.hypot(p.x - Pn.pos.x, p.z - Pn.pos.z) < 3 ? Pn.pos.clone() : Pn.pos.clone().addScaledVector(Pn.n, 4); } }
   if (lvl >= 2 && !aim) for (const Pd of PADS) { // a trampoline roughly on the way, close by: take it
     if (Pd.broken) continue; const dp = Math.hypot(Pd.x - p.x, Pd.z - p.z); if (dp > 10 || dp < 1.5) continue;
@@ -6801,7 +6851,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { scoreFlag, jmNext: (a, b) => jmNext(a, b), jmNbrs: n => jmNbrs(n), get JM() { return JM; }, get JG() { return JG; }, get EG() { return EG; }, get VO() { return VO; }, sendDog: (o, t) => sendDog(o, t), get ESC() { return ESC; }, escTrace: p => escapeTrace(p), escInk: a => { ESC.ink = a; escapeCheck(); return !!ESC.snap; }, escScore: (a, k) => escScore(escNorm(escResample(a)), k), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { scoreFlag, jmNext: (a, b) => jmNext(a, b), jmNbrs: n => jmNbrs(n), get JM() { return JM; }, get JG() { return JG; }, get ICE2() { return ICE2; }, get EG() { return EG; }, get VO() { return VO; }, sendDog: (o, t) => sendDog(o, t), get ESC() { return ESC; }, escTrace: p => escapeTrace(p), escInk: a => { ESC.ink = a; escapeCheck(); return !!ESC.snap; }, escScore: (a, k) => escScore(escNorm(escResample(a)), k), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -9714,6 +9764,185 @@ function pxRoute(from, to) { // the first step of the cheapest way from one plat
     r.want.copy(d); r.yawT = yawTo(d.x, d.z); r.wantSpeed = Math.max(r.wantSpeed, RUN); if (!ahead(d, 1.0)) r.jumpReq = true; return; }
   if (!safe(r.want)) { let ok = null; for (const a of [.7, -.7, 1.4, -1.4, 2.2, -2.2, Math.PI]) { const d = r.want.clone().applyAxisAngle(V(0, 1, 0), a); if (safe(d)) { ok = d; break; } } if (ok) { r.want.copy(ok); r.yawT = yawTo(ok.x, ok.z); } else r.wantSpeed = 0; }
 }; }
+
+// ============================================================
+// THE FROZEN LAKE (map), part 2: the ski resort. (The mountains are TH in 02_world; the igloos are in 02f.)
+//  - SKI RUNS: the icy run winding down round each mountain is slippery, and it pulls you downhill: a long, fast slide
+//    all the way out onto the lake
+//  - CABLE CARS: little open cabins going up and down a cable on the other side of each mountain. Hop in at the bottom
+//    station and ride up to the top (or down). They go round and round; they wait a moment at each end
+//  - PORTALS: one at the bottom of each mountain (on the cable car's side) goes straight into that team's igloo, and the
+//    one inside the igloo comes back down. Anyone can use them: cross the lake and you can use theirs
+//  - SEALS slide about on the lake for the fun of it, bowling everyone over. Pick one up and it lies belly-up on your
+//    head; throw it and it slides much further, dead straight. Hold it too long and it gets grumpy and slides into YOU
+//  - SNOW BIRDS perch about the place: you can't pick them up, but get too close and they fly at you, like chickens
+//  - tall Christmas firs, and LANTERNS everywhere (they glow at night): cosy
+// ============================================================
+const ICE2 = { cabs: [], seals: [], birds: [], lan: null, smoke: [], t: 0 };
+// ---- the ski runs: slippery, and downhill they pull you along ----
+const iceOnSki = p => { if (!ICEMAP) return null; const K = iceSki(p.x, p.z); return K && K.w < 3.1 && K.s < .97 && p.y - K.h < 1.5 && p.y - K.h > -.6 ? K : null; };
+{ const ur0 = updateRobot; updateRobot = function (r, dt) { ur0(r, dt); if (!ICEMAP || !r.body || r.state !== 'play' || r.glitchHeld) return;
+    const p = r.body.translation(), K = iceOnSki(p); if (!K) { r.skiing = false; return; }
+    const lv = r.body.linvel(), along = lv.x * K.dir.x + lv.z * K.dir.z, a = (along < 21 ? 13 : 0) * dt; // (gravity down the run: up to a good speed)
+    r.body.setLinvel({ x: lv.x + K.dir.x * a, y: lv.y, z: lv.z + K.dir.z * a }, true);
+    if (!r.skiing && r.isPlayer && along > 4) toast('WHEEE!'); r.skiing = true;
+    if (Math.random() < dt * 14) emit(V(p.x, p.y - .8, p.z), 0xffffff, V(rr(-1, 1), rr(.5, 1.5), rr(-1, 1)), .12, .5, 0); }; }
+// ---- the cable cars ----
+const CAB_W = 1.6, CAB_U = 7, CAB_D = 2, CAB_C = 1, CAB_CYC = 2 * (CAB_U + CAB_D + CAB_C);
+if (ICEMAP) {
+  const wood = new LiteMat({ color: 0x8a5a32 }), dark = new LiteMat({ color: 0x3a3a44 }), cableM = new THREE.MeshBasicMaterial({ color: 0x2a2a30 });
+  for (const t of ['blue', 'red']) { const P_ = ICEP[t], B = V(P_.cabB.x, 0, P_.cabB.z), T_ = V(P_.cabT.x, 0, P_.cabT.z), d = T_.clone().sub(B), L = d.length(), u = d.clone().normalize(), sd = V(-u.z, 0, u.x), yaw = Math.atan2(u.x, u.z);
+    const yB = TH(B.x, B.z) + .02, yT = ICE_MH + .02, col = new THREE.Color(TEAMS[t].cols[0]), cabM = new LiteMat({ color: col, emissive: col, emissiveIntensity: .15 });
+    const line = { t, B, T: T_, u, sd, yaw, yB, yT, L };
+    // the cables (straight, from tower top to tower top) and the towers
+    for (const s of [1, -1]) { const a = B.clone().addScaledVector(sd, s * 1.9).setY(yB + 4.2), b = T_.clone().addScaledVector(sd, s * 1.9).setY(yT + 4.2), m = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, a.distanceTo(b), 5), cableM);
+      m.position.copy(a).add(b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(V(0, 1, 0), b.clone().sub(a).normalize()); scene.add(m);
+      for (const [q, top] of [[a, yB], [b, yT]]) { const base = TH(q.x, q.z), h = q.y - base + .3, tw = new THREE.Mesh(new THREE.BoxGeometry(.35, h, .35), dark); tw.position.set(q.x, base + h / 2, q.z); tw.castShadow = true; scene.add(tw); } }
+    for (const q of [B, T_]) { const y = q === B ? yB : yT, beam = new THREE.Mesh(new THREE.BoxGeometry(4.6, .3, .5), dark); beam.position.set(q.x, y + 4.5, q.z); beam.rotation.y = yaw + Math.PI / 2; scene.add(beam); } // (a beam across the top of each station)
+    // a little wooden landing at the bottom station
+    { const m = new THREE.Mesh(new THREE.BoxGeometry(7, .12, 4.2), wood); m.position.set(B.x - u.x * 2.2, yB + .06, B.z - u.z * 2.2); m.rotation.y = yaw; m.receiveShadow = true; scene.add(m); }
+    for (let k = 0; k < 3; k++) { // three open cabins, a third of the way round from each other
+      const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(B.x, yB, B.z).setRotation(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), yaw)));
+      for (const [hx, hy, hz, x, y, z] of [[CAB_W, .15, CAB_W, 0, -.15, 0], [.1, .55, CAB_W, CAB_W, .55, 0], [.1, .55, CAB_W, -CAB_W, .55, 0]]) { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(hx, hy, hz).setTranslation(x, y, z).setFriction(1), body); byCollider.set(c.handle, { type: 'static' }); }
+      const g = new THREE.Group(); scene.add(g);
+      const fl = new THREE.Mesh(new THREE.BoxGeometry(CAB_W * 2, .3, CAB_W * 2), wood); fl.position.y = -.15; fl.castShadow = fl.receiveShadow = true; g.add(fl);
+      for (const s of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(.2, 1.1, CAB_W * 2), cabM); w.position.set(s * CAB_W, .55, 0); w.castShadow = true; g.add(w);
+        for (const e of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(.16, 2.4, .16), dark); post.position.set(s * CAB_W, 1.2, e * (CAB_W - .1)); g.add(post); } }
+      const top = new THREE.Mesh(new THREE.BoxGeometry(CAB_W * 2 + .2, .14, .2), dark); top.position.y = 2.4; g.add(top); // (just a bar across the top: no roof)
+      const hang = new THREE.Mesh(new THREE.BoxGeometry(.1, 1, .1), dark); scene.add(hang);
+      ICE2.cabs.push({ line, body, g, hang, ph: k * CAB_CYC / 3, x: B.x, y: yB, z: B.z, dx: 0, dy: 0, dz: 0 }); } }
+}
+function cabPos(C, tt) { const Ln = C.line, q = ((tt + C.ph) % CAB_CYC + CAB_CYC) % CAB_CYC, sm = v => v * v * (3 - 2 * v); let u, s;
+  if (q < CAB_U) { u = sm(q / CAB_U); s = 1; } else if (q < CAB_U + CAB_D) { u = 1; s = 1; } else if (q < CAB_U + CAB_D + CAB_C) { u = 1; s = 1 - 2 * sm((q - CAB_U - CAB_D) / CAB_C); }
+  else if (q < 2 * CAB_U + CAB_D + CAB_C) { u = 1 - sm((q - CAB_U - CAB_D - CAB_C) / CAB_U); s = -1; } else if (q < 2 * CAB_U + 2 * CAB_D + CAB_C) { u = 0; s = -1; } else { u = 0; s = -1 + 2 * sm((q - 2 * CAB_U - 2 * CAB_D - CAB_C) / CAB_C); }
+  const x = Ln.B.x + (Ln.T.x - Ln.B.x) * u + Ln.sd.x * s * 1.9, z = Ln.B.z + (Ln.T.z - Ln.B.z) * u + Ln.sd.z * s * 1.9, y = Ln.yB + (Ln.yT - Ln.yB) * (1 - (1 - u) ** 2);
+  return { x, y, z, u, s }; }
+function cabPlace(now_) { for (const C of ICE2.cabs) { const p = cabPos(C, ICE2.t); C.dx = p.x - C.x; C.dy = p.y - C.y; C.dz = p.z - C.z; C.x = p.x; C.y = p.y; C.z = p.z; C.u = p.u; C.s = p.s;
+    if (now_) C.body.setTranslation({ x: p.x, y: p.y, z: p.z }, true); else C.body.setNextKinematicTranslation({ x: p.x, y: p.y, z: p.z }); } }
+if (ICEMAP) { cabPlace(true);
+  const ws0 = world.step.bind(world);
+  world.step = function (...a) { // every physics step: move the cabins, then carry whoever's standing in one
+    if (!RW_LOCK) { ICE2.t += world.timestep; cabPlace(false); } else for (const C of ICE2.cabs) C.dx = C.dy = C.dz = 0;
+    ws0(...a); if (RW_LOCK) return;
+    for (const C of ICE2.cabs) { if (!C.dx && !C.dz) continue; const ux = C.line.u.x, uz = C.line.u.z;
+      for (const r of robots) { if (!r.body || r.glitchHeld || (r.state !== 'play' && r.state !== 'rag')) continue; const p = r.body.translation(), lx = p.x - C.x, lz = p.z - C.z, along = lx * ux + lz * uz, lat = -lx * uz + lz * ux, h = p.y - C.y;
+        if (Math.abs(along) > CAB_W + .2 || Math.abs(lat) > CAB_W || h < -.2 || h > 2.2) continue; r.body.setTranslation({ x: p.x + C.dx, y: p.y, z: p.z + C.dz }, true); if (r.pt) { r.pt.x += C.dx; r.pt.z += C.dz; } }
+      for (const e of blocks) { if (e.dead || !e.body || e.holder || e.anchored || e.live) continue; const t = e.body.translation(), lx = t.x - C.x, lz = t.z - C.z; if (Math.abs(lx * ux + lz * uz) > CAB_W || Math.abs(-lx * uz + lz * ux) > CAB_W || t.y - C.y < -.2 || t.y - C.y > 1.6) continue;
+        e.body.setTranslation({ x: t.x + C.dx, y: t.y + C.dy, z: t.z + C.dz }, false); } } };
+}
+function updateCabs() { for (const C of ICE2.cabs) { C.g.position.set(C.x, C.y, C.z); C.g.rotation.y = C.line.yaw;
+    const Ln = C.line, k = Math.hypot(C.x - Ln.B.x - Ln.sd.x * C.s * 1.9, C.z - Ln.B.z - Ln.sd.z * C.s * 1.9) / Ln.L, cy = Ln.yB + 4.2 + (Ln.yT - Ln.yB) * clamp(k, 0, 1), h = Math.max(.2, cy - C.y - 2.4);
+    C.hang.position.set(C.x, C.y + 2.4 + h / 2, C.z); C.hang.scale.y = h; } }
+// ---- lanterns: along the ski runs, round the igloos, round the lake, by the portals and the cable cars ----
+if (ICEMAP) {
+  const spots = [], add = (x, z) => { if (Math.abs(x) < MX - 2 && Math.abs(z) < MZ - 2 && !spots.some(q => Math.hypot(q.x - x, q.z - z) < 3)) spots.push({ x, z }); };
+  for (const t of ['blue', 'red']) { const P_ = ICEP[t], K = P_.ski;
+    for (let i = 4; i < K.length - 3; i += 6) { const a = K[i], b = K[i + 1], dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz); for (const s of [-1, 1]) add(a.x - dz / L * 3.7 * s, a.z + dx / L * 3.7 * s); }
+    for (const q of [P_.a0 + 1.5, P_.a0 - 1.2, P_.a0 + 3.14, P_.a0 + .95, P_.a0 - .9]) add(P_.F.x + Math.cos(q) * 15.5, P_.F.z + Math.sin(q) * 15.5);
+    const bt = P_.bot, tg = { x: -bt.n.z, z: bt.n.x }; for (const s of [-1, 1]) add(bt.x + tg.x * 3.2 * s, bt.z + tg.z * 3.2 * s);
+    const cb = P_.cabB; add(cb.x + 3.5 * Math.cos(P_.a0 + 1) , cb.z + 3.5 * Math.sin(P_.a0 + 1)); }
+  for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, x = Math.cos(a) * LAKE.rx * 1.12, z = Math.sin(a) * LAKE.rz * 1.12; if (TH(x, z) < .2 && iceSki(x, z).w > 5) add(x, z); }
+  const n = spots.length, postG = new THREE.BoxGeometry(.22, 2.3, .22), boxG = new THREE.BoxGeometry(.55, .6, .55), capG = new THREE.ConeGeometry(.5, .35, 4);
+  const posts = new THREE.InstancedMesh(postG, new LiteMat({ color: 0x3a2a1e }), n), lamps = new THREE.InstancedMesh(boxG, new THREE.MeshBasicMaterial({ color: NIGHT ? 0xffd27a : 0xffe2a0 }), n), caps = new THREE.InstancedMesh(capG, new LiteMat({ color: 0x2a2a30 }), n);
+  const haloT = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,210,130,.9)'); gr.addColorStop(.4, 'rgba(255,170,80,.35)'); gr.addColorStop(1, 'rgba(255,150,60,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+  const haloM = new THREE.SpriteMaterial({ map: haloT, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: NIGHT ? .9 : .35 });
+  spots.forEach((q, i) => { const y = TH(q.x, q.z); tmpM.compose(tmpV.set(q.x, y + 1.15, q.z), tmpQ.identity(), tmpS.set(1, 1, 1)); posts.setMatrixAt(i, tmpM); tmpM.compose(tmpV.set(q.x, y + 2.55, q.z), tmpQ.identity(), tmpS.set(1, 1, 1)); lamps.setMatrixAt(i, tmpM);
+    tmpM.compose(tmpV.set(q.x, y + 3.02, q.z), tmpQ.setFromAxisAngle(V(0, 1, 0), Math.PI / 4), tmpS.set(1, 1, 1)); caps.setMatrixAt(i, tmpM); const h = new THREE.Sprite(haloM); h.position.set(q.x, y + 2.55, q.z); h.scale.setScalar(NIGHT ? 3.6 : 2); scene.add(h);
+    staticBoxes.push({ x0: q.x - .3, y0: y, z0: q.z - .3, x1: q.x + .3, y1: y + 3, z1: q.z + .3 }); });
+  for (const m of [posts, lamps, caps]) { m.castShadow = m !== lamps; scene.add(m); }
+  ICE2.lan = { spots, haloM };
+  if (NIGHT) for (const t of ['blue', 'red']) { const F = ICEP[t].F, pl = new THREE.PointLight(0xffb060, 30, 26, 1.6); pl.position.set(F.x, ICE_MH + 3, F.z); scene.add(pl); } // (a warm glow from inside each igloo)
+  // inside each igloo: a little stove glowing, and smoke curling out of the hole in the top
+  for (const t of ['blue', 'red']) { const P_ = ICEP[t], s = { x: -P_.f.z, z: P_.f.x }, x = P_.F.x + s.x * 5.2, z = P_.F.z + s.z * 5.2;
+    const st = new THREE.Mesh(new THREE.BoxGeometry(1, .8, 1), new LiteMat({ color: 0x2a2a30 })); st.position.set(x, ICE_MH + .4, z); scene.add(st);
+    const fire = new THREE.Mesh(new THREE.BoxGeometry(.6, .3, .6), new THREE.MeshBasicMaterial({ color: 0xff8a2a })); fire.position.set(x, ICE_MH + .85, z); scene.add(fire); ICE2.smoke.push({ x: P_.F.x, z: P_.F.z, fire }); }
+}
+// ---- snow birds: perched on snowy rocks about the place; get too close and they fly at you ----
+function snowBirdMesh() { const g = new THREE.Group(), w = new LiteMat({ color: 0xf6f8fc }), sp = new LiteMat({ color: 0x9aa4b2 }), bk = new LiteMat({ color: 0x1a1a1a }), or = new LiteMat({ color: 0xf0a020 });
+  const box = (W, H, D, m, x, y, z, p = g) => { const o = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), m); o.position.set(x, y, z); o.castShadow = true; p.add(o); return o; };
+  box(.55, .5, .7, w, 0, .3, 0); box(.42, .4, .4, w, 0, .7, .22); box(.1, .1, .02, bk, .12, .78, .43); box(.1, .1, .02, bk, -.12, .78, .43); box(.12, .1, .16, or, 0, .7, .48); box(.3, .1, .35, sp, 0, .45, -.45);
+  const wings = []; for (const s of [-1, 1]) { const piv = new THREE.Group(); piv.position.set(s * .28, .45, 0); g.add(piv); box(.5, .08, .5, sp, s * .25, 0, 0, piv); wings.push(piv); }
+  g.userData.legs = [null, null, ...wings]; return g; }
+if (ICEMAP) { const rockM = new LiteMat({ color: 0xdfe6ef });
+  for (const t of ['blue', 'red']) { const P_ = ICEP[t], f = P_.f, back = { x: P_.F.x - f.x * 15.5, z: P_.F.z - f.z * 15.5 }, cb = P_.cabB, bt = P_.bot, side = { x: -f.z, z: f.x };
+    const lk = t === 'blue' ? { x: -LAKE.rx * .7, z: LAKE.rz * .85 } : { x: LAKE.rx * .7, z: -LAKE.rz * .85 };
+    for (const q of [back, { x: cb.x - side.x * 4, z: cb.z - side.z * 4 }, { x: lk.x * 1.12, z: lk.z * 1.12 }]) { const y = TH(q.x, q.z);
+      const rock = new THREE.Mesh(new RoundedBoxGeometry(1.4, 1, 1.2, 2, .25), rockM); rock.position.set(q.x, y + .5, q.z); rock.castShadow = true; scene.add(rock);
+      const c = world.createCollider(RAPIER.ColliderDesc.cuboid(.7, .5, .6).setTranslation(q.x, y + .5, q.z)); byCollider.set(c.handle, { type: 'static' });
+      const m = snowBirdMesh(); m.position.set(q.x, y + 1, q.z); m.rotation.y = rr(0, 6.28); scene.add(m); ICE2.birds.push({ m, home: V(q.x, y + 1, q.z), st: 'perch', t: rr(0, 3) }); } } }
+function updateSnowBirds(dt) {
+  const live = match.state === 'play' && !(NET && NET.client);
+  for (const Bd of ICE2.birds) { Bd.t -= dt;
+    if (Bd.st === 'perch') { Bd.m.rotation.y += Math.sin(now() / 900 + Bd.home.x) * dt * .8; Bd.m.position.y = Bd.home.y + Math.abs(Math.sin(now() / 300 + Bd.home.z)) * .03;
+      if (Bd.t <= 0 && live) for (const r of robots) { if (r.state !== 'play' || !r.body || r.peckT > 0) continue; const p = rPos(r); if (Math.hypot(p.x - Bd.home.x, p.z - Bd.home.z) > 4.2 || Math.abs(p.y - Bd.home.y) > 3) continue;
+        const m = snowBirdMesh(); m.position.copy(Bd.m.position); scene.add(m); chickenOn(r, 3, m); sfx('squawk', p); if (r.isPlayer) toast('SNOW BIRD!'); Bd.m.visible = false; Bd.st = 'away'; Bd.t = rr(12, 18); break; } }
+    else if (Bd.st === 'away' && Bd.t <= 0) { Bd.st = 'back'; Bd.t = 1.2; Bd.m.visible = true; } // (it comes flying back to its rock)
+    else if (Bd.st === 'back') { const k = 1 - Math.max(0, Bd.t) / 1.2; Bd.m.position.set(Bd.home.x + (1 - k) * 6, Bd.home.y + (1 - k) * 8, Bd.home.z); const L = Bd.m.userData.legs; L[2].rotation.z = -.4 - Math.abs(Math.sin(now() / 40)) * 1.1; L[3].rotation.z = .4 + Math.abs(Math.sin(now() / 40)) * 1.1;
+      if (Bd.t <= 0) { Bd.st = 'perch'; Bd.t = 2; L[2].rotation.z = L[3].rotation.z = 0; } } }
+}
+// ---- seals: sliding about the lake for fun ----
+const SEAL_N = 4, onLake = (x, z) => lakeD(x, z) < .95;
+function spawnSeal() { let x = 0, z = 0; for (let k = 0; k < 30; k++) { x = rr(-LAKE.rx * .7, LAKE.rx * .7); z = rr(-LAKE.rz * .7, LAKE.rz * .7); if (!isHole(x, z) && Math.hypot(x - 10, z - 21) > 5 && Math.hypot(x + 10, z + 21) > 5) break; }
+  const e = newBlock('animal', V(x, .8, z), { animal: 'cow', dims: V(1, 1.15, 2.1), color: '#f2f2ee' }); e.body.setEnabledRotations(false, true, false, true); e.upright = true; e.noWander = true;
+  e.seal = { st: 'lounge', yaw: rr(0, 6.28), t: rr(2, 5), sl: null }; ICE2.seals.push(e); return e; }
+if (ICEMAP) for (let k = 0; k < SEAL_N; k++) spawnSeal();
+const _sq = new THREE.Quaternion(), _se = new THREE.Euler(0, 0, 0, 'YXZ');
+function sealSlide(e, dir, sp, decay, by, angry) { const S_ = e.seal; S_.sl = { dir: V(dir.x, 0, dir.z).normalize(), sp, decay, by, hit: new Set([e, ...(by ? [by] : [])]), t: 0, angry }; S_.st = 'slide'; S_.yaw = Math.atan2(S_.sl.dir.x, S_.sl.dir.z); }
+// thrown: off it goes, belly down, much further than a penguin and dead straight
+{ const taS = throwAt; throwAt = function (r, ...a) { const e = taS(r, ...a); if (!e || !ICEMAP || !e.seal || !e.body) return e;
+    const f = fwdOf(r.yaw), p = e.body.translation(); e.live = false; e.upright = true; e.body.setEnabledRotations(false, true, false, true); e.body.setTranslation({ x: p.x, y: Math.max(p.y - .6, TH(p.x, p.z) + .6), z: p.z }, true);
+    sealSlide(e, f, 24, 1.6, r); sfx('throw', V(p.x, p.y, p.z)); return e; }; }
+// held too long: grumpy! it slides right into you
+{ const blS = breakLoose; breakLoose = function (a, r) { if (!ICEMAP || !a.seal) return blS(a, r);
+    r.stack = r.stack.filter(x => x !== a); refreshHeld(r); a.holder = null; a.mesh.visible = true; a.heldT = 0; a.angerWarned = false; a.mesh.material.emissive.setRGB(0, 0, 0);
+    const p = rPos(r), f = fwdOf(r.yaw); makeBody(a, V(p.x + f.x * 5, Math.max(p.y - .3, TH(p.x + f.x * 5, p.z + f.z * 5) + .7), p.z + f.z * 5)); a.body.setEnabledRotations(false, true, false, true); a.upright = true; a.live = false;
+    a.seal.st = 'grump'; a.seal.t = .6; a.seal.tgt = r; a.seal.yaw = Math.atan2(-f.x, -f.z); sfx('honk', p); if (r.isPlayer) toast('THE SEAL HAS HAD ENOUGH OF YOU!'); }; }
+// on your head: belly up
+{ const syS = syncRobot; syncRobot = function (r) { syS(r); const a = r.heldAnimal; if (!ICEMAP || !a || !a.seal || r.stack[0] !== a || r.state !== 'play') return; const m = a.mesh, t = r.body.translation();
+    m.position.set(t.x, t.y + 1.7, t.z); m.rotation.order = 'YXZ'; m.rotation.set(0, r.yaw, Math.PI + Math.sin(now() / 160) * .12); }; }
+function updateSeals2(dt) {
+  if (NET && NET.client) return; const live = match.state === 'play';
+  for (let i = ICE2.seals.length - 1; i >= 0; i--) { const e = ICE2.seals[i], S_ = e.seal; if (e.dead) { ICE2.seals.splice(i, 1); continue; } if (!e.body || e.holder) continue;
+    const t = e.body.translation(), lv = e.body.linvel(); let dir = null, sp = 0, lying = false; S_.t -= dt;
+    if (S_.st === 'slide') { const L = S_.sl; L.t += dt; L.sp = Math.max(0, L.sp - dt * L.decay * (onLake(t.x, t.z) || iceOnSki(t) ? 1 : 3)); dir = L.dir; sp = L.sp; lying = true; S_.yaw = Math.atan2(dir.x, dir.z);
+      if (!L.by && onLake(t.x, t.z) && !onLake(t.x + dir.x * 2.5, t.z + dir.z * 2.5)) { const nx = t.x / LAKE.rx ** 2, nz = t.z / LAKE.rz ** 2, nl = Math.hypot(nx, nz) || 1, dn = (dir.x * nx + dir.z * nz) / nl; L.dir.set(dir.x - 2 * dn * nx / nl, 0, dir.z - 2 * dn * nz / nl).normalize(); dir = L.dir; } // (a playful slide bounces off the shore)
+      if (live) knockAlong(V(t.x + dir.x * .9, t.y, t.z + dir.z * .9), dir, 1.6, L.by, L.hit, 8);
+      if (Math.random() < .6) emit(V(t.x, t.y - .3, t.z), 0xf0f8ff, V(rr(-1, 1), rr(.5, 1.5), rr(-1, 1)), .1, .4, 0);
+      if (L.sp < 1.2 || L.t > 9) { S_.sl = null; S_.st = 'lounge'; S_.t = rr(2.5, 6); sfx('honk', V(t.x, t.y, t.z)); } }
+    else if (S_.st === 'grump') { const r = S_.tgt; if (!r || !r.body || r.state !== 'play') { S_.st = 'lounge'; S_.t = 3; } else { const c = rPos(r); S_.yaw = Math.atan2(c.x - t.x, c.z - t.z); dir = V(0, 0, 0); if (S_.t <= 0) { sealSlide(e, V(c.x - t.x, 0, c.z - t.z), 17, 2.5, null, true); S_.sl.hit.delete(r); sfx('throw', V(t.x, t.y, t.z)); } } }
+    else { // lounging: a little shuffle now and then; back to the lake if it's been thrown off it; then off it goes again, often at somebody
+      if (!onLake(t.x, t.z)) { const d = V(-t.x, 0, -t.z).normalize(); dir = d; sp = 2.2; S_.yaw = Math.atan2(d.x, d.z); }
+      else if (S_.t <= 0 && live) { const near = robots.filter(r => r.state === 'play' && r.body && onLake(rPos(r).x, rPos(r).z) && rPos(r).distanceTo(V(t.x, t.y, t.z)) < 26); const r = near.length && Math.random() < .7 ? near[Math.floor(Math.random() * near.length)] : null;
+        const d = r ? V(rPos(r).x - t.x, 0, rPos(r).z - t.z) : V(Math.sin(S_.yaw + rr(-1.5, 1.5)), 0, Math.cos(S_.yaw + rr(-1.5, 1.5))); sealSlide(e, d, rr(12, 15), 2.2, null); if (r && r.isPlayer && Math.random() < .3) toast('SEAL!'); }
+      else { dir = V(Math.sin(S_.yaw), 0, Math.cos(S_.yaw)); sp = Math.sin(now() / 500 + e.id) > .6 ? 1 : 0; if (!onLake(t.x + dir.x * 2, t.z + dir.z * 2)) S_.yaw += Math.PI; } }
+    if (dir) e.body.setLinvel({ x: dir.x * sp, y: lv.y, z: dir.z * sp }, true);
+    _se.set(0, S_.yaw, 0); e.body.setRotation(_sq.setFromEuler(_se), true); e.body.setAngvel({ x: 0, y: 0, z: 0 }, true); }
+  if (live && ICE2.seals.length < SEAL_N && (ICE2.sealT = (ICE2.sealT ?? 8) - dt) <= 0) { ICE2.sealT = 8; const e = spawnSeal(); fxBurst(e.body.translation(), 0xbfeeff, 1.4, .3); } // (one fell in a hole? another pops up out of one)
+}
+// ---- the bots: up and down the mountains by the portals, and in and out of the igloo by its doorway ----
+function iceLevel(x, z, y) { for (const t of ['blue', 'red']) { const F = FORT[t]; if (Math.hypot(x - F.x, z - F.z) < ICE_RP + .5 && (y === undefined || y > ICE_MH - 2)) return t; } return 'low'; }
+function iceWay(p, g) {
+  const lp = iceLevel(p.x, p.z, p.y), lg = iceLevel(g.x, g.z);
+  if (lp === 'low') { if (lg === 'low') return null; const b = ICEP[lg].bot; return V(b.x - b.n.x * 1.4, p.y, b.z - b.n.z * 1.4); } // (low down: to the portal up into that igloo, and through it)
+  if (lg !== lp) g = V(ICEP[lp].igl.x - ICEP[lp].f.x * 1.4, 0, ICEP[lp].igl.z - ICEP[lp].f.z * 1.4); // (up top, going somewhere else: to the portal inside this igloo, down)
+  const P_ = ICEP[lp], F = P_.F, f = P_.f, sd = { x: -f.z, z: f.x }, R = ICE_IR, dx = p.x - F.x, dz = p.z - F.z, along = dx * f.x + dz * f.z, lat = dx * sd.x + dz * sd.z, inP = Math.hypot(dx, dz) < R - .7, inG = Math.hypot(g.x - F.x, g.z - F.z) < R - .7;
+  const O = V(F.x + f.x * (R + 3.4), p.y, F.z + f.z * (R + 3.4)), I = V(F.x + f.x * (R - 2.6), p.y, F.z + f.z * (R - 2.6));
+  if (inP === inG) return lp !== lg ? V(g.x, p.y, g.z) : null; // (already the right side of the igloo wall)
+  if (!inP) { // outside, going in: round the dome to the front, line up with the tunnel, then in
+    const th = Math.atan2(dz, dx), D = Math.atan2(Math.sin(th - P_.a0), Math.cos(th - P_.a0)), r = Math.hypot(dx, dz);
+    if (Math.abs(D) > .45 && r < R + 4.5) { const w = th - Math.sign(D) * Math.min(Math.abs(D), .8); return V(F.x + Math.cos(w) * (R + 3.2), p.y, F.z + Math.sin(w) * (R + 3.2)); }
+    if (Math.abs(lat) > 1.1 && along > R - 1) return O; return I; }
+  // inside, going out: to the inner end of the tunnel, then out through it
+  if (Math.abs(lat) > 1 || along < R - 3.4) return Math.hypot(p.x - I.x, p.z - I.z) < 1 ? O : I; return O; }
+{ const uaI = updateAI; updateAI = function (r, dt) {
+    if (!ICEMAP || !canMove(r) || !r.ai.goal) return uaI(r, dt);
+    const w = iceWay(rPos(r), r.ai.goal); if (!w) return uaI(r, dt); r.ai.via = w; uaI(r, dt); r.ai.via = null; }; }
+// ---- every frame ----
+function updateIce2(dt) {
+  if (!ICEMAP) return; updateCabs(); updateSnowBirds(dt); updateSeals2(dt);
+  for (const S_ of ICE2.smoke) { if (Math.random() < dt * 3) emit(V(S_.x + rr(-1, 1), ICE_MH + 6.5, S_.z + rr(-1, 1)), 0xdfe4ea, V(rr(-.3, .3), rr(1.2, 2.2), rr(-.3, .3)), rr(.4, .8), 3, -1); S_.fire.scale.y = .8 + .4 * Math.abs(Math.sin(now() / 90 + S_.x)); }
+}
+{ const umI = updateMorePowers; updateMorePowers = function (dt) { umI(dt); updateIce2(dt); }; }
 
 // ============================================================
 // ONLINE PLAY (test version, no game server needed)
