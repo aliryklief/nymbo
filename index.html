@@ -1574,7 +1574,7 @@ if (JUNGLE) {
     if (col) { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, h / 2, d / 2).setTranslation(x, y, z).setRotation(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), ry)).setFriction(.9)); byCollider.set(c.handle, { type: 'static' }); } return me; };
   for (const [name, [a, b]] of Object.entries(NODES)) { const x = nx(a), z = nz(b);
     box(1.8, CY, 1.8, x, CY / 2, z, barkM); box(7, .5, 7, x, CY, z, woodM); // trunk and platform
-    for (const [w, y, m] of [[10, CY + 4.2, leafMs[0]], [7.5, CY + 5.3, leafMs[1]], [4.5, CY + 6.2, leafMs[2]]]) { const me = new THREE.Mesh(new RoundedBoxGeometry(w, 1.2, w, 2, .3), m); me.position.set(x, y, z); me.castShadow = true; scene.add(me); }
+    for (const [w, y, m] of [[10, CY + 4.2, leafMs[0]], [7.5, CY + 5.3, leafMs[1]], [4.5, CY + 6.2, leafMs[2]]]) { const me = new THREE.Mesh(new RoundedBoxGeometry(w, 1.2, w, 2, .3), m); me.position.set(x, y, z); me.castShadow = true; scene.add(me); { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, .6, w / 2).setTranslation(x, y, z).setFriction(.9)); byCollider.set(c.handle, { type: 'static' }); } /* (the leafy tops are solid: you can climb up and stand on them) */ }
     JM.canopy.push({ name, x, z, y: CY + .25 });
     // a vine down into a corridor beside it: run into the bottom of it and it swings you up
     const ci = a - (a > JM.NC / 2 ? 1 : 0), cj = b - (b > JM.NR / 2 ? 1 : 0), bx = jmCx(Math.max(0, Math.min(JM.NC - 1, ci))), bz = jmCz(Math.max(0, Math.min(JM.NR - 1, cj)));
@@ -4454,11 +4454,13 @@ stage.addEventListener('pointermove', e => {
     gest.peak = Math.max(gest.peak || 0, vNow);
     if (-dy > innerHeight * .22 || (gest.peak > .6 && vNow < gest.peak * .5) || t - gest.t0 > 260) { gest.mode = 'done'; playerThrow(swipePower(gest)); }
   }
-  // TURNING: edge to edge of the screen = exactly a half turn (180°), whatever the phone. A quick flick turns up to 30% more.
+  // TURNING: one full thumb swipe = a half turn (180°) on any device. On a phone that's edge to edge of the screen;
+  // on a tablet (or a phone on its side) a thumb doesn't reach across, so it's the same swipe length as on a phone
+  // (about 430 screen points), not the whole width. A quick flick turns up to 30% more.
   if (gest.mode === 'turn' || gest.mode === 'holdturn') {
-    const px = gest.lastTx ?? gest.turnFrom, step = gest.x - px, dtm = Math.max(1, t - (gest.lastTt ?? t)); gest.lastTx = gest.x; gest.lastTt = t;
-    const v = Math.abs(step) / dtm * 390 / innerWidth, gain = 1 + clamp((v - 1.2) / 2.5, 0, .3);
-    P.yawT -= step / innerWidth * Math.PI * gain;
+    const px = gest.lastTx ?? gest.turnFrom, step = gest.x - px, dtm = Math.max(1, t - (gest.lastTt ?? t)), W = Math.min(innerWidth, 430); gest.lastTx = gest.x; gest.lastTt = t;
+    const v = Math.abs(step) / dtm * 390 / W, gain = 1 + clamp((v - 1.2) / 2.5, 0, .3);
+    P.yawT -= step / W * Math.PI * gain;
   }
 });
 // how hard you swiped: the fastest 70ms stretch of the whole stroke (screen-size independent).
@@ -4595,7 +4597,7 @@ function updatePlayerControl(dt) {
   const p = rPos(P), f = fwdOf(P.yaw);
   const back = clamp((stopHeld - REVERSE_AFTER) / .35, 0, 1); // 0 = stopped, 1 = full reverse
   const nearEdge = back > 0 ? !onIsland(p.x - f.x * 3, p.z - f.z * 3) && onIsland(p.x, p.z) : !onIsland(p.x + f.x * 3, p.z + f.z * 3) && onIsland(p.x, p.z);
-  $('edge').classList.toggle('on', nearEdge);
+  $('edge').classList.toggle('on', nearEdge && !PLAT); // (portal platforms: no warning glow — the edges are the game there)
   if (P.stack.length === 0) {
     // auto-scoop at zero ammo: loose grey/rubble blocks only, never a piece of your own fort (that would break it)
     const e = grabbable(P, 1.5, true, b => (b.kind === 'stone' || b.kind === 'tree' || b.kind === 'prop' || (b.kind === 'fort' && b.team !== P.team)) && !b.anchored);
@@ -6768,7 +6770,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { scoreFlag, jmNext: (a, b) => jmNext(a, b), jmNbrs: n => jmNbrs(n), get JM() { return JM; }, sendDog: (o, t) => sendDog(o, t), get ESC() { return ESC; }, escTrace: p => escapeTrace(p), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { scoreFlag, jmNext: (a, b) => jmNext(a, b), jmNbrs: n => jmNbrs(n), get JM() { return JM; }, sendDog: (o, t) => sendDog(o, t), get ESC() { return ESC; }, escTrace: p => escapeTrace(p), escInk: a => { ESC.ink = a; escapeCheck(); return !!ESC.snap; }, escScore: (a, k) => escScore(escNorm(escResample(a)), k), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -9220,10 +9222,9 @@ if (TOY && S.mummy !== false) { for (const r of robots) tinify(r.model); const r
 // ============================================================
 // PORTAL PLATFORMS (map), everything that happens on it (the platforms themselves are built in 02d_platforms.js):
 //  - every platform has TWO PORTALS. They link up in one big loop through all the platforms, so at first it seems
-//    random. Every round the loop is shuffled, and every 20 seconds the links change (a deep WHUM and the rings flash)
-//    — but they go round the same three patterns all round, so you can learn the rhythm
+//    random. Every round the loop is shuffled, and the links change just twice a match (a deep WHUM and the rings flash)
 //  - each portal ring glows in the colour of the platform it takes you to (every platform has its own coloured rim):
-//    a little cube floating over the ring shows it too, with a flag over it when it goes to a fort
+//    a little shape floating over the ring shows it too (each platform has its own shape, the same ones you draw to wriggle free)
 //  - now and then you come out of a portal head over heels
 //  - GRAVITY STREAMS: glowing arcs from the middle platform up to the high hub and down to the low one (and back)
 //  - THE GLITCH TWINS: two broken copies of the robots, faceless with static where their eyes should be. They think
@@ -9235,7 +9236,7 @@ if (TOY && S.mummy !== false) { for (const r of robots) tinify(r.model); const r
 //    hangs high overhead; a little pixel dust trails behind everyone, and every sound echoes
 // ============================================================
 const PX = { ports: [], link: [], rh: [], rk: -1, rt: 0, tw: [], streams: [], star: null, starT: 0, hid: null, starP: null, frags: [], echo: false, lastWarn: 0 };
-const PX_SWAP = 20; // seconds between link changes
+const PX_SWAP = 20; // (no longer used: the links change just twice a match, a third and two thirds of the way through)
 if (PLAT) {
   // ---- the portals ----
   const discTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 4, 64, 64, 64);
@@ -9286,8 +9287,8 @@ if (PLAT) {
     { const g = new THREE.Group(); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) for (let k = 0; k < 4; k++) if ((i + j + k) % 2 === 0) g.add(mesh(new THREE.BoxGeometry(2.4, 2.4, 2.4), M_((i + j + k) % 4 ? 0x1a1a2a : 0xf4f4ff), i * 2.4 - 3.6, j * 2.4 - 3.6, k * 2.4 - 3.6)); add(g, 122, -14, -46, .4, .4, .4, V(.06, .08, .05)); } // a checkered cube, tumbling
     { const g = new THREE.Group(); for (let i = 0; i < 16; i++) { const a = i * .45; g.add(mesh(new THREE.BoxGeometry(4, 1, 2), M_(0x9a8ccf), Math.cos(a) * 5, i * 1.1, Math.sin(a) * 5)).rotation.y = -a; } add(g, -134, 6, -12, .3, 0, -.4, V(0, .05, 0)); } // a staircase going nowhere
     // a faint upside-down copy of all these platforms, high overhead
-    { const parts = []; for (const o of PL) { if (o.kind === 'star') continue; o.g.updateMatrixWorld(true); o.g.traverse(m => { if (!m.isMesh) return; const gg = m.geometry.clone(); if (gg.index) { const ni = gg.toNonIndexed(); gg.dispose(); parts.push(ni); } else parts.push(gg); const last = parts[parts.length - 1]; for (const k of Object.keys(last.attributes)) if (k !== 'position' && k !== 'normal') last.deleteAttribute(k); last.clearGroups();
-        last.applyMatrix4(tmpM.compose(tmpV.set(o.x, 74 - o.y, o.z), tmpQ.setFromAxisAngle(V(0, 0, 1), Math.PI), tmpS.set(1, 1, 1)).multiply(new THREE.Matrix4().makeTranslation(m.position.x, m.position.y, m.position.z))); }); }
+    { const parts = []; for (const o of PL) { if (o.kind === 'star') continue; o.g.updateMatrixWorld(true); /* (hung high: 115 up, well above the opening camera shots) */ o.g.traverse(m => { if (!m.isMesh) return; const gg = m.geometry.clone(); if (gg.index) { const ni = gg.toNonIndexed(); gg.dispose(); parts.push(ni); } else parts.push(gg); const last = parts[parts.length - 1]; for (const k of Object.keys(last.attributes)) if (k !== 'position' && k !== 'normal') last.deleteAttribute(k); last.clearGroups();
+        last.applyMatrix4(tmpM.compose(tmpV.set(o.x, 118 - o.y, o.z), tmpQ.setFromAxisAngle(V(0, 0, 1), Math.PI), tmpS.set(1, 1, 1)).multiply(new THREE.Matrix4().makeTranslation(m.position.x, m.position.y, m.position.z))); }); }
       const mm = new THREE.Mesh(mergeGeometries(parts), new LiteMat({ color: 0x6a58a8, emissive: 0x2a1a5a, emissiveIntensity: .6, roughness: 1 })); parts.forEach(q => q.dispose()); scene.add(mm); }
     // stray pixels hanging in the air
     { const pts = new THREE.InstancedMesh(boxGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .7 }), 140); for (let i = 0; i < 140; i++) { tmpM.compose(tmpV.set(rr(-110, 110), rr(-20, 50), rr(-80, 80)), tmpQ.identity(), tmpS.setScalar(rr(.2, .55))); pts.setMatrixAt(i, tmpM); pts.setColorAt(i, new THREE.Color().setHSL(rnd(), .8, .7)); } scene.add(pts); PX.pix = pts; }
@@ -9304,7 +9305,7 @@ function pxMergeGroup(g) { // one draw for all the pieces of a sky fragment that
   for (const [mat, ms] of by) { if (ms.length < 2) continue; const parts = ms.map(m => { m.updateMatrix(); let gg = m.geometry.clone(); if (gg.index) gg = gg.toNonIndexed(); for (const k of Object.keys(gg.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') gg.deleteAttribute(k); gg.clearGroups(); return gg.applyMatrix4(m.matrix); });
     let merged = null; try { merged = mergeGeometries(parts); } catch (e) {} if (!merged) continue; ms.forEach(m => g.remove(m)); g.add(new THREE.Mesh(merged, mat)); }
 }
-// ---- the links: one loop through every platform, three patterns a round, changing every 20 seconds ----
+// ---- the links: one loop through every platform, three patterns a round (a third of the match each) ----
 function pxShuffle() {
   const ids = PL.filter(o => o.kind !== 'star').map(o => o.id); PX.rh = [];
   for (let k = 0; k < 3; k++) { let ord;
@@ -9316,8 +9317,17 @@ function pxApply(k) {
   if (k === PX.rk) return; PX.rk = k; const ord = PX.rh[k], n = ord.length;
   for (let i = 0; i < n; i++) { const a = PL[ord[i]].ports[1], b = PL[ord[(i + 1) % n]].ports[0]; PX.link[a.i] = b.i; PX.link[b.i] = a.i; }
   for (const P_ of PX.ports) { if (P_.hidden || P_ === PX.starP) continue; const D = PX.ports[PX.link[P_.i]].o; P_.ring.material.color.copy(D.col); P_.ring.material.emissive.copy(D.col); P_.disc.material.color.copy(D.col).lerp(new THREE.Color(0xffffff), .3); P_.cube.material.color.copy(D.col);
-    if (D.kind === 'fort') { P_.cube.material.color.set(TEAMS[D.team].cols[0]); P_.cube.scale.set(.75, .5, .1); } else P_.cube.scale.setScalar(.5); } // (to a fort: a little flag in that team's colour)
+    if (D.kind === 'fort') P_.cube.material.color.set(TEAMS[D.team].cols[0]); // (to a fort: in that team's colour)
+    P_.cube.geometry = pxShapeGeo(pxShapeOf(D)); P_.cube.scale.setScalar(1); }
 }
+// the hint over each portal: the same simple shapes you draw to wriggle free, one for each platform, in that platform's colour
+const PX_SG = {};
+function pxShapeOf(o) { const ks = Object.keys(ESC_SHAPES), list = PL.filter(q => q.kind !== 'star'); return ks[list.indexOf(o) % ks.length]; }
+function pxShapeGeo(name) { if (PX_SG[name]) return PX_SG[name];
+  const a = ESC_SHAPES[name](), seg = [], w = .17, S = 1.5;
+  for (let i = 0; i < a.length - 1; i++) { const x0 = (a[i][0] - .5) * S, y0 = (.5 - a[i][1]) * S, x1 = (a[i + 1][0] - .5) * S, y1 = (.5 - a[i + 1][1]) * S, L = Math.hypot(x1 - x0, y1 - y0);
+    const b = new THREE.BoxGeometry(L + w, w, w); b.rotateZ(Math.atan2(y1 - y0, x1 - x0)); b.translate((x0 + x1) / 2, (y0 + y1) / 2, 0); seg.push(b); }
+  const m = mergeGeometries(seg); seg.forEach(q => q.dispose()); return PX_SG[name] = m; }
 // where a portal is right now, and is this point in its doorway?
 const pxPos = P_ => P_.pos.set(P_.o.px + P_.lx, P_.o.py + 2.05 * P_.s, P_.o.pz + P_.lz);
 function pxIn(P_, p) { const d = tmpV.copy(p).sub(P_.pos), dn = d.dot(P_.n), dt = d.dot(P_.t), dy = p.y - P_.o.py;
@@ -9387,35 +9397,60 @@ function escapeKey(isIt) { // the next button in the string: right, and you're o
   const want = ESC.seq[ESC.prog]; if (isIt(want)) { ESC.prog++; sfx('tick'); } else { ESC.prog = 0; ESC.miss = now(); sfx('dodge'); }
   if (ESC.prog >= ESC.seq.length) { const T = ESC.T; escapeEnd(); if (T && T.held && T.held.isPlayer) { twinDrop(T, false); T.cool = 4; toast('YOU WRIGGLED FREE!'); buzz('lock'); } } }
 const ESC = { on: false, el: null, cv: null, pts: null, prog: 0, T: null, t0: 0, dur: 0 };
-const ESC_SHAPES = {
-  triangle: () => [[.5, .1], [.9, .85], [.1, .85], [.5, .1]], square: () => [[.15, .15], [.85, .15], [.85, .85], [.15, .85], [.15, .15]],
-  circle: () => { const a = []; for (let k = 0; k <= 40; k++) { const t = -Math.PI / 2 + k / 40 * Math.PI * 2; a.push([.5 + .38 * Math.cos(t), .5 + .38 * Math.sin(t)]); } return a; },
-  zigzag: () => [[.08, .3], [.3, .72], [.5, .3], [.7, .72], [.92, .3]], wave: () => { const a = []; for (let k = 0; k <= 40; k++) a.push([.08 + k / 40 * .84, .5 + .25 * Math.sin(k / 40 * Math.PI * 3)]); return a; },
-  star: () => { const a = []; for (let k = 0; k <= 5; k++) { const t = -Math.PI / 2 + k * Math.PI * 4 / 5; a.push([.5 + .4 * Math.cos(t), .53 + .4 * Math.sin(t)]); } return a; },
-  check: () => [[.12, .5], [.38, .8], [.88, .18]], z: () => [[.15, .18], [.85, .18], [.15, .82], [.85, .82]],
-  heart: () => { const a = []; for (let k = 0; k <= 40; k++) { const t = k / 40 * Math.PI * 2; a.push([.5 + .024 * 16 * Math.sin(t) ** 3, .44 - .024 * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))]); } return a; },
-  spiral: () => { const a = []; for (let k = 0; k <= 50; k++) { const t = k / 50 * Math.PI * 4, r = .05 + .33 * k / 50; a.push([.5 + r * Math.cos(t), .5 + r * Math.sin(t)]); } return a; } };
+const ESC_SHAPES = { // simple shapes only: draw roughly the right one and it snaps in clean (closed ones can start anywhere, any direction)
+  circle: () => { const a = []; for (let k = 0; k <= 40; k++) { const t = -Math.PI / 2 + k / 40 * Math.PI * 2; a.push([.5 + .36 * Math.cos(t), .5 + .36 * Math.sin(t)]); } return a; },
+  triangle: () => [[.5, .14], [.88, .82], [.12, .82], [.5, .14]], square: () => [[.18, .18], [.82, .18], [.82, .82], [.18, .82], [.18, .18]],
+  zigzag: () => [[.1, .32], [.3, .7], [.5, .32], [.7, .7], [.9, .32]], check: () => [[.14, .5], [.38, .78], [.86, .2]] };
+const ESC_CLOSED = { circle: 1, triangle: 1, square: 1 };
+const escLen = a => { let L = 0; for (let i = 1; i < a.length; i++) L += Math.hypot(a[i][0] - a[i - 1][0], a[i][1] - a[i - 1][1]); return L; };
+function escResample(a, n = 48) { // n points evenly spaced along the line
+  const L = escLen(a), step = L / (n - 1), out = [a[0]]; let acc = 0, prev = a[0];
+  for (let i = 1; i < a.length; i++) { let cur = a[i], d = Math.hypot(cur[0] - prev[0], cur[1] - prev[1]);
+    while (acc + d >= step && d > 0 && out.length < n) { const t = (step - acc) / d, q = [prev[0] + (cur[0] - prev[0]) * t, prev[1] + (cur[1] - prev[1]) * t]; out.push(q); prev = q; d = Math.hypot(cur[0] - prev[0], cur[1] - prev[1]); acc = 0; }
+    acc += d; prev = cur; }
+  while (out.length < n) out.push(a[a.length - 1]); return out; }
+function escNorm(a) { // centre it and scale it to size 1 (same shape however big or wherever you drew it)
+  let cx = 0, cy = 0; for (const p of a) { cx += p[0]; cy += p[1]; } cx /= a.length; cy /= a.length;
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const p of a) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+  const s = Math.max(x1 - x0, y1 - y0) || 1; return a.map(p => [(p[0] - cx) / s, (p[1] - cy) / s]); }
+const ESC_TPL = {}; for (const k in ESC_SHAPES) ESC_TPL[k] = escNorm(escResample(ESC_SHAPES[k]()));
+for (const [k, a] of [['lineH', [[.1, .5], [.9, .5]]], ['lineV', [[.5, .1], [.5, .9]]], ['lineD', [[.1, .1], [.9, .9]]], ['lineU', [[.1, .9], [.9, .1]]]]) ESC_TPL[k] = escNorm(escResample(a)); // (scribbles that aren't any shape: a plain stroke matches these instead)
+function escScore(stroke, name) { // how far your line is from the shape (0 = perfect); tries both directions and, for closed shapes, every starting point
+  const T = ESC_TPL[name], n = T.length; let best = 1e9;
+  for (const S of [stroke, stroke.slice().reverse()]) {
+    const shifts = ESC_CLOSED[name] ? n - 1 : 1;
+    for (let sh = 0; sh < shifts; sh += ESC_CLOSED[name] ? 2 : 1) { let d = 0;
+      for (let i = 0; i < n; i++) { const t = ESC_CLOSED[name] ? T[(i + sh) % (n - 1)] : T[i]; d += Math.hypot(S[i][0] - t[0], S[i][1] - t[1]); }
+      best = Math.min(best, d / n); } }
+  return best; }
 function escapeStart(T) {
   const keys = Object.keys(ESC_SHAPES); let name; do name = keys[Math.floor(Math.random() * keys.length)]; while (name === ESC.last && keys.length > 1); ESC.last = name;
-  const raw = ESC_SHAPES[name](), pts = []; for (let i = 0; i < raw.length - 1; i++) { const [ax, ay] = raw[i], [bx, by] = raw[i + 1], n = Math.max(2, Math.ceil(Math.hypot(bx - ax, by - ay) / .01)); for (let k = 0; k < n; k++) pts.push([ax + (bx - ax) * k / n, ay + (by - ay) * k / n]); } pts.push(raw[raw.length - 1]);
   if (!ESC.el) { const el = document.createElement('div'); el.style.cssText = 'position:fixed;inset:0;z-index:60;touch-action:none;display:flex;align-items:center;justify-content:center;background:rgba(10,8,30,.25)';
     const cv = document.createElement('canvas'); cv.style.cssText = 'width:min(78vw,62vh);height:min(78vw,62vh);touch-action:none'; el.appendChild(cv); document.body.appendChild(el); ESC.el = el; ESC.cv = cv;
     const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
     const stop = e => { e.preventDefault(); e.stopPropagation(); };
-    el.addEventListener('pointerdown', e => { stop(e); ESC.down = true; escapeTrace(pos(e)); }, true); el.addEventListener('pointermove', e => { stop(e); if (ESC.down) escapeTrace(pos(e)); }, true);
-    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, e => { stop(e); ESC.down = false; }, true);
+    el.addEventListener('pointerdown', e => { stop(e); if (ESC.snap) return; ESC.down = true; ESC.ink = [pos(e)]; }, true);
+    el.addEventListener('pointermove', e => { stop(e); if (ESC.down && ESC.ink) escapeTrace(pos(e)); }, true);
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, e => { stop(e); if (ESC.down) { ESC.down = false; escapeCheck(); } }, true);
     for (const ev of ['touchstart', 'touchmove', 'touchend', 'mousedown', 'click']) el.addEventListener(ev, stop, { capture: true, passive: false }); }
   const pad = (navigator.getGamepads ? [...navigator.getGamepads()] : []).find(g => g && g.connected);
   if (pad && INPUT_MODE !== 'touch') INPUT_MODE = 'pad';
   ESC.seq = null; if (INPUT_MODE !== 'touch') { const L = INPUT_MODE === 'pad' ? ESC_PAD : ESC_KEYS, n = 6; ESC.seq = []; for (let k = 0; k < n; k++) { let q; do q = L[Math.floor(Math.random() * L.length)][0]; while (k && q === ESC.seq[k - 1]); ESC.seq.push(q); } ESC.padPrev = null; }
-  ESC.on = true; ESC.pts = pts; ESC.prog = 0; ESC.T = T; ESC.t0 = now(); ESC.dur = T.t; ESC.down = false; ESC.el.hidden = false; ESC.el.style.display = 'flex'; ESC.name = name; escapeDraw();
+  ESC.on = true; ESC.pts = ESC_SHAPES[name](); ESC.ink = null; ESC.snap = null; ESC.miss = 0; ESC.prog = 0; ESC.T = T; ESC.t0 = now(); ESC.dur = T.t; ESC.down = false; ESC.el.hidden = false; ESC.el.style.display = 'flex'; ESC.name = name; escapeDraw();
 }
-function escapeTrace([x, y]) { // your finger only counts on the shape, just ahead of where you've got to: the line snaps along it
-  if (!ESC.on || ESC.seq) return; const P_ = ESC.pts, tol = .085, ahead = 12; let best = ESC.prog;
-  for (let i = ESC.prog; i < Math.min(P_.length, ESC.prog + ahead + 1); i++) if (Math.hypot(P_[i][0] - x, P_[i][1] - y) < tol) best = i;
-  if (ESC.prog === 0 && Math.hypot(P_[0][0] - x, P_[0][1] - y) > tol) return; // (start at the dot)
-  if (best > ESC.prog) { ESC.prog = best; if (Math.random() < .3) sfx('tick'); }
-  if (ESC.prog >= P_.length - 2) { const T = ESC.T; escapeEnd(); if (T && T.held && T.held.isPlayer) { twinDrop(T, false); T.cool = 4; toast('YOU WRIGGLED FREE!'); buzz('lock'); } }
+function escapeTrace(p) { if (!ESC.on || ESC.seq || !ESC.ink) return; const q = ESC.ink[ESC.ink.length - 1]; if (Math.hypot(p[0] - q[0], p[1] - q[1]) > .006) ESC.ink.push(p); }
+function escapeCheck() { // finger lifted: is it roughly the right shape? Then it snaps to a clean one and you're free; if not, shake and try again
+  const ink = ESC.ink; ESC.ink = null; if (!ESC.on || ESC.seq || !ink || ink.length < 4 || escLen(ink) < .25) { if (ink && ink.length > 3) ESC.miss = now(); return; }
+  const S = escNorm(escResample(ink)); let best = null, bd = 1e9; for (const k in ESC_TPL) { const d = escScore(S, k); if (d < bd) { bd = d; best = k; } }
+  const mine = escScore(S, ESC.name);
+  if ((best === ESC.name || mine < bd + .015) && mine < .115) { // got it: snap a clean copy of the shape over where you drew it
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const p of ink) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+    const s = Math.max(x1 - x0, y1 - y0, .2), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, P_ = ESC.pts;
+    let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9; for (const p of P_) { a0 = Math.min(a0, p[0]); a1 = Math.max(a1, p[0]); b0 = Math.min(b0, p[1]); b1 = Math.max(b1, p[1]); }
+    const ss = s / Math.max(a1 - a0, b1 - b0); ESC.snap = { t: now(), from: ink, to: P_.map(p => [cx + (p[0] - (a0 + a1) / 2) * ss, cy + (p[1] - (b0 + b1) / 2) * ss]) };
+    sfx('tick'); buzz('lock'); const T = ESC.T;
+    setTimeout(() => { if (!ESC.on || ESC.T !== T) return; escapeEnd(); if (T && T.held && T.held.isPlayer) { twinDrop(T, false); T.cool = 4; toast('YOU WRIGGLED FREE!'); } }, 380);
+  } else { ESC.miss = now(); ESC.bad = ink; sfx('dodge'); }
 }
 function escapeDraw() {
   if (!ESC.on) return; const cv = ESC.cv, d = Math.min(2, devicePixelRatio || 1), W = cv.clientWidth * d; if (cv.width !== W) { cv.width = cv.height = W; } const g = cv.getContext('2d'); g.clearRect(0, 0, W, W);
@@ -9431,11 +9466,16 @@ function escapeDraw() {
       g.fillStyle = '#1a1440'; g.font = `bold ${Math.round(cw * (k.length > 2 ? .22 : .5))}px sans-serif`; g.fillText(k, 0, cw * .03); g.restore(); });
     g.strokeStyle = left < .3 ? '#ff4a5a' : '#ffd23a'; g.lineWidth = W * .02; g.beginPath(); g.arc(W / 2, W / 2, W * .48, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); g.stroke();
     g.fillStyle = '#ffffff'; g.font = `bold ${Math.round(W * .05)}px sans-serif`; g.textBaseline = 'alphabetic'; g.fillText('PRESS IN ORDER TO GET FREE!', W / 2, W * .3); return; }
-  g.lineCap = g.lineJoin = 'round'; g.setLineDash([W * .025, W * .03]); g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = W * .035; g.beginPath(); P_.forEach((p, i) => i ? g.lineTo(X(p), Y(p)) : g.moveTo(X(p), Y(p))); g.stroke(); g.setLineDash([]);
-  if (ESC.prog > 0) { g.strokeStyle = '#7affc8'; g.shadowColor = '#7affc8'; g.shadowBlur = W * .03; g.lineWidth = W * .05; g.beginPath(); for (let i = 0; i <= ESC.prog; i++) i ? g.lineTo(X(P_[i]), Y(P_[i])) : g.moveTo(X(P_[i]), Y(P_[i])); g.stroke(); g.shadowBlur = 0; }
-  g.fillStyle = '#7affc8'; g.beginPath(); g.arc(X(P_[ESC.prog]), Y(P_[ESC.prog]), W * .04, 0, 7); g.fill(); // (where to put your finger)
+  const line = (a, col, w, glow) => { if (!a || a.length < 2) return; g.strokeStyle = col; g.lineWidth = w; if (glow) { g.shadowColor = col; g.shadowBlur = W * .03; } g.beginPath(); a.forEach((p, i) => i ? g.lineTo(X(p), Y(p)) : g.moveTo(X(p), Y(p))); g.stroke(); g.shadowBlur = 0; };
+  const shake_ = now() - (ESC.miss || 0) < 300 ? Math.sin(now() / 18) * W * .02 : 0;
+  g.save(); g.translate(shake_, 0); g.lineCap = g.lineJoin = 'round';
+  if (!ESC.snap) { g.setLineDash([W * .025, W * .03]); line(P_, 'rgba(255,255,255,.55)', W * .03); g.setLineDash([]); } // (the hint: which shape to draw)
+  if (ESC.snap) { const k = Math.min(1, (now() - ESC.snap.t) / 160), A = escResample(ESC.snap.from, 60), B = escResample(ESC.snap.to, 60); line(A.map((p, i) => [p[0] + (B[i][0] - p[0]) * k, p[1] + (B[i][1] - p[1]) * k]), '#7affc8', W * .05, true); }
+  else if (ESC.ink) line(ESC.ink, '#ffffff', W * .035, true);
+  else if (ESC.bad && now() - ESC.miss < 300) line(ESC.bad, '#ff6a7a', W * .03);
+  g.restore();
   g.strokeStyle = left < .3 ? '#ff4a5a' : '#ffd23a'; g.lineWidth = W * .02; g.beginPath(); g.arc(W / 2, W / 2, W * .48, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); g.stroke(); // (time running out)
-  g.fillStyle = '#ffffff'; g.font = `bold ${Math.round(W * .055)}px sans-serif`; g.textAlign = 'center'; g.fillText('TRACE IT TO BREAK FREE!', W / 2, W * .06);
+  g.fillStyle = '#ffffff'; g.font = `bold ${Math.round(W * .055)}px sans-serif`; g.textAlign = 'center'; g.fillText(ESC.snap ? 'GOT IT!' : now() - (ESC.miss || 0) < 600 ? 'TRY AGAIN!' : 'DRAW THIS SHAPE!', W / 2, W * .06);
 }
 function escapeEnd() { ESC.on = false; ESC.down = false; if (ESC.el) { ESC.el.hidden = true; ESC.el.style.display = 'none'; } }
 function twinHold() { // (every physics step) keep held robots up over the twins' heads
@@ -9464,7 +9504,7 @@ function updatePortalMap(dt) {
   const t = now() / 1000, play = match.state === 'play' && !RW_LOCK;
   if (!PX.rh.length) pxShuffle();
   // the rhythm: a new set of links every 20 seconds of play (the rings flicker for the last two seconds first)
-  if (play) PX.rt += dt; const k = Math.floor(PX.rt / PX_SWAP) % 3, left = PX_SWAP - PX.rt % PX_SWAP;
+  if (play) PX.rt += dt; const T3 = MATCH_TIME / 3, el = MATCH_TIME - match.time, k = match.state === 'play' || match.state === 'over' ? Math.min(2, Math.floor(el / T3)) : 0, left = k < 2 ? T3 * (k + 1) - el : 99;
   if (k !== PX.rk) { pxApply(k); pxWhum(); }
   // portals: follow their platforms, spin, flicker before a change, show a glimpse of the platform they go to
   for (const P_ of PX.ports) { pxPos(P_); P_.g.position.copy(P_.pos); P_.disc.rotation.z -= dt * 1.6; P_.icon.rotation.y += dt * 1.5; P_.icon.position.y = 2.6 + .15 * Math.sin(t * 2 + P_.i);
