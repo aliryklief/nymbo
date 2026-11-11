@@ -621,11 +621,11 @@ const STRIP_SPOTS = PLAT ? [] : MAP === 'sky' ? [['blue', -1], ['red', 1]].map((
   : ICEMAP ? [] /* (the ski runs are the fast way down) */
   : VOLC ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 40, z: -s * 40, dx: s, dz: 0, team }))
   : JUNGLE ? [] /* (the jungle maze: no speed strips) */
-  : TOY ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 38, z: -s * 30, dx: s, dz: 0, team }))
+  : TOY ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 38, z: -s * 14, dx: s, dz: 0, team }))
   : DESERT ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: Math.round(-s * 46 * MS), z: Math.round(s * 16 * MS), dx: 0, dz: -s, team })) /* (the desert: down the flank from your crater towards theirs) */
   : [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: Math.round(-s * 13 * MS), z: Math.round(s * 42 * MS), dx: s, dz: 0, team }));
 // two power-block hubs, each the same distance from both forts (fair for both teams)
-const HUBS = PLAT ? [{ x: 0, z: 38 }, { x: 0, z: -38 }] : ICEMAP ? [{ x: 10, z: 21 }, { x: -10, z: -21 }] /* (out on the ice) */ : VOLC ? [{ x: 12, z: 37 }, { x: -12, z: -37 }] : JUNGLE ? [{ x: 36, z: 22.5 }, { x: -36, z: -22.5 }] /* (in the maze's two rooms) */ : TOY ? [{ x: 0, z: 20 }, { x: 0, z: -20 }] : DESERT ? [{ x: Math.round(30 * MS), z: Math.round(19 * MS) }, { x: Math.round(-30 * MS), z: Math.round(-19 * MS) }] /* (each exactly as far from both forts) */ : [{ x: Math.round(8 * MS), z: Math.round(16 * MS) }, { x: Math.round(-8 * MS), z: Math.round(-16 * MS) }];
+const HUBS = PLAT ? [{ x: 0, z: 38 }, { x: 0, z: -38 }] : ICEMAP ? [{ x: 10, z: 21 }, { x: -10, z: -21 }] /* (out on the ice) */ : VOLC ? [{ x: 12, z: 37 }, { x: -12, z: -37 }] : JUNGLE ? [{ x: 36, z: 22.5 }, { x: -36, z: -22.5 }] /* (in the maze's two rooms) */ : TOY ? [{ x: 0, z: 40 }, { x: 0, z: -40 }] /* (either side of the loop-the-loop track) */ : DESERT ? [{ x: Math.round(30 * MS), z: Math.round(19 * MS) }, { x: Math.round(-30 * MS), z: Math.round(-19 * MS) }] /* (each exactly as far from both forts) */ : [{ x: Math.round(8 * MS), z: Math.round(16 * MS) }, { x: Math.round(-8 * MS), z: Math.round(-16 * MS) }];
 
 // PORTAL PLATFORMS: the floating platforms (no ground at all). Each is listed for blue's half; its twin on red's half is
 // the same shape turned round the middle (x, z → -x, -z) but at its OWN height, and moves the mirror way.
@@ -879,7 +879,7 @@ const TRAMP_SPOTS = PLAT ? [] : MAP === 'sky' ? (() => { const A = PORTAL_SPOTS[
   : ICEMAP ? [{ x: -32, z: -38 }, { x: 32, z: 38 }]
   : VOLC ? [{ x: -30, z: 30 }, { x: 30, z: -30 }] /* (steam vents) */
   : JUNGLE ? [{ x: -31.5, z: -31.5, to: 'B1' }, { x: 31.5, z: 31.5, to: 'T2' }, { x: -76, z: 21, to: 'P1' }, { x: -76, z: -21, to: 'P2' }, { x: 76, z: 21, to: 'R2' }, { x: 76, z: -21, to: 'R1' }] /* (two in the maze, and one by each corner of each temple's front: each throws you up onto a treetop platform) */
-  : TOY ? [{ x: -33, z: 30 }, { x: 33, z: -30 }]
+  : TOY ? [{ x: -20, z: 0 }, { x: 20, z: 0 }]
   : DESERT ? [{ x: Math.round(34 * MS), z: Math.round(-4 * MS) }, { x: Math.round(-34 * MS), z: Math.round(4 * MS) }]
   : [{ x: Math.round(18 * MS), z: Math.round(26 * MS) }, { x: Math.round(-18 * MS), z: Math.round(-26 * MS) }];
 // TERRAIN (sky bridge map only): each fort stands on a plateau 4 blocks up that slopes gently down towards the gorge,
@@ -977,14 +977,14 @@ function tree(x, z, h) {
   if (PLAT) return; // (no trees floating in the void)
   if (ICEMAP && lakeD(x, z) < 1.15) return; // (nothing grows out on the ice)
   if (VOLC && (lavaD(x, z) < 3 || Math.hypot(x, z) < VOLCANO.R + 2)) return; // (nor in the lava or on the volcano)
-  if (TOY && (Math.abs(z) > MZ - 24 || Math.hypot(x, z) < 21)) return; // (the toy room: not against the bed/desk wall or on the rug)
+  if (TOY && (Math.abs(z) > MZ - 30 || Math.hypot(x, z) < 33 || (x > 5 && z > 20))) return; // (the toy room: not against the bed/desk wall or on the rug)
   if (JUNGLE && ((Math.abs(x) < 76 && Math.abs(z) < 48) || QSAND.some(q => Math.hypot(x - q.x, z - q.z) < q.r + 2.5))) return; // (the jungle: not in the boulder's way, the idol's, or the quicksand)
   TREES.push({ x, z, h, birds: MAP === 'classic' && rnd() < .3 }); // about a third of the trees have a nest (the easter-egg birds)
   staticBoxes.push({ x0: x - 1.5, y0: 0, z0: z - 1.5, x1: x + 1.5, y1: h + 3, z1: z + 1.5, foot: true }); // keeps other scenery and animals clear
 }
 // trees: two groves on the flanks give cover for sneaking round, plus a few loners. The middle stays open.
 // same 27 trees as before, spread wider: smaller groves, a few round each pasture (the corners looked empty), more loners
-const GROVES = (TOY ? [{ x: -70, z: 30, n: 3 }, { x: 70, z: -30, n: 3 }, { x: -40, z: -40, n: 3 }, { x: 40, z: 40, n: 3 }] : JUNGLE ? [{ x: -112, z: 34, n: 2 }, { x: 112, z: -34, n: 2 }, { x: -112, z: -34, n: 2 }, { x: 112, z: 34, n: 2 }] : VOLC ? [{ x: -62, z: -38, n: 5 }, { x: 62, z: 38, n: 5 }, { x: -36, z: 44, n: 4 }, { x: 36, z: -44, n: 4 }] : ICEMAP ? [{ x: -64, z: -38, n: 4 }, { x: 64, z: 38, n: 4 }, { x: -28, z: 46, n: 3 }, { x: 28, z: -46, n: 3 }] : DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
+const GROVES = (TOY ? [{ x: -58.6, z: 21.4, n: 3 }, { x: 58.6, z: -21.4, n: 3 }, { x: -16, z: -16, n: 2 }, { x: 16, z: 16, n: 2 }] : JUNGLE ? [{ x: -112, z: 34, n: 2 }, { x: 112, z: -34, n: 2 }, { x: -112, z: -34, n: 2 }, { x: 112, z: 34, n: 2 }] : VOLC ? [{ x: -62, z: -38, n: 5 }, { x: 62, z: 38, n: 5 }, { x: -36, z: 44, n: 4 }, { x: 36, z: -44, n: 4 }] : ICEMAP ? [{ x: -64, z: -38, n: 4 }, { x: 64, z: 38, n: 4 }, { x: -28, z: 46, n: 3 }, { x: 28, z: -46, n: 3 }] : DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
 for (const p of (ICEMAP ? [] : PORTAL_SPOTS)) { const L = Math.hypot(p.x, p.z), pa = { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; // trees scattered round the pasture fence, never in the portal's way
   for (let i = 0, n = 0; i < 120 && n < 4; i++) { const a = rnd() * Math.PI * 2, d = rr(11, 16), x = Math.round(pa.x + Math.cos(a) * d), z = Math.round(pa.z + Math.sin(a) * d);
     if (Math.hypot(x - p.x, z - p.z) < 7 || !clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue; tree(x, z, 2 + Math.floor(rnd() * 3)); n++; } }
@@ -6851,7 +6851,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { scoreFlag, jmNext: (a, b) => jmNext(a, b), jmNbrs: n => jmNbrs(n), get JM() { return JM; }, get JG() { return JG; }, get ICE2() { return ICE2; }, get EG() { return EG; }, get VO() { return VO; }, sendDog: (o, t) => sendDog(o, t), get ESC() { return ESC; }, escTrace: p => escapeTrace(p), escInk: a => { ESC.ink = a; escapeCheck(); return !!ESC.snap; }, escScore: (a, k) => escScore(escNorm(escResample(a)), k), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { scoreFlag, jmNext: (a, b) => jmNext(a, b), jmNbrs: n => jmNbrs(n), get JM() { return JM; }, get JG() { return JG; }, get ICE2() { return ICE2; }, get TR() { return TR; }, get staticBoxes() { return staticBoxes; }, get EG() { return EG; }, get VO() { return VO; }, sendDog: (o, t) => sendDog(o, t), get ESC() { return ESC; }, escTrace: p => escapeTrace(p), escInk: a => { ESC.ink = a; escapeCheck(); return !!ESC.snap; }, escScore: (a, k) => escScore(escNorm(escResample(a)), k), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -8523,13 +8523,12 @@ function updateMummy() { if (!MUMMY.ribbons.length) return; const t = now() / 10
 { const ump4 = updateMorePowers; updateMorePowers = function (dt) { ump4(dt); if (DESERT) { updateSpit(dt); updateDust(dt); } updateMummy(); }; }
 
 // ============================================================
-// THE FROZEN LAKE (map). Two ice castles on the snowy shores either side of a big frozen lake.
+// THE FROZEN LAKE (map): the lake itself (the ski resort round it, the igloos on the mountains, the cable cars, seals
+// and snow birds: 02f_ice.js and 09s_ice2.js).
 //  - out on the lake everyone slides: hard to stop, hard to turn (06_rules: onIce)
 //  - the ice CRACKS: a bomb on the lake blows a hole straight through it; a heavy block (or an animal) landing hard leaves
 //    a crack, and a second hard landing on a crack breaks it open. Fall in and you're swimming: slow, can't jump, and you
 //    have to paddle to the edge to climb out. The holes freeze over again after a while.
-//  - seals instead of cows: pick one up and it wriggles straight off and toboggans away like a bowling ball, knocking
-//    everyone over
 //  - the STAR is frozen inside a big block of ice out on the lake: hit the ice with thrown blocks until it shatters
 //  - blizzards now and then (white-out, wind), gentle snow the rest of the time, and the northern lights in the sky
 //  - frosty robots (icicles hanging off them; Look lab → map outfits)
@@ -9152,18 +9151,20 @@ function jmTempleWay(p, g) { // the courtyard's only ways in and out are the pas
   }; }
 
 // ============================================================
-// THE TOY ROOM (map). The robots are toy-sized, playing on a child's bedroom floor.
+// THE TOY ROOM (map). The robots are tiny toys (about 4 cm tall) playing on a child's bedroom floor, and everything else is
+// its real size (1 unit ≈ 2.2 cm): a 4.2 × 2.9 m room, a 2.5 m ceiling, a 90 × 190 cm bed...
 //  - forts of big bright plastic building blocks at either end of the room; towers of toy blocks instead of trees
-//  - the far wall: the BED in the middle (a huge trampoline: land on it and you bounce sky-high), a BOOKSHELF on each
-//    side of it (climb the shelves like stairs) and the WARDROBE behind it with the STAR on top
-//  - the other wall: a desk and chair to climb, a toy box
-//  - a remote-control CAR zooms about: jump on top and ride it (it bowls over anyone in front of it)
+//  - the BED along the far wall: a huge trampoline (land on it and you bounce sky-high), with room to run about UNDERNEATH
+//    it; toy blocks make a staircase up to it. The WARDROBE in the far corner, and a cube SHELF with the STAR on top
+//    (climb the toy-block staircase in front of it, or hop up through its cubes)
+//  - the other wall: a desk and chair (toy blocks up to the chair), a TOY BOX, the night-light
+//  - the LOOP-THE-LOOP car track across the middle: step onto either end and it whizzes you round the loop and launches you
+//  - a big striped bouncy BALL rolls about, bowling robots over; a remote-control CAR zooms about (ride on its roof)
 //  - the CEILING FAN blows everyone outwards a little when they're under it
-//  - the family CAT wanders in: it swats robots across the floor, and if it finds a dropped flag it curls up and naps on
-//    it (nobody can pick it up until it wakes)
 //  - now and then the LIGHT GOES OFF: just the night-light glowing
 //  - TIN TOY ROBOTS (Look lab → map outfits): shiny tin with rivets and a wind-up key turning on their backs
 // ============================================================
+const TOY_WH = 112, CAR_S = 2.4; // (the ceiling: 2.5 m up; the RC car, scaled up to its real size)
 const TR = { car: null, cat: null, fan: null, dark: 0, darkT: 60, star: null, starT: 0, bounce: [] };
 function tBox(w, h, d, x, y, z, color, col = true, round = .12) {
   const m = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(round, w * .2, h * .2, d * .2)), color.isMaterial ? color : new LiteMat({ color })); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; scene.add(m);
@@ -9177,59 +9178,67 @@ if (TOY) {
     g.fillStyle = '#a8d2e8'; for (let x = 0; x < 128; x += 32) g.fillRect(x, 0, 14, 128); // (stripes)
     g.fillStyle = '#fff6c8'; for (const [x, y] of [[24, 24], [88, 80]]) { g.beginPath(); for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283 - Math.PI / 2, r = k % 2 ? 5 : 12; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.fill(); } // (little stars)
     const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t; })();
-  const WH = 56; // (the whole room is built to real proportions: 1 unit ≈ 4.5 cm, so the robots are toys about 9 cm tall — a 2.5 m ceiling)
+  // the whole room is built to real proportions: 1 unit ≈ 2.2 cm, so the floor is a small 4.2 × 2.9 m kids' bedroom and the
+  // robots are tiny toys about 4 cm tall (minifigure size). Everything else is the real size: a 2.5 m ceiling, a 90 × 190 cm bed...
+  const WH = TOY_WH;
   for (const [w, x, z, ry] of [[MX * 2 + 2, 0, -MZ - 1, 0], [MX * 2 + 2, 0, MZ + 1, Math.PI], [MZ * 2 + 2, -MX - 1, 0, Math.PI / 2], [MZ * 2 + 2, MX + 1, 0, -Math.PI / 2]]) {
-    const t = wallTex.clone(); t.repeat.set(w / 12, WH / 12); t.needsUpdate = true;
+    const t = wallTex.clone(); t.repeat.set(w / 24, WH / 24); t.needsUpdate = true;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, WH), new LiteMat({ map: t })); m.position.set(x, WH / 2 - .5, z); m.rotation.y = ry; m.receiveShadow = true; scene.add(m);
-    const sk = new THREE.Mesh(new THREE.BoxGeometry(w, 1.6, .6), new LiteMat({ color: 0xf4f0e6 })); sk.position.set(x, .3, z); sk.rotation.y = ry; scene.add(sk); // (skirting board)
+    const sk = new THREE.Mesh(new THREE.BoxGeometry(w, 3.2, .8), new LiteMat({ color: 0xf4f0e6 })); sk.position.set(x, 1.1, z); sk.rotation.y = ry; scene.add(sk); // (skirting board)
     const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, WH / 2, .5).setTranslation(x, WH / 2, z).setRotation(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), ry))); byCollider.set(c.handle, { type: 'static' }); }
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(MX * 2 + 2, MZ * 2 + 2).rotateX(Math.PI / 2), new LiteMat({ color: 0xf6f2ea })); ceil.position.y = WH - .5; scene.add(ceil);
-  // a window on the left wall (sky and a tree outside), a door on the right
-  { const win = new THREE.Mesh(new THREE.PlaneGeometry(27, 23), new THREE.MeshBasicMaterial({ color: 0x8cc8ff, fog: false })); win.position.set(-MX - .4, 31, -8); win.rotation.y = Math.PI / 2; scene.add(win);
-    for (const [w, h, y, z] of [[29, 1.6, 43, -8], [29, 1.6, 19, -8], [1.6, 23, 31, -22], [1.6, 23, 31, 6], [1, 23, 31, -8], [27, 1, 31, -8]]) tBox(.8, h, w > 2 ? w : 1.6, -MX - .2, y, z, 0xffffff, false, .05);
-    tBox(3, 1, 31, -MX + 1, 19, -8, 0xffffff); // (the window sill)
-    tBox(.6, 44, 18, MX + .2, 22, 2, 0xd8b484, false, .1); const knob = new THREE.Mesh(new THREE.SphereGeometry(.8, 12, 8), new LiteMat({ color: 0xe8c25a })); knob.position.set(MX - .4, 21, -5); scene.add(knob); }
-  // a big round rug in the middle
-  { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); for (let k = 8; k >= 1; k--) { g.fillStyle = ['#ff8a8a', '#ffd27a', '#8ad8ff', '#b8f08a', '#d0a0ff', '#ff8a8a', '#ffd27a', '#8ad8ff'][k - 1]; g.beginPath(); g.arc(128, 128, k * 16, 0, 7); g.fill(); }
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const rug = new THREE.Mesh(new THREE.CircleGeometry(19, 48).rotateX(-Math.PI / 2), new LiteMat({ map: t, polygonOffset: true, polygonOffsetFactor: -2 })); rug.position.y = .03; rug.receiveShadow = true; scene.add(rug); }
   const Z = MZ, Zs = -MZ, book = k => [0xd84a4a, 0x4a8ad8, 0x4ad084, 0xe8c25a, 0x9a5aff, 0xff8a3a][k % 6];
-  // ---- the BED: a child's single bed in the far corner (90 × 190 cm), headboard against the end wall ----
-  { const W = 20, L = 42, x1 = MX - .5, x0 = x1 - L, bx = (x0 + x1) / 2, bz = Z - .5 - W / 2, top = 11;
-    tBox(L, 6, W + .4, bx, 3, bz, 0x8a5a34); for (const [lx, lz] of [[x0 + 1, bz - W / 2 + 1], [x0 + 1, bz + W / 2 - 1]]) tBox(1.4, 1, 1.4, lx, .5, lz, 0x6a4024); // the frame (on stubby legs)
-    tBox(L - 1, top - 6, W, bx + .3, 6 + (top - 6) / 2, bz, 0xf4f4fa, false); // the mattress (no collider of its own: it's a trampoline)
-    { const c = world.createCollider(RAPIER.ColliderDesc.cuboid((L - 1) / 2, (top - 6) / 2, W / 2).setTranslation(bx + .3, 6 + (top - 6) / 2, bz).setFriction(.9)); byCollider.set(c.handle, { type: 'static' }); }
+  // a window on the left wall (1.2 × 1 m, sky outside), the door on the right wall (90 cm × 2 m)
+  { const win = new THREE.Mesh(new THREE.PlaneGeometry(54, 45), new THREE.MeshBasicMaterial({ color: 0x8cc8ff, fog: false })); win.position.set(-MX - .4, 62, -10); win.rotation.y = Math.PI / 2; scene.add(win);
+    for (const [w, h, y, z] of [[57, 3, 85, -10], [57, 3, 39, -10], [3, 45, 62, -37.5], [3, 45, 62, 17.5], [2, 45, 62, -10], [54, 2, 62, -10]]) tBox(1.2, h, w, -MX - .2, y, z, 0xffffff, false, .05);
+    tBox(5, 1.6, 60, -MX + 1.8, 38.5, -10, 0xffffff); // (the window sill: something to stand on, if you can get up there)
+    tBox(.8, 90, 41, MX + .2, 45, -2, 0xd8b484, false, .1); const knob = new THREE.Mesh(new THREE.SphereGeometry(1.6, 12, 8), new LiteMat({ color: 0xe8c25a })); knob.position.set(MX - .6, 43, -18); scene.add(knob); }
+  // a big round rug in the middle (1.4 m across)
+  { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); for (let k = 8; k >= 1; k--) { g.fillStyle = ['#ff8a8a', '#ffd27a', '#8ad8ff', '#b8f08a', '#d0a0ff', '#ff8a8a', '#ffd27a', '#8ad8ff'][k - 1]; g.beginPath(); g.arc(128, 128, k * 16, 0, 7); g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const rug = new THREE.Mesh(new THREE.CircleGeometry(31, 56).rotateX(-Math.PI / 2), new LiteMat({ map: t, polygonOffset: true, polygonOffsetFactor: -2 })); rug.position.y = .03; rug.receiveShadow = true; scene.add(rug); }
+  // ---- the BED: a single bed (90 × 190 cm, mattress 50 cm up) along the far wall, headboard against the right wall.
+  //      There's room UNDERNEATH it (18 cm: plenty for a toy robot). Land on the mattress and you bounce sky-high ----
+  { const W = 40, L = 85, x1 = MX - .5, x0 = x1 - L, bx = (x0 + x1) / 2, bz = Z - .5 - W / 2, under = 8, top = 22;
+    for (const [lx, lz] of [[x0 + 1.5, bz - W / 2 + 1.5], [x0 + 1.5, bz + W / 2 - 1.5], [x1 - 1.5, bz - W / 2 + 1.5], [x1 - 1.5, bz + W / 2 - 1.5]]) tBox(3, under, 3, lx, under / 2, lz, 0x6a4024); // the legs
+    tBox(L, 3, W + .6, bx, under + 1.5, bz, 0x8a5a34); // the frame (with slats)
+    tBox(L - 1, top - under - 3, W, bx + .3, under + 3 + (top - under - 3) / 2, bz, 0xf4f4fa, false); // the mattress (no collider of its own: it's a trampoline)
+    { const c = world.createCollider(RAPIER.ColliderDesc.cuboid((L - 1) / 2, (top - under - 3) / 2, W / 2).setTranslation(bx + .3, under + 3 + (top - under - 3) / 2, bz).setFriction(.9)); byCollider.set(c.handle, { type: 'static' }); staticBoxes.push({ x0: x0, y0: under, z0: bz - W / 2, x1: x1, y1: top, z1: bz + W / 2 }); }
     const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#5a8ad8'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#ffe27a';
     for (const [x, y] of [[20, 20], [80, 30], [40, 70], [100, 90], [64, 110], [10, 100]]) { g.beginPath(); for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283 - Math.PI / 2, r = k % 2 ? 4 : 10; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.fill(); }
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.5, 1.2);
-    tBox(L - 11, 1, W + .6, bx - 5, top + .5, bz, new LiteMat({ map: t }), false, .4); tBox(L - 11, 7, .6, bx - 5, top - 3, bz - W / 2 - .4, new LiteMat({ map: t }), false, .3); // the duvet with stars on, turned back at the top, hanging down the side
-    tBox(7, 2.4, W - 4, x1 - 5.5, top + 1.2, bz, 0xffffff, false, .9); // the pillow, up by the headboard
-    tBox(1.2, 22, W + 1, x1 - .1, 11, bz, 0x7a4a2a); tBox(1.2, 14, W + 1, x0 - .1, 7, bz, 0x7a4a2a); // headboard and footboard
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 2);
+    tBox(L - 22, 1.6, W + 1.2, bx - 10, top + .8, bz, new LiteMat({ map: t }), false, .8); tBox(L - 22, 13, 1, bx - 10, top - 5.5, bz - W / 2 - .7, new LiteMat({ map: t }), false, .5); // the duvet with stars on, hanging down the side
+    tBox(15, 5, W - 8, x1 - 10, top + 2.5, bz, 0xffffff, false, 1.8); // the pillow
+    tBox(2.4, 40, W + 2, x1 - .3, 20, bz, 0x7a4a2a); // the headboard
     const bear = new THREE.Group(), fur = new LiteMat({ color: 0xc8925a }); const add = (geo, x, y, z) => { const m = new THREE.Mesh(geo, fur); m.position.set(x, y, z); m.castShadow = true; bear.add(m); };
     add(new THREE.SphereGeometry(1.1, 12, 10), 0, 1.1, 0); add(new THREE.SphereGeometry(.8, 12, 10), 0, 2.6, 0); for (const s of [-1, 1]) { add(new THREE.SphereGeometry(.32, 8, 6), s * .6, 3.25, 0); add(new THREE.SphereGeometry(.38, 8, 6), s * 1, 1.4, .3); add(new THREE.SphereGeometry(.42, 8, 6), s * .6, .3, .7); }
     const sn = new THREE.Mesh(new THREE.SphereGeometry(.3, 8, 6), new LiteMat({ color: 0xf0d8b0 })); sn.position.set(0, 2.5, .72); bear.add(sn); for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.1, 6, 4), new LiteMat({ color: 0x1c1c22 })); e.position.set(s * .3, 2.85, .66); bear.add(e); }
-    bear.scale.setScalar(2.2); bear.position.set(x1 - 9, top + 2.4, bz - 3); bear.rotation.y = -Math.PI / 2 - .3; scene.add(bear); // a big teddy against the pillow
-    // a way up for little robots: a staircase of toy blocks at the foot of the bed
-    for (let k = 0; k < 3; k++) tBox(3, 2.8 * (k + 1), 5, x0 - 10 + k * 3, 1.4 * (k + 1), bz - 2, [0xe84a4a, 0x4ab0d8, 0xffd23a][k], true, .3);
-    TR.bed = { x0: x0 + 1, x1: x1 - 1, z0: bz - W / 2, z1: bz + W / 2, y: top }; }
-  // ---- the far wall: the WARDROBE in the middle (the star's on top), a BOOKSHELF each side to climb ----
-  { const ww = 22, wh = 44, wd = 13; tBox(ww, wh, wd, 0, wh / 2, Z - wd / 2 - .5, 0xc8956a); // 1 m wide, 2 m tall
-    for (const s of [-1, 1]) { tBox(.3, wh - 4, .3, s * .15, wh / 2, Z - wd - .6, 0x8a5a34, false, .02); const k = new THREE.Mesh(new THREE.SphereGeometry(.5, 10, 8), new LiteMat({ color: 0xe8c25a })); k.position.set(s * 1.4, 22, Z - wd - .9); scene.add(k); }
-    tBox(ww + 1, 1, wd + 1, 0, wh + .5, Z - wd / 2 - .5, 0xb07a48);
-    for (const s of [-1, 1]) { const xc = s * (ww / 2 + 8.5), bw = 16, bd = 8; // the shelves are 27 cm apart: a good double jump each
-      for (const sx of [-1, 1]) tBox(.8, 34, bd, xc + sx * (bw / 2 - .4), 17, Z - bd / 2 - .5, 0x8a5a34);
-      for (let k = 0; k <= 5; k++) { const h = k * 6.2 + .5; tBox(bw, .8, bd, xc, h, Z - bd / 2 - .5, 0xa87848);
-        if (k < 5) for (let b = 0; b < 6; b++) if ((b + k) % 4) tBox(1.3, 4.4 + (b % 2) * .6, bd - 2.6, xc - bw / 2 + 2 + b * 2.2, h + .4 + 2.3, Z - bd / 2 - 1.8, book(b + k), true, .05); } // (books, standing on the back of each shelf: there's room at the front to land)
-      tBox(6, 5.6, 6, s * (ww / 2 + 3.5), 31.5 + 3.2, Z - 4.5, book(s > 0 ? 2 : 4), true, .1); tBox(5, 1.4, 5.4, s * (ww / 2 + 3.5), 31.5 + 6.7, Z - 4.5, book(s > 0 ? 0 : 1), true, .05); } // (a pile of books on top: the last step up to the wardrobe)
-    TR.starAt = V(0, wh + 1.7, Z - wd / 2 - .5); }
-  // ---- the near wall: a DESK and chair, a TOY BOX, the night-light ----
-  { const dx = 20, dw = 27, dd = 13, dh = 17; tBox(dw, 1, dd, dx, dh - .5, Zs + dd / 2 + .5, 0xb07a48); for (const [x, z] of [[dx - dw / 2 + 1, Zs + 1.5], [dx + dw / 2 - 1, Zs + 1.5], [dx - dw / 2 + 1, Zs + dd - .5], [dx + dw / 2 - 1, Zs + dd - .5]]) tBox(1.2, dh - 1, 1.2, x, (dh - 1) / 2, z, 0x8a5a34);
-    const cz = Zs + dd + 4.5; tBox(10, 1, 10, dx, 10, cz, 0xd84a4a); tBox(10, 11, 1, dx, 15.5, cz + 5, 0xd84a4a); for (const [x, z] of [[dx - 4.5, cz - 4.5], [dx + 4.5, cz - 4.5], [dx - 4.5, cz + 4.5], [dx + 4.5, cz + 4.5]]) tBox(.8, 9.5, .8, x, 4.75, z, 0xa83a3a); // the chair (a seat to hop up on, then the desk)
-    tBox(3, 5, 3, dx - 9, dh + 2.5, Zs + 4, 0xe8c25a, true, .5); tBox(5, .6, 4, dx - 9, dh + .3, Zs + 4, 0x3a3a44); { const lp = new THREE.PointLight(0xffd890, 0, 34, 1.4); lp.position.set(dx - 9, dh + 6, Zs + 5); scene.add(lp); TR.lamp = lp; } // a lamp
-    for (let b = 0; b < 4; b++) tBox(5, 1.1, 7, dx + 6, dh + .55 + b * 1.1, Zs + 5, book(b), true, .05); // (a pile of school books)
-    tBox(14, 9, 9, -26, 4.5, Zs + 5, 0x4ab0d8); tBox(14.4, .9, 9.4, -26, 9.45, Zs + 5, 0x3a90b8); } // the toy box (60 × 40 cm)
-  { const nl = new THREE.Mesh(new THREE.SphereGeometry(.9, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffd88a })); nl.position.set(-44, 2.2, Zs + .9); scene.add(nl); const p = new THREE.PointLight(0xffc870, 0, 40, 1.3); p.position.set(-44, 3, Zs + 2); scene.add(p); TR.night = p; } // the night-light
+    bear.scale.setScalar(4.6); bear.position.set(x1 - 20, top + 5, bz - 6); bear.rotation.y = -Math.PI / 2 - .3; scene.add(bear); // a big teddy against the pillow
+    // the way up: a staircase of big toy blocks at the foot of the bed
+    for (let k = 0; k < 5; k++) tBox(6, 4.4 * (k + 1), 7, x0 - 4 - (4 - k) * 6, 2.2 * (k + 1), bz - 6, [0xe84a4a, 0x4ab0d8, 0xffd23a, 0x4ad084, 0x9a5aff][k], true, .4);
+    TR.bed = { x0: x0 + 1, x1: x1 - 3, z0: bz - W / 2, z1: bz + W / 2, y: top }; }
+  // ---- the far wall: the WARDROBE (1 m wide, 1.8 m tall) in the corner, and a cube SHELF (77 cm) with the STAR on top ----
+  { const ww = 45, wh = 80, wd = 25, wx = -MX + .5 + ww / 2; tBox(ww, wh, wd, wx, wh / 2, Z - wd / 2 - .5, 0xc8956a);
+    for (const s of [-1, 1]) { tBox(.4, wh - 6, .4, wx + s * .2, wh / 2, Z - wd - .7, 0x8a5a34, false, .02); const k = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), new LiteMat({ color: 0xe8c25a })); k.position.set(wx + s * 2.6, 42, Z - wd - 1.2); scene.add(k); }
+    tBox(ww + 1.5, 1.5, wd + 1.5, wx, wh + .75, Z - wd / 2 - .5, 0xb07a48);
+    // the cube shelf: 2 × 2 open cubes; climb it by the toy-block staircase beside it (or jump in and out of the cubes)
+    const sw = 36, sh = 34, sd = 15, sx = wx + ww / 2 + 3 + sw / 2, sz = Z - sd / 2 - .5, wood = 0xf2efe8;
+    for (const x of [-sw / 2 + .6, 0, sw / 2 - .6]) tBox(1.2, sh, sd, sx + x, sh / 2, sz, wood, true, .05);
+    for (const y of [.6, sh / 2, sh - .6]) tBox(sw, 1.2, sd, sx, y, sz, wood, true, .05);
+    tBox(sw, sh, .6, sx, sh / 2, Z - .3, 0xe4e0d8, false); // (the back panel)
+    for (let b = 0; b < 6; b++) tBox(2.4, 9 + (b % 3), sd - 4, sx - sw / 2 + 3 + b * 2.6, 1.2 + (9 + b % 3) / 2, sz + 1, book(b), true, .08); // (books in a bottom cube)
+    for (let b = 0; b < 3; b++) tBox(12, 2, 10, sx + sw / 4, sh / 2 + 1.6 + b * 2, sz + 1, book(b + 2), true, .1); // (a pile of books lying in an upper cube: a step)
+    for (let k = 0; k < 7; k++) { const h = 4.8 * (k + 1), z = sz - sd / 2 - 3 - (6 - k) * 5.5; tBox(7, h, 6, sx - 6, h / 2, z, [0xff4a4a, 0xffb02a, 0xffe14a, 0x4ad04a, 0x3aa8ff, 0x9a5aff, 0xff6ab8][k], true, .4); } // (the staircase up to the top, coming straight out from the front of it)
+    TR.starAt = V(sx, sh + 1.8, sz); }
+  // ---- the near wall: a DESK (70 cm) and chair, a TOY BOX, the night-light ----
+  { const dx = -36, dw = 45, dd = 22, dh = 31; tBox(dw, 1.6, dd, dx, dh - .8, Zs + dd / 2 + .5, 0xb07a48); for (const [x, z] of [[dx - dw / 2 + 1.5, Zs + 2], [dx + dw / 2 - 1.5, Zs + 2], [dx - dw / 2 + 1.5, Zs + dd - 1], [dx + dw / 2 - 1.5, Zs + dd - 1]]) tBox(2, dh - 1.6, 2, x, (dh - 1.6) / 2, z, 0x8a5a34);
+    const cz = Zs + dd + 7, sy = 18; tBox(18, 1.6, 18, dx, sy, cz, 0xd84a4a); tBox(18, 20, 1.6, dx, sy + 10, cz + 9, 0xd84a4a); for (const [x, z] of [[dx - 8, cz - 8], [dx + 8, cz - 8], [dx - 8, cz + 8], [dx + 8, cz + 8]]) tBox(1.4, sy - .8, 1.4, x, (sy - .8) / 2, z, 0xa83a3a); // the chair
+    for (let k = 0; k < 3; k++) tBox(6, 4.6 * (k + 1), 6, dx + 14 + k * 6, 2.3 * (k + 1), cz - 6, [0x4ab0d8, 0xffd23a, 0x4ad084][k], true, .4); // (toy blocks up to the chair seat)
+    tBox(6, 10, 6, dx - 16, dh + 5, Zs + 6, 0xe8c25a, true, 1); tBox(10, 1.2, 8, dx - 16, dh + .6, Zs + 6, 0x3a3a44); { const lp = new THREE.PointLight(0xffd890, 0, 70, 1.4); lp.position.set(dx - 16, dh + 12, Zs + 8); scene.add(lp); TR.lamp = lp; } // a lamp
+    for (let b = 0; b < 4; b++) tBox(10, 2.2, 14, dx + 12, dh + 1.1 + b * 2.2, Zs + 9, book(b), true, .08); // (a pile of school books)
+    tBox(27, 18, 18, 42, 9, Zs + 10, 0x4ab0d8); tBox(27.6, 1.6, 18.6, 42, 18.8, Zs + 10, 0x3a90b8); for (let k = 0; k < 2; k++) tBox(7, 4.5 * (k + 1), 7, 42 - 6 + k * 8, 2.25 * (k + 1), Zs + 23, [0xff6ab8, 0x4ad04a][k], true, .4); } // the toy box (60 × 40 × 40 cm), with blocks to climb it
+  { const nl = new THREE.Mesh(new THREE.SphereGeometry(1.8, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffd88a })); nl.position.set(10, 4.4, Zs + 1.6); scene.add(nl); const p = new THREE.PointLight(0xffc870, 0, 80, 1.3); p.position.set(10, 6, Zs + 4); scene.add(p); TR.night = p; } // the night-light
   // ---- the ceiling fan ----
-  { const g = new THREE.Group(); g.position.set(0, WH - 5, 0); g.scale.setScalar(1.6); const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.8, 1.6, 16), new LiteMat({ color: 0xf0ece4 })); g.add(hub);
+  { const g = new THREE.Group(); g.position.set(0, WH - 9, 0); g.scale.setScalar(3.2); const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.8, 1.6, 16), new LiteMat({ color: 0xf0ece4 })); g.add(hub);
     const rod = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, 3.5, 8), new LiteMat({ color: 0xd8d4cc })); rod.position.y = 2.4; g.add(rod);
     for (let k = 0; k < 4; k++) { const b = new THREE.Mesh(new RoundedBoxGeometry(11, .3, 2.6, 2, .1), new LiteMat({ color: 0xc8956a })); b.position.set(Math.cos(k * Math.PI / 2) * 6.2, -.2, Math.sin(k * Math.PI / 2) * 6.2); b.rotation.y = -k * Math.PI / 2; b.rotation.x = .12; g.add(b); }
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(1.1, 14, 10), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); bulb.position.y = -1.3; g.add(bulb); TR.bulb = bulb;
@@ -9237,29 +9246,36 @@ if (TOY) {
   // ---- springy toy drums for trampolines ----
   { const c = document.createElement('canvas'); c.width = 256; c.height = 16; const g = c.getContext('2d'); for (let i = 0; i < 16; i++) { g.fillStyle = i % 2 ? '#ff4a4a' : '#ffffff'; g.fillRect(i * 16, 0, 16, 16); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     for (const Pd of PADS) { Pd.rim.material.map = t; Pd.rim.material.needsUpdate = true; Pd.mat.material = new LiteMat({ color: 0xffd23a }); } }
-  // ---- the remote-control car ----
+  // ---- the remote-control car (a real-size one: 30 cm long) ----
   { const g = new THREE.Group(), red = new LiteMat({ color: 0xe02a2a }), blk = new LiteMat({ color: 0x1c1c22 }), gl = new LiteMat({ color: 0x8ad0ff });
     const body = new THREE.Mesh(new RoundedBoxGeometry(4.2, 1.2, 7, 2, .35), red); body.position.y = 1.3; g.add(body);
     const cab = new THREE.Mesh(new RoundedBoxGeometry(3.4, 1.1, 3, 2, .3), gl); cab.position.set(0, 2.3, -.4); g.add(cab);
     const sp = new THREE.Mesh(new RoundedBoxGeometry(4, .25, 1, 2, .1), blk); sp.position.set(0, 2.5, -3.2); g.add(sp);
     const wheels = []; for (const [x, z] of [[-2.1, 2.3], [2.1, 2.3], [-2.1, -2.3], [2.1, -2.3]]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, .8, 16).rotateZ(Math.PI / 2), blk); w.position.set(x, 1, z); g.add(w); wheels.push(w); }
     const ant = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 3, 5), blk); ant.position.set(1.4, 3.2, -2.6); ant.rotation.x = -.3; g.add(ant);
-    g.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(g);
-    const kb = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 1.5, 30)); const col = world.createCollider(RAPIER.ColliderDesc.cuboid(2.1, .9, 3.5).setFriction(1), kb); byCollider.set(col.handle, { type: 'static' });
-    TR.car = { g, wheels, kb, x: 0, z: 30, yaw: Math.PI / 2, sp: 0, tx: 0, tz: 0, t: 0, hit: new Set(), ht: 0 }; }
-  // ---- the cat ----
-  { const g = new THREE.Group(), fur = new LiteMat({ color: 0xe0904a }), fur2 = new LiteMat({ color: 0xb86a2a }), wh = new LiteMat({ color: 0xfaf4ec }), dk = new LiteMat({ color: 0x1c1c22 }), eyeM = new LiteMat({ color: 0x9adf4a, emissive: 0x2a4a10 });
-    const body = new THREE.Mesh(new RoundedBoxGeometry(4, 3.4, 8, 3, 1.4), fur); body.position.y = 3.6; g.add(body);
-    for (let k = 0; k < 4; k++) { const st = new THREE.Mesh(new RoundedBoxGeometry(4.05, .5, 1, 2, .2), fur2); st.position.set(0, 5.1, -2.6 + k * 1.6); g.add(st); }
-    const head = new THREE.Mesh(new RoundedBoxGeometry(3.6, 3, 3, 3, 1.1), fur); head.position.set(0, 6, 4.6); g.add(head);
-    const muz = new THREE.Mesh(new RoundedBoxGeometry(1.8, 1.1, .6, 2, .3), wh); muz.position.set(0, 5.4, 6.1); g.add(muz);
-    for (const sx of [-1, 1]) { const ear = new THREE.Mesh(new THREE.ConeGeometry(.8, 1.4, 4), fur); ear.position.set(sx * 1.1, 8, 4.4); ear.rotation.y = Math.PI / 4; g.add(ear);
-      const e = new THREE.Mesh(new THREE.SphereGeometry(.4, 10, 8), eyeM); e.position.set(sx * .8, 6.5, 6.05); e.scale.z = .5; g.add(e); const pu = new THREE.Mesh(new THREE.BoxGeometry(.14, .55, .1), dk); pu.position.set(sx * .8, 6.5, 6.27); g.add(pu); }
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(.25, .3, 3), new LiteMat({ color: 0xff8aa8 })); nose.rotation.x = Math.PI; nose.position.set(0, 5.9, 6.45); g.add(nose);
-    const legs = []; for (const [x, z] of [[-1.3, 2.6], [1.3, 2.6], [-1.3, -2.6], [1.3, -2.6]]) { const l = new THREE.Group(); l.position.set(x, 2.6, z); const m = new THREE.Mesh(new RoundedBoxGeometry(1.1, 2.6, 1.1, 2, .4), fur); m.position.y = -1.2; l.add(m); const paw = new THREE.Mesh(new RoundedBoxGeometry(1.2, .6, 1.4, 2, .3), wh); paw.position.set(0, -2.4, .2); l.add(paw); g.add(l); legs.push(l); }
-    const tail = new THREE.Group(); tail.position.set(0, 4.6, -4); for (let k = 0; k < 6; k++) { const s = new THREE.Mesh(new THREE.SphereGeometry(.55 - k * .04, 8, 6), k % 2 ? fur2 : fur); s.position.set(0, k * .7, -k * .5); tail.add(s); } g.add(tail);
-    g.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.visible = false; scene.add(g);
-    TR.cat = { g, legs, tail, head, on: false, x: 0, z: 0, yaw: 0, tx: 0, tz: 0, t: 0, back: 35, st: 'walk', nap: null, swat: 0, life: 0 }; }
+    g.scale.setScalar(CAR_S); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(g);
+    const kb = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(30, 1.5 * CAR_S, -14)); const col = world.createCollider(RAPIER.ColliderDesc.cuboid(2.1 * CAR_S, .9 * CAR_S, 3.5 * CAR_S).setFriction(1), kb); byCollider.set(col.handle, { type: 'static' });
+    TR.car = { g, wheels, kb, x: 30, z: -14, yaw: Math.PI / 2, sp: 0, tx: 0, tz: 0, t: 0, hit: new Set(), ht: 0 }; }
+  // ---- the LOOP-THE-LOOP car track across the middle of the room: step on either end and you're whizzed along it, round
+  //      the loop and launched off the far end ----
+  { const P_ = [], A = -30, B = 30, R = 7; // (the path: along z at x = 0; the loop in the middle drifts a little sideways so it misses itself)
+    for (let z = A; z <= -1; z += 1) P_.push(V(0, .35 + Math.max(0, (A + 4 - z)) * 0, z));
+    for (let k = 0; k <= 48; k++) { const a = k / 48 * Math.PI * 2; P_.push(V(k / 48 * 4.5, .35 + R - R * Math.cos(a), Math.sin(a) * R)); }
+    for (let z = 1; z <= B; z += 1) P_.push(V(4.5, .35 + (z > B - 7 ? (z - (B - 7)) * .55 : 0), z));
+    const L = []; let acc = 0; P_.forEach((p, i) => { if (i) acc += p.distanceTo(P_[i - 1]); L.push(acc); });
+    TR.track = { P: P_, L, len: acc };
+    const orange = new LiteMat({ color: 0xff7a1a, side: THREE.DoubleSide }), rail = new LiteMat({ color: 0x2a6ad8 }), pos = [], idx = [];
+    P_.forEach((p, i) => { const n = P_[Math.min(i + 1, P_.length - 1)].clone().sub(P_[Math.max(i - 1, 0)]).normalize(), side = V(1, 0, 0), up = new THREE.Vector3().crossVectors(n, side).normalize().multiplyScalar(-1); void up;
+      for (const s of [-1, 1]) pos.push(p.x + s * 2, p.y - .12, p.z); if (i) { const a = (i - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const tm = new THREE.Mesh(g, orange); tm.castShadow = tm.receiveShadow = true; scene.add(tm);
+    for (const s of [-1, 1]) { const pts = P_.map(p => V(p.x + s * 2.1, p.y - .05, p.z)), tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 220, .22, 5), rail); tube.castShadow = true; scene.add(tube); }
+    for (const [i, s] of [[0, -1], [P_.length - 1, 1]]) { const p = P_[i]; tBox(5, .5, 3, p.x, .25, p.z + s * 1.2, 0xffd23a, false, .1); } // (yellow start pads at each end)
+    TR.trackEnds = [{ p: P_[0], dir: 1 }, { p: P_[P_.length - 1], dir: -1 }]; }
+  // ---- a big bouncy BALL rolling about the floor: it bowls robots over ----
+  { const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d'); ['#ff4a4a', '#ffe14a', '#3aa8ff', '#ffffff', '#4ad04a', '#ff8a2a'].forEach((col, i) => { g.fillStyle = col; g.fillRect(i * 128 / 6, 0, 128 / 6 + 1, 64); });
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const Rb = 6, m = new THREE.Mesh(new THREE.SphereGeometry(Rb, 24, 16), new LiteMat({ map: t, roughness: .4 })); m.castShadow = true; scene.add(m);
+    TR.ball = { m, R: Rb, x: -20, z: 26, dir: V(1, 0, -.6).normalize(), sp: 8, hit: new Map(), bounce: 0 }; }
 }
 function toyStar() { const s = newBlock('bomb', TR.starAt.clone(), { anchored: true }); s.kind = 'streak'; s.mesh.clear(); s.core = null; s.mesh.material = streakMat; s.mesh.renderOrder = 0; s.slot = null; s.origin = null; s.onTaken = () => { TR.star = null; TR.starT = 90; }; TR.star = s; }
 if (TOY) toyStar();
@@ -9270,14 +9286,14 @@ function updateToy(dt) {
   for (const r of robots) { if (r.state !== 'play' || !r.body) continue; const p = r.body.translation(), B = TR.bed; if (p.x < B.x0 || p.x > B.x1 || p.z < B.z0 || p.z > B.z1 || p.y > B.y + 1.6) continue;
     const lv = r.body.linvel(); if (r.grounded || lv.y < -1) { r.body.setLinvel({ x: lv.x, y: 23, z: lv.z }, true); r.grounded = false; r.jumps = 1; r.padT = 1.4; sfx('boing', V(p.x, p.y, p.z)); r.model.sq = -.4; r.model.sqv = 6; } }
   // the fan: spins, and blows anyone under it outwards
-  if (TR.fan) { TR.fan.rotation.y += dt * 4; for (const r of robots) { if (r.state !== 'play' || !r.body) continue; const p = r.body.translation(), d = Math.hypot(p.x, p.z); if (d > 14 || d < .3) continue; const k = (1 - d / 14) * 6 * dt, lv = r.body.linvel(); r.body.setLinvel({ x: lv.x + p.x / d * k * 4, y: lv.y, z: lv.z + p.z / d * k * 4 }, true); } }
+  if (TR.fan) { TR.fan.rotation.y += dt * 4; for (const r of robots) { if (r.state !== 'play' || !r.body) continue; const p = r.body.translation(), d = Math.hypot(p.x, p.z); if (d > 22 || d < .3) continue; const k = (1 - d / 22) * 6 * dt, lv = r.body.linvel(); r.body.setLinvel({ x: lv.x + p.x / d * k * 4, y: lv.y, z: lv.z + p.z / d * k * 4 }, true); } }
   // the light goes off now and then
   if (match.state === 'play' && !(NET && NET.client)) { TR.darkT -= dt; if (TR.dark <= 0 && TR.darkT <= 0) { TR.dark = 14; TR.darkT = rr(60, 80); sfx('click', V(0, 5, 0)); } }
   if (TR.dark > 0) { TR.dark -= dt; if (TR.dark <= 0) sfx('click', V(0, 5, 0)); }
   const dk = TR.dark > 0 ? 1 : 0; TR.dk = (TR.dk || 0) + (dk - (TR.dk || 0)) * Math.min(1, dt * 8);
   if (!(PW.dark > 0)) { sun.intensity = LIGHT0.sun * (1 - .9 * TR.dk); if (typeof hemi !== 'undefined' && hemi) hemi.intensity = LIGHT0.hemi * (1 - .82 * TR.dk); }
   if (TR.night) TR.night.intensity = 90 * TR.dk; if (TR.lamp) TR.lamp.intensity = 60 * TR.dk; if (TR.bulb) TR.bulb.material.color.set(TR.dk > .5 ? 0x555048 : 0xfff4d8);
-  updateCar(dt); updateCat(dt);
+  updateCar(dt); updateTrack(dt); updateBall(dt);
   // the star on the wardrobe
   if (TR.star && TR.star.dead) { TR.star = null; TR.starT = 90; }
   if (!TR.star && match.state === 'play') { TR.starT -= dt; if (TR.starT <= 0) toyStar(); }
@@ -9285,19 +9301,41 @@ function updateToy(dt) {
 }
 Object.assign(SFX_SYNTH, { boing: () => { const o = AC.createOscillator(), g = AC.createGain(), t0 = AC.currentTime; o.type = 'sine'; o.frequency.setValueAtTime(140, t0); o.frequency.exponentialRampToValueAtTime(520, t0 + .25); g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.3, t0 + .02); g.gain.exponentialRampToValueAtTime(.0001, t0 + .35); o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + .4); },
   click: () => { clack(2600, .5, 0, .02); clack(1400, .3, .03, .02); }, meow: () => { const o = AC.createOscillator(), g = AC.createGain(), t0 = AC.currentTime; o.type = 'sawtooth'; o.frequency.setValueAtTime(500, t0); o.frequency.linearRampToValueAtTime(820, t0 + .18); o.frequency.linearRampToValueAtTime(420, t0 + .55); const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 2; g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.25, t0 + .05); g.gain.exponentialRampToValueAtTime(.0001, t0 + .6); o.connect(f); f.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + .65); } });
+function trackAt(d) { const T_ = TR.track, L = T_.L; d = clamp(d, 0, T_.len); let lo = 0, hi = L.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (L[m] < d) lo = m; else hi = m; }
+  const k = L[hi] > L[lo] ? (d - L[lo]) / (L[hi] - L[lo]) : 0, p = T_.P[lo].clone().lerp(T_.P[hi], k), tan = T_.P[hi].clone().sub(T_.P[lo]).normalize(); return { p, tan, loop: lo > 30 && lo < 30 + 48 }; }
+function updateTrack(dt) { // the loop-the-loop: on at either end, whizzed round, launched off the other end
+  const T_ = TR.track; if (!T_) return;
+  for (const r of robots) { if (!r.body || r.state !== 'play') { r.trackRide = null; continue; } const p = r.body.translation(), R_ = r.trackRide;
+    if (!R_) { if ((r.trackT || 0) > now() || p.y > 2.6 || r.glitchHeld) continue; for (const E of TR.trackEnds) if (Math.hypot(p.x - E.p.x, p.z - E.p.z) < 2.2) { r.trackRide = { d: E.dir > 0 ? 0 : T_.len, dir: E.dir }; sfx('boost', V(p.x, p.y, p.z)); if (r.isPlayer) toast('LOOP THE LOOP!'); break; } continue; }
+    R_.d += R_.dir * 30 * dt; const A = trackAt(R_.d); let up = V(0, 1, 0); if (A.loop) { const c = V(A.p.x, .35 + 7, 0); up = c.sub(A.p).normalize(); }
+    r.body.setTranslation({ x: A.p.x + up.x * 1, y: A.p.y + up.y * 1, z: A.p.z + up.z * 1 }, true); r.body.setLinvel({ x: 0, y: 0, z: 0 }, true); r.padLock = now() + 200; r.grounded = false; r.pt = null; const tn = A.tan.clone().multiplyScalar(R_.dir); if (Math.hypot(tn.x, tn.z) > .3) r.yaw = r.yawT = yawTo(tn.x, tn.z);
+    if (Math.random() < .5) emit(V(A.p.x, A.p.y, A.p.z), 0xffb02a, V(rr(-1, 1), rr(.5, 2), rr(-1, 1)), .14, .4, 0);
+    if (R_.d <= 0 || R_.d >= T_.len) { const tg = A.tan.clone().multiplyScalar(R_.dir).setY(0).normalize(); r.trackRide = null; r.trackT = now() + 1500; r.body.setLinvel({ x: tg.x * 22, y: 8, z: tg.z * 22 }, true); r.jumps = 0; sfx('swoop', V(p.x, p.y, p.z)); } }
+}
+function updateBall(dt) { // the big bouncy ball: rolls in straight lines, bouncing off the walls and the furniture
+  const B = TR.ball; if (!B) return; const live = match.state === 'play' && !RW_LOCK; if (live) { const nx = B.x + B.dir.x * B.sp * dt, nz = B.z + B.dir.z * B.sp * dt, R = B.R;
+    const blocked = Math.abs(nx) > MX - R || Math.abs(nz) > MZ - R || staticBoxes.some(b => !b.foot && b.y0 < R && b.y1 > .6 && nx > b.x0 - R && nx < b.x1 + R && nz > b.z0 - R && nz < b.z1 + R) || Object.values(FORT).some(F => Math.abs(nx - F.x) < FORT_RX + R && Math.abs(nz - F.z) < FORT_RZ + R);
+    if (blocked) { const a = Math.atan2(B.dir.z, B.dir.x) + Math.PI + rr(-1, 1); B.dir.set(Math.cos(a), 0, Math.sin(a)); B.bounce = 1; sfx('boing', V(B.x, 2, B.z)); }
+    else { B.x = nx; B.z = nz; B.m.rotateOnWorldAxis(V(B.dir.z, 0, -B.dir.x), B.sp * dt / R); } }
+  B.bounce = Math.max(0, B.bounce - dt * 2); B.m.position.set(B.x, B.R + Math.abs(Math.sin(now() / 260)) * 1.2, B.z); B.m.scale.set(1 + B.bounce * .1, 1 - B.bounce * .12, 1 + B.bounce * .1);
+  if (!live) return; const t = now() / 1000;
+  for (const r of robots) { if (r.state !== 'play' || !r.body || (B.hit.get(r) || 0) > t) continue; const p = r.body.translation(); if (Math.hypot(p.x - B.x, p.z - B.z) > B.R + .6 || p.y > B.R * 2) continue;
+    B.hit.set(r, t + 1.5); const sd = V(p.x - B.x, 0, p.z - B.z).normalize(); flop(r, 2, { x: B.dir.x * 8 + sd.x * 7, y: 7, z: B.dir.z * 8 + sd.z * 7 }); sfx('boing', V(p.x, p.y, p.z)); if (r.isPlayer) toast('BOING! THE BALL GOT YOU'); }
+  for (const e of blocks) { if (e.dead || !e.body || e.holder || e.anchored || e.kind === 'flag') continue; const p = e.body.translation(); if (Math.hypot(p.x - B.x, p.z - B.z) > B.R + .5 || p.y > B.R * 1.6) continue; const m = e.body.mass(); e.body.applyImpulse({ x: B.dir.x * 5 * m, y: 3 * m, z: B.dir.z * 5 * m }, true); }
+}
 function updateCar(dt) {
-  const C = TR.car; if (!C) return;
-  C.t -= dt; if (C.t <= 0 || Math.hypot(C.tx - C.x, C.tz - C.z) < 3) { for (let k = 0; k < 20; k++) { C.tx = rr(-MX + 10, MX - 10); C.tz = rr(-MZ + 20, MZ - 20); if (!Object.values(FORT).some(F => Math.abs(C.tx - F.x) < FORT_RX + 4 && Math.abs(C.tz - F.z) < FORT_RZ + 4)) break; } C.t = rr(4, 8); }
-  const want = Math.atan2(C.tx - C.x, C.tz - C.z); C.yaw += angDiff(C.yaw, want) * Math.min(1, dt * 1.6); C.sp += ((Math.abs(angDiff(C.yaw, want)) > 1 ? 5 : 11) - C.sp) * Math.min(1, dt * 1.5);
+  const C = TR.car; if (!C) return; const K = CAR_S;
+  C.t -= dt; if (C.t <= 0 || Math.hypot(C.tx - C.x, C.tz - C.z) < 3) { for (let k = 0; k < 20; k++) { C.tx = rr(-MX + 12, MX - 12); C.tz = rr(-MZ + 26, MZ - 26); if (!Object.values(FORT).some(F => Math.abs(C.tx - F.x) < FORT_RX + 4 && Math.abs(C.tz - F.z) < FORT_RZ + 4)) break; } C.t = rr(4, 8); }
+  const want = Math.atan2(C.tx - C.x, C.tz - C.z); C.yaw += angDiff(C.yaw, want) * Math.min(1, dt * 1.6); C.sp += ((Math.abs(angDiff(C.yaw, want)) > 1 ? 7 : 16) - C.sp) * Math.min(1, dt * 1.5);
   let nx = C.x + Math.sin(C.yaw) * C.sp * dt, nz = C.z + Math.cos(C.yaw) * C.sp * dt;
-  if (Object.values(FORT).some(F => Math.abs(nx - F.x) < FORT_RX + 3 && Math.abs(nz - F.z) < FORT_RZ + 3) || staticBoxes.some(b => !b.foot && b.y1 > .5 && nx > b.x0 - 2.5 && nx < b.x1 + 2.5 && nz > b.z0 - 2.5 && nz < b.z1 + 2.5) || Math.abs(nx) > MX - 5 || Math.abs(nz) > MZ - 5) { C.t = 0; C.yaw += Math.PI * .7; nx = C.x; nz = C.z; }
+  if (Object.values(FORT).some(F => Math.abs(nx - F.x) < FORT_RX + 3 && Math.abs(nz - F.z) < FORT_RZ + 3) || staticBoxes.some(b => !b.foot && b.y1 > .5 && b.y0 < 4 * K && nx > b.x0 - 3.5 * K && nx < b.x1 + 3.5 * K && nz > b.z0 - 3.5 * K && nz < b.z1 + 3.5 * K) || Math.abs(nx) > MX - 4 * K || Math.abs(nz) > MZ - 4 * K || (Math.abs(nx) < 9 && Math.abs(nz) < 34)) { C.t = 0; C.yaw += Math.PI * .7; nx = C.x; nz = C.z; }
   const dx = nx - C.x, dz = nz - C.z; C.x = nx; C.z = nz;
   C.g.position.set(C.x, 0, C.z); C.g.rotation.y = C.yaw; for (const w of C.wheels) w.rotation.x += C.sp * dt;
-  C.kb.setNextKinematicTranslation({ x: C.x, y: 1.5, z: C.z }); C.kb.setNextKinematicRotation(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), C.yaw));
+  C.kb.setNextKinematicTranslation({ x: C.x, y: 1.5 * K, z: C.z }); C.kb.setNextKinematicRotation(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), C.yaw));
   const f = V(Math.sin(C.yaw), 0, Math.cos(C.yaw)); C.ht -= dt; if (C.ht <= 0) { C.hit.clear(); C.ht = 1; }
   for (const r of robots) { if (r.state !== 'play' || !r.body) continue; const p = r.body.translation(), rx = p.x - C.x, rz = p.z - C.z, along = rx * f.x + rz * f.z, lat = rx * f.z - rz * f.x;
-    if (Math.abs(lat) < 2.3 && Math.abs(along) < 3.6 && p.y > 2.2 && p.y < 4.6) { r.body.setTranslation({ x: p.x + dx, y: p.y, z: p.z + dz }, true); if (r.grounded) { r.onCar = now() + 120; if (r.isPlayer && !r.carToast) { r.carToast = true; toast('RIDING THE CAR! JUMP TO GET OFF'); } } continue; } // (riding on top: carried along, standing still on the roof)
-    if (Math.abs(lat) < 2.4 && along > 2.8 && along < 4.6 && p.y < 2.4 && C.sp > 4 && !C.hit.has(r)) { C.hit.add(r); flop(r, 1.8, { x: f.x * 10 + (lat > 0 ? f.z : -f.z) * 4, y: 5, z: f.z * 10 - (lat > 0 ? f.x : -f.x) * 4 }); sfx('hit', V(p.x, p.y, p.z)); if (r.isPlayer) toast('VROOM! RUN OVER BY THE CAR!'); } }
+    if (Math.abs(lat) < 2.3 * K && Math.abs(along) < 3.6 * K && p.y > 2.2 * K && p.y < 3 * K + 2) { r.body.setTranslation({ x: p.x + dx, y: p.y, z: p.z + dz }, true); if (r.grounded) { r.onCar = now() + 120; if (r.isPlayer && !r.carToast) { r.carToast = true; toast('RIDING THE CAR! JUMP TO GET OFF'); } } continue; } // (riding on top: carried along, standing still on the roof)
+    if (Math.abs(lat) < 2.4 * K && along > 3.2 * K && along < 3.6 * K + 2 && p.y < 2.4 * K && C.sp > 4 && !C.hit.has(r)) { C.hit.add(r); flop(r, 1.8, { x: f.x * 10 + (lat > 0 ? f.z : -f.z) * 4, y: 5, z: f.z * 10 - (lat > 0 ? f.x : -f.x) * 4 }); sfx('hit', V(p.x, p.y, p.z)); if (r.isPlayer) toast('VROOM! RUN OVER BY THE CAR!'); } }
 }
 function updateCat(dt) {
   const C = TR.cat; if (!C) return; const t = now() / 1000;
