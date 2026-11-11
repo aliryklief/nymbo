@@ -9316,18 +9316,26 @@ function pxShuffle() {
 function pxApply(k) {
   if (k === PX.rk) return; PX.rk = k; const ord = PX.rh[k], n = ord.length;
   for (let i = 0; i < n; i++) { const a = PL[ord[i]].ports[1], b = PL[ord[(i + 1) % n]].ports[0]; PX.link[a.i] = b.i; PX.link[b.i] = a.i; }
-  for (const P_ of PX.ports) { if (P_.hidden || P_ === PX.starP) continue; const D = PX.ports[PX.link[P_.i]].o; P_.ring.material.color.copy(D.col); P_.ring.material.emissive.copy(D.col); P_.disc.material.color.copy(D.col).lerp(new THREE.Color(0xffffff), .3); P_.cube.material.color.copy(D.col);
-    if (D.kind === 'fort') P_.cube.material.color.set(TEAMS[D.team].cols[0]); // (to a fort: in that team's colour)
-    P_.cube.geometry = pxShapeGeo(pxShapeOf(D)); P_.cube.scale.setScalar(1); }
+  for (let i = 0; i < n; i++) { const a = PL[ord[i]].ports[1], b = PL[ord[(i + 1) % n]].ports[0], sh = PX_ICONS[i % PX_ICONS.length], shade = Math.floor(i / PX_ICONS.length) % 3;
+    for (const [P_, Q] of [[a, b], [b, a]]) { // the two ends of a link wear the SAME shape; the colour says which way it takes you: reddish = towards red's side, bluish = towards blue's
+      const c = new THREE.Color(Q.o.x > P_.o.x ? PX_RED[shade] : PX_BLUE[shade]); P_.col = c;
+      P_.ring.material.color.copy(c); P_.ring.material.emissive.copy(c); P_.disc.material.color.copy(c).lerp(new THREE.Color(0xffffff), .35); P_.cube.material.color.copy(c);
+      P_.cube.geometry = pxShapeGeo(sh); P_.cube.scale.setScalar(1); } }
+  for (const P_ of [PX.hid, PX.starP]) { P_.cube.geometry = pxShapeGeo('star', true); P_.cube.material.color.set(0xffffff); P_.cube.material.vertexColors = true; P_.cube.material.needsUpdate = true; P_.icon.visible = true; } // (the secret one: a rainbow star)
 }
-// the hint over each portal: the same simple shapes you draw to wriggle free, one for each platform, in that platform's colour
-const PX_SG = {};
-function pxShapeOf(o) { const ks = Object.keys(ESC_SHAPES), list = PL.filter(q => q.kind !== 'star'); return ks[list.indexOf(o) % ks.length]; }
-function pxShapeGeo(name) { if (PX_SG[name]) return PX_SG[name];
-  const a = ESC_SHAPES[name](), seg = [], w = .17, S = 1.5;
-  for (let i = 0; i < a.length - 1; i++) { const x0 = (a[i][0] - .5) * S, y0 = (.5 - a[i][1]) * S, x1 = (a[i + 1][0] - .5) * S, y1 = (.5 - a[i + 1][1]) * S, L = Math.hypot(x1 - x0, y1 - y0);
-    const b = new THREE.BoxGeometry(L + w, w, w); b.rotateZ(Math.atan2(y1 - y0, x1 - x0)); b.translate((x0 + x1) / 2, (y0 + y1) / 2, 0); seg.push(b); }
-  const m = mergeGeometries(seg); seg.forEach(q => q.dispose()); return PX_SG[name] = m; }
+// the hint over each portal: a bright shape (the drawing shapes plus a few more). Matching shapes are the two ends of one link
+const PX_SG = {}, PX_RED = ['#FF2D2D', '#FF7A00', '#FF1493'], PX_BLUE = ['#008CFF', '#00E5FF', '#8A2BE2'];
+const PX_ICONS = ['circle', 'triangle', 'square', 'zigzag', 'check', 'heart', 'diamond', 'plus'];
+const PX_XTRA = { heart: () => { const a = []; for (let k = 0; k <= 32; k++) { const t = k / 32 * Math.PI * 2; a.push([.5 + .026 * 16 * Math.sin(t) ** 3, .45 - .026 * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))]); } return a; },
+  diamond: () => [[.5, .1], [.82, .5], [.5, .9], [.18, .5], [.5, .1]], plus: [[[.5, .12], [.5, .88]], [[.12, .5], [.88, .5]]],
+  star: () => { const a = []; for (let k = 0; k <= 10; k++) { const t = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? .19 : .42; a.push([.5 + r * Math.cos(t), .52 + r * Math.sin(t)]); } return a; } };
+function pxShapeGeo(name, rainbow) { const key = name + (rainbow ? '*' : ''); if (PX_SG[key]) return PX_SG[key];
+  const f = ESC_SHAPES[name] || PX_XTRA[name], lines = typeof f === 'function' ? [f()] : f, seg = [], w = .17, S = 1.5; let n = 0;
+  for (const a of lines) for (let i = 0; i < a.length - 1; i++) { const x0 = (a[i][0] - .5) * S, y0 = (.5 - a[i][1]) * S, x1 = (a[i + 1][0] - .5) * S, y1 = (.5 - a[i + 1][1]) * S, L = Math.hypot(x1 - x0, y1 - y0);
+    const b = new THREE.BoxGeometry(L + w, w, w); b.rotateZ(Math.atan2(y1 - y0, x1 - x0)); b.translate((x0 + x1) / 2, (y0 + y1) / 2, 0);
+    if (rainbow) { const c = new THREE.Color().setHSL(n++ / 10, 1, .55), cs = []; for (let v = 0; v < b.attributes.position.count; v++) cs.push(c.r, c.g, c.b); b.setAttribute('color', new THREE.Float32BufferAttribute(cs, 3)); }
+    seg.push(b); }
+  const m = mergeGeometries(seg); seg.forEach(q => q.dispose()); return PX_SG[key] = m; }
 // where a portal is right now, and is this point in its doorway?
 const pxPos = P_ => P_.pos.set(P_.o.px + P_.lx, P_.o.py + 2.05 * P_.s, P_.o.pz + P_.lz);
 function pxIn(P_, p) { const d = tmpV.copy(p).sub(P_.pos), dn = d.dot(P_.n), dt = d.dot(P_.t), dy = p.y - P_.o.py;
