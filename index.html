@@ -1192,7 +1192,7 @@ function animateLegs(e, mode, sp = 0) {
 const ANIMAL_SPOTS = [];
 // pastures: one fenced meadow next to each portal. Its animals live there and always try to walk back home.
 const PASTURE_R = 7.5, PASTURES = PORTAL_SPOTS.map(p => { const L = Math.hypot(p.x, p.z); return V(p.x - p.x / L * 8.5, 0, p.z - p.z / L * 8.5); });
-PASTURES.forEach((pa, i) => ['cow', 'cow', 'sheep', 'sheep'].forEach(kind => ANIMAL_SPOTS.push({ kind, pasture: pa, home: V(pa.x + rr(-4, 4), 0, pa.z + rr(-4, 4)) })));
+PASTURES.forEach((pa, i) => (VOLC ? ['cow', 'cow', 'cow'] /* (the volcano: goats only) */ : ['cow', 'cow', 'sheep', 'sheep']).forEach(kind => ANIMAL_SPOTS.push({ kind, pasture: pa, home: V(pa.x + rr(-4, 4), 0, pa.z + rr(-4, 4)) })));
 { // meadow patch (clover and little flowers) and a ring of short wooden fence posts with wide gaps
   const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
   const gr = g.createRadialGradient(128, 128, 60, 128, 128, 128); gr.addColorStop(0, NIGHT ? 'rgba(220,232,255,.55)' : 'rgba(132,214,92,.9)'); gr.addColorStop(.85, NIGHT ? 'rgba(220,232,255,.35)' : 'rgba(132,214,92,.6)'); gr.addColorStop(1, 'rgba(132,214,92,0)');
@@ -6801,7 +6801,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { scoreFlag, jmNext: (a, b) => jmNext(a, b), jmNbrs: n => jmNbrs(n), get JM() { return JM; }, get JG() { return JG; }, sendDog: (o, t) => sendDog(o, t), get ESC() { return ESC; }, escTrace: p => escapeTrace(p), escInk: a => { ESC.ink = a; escapeCheck(); return !!ESC.snap; }, escScore: (a, k) => escScore(escNorm(escResample(a)), k), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { scoreFlag, jmNext: (a, b) => jmNext(a, b), jmNbrs: n => jmNbrs(n), get JM() { return JM; }, get JG() { return JG; }, get EG() { return EG; }, get VO() { return VO; }, sendDog: (o, t) => sendDog(o, t), get ESC() { return ESC; }, escTrace: p => escapeTrace(p), escInk: a => { ESC.ink = a; escapeCheck(); return !!ESC.snap; }, escScore: (a, k) => escScore(escNorm(escResample(a)), k), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -8646,9 +8646,10 @@ if (ICEMAP && S.mummy !== false) { for (const r of robots) frostify(r.model); co
 //  - ERUPTIONS: every so often the volcano rumbles and spits glowing hot rocks all over the island: free ammo, but hot:
 //    hold one for more than a couple of seconds and you have to drop it. They cool down after a while
 //  - STEAM VENTS instead of trampolines (they still launch you)
-//  - mountain GOATS instead of cows: when someone's near, a goat leaps up onto the highest blocks around and kicks
-//    them down on top of them
-//  - the STAR sits on the crater's rim: climb the volcano to get it
+//  - mountain GOATS (no sheep here): they sit on the big burnt trees and in the pastures; come into their patch and they
+//    lock on, leap down and headbutt you
+//  - the STAR: now and then an eruption throws it out with the hot rocks, somewhere random on the island
+//  - the EAGLE: circles high overhead; now and then it swoops, snatches someone up and drops them on the far side
 //  - ASH RAIN now and then: the sky darkens and grey ash drifts down
 //  - SOOTY ROBOTS (Look lab → map outfits): blackened, with glowing cracks
 // ============================================================
@@ -8682,13 +8683,9 @@ if (VOLC) {
   // steam vents instead of trampolines: a ring of black rock round a glowing vent
   { const rimM = new LiteMat({ color: 0x2e2626 }), ventM = new LiteMat({ color: 0x3a1a10, emissive: 0xff4a10, emissiveIntensity: .6 });
     for (const Pd of PADS) { Pd.rim.material = rimM; Pd.mat.material = ventM; } }
-  // ---- the star: on a little stone plinth on the crater's rim, the side facing between the two forts ----
-  { const a = Math.atan2(56, 18), R = VOLCANO.cr + .6, x = Math.cos(a) * R, z = Math.sin(a) * R, y = TH(x, z);
-    const pl = new THREE.Mesh(new RoundedBoxGeometry(1.6, .6, 1.6, 2, .1), bm); pl.position.set(x, y + .3, z); scene.add(pl);
-    const c = world.createCollider(RAPIER.ColliderDesc.cuboid(.8, .3, .8).setTranslation(x, y + .3, z)); byCollider.set(c.handle, { type: 'static' }); VO.starAt = V(x, y + 1.2, z); }
+  // (the star isn't kept anywhere: eruptions throw it out now and then, see erupt)
 }
-function volcanoStar() { const s = newBlock('bomb', VO.starAt.clone(), { anchored: true }); s.kind = 'streak'; s.mesh.clear(); s.core = null; s.mesh.material = streakMat; s.mesh.renderOrder = 0; s.slot = null; s.origin = null; s.onTaken = () => { VO.star = null; VO.starT = 90; }; VO.star = s; }
-if (VOLC) volcanoStar();
+function volcanoStar(at, lv) { const s = newBlock('bomb', at.clone()); if (lv && s.body) { s.body.setLinvel(lv, true); s.body.setAngvel({ x: rr(-4, 4), y: rr(-4, 4), z: rr(-4, 4) }, true); } s.kind = 'streak'; s.mesh.clear(); s.core = null; s.mesh.material = streakMat; s.mesh.renderOrder = 0; s.slot = null; s.origin = null; s.onTaken = () => { VO.star = null; }; VO.star = s; return s; }
 // ---- the lava burns ----
 function inLava(p, foot = .7) { return VOLC && lavaD(p.x, p.z) < 1 && !onBridge(p.x, p.z) && p.y - TH(p.x, p.z) < foot; }
 // ---- eruptions: rumble, smoke, and a shower of glowing hot rocks ----
@@ -8703,6 +8700,9 @@ function erupt() {
     const e = newBlock('stone', from, { dims: V(sz, sz * rr(.8, 1.1), sz), color: '#3a2622' }); if (!e.body) continue;
     e.body.setLinvel({ x: (x - from.x) / T, y: (TH(x, z) - from.y) / T + 9.81 * T / 2 * (G / 9.81), z: (z - from.z) / T }, true); e.body.setAngvel({ x: rr(-4, 4), y: rr(-4, 4), z: rr(-4, 4) }, true);
     e.hotT = 25; VO.rocks.push(e); }
+  if (!VO.star && (!VO.hadStar || Math.random() < .6)) { VO.hadStar = true; // ...and now and then the STAR comes flying out with them (anywhere on the island)
+    let x = 0, z = 0; for (let t = 0; t < 30; t++) { x = rr(-MX + 8, MX - 8); z = rr(-MZ + 8, MZ - 8); if (Math.hypot(x, z) > VOLCANO.R + 4 && lavaD(x, z) > 3 && !Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 4 && Math.abs(z - F.z) < FORT_RZ + 4)) break; }
+    const from = V(0, VOLCANO.H + 1, 0), T = 3; volcanoStar(from, { x: x / T, y: (TH(x, z) + .6 - from.y) / T + G * T / 2, z: z / T }); }
   setTimeout(() => { if (match.state === 'play') volleyOfBombs(4); }, 400); // (and a volley of lava bombs with them)
 }
 // ---- VOLCANIC BOMBS: the volcano lobs big blobs of glowing lava high into the air. A dark red shadow on the ground
@@ -8765,77 +8765,101 @@ function updateVolcano(dt) {
   // steam from the vents
   for (const Pd of PADS) if (Math.random() < dt * 6) emit(V(Pd.x + rr(-.8, .8), .4, Pd.z + rr(-.8, .8)), 0xeeeeee, V(rr(-.3, .3), rr(3, 6), rr(-.3, .3)), rr(.3, .6), 1.4, -1);
   // the star on the rim
-  if (VO.star && VO.star.dead) { VO.star = null; VO.starT = 90; }
-  if (!VO.star && match.state === 'play') { VO.starT -= dt; if (VO.starT <= 0) volcanoStar(); }
-  if (VO.star && VO.star.mesh) { VO.star.mesh.material.emissiveIntensity = .45 + .25 * Math.sin(t * 5); if (Math.random() < dt * 8) emit(V(VO.starAt.x + rr(-.6, .6), VO.starAt.y + rr(-.4, .6), VO.starAt.z + rr(-.6, .6)), 0xffe27a, V(0, .8, 0), .12, .7, 0); }
-  updateGoats(dt); updateTreeGoats(dt); updateAsh(dt); updateLavaBombs(dt);
+  if (VO.star && VO.star.dead) VO.star = null;
+  if (VO.star && VO.star.mesh && VO.star.body && !VO.star.holder) { const q = VO.star.body.translation(); VO.star.mesh.material.emissiveIntensity = .45 + .25 * Math.sin(t * 5); if (Math.random() < dt * 8) emit(V(q.x + rr(-.6, .6), q.y + rr(-.4, .6), q.z + rr(-.6, .6)), 0xffe27a, V(0, .8, 0), .12, .7, 0); }
+  updateVolcGoats(dt); updateAsh(dt); updateLavaBombs(dt); updateEagle(dt);
 }
 Object.assign(SFX_SYNTH, { rumble: () => { thump(38, 1, .05, 2.4); noiseHit(2.6, 'lowpass', 160, .7, 0, true, 60, 1); } });
 // ============================================================
-// GOATS: when someone's nearby, a goat leaps up onto the highest blocks it can find near them and kicks them down
+// GOATS: every goat has a home: the broad top of a big burnt tree, or the pasture it chills in. Come into its patch
+// (about half a fort's size round its home) and it locks on to you: a glare and an angry BAA, then it leaps down,
+// charges and HEADBUTTS you flying. Then it trots back home (and up its tree). Get out of its patch and it gives up.
+// (Grab one and throw it if you like: it's a goat, it'll get up and go home.)
 // ============================================================
-function updateGoats(dt) {
-  if (NET && NET.client) return;
-  for (const a of blocks) { if (a.kind !== 'animal' || a.animal !== 'cow' || a.dead || !a.body || a.holder || a.rage) continue;
-    const L = a.goat || (a.goat = { cool: rr(4, 10), leap: null });
-    if (L.leap) { L.leap.t += dt; const G_ = L.leap; if (G_.t >= G_.T) { // landed up top: KICK
-        const top = G_.to; unanchorAround(top, 1.8); sfx('baaAngry', top); fxDebris(top, 0x8a7a70, 16, 6);
-        for (const b of blocks) { if (b.dead || !b.body || b.holder || b.anchored || b.kind === 'flag' || b === a) continue; const p = b.body.translation(); if (Math.hypot(p.x - top.x, p.y - top.y, p.z - top.z) > 2.6) continue;
-          const m = b.body.mass(), d = G_.toward; b.body.applyImpulse({ x: d.x * 6 * m, y: 3 * m, z: d.z * 6 * m }, true); b.live = true; b.thrower = null; b.liveT = 0; }
-        L.leap = null; L.cool = rr(8, 14); } continue; }
-    if ((L.cool -= dt) > 0 || a.upright === false) continue;
-    const g = a.body.translation(); let tgt = null, bd = 14;
-    for (const r of robots) { if (r.state !== 'play') continue; const p = rPos(r), d = Math.hypot(p.x - g.x, p.z - g.z); if (d < bd) { bd = d; tgt = r; } }
-    if (!tgt) { L.cool = 2; continue; }
-    const rp = rPos(tgt); let best = null, by = 1.8;
-    for (const b of blocks) { if (b.dead || !b.body || !b.anchored || b.kind === 'flag' || b.kind === 'animal') continue; const p = b.body.translation(); if (Math.hypot(p.x - rp.x, p.z - rp.z) > 7 || Math.hypot(p.x - g.x, p.z - g.z) > 16) continue;
-      const top = p.y + b.dims.y / 2; if (top > by && top < 9) { by = top; best = b; } }
-    if (!best) { L.cool = 3; continue; }
-    const p = best.body.translation(), to = V(p.x, p.y + best.dims.y / 2 + .9, p.z), T = .9, toward = V(rp.x - p.x, 0, rp.z - p.z).normalize();
-    a.body.setLinvel({ x: (to.x - g.x) / T, y: (to.y - g.y) / T + G * T / 2, z: (to.z - g.z) / T }, true); a.upright = false;
-    L.leap = { t: 0, T, to, toward }; sfx('baa', V(g.x, g.y, g.z)); }
-}
-// ============================================================
-// TREE GOATS: more goats, roaming all over the island. They love the big burnt trees: they leap up and sit on the
-// broad top for a while, gazing about, then hop down and wander off again. Grab one and it's an ordinary goat
-// (it still leaps and kicks, like all the goats).
-// ============================================================
+const GOAT_R = 15, GOAT_SEE = 22, GOAT_RUN = 8.6;
 const TGOATS = [], tgSide = (x, z) => Math.abs(z) < 8 ? Math.sign(x) || 1 : Math.sign(x - lavaX(z)) || 1; // (which side of the lava rivers)
-if (VOLC) { const side = tgSide;
+if (VOLC) {
   const trees = TREES.filter(t => t.perch).sort((a, b) => a.x - b.x), pickT = [trees[0], trees[1], trees[Math.floor(trees.length / 2)], trees[trees.length - 1], trees[trees.length - 2], trees[Math.floor(trees.length / 2) - 1]].filter(Boolean);
   for (const t of [...new Set(pickT)]) { const y = TH(t.x, t.z) + t.perch + .7, e = newBlock('animal', V(t.x, y, t.z), { animal: 'cow', dims: V(1, 1.15, 2.1), color: '#f2f2ee' });
-    e.body.setEnabledRotations(false, true, false, true); e.upright = true; e.noWander = true; e.tg = { st: 'perch', tree: t, t: rr(8, 25), side: side(t.x, t.z) }; t.goat = e; TGOATS.push(e); }
+    e.body.setEnabledRotations(false, true, false, true); e.upright = true; e.noWander = true; e.gh = { kind: 'tree', tree: t, home: V(t.x, 0, t.z), st: 'rest', t: 0, cool: rr(1, 4) }; t.goat = e; TGOATS.push(e); }
+  for (const a of blocks) if (a.kind === 'animal' && a.animal === 'cow' && !a.gh) a.gh = { kind: 'pasture', home: a.wander.home.clone(), st: 'rest', t: 0, cool: rr(1, 4) };
 }
-function updateTreeGoats(dt) {
-  if (!VOLC || (NET && NET.client)) return;
-  for (const e of TGOATS) { if (e.dead || !e.body) continue; const G_ = e.tg, p = e.body.translation(), w = e.wander;
-    if (e.holder || e.rage || (e.goat && e.goat.leap) || e.live) { if (G_.st !== 'roam') { if (G_.tree.goat === e) G_.tree.goat = null; G_.st = 'roam'; G_.t = rr(10, 20); } e.noWander = false; continue; }
-    G_.t -= dt;
-    if (G_.st === 'perch') { e.noWander = true; const lv = e.body.linvel(); e.body.setLinvel({ x: 0, y: Math.min(lv.y, 0), z: 0 }, true);
-      const r_ = e.body.rotation(), yaw = 2 * Math.atan2(r_.y, r_.w); e.body.setAngvel({ x: 0, y: Math.sin(now() / 1300 + e.id) * .6, z: 0 }, true); animateLegs(e, 'walk', 0);
-      const top = TH(G_.tree.x, G_.tree.z) + G_.tree.perch; if (p.y < top - .3) { G_.tree.goat = null; G_.st = 'roam'; G_.t = rr(10, 20); continue; } // (knocked off)
-      if ((e.idleT = (e.idleT ?? rr(4, 10)) - dt) <= 0) { e.idleT = rr(8, 16); if (P && rPos(P).distanceTo(V(p.x, p.y, p.z)) < 30) sfx('baa', V(p.x, p.y, p.z)); }
-      if (G_.t <= 0 && e.upright) { // hop down and go for a wander
-        const a = rr(0, 6.28), to = V(p.x + Math.cos(a) * 4, 0, p.z + Math.sin(a) * 4); to.y = TH(to.x, to.z) + .7; const T = .8;
-        e.body.setLinvel({ x: (to.x - p.x) / T, y: (to.y - p.y) / T + G * T / 2, z: (to.z - p.z) / T }, true); e.upright = false; e.body.setEnabledRotations(true, true, true, true);
-        G_.tree.goat = null; G_.st = 'roam'; G_.t = rr(12, 22); e.noWander = false; sfx('baa', V(p.x, p.y, p.z)); }
-      continue; }
-    if (G_.st === 'climb') { e.noWander = true; const A = G_.arc, k = clamp(1 - G_.t / A.T, 0, 1); // a goat's leap: straight up through the branches onto the top
+function goatFace(e, x, z, k = 4) { const p = e.body.translation(), r_ = e.body.rotation(), yaw = 2 * Math.atan2(r_.y, r_.w); e.body.setAngvel({ x: 0, y: angDiff(yaw, Math.atan2(x - p.x, z - p.z)) * k, z: 0 }, true); }
+function goatRun(e, x, z, sp) { const p = e.body.translation(), dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz) || 1, lv = e.body.linvel(); e.body.setLinvel({ x: dx / d * sp, y: lv.y, z: dz / d * sp }, true); goatFace(e, x, z, 6); animateLegs(e, 'walk', sp); return d; }
+function goatArc(e, to, T, h) { const p = e.body.translation(); e.gh.arc = { from: V(p.x, p.y, p.z), to, T, h }; e.gh.at = 0; e.noWander = true; }
+function updateVolcGoats(dt) {
+  if (!VOLC || (NET && NET.client)) return; const live = match.state === 'play';
+  for (const e of blocks) { const H_ = e.gh; if (!H_ || e.dead || !e.body) continue; const p = e.body.translation();
+    if (e.holder || e.live || e.rage) { if (H_.st !== 'back') { if (H_.tree && H_.tree.goat === e) H_.tree.goat = null; H_.st = 'back'; H_.t = 0; } e.noWander = false; continue; }
+    H_.cool -= dt; H_.t += dt;
+    if (H_.arc) { const A = H_.arc; H_.at += dt; const k = clamp(H_.at / A.T, 0, 1); // a goat's leap (up onto its tree, or down off it)
       e.body.setTranslation({ x: A.from.x + (A.to.x - A.from.x) * k, y: A.from.y + (A.to.y - A.from.y) * k + 4 * A.h * k * (1 - k), z: A.from.z + (A.to.z - A.from.z) * k }, true); e.body.setLinvel({ x: 0, y: 0, z: 0 }, true); animateLegs(e, 'held');
-      if (G_.t <= 0) { G_.st = 'perch'; G_.t = rr(15, 35); e.upright = true; e.body.setEnabledRotations(false, true, false, true); } continue; }
-    // roaming: off to somewhere new every so often (never across the lava), then back to a free tree
-    e.noWander = false; if (!e.upright) continue;
-    if (G_.t > 0) { if (!G_.to || Math.hypot(p.x - G_.to.x, p.z - G_.to.z) < 3 || (G_.re = (G_.re || 0) - dt) <= 0) { G_.re = rr(6, 10);
-        for (let k = 0; k < 20; k++) { const x = rr(-MX + 6, MX - 6), z = rr(-MZ + 6, MZ - 6); if (lavaD(x, z) > 4 && Math.hypot(x, z) > VOLCANO.R + 3 && tgSide(x, z) === tgSide(p.x, p.z) && !Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 3 && Math.abs(z - F.z) < FORT_RZ + 3)) { G_.to = V(x, 0, z); break; } } }
-      if (G_.to) w.home = G_.to.clone(); continue; }
-    if (!G_.tree || G_.tree.goat) { let best = null, bd = 1e9; for (const t of TREES) { if (!t.perch || (t.goat && t.goat !== e) || tgSide(t.x, t.z) !== tgSide(p.x, p.z)) continue; const d = Math.hypot(t.x - p.x, t.z - p.z); if (d < bd) { bd = d; best = t; } } if (!best) { G_.t = 5; continue; } G_.tree = best; }
-    const t = G_.tree, d = Math.hypot(t.x - p.x, t.z - p.z); w.home = V(t.x, 0, t.z);
-    if (d < 10 && d >= 3.2) { e.noWander = true; const dx = (t.x - p.x) / d, dz = (t.z - p.z) / d, lv = e.body.linvel(); e.body.setLinvel({ x: dx * 3.6, y: lv.y, z: dz * 3.6 }, true); const r_ = e.body.rotation(), yaw = 2 * Math.atan2(r_.y, r_.w); e.body.setAngvel({ x: 0, y: angDiff(yaw, Math.atan2(dx, dz)) * 3, z: 0 }, true); animateLegs(e, 'walk', 3.6);
-      G_.stuck = Math.hypot(lv.x, lv.z) < .6 ? (G_.stuck || 0) + dt : 0; if (G_.stuck > 2) { G_.stuck = 0; t.goat = null; G_.tree = null; G_.t = rr(5, 9); } } // (trotting up to the tree; give up if something's in the way)
-    if (d < 3.2) { const to = V(t.x, TH(t.x, t.z) + t.perch + .75, t.z), T = 1.0; t.goat = e; // a huge leap up onto the top
-      G_.arc = { from: V(p.x, p.y, p.z), to, T, h: 2.5 }; G_.st = 'climb'; G_.t = T; e.noWander = true; sfx('baa', V(p.x, p.y, p.z)); }
+      if (k >= 1) { H_.arc = null; e.upright = true; e.body.setEnabledRotations(false, true, false, true); } continue; }
+    if (!e.upright) continue; // (knocked over: the usual getting-up first)
+    const enemy = () => { let best = null, bd = GOAT_SEE; for (const r of robots) { if (r.state !== 'play' || !r.body || r.ghostT > 0 || r.glitchHeld) continue; const q = rPos(r); if (Math.hypot(q.x - H_.home.x, q.z - H_.home.z) > GOAT_R) continue; const d = Math.hypot(q.x - p.x, q.z - p.z); if (d < bd) { bd = d; best = r; } } return best; };
+    if (H_.st === 'rest') {
+      if (H_.kind === 'tree') { const top = TH(H_.tree.x, H_.tree.z) + H_.tree.perch; e.noWander = true; const lv = e.body.linvel(); e.body.setLinvel({ x: 0, y: Math.min(lv.y, 0), z: 0 }, true); e.body.setAngvel({ x: 0, y: Math.sin(now() / 1300 + e.id) * .6, z: 0 }, true); animateLegs(e, 'walk', 0);
+        if (p.y < top - .3) { H_.tree.goat = null; H_.st = 'back'; H_.t = 0; continue; } } // (knocked off its tree)
+      else { e.noWander = false; e.wander.home = H_.home.clone(); }
+      if (live && H_.cool <= 0 && (H_.look = (H_.look || 0) - dt) <= 0) { H_.look = .25; const r = enemy(); if (r) { H_.st = 'lock'; H_.t = 0; H_.tgt = r; sfx('baaAngry', V(p.x, p.y, p.z)); fxBurst(V(p.x, p.y + 1.4, p.z), 0xff3a1a, .7, .25); } }
+      continue; }
+    const r = H_.tgt, rp = r && r.body ? rPos(r) : null, lost = !rp || r.state !== 'play' || r.glitchHeld || Math.hypot(rp.x - H_.home.x, rp.z - H_.home.z) > GOAT_R + 5;
+    if (H_.st === 'lock') { e.noWander = true; const lv = e.body.linvel(); e.body.setLinvel({ x: 0, y: lv.y, z: 0 }, true); if (rp) goatFace(e, rp.x, rp.z, 8); // the glare...
+      if (Math.random() < dt * 20) emit(V(p.x, p.y + 1.2, p.z), 0xff5a2a, V(rr(-.5, .5), rr(1, 2), rr(-.5, .5)), .12, .4, 0);
+      if (lost) { H_.st = H_.kind === 'tree' ? 'rest' : 'back'; continue; }
+      if (H_.t > .6) { H_.st = 'charge'; H_.t = 0; if (H_.kind === 'tree') { if (H_.tree.goat === e) H_.tree.goat = null; const d = V(rp.x - p.x, 0, rp.z - p.z).setLength(3.5), to = V(H_.tree.x + d.x, 0, H_.tree.z + d.z); to.y = TH(to.x, to.z) + .75; goatArc(e, to, .7, 1.2); } }
+      continue; }
+    if (H_.st === 'charge') { e.noWander = true; // ...and the charge
+      if (lost || H_.t > 9) { H_.st = 'back'; H_.t = 0; continue; }
+      const d = goatRun(e, rp.x, rp.z, GOAT_RUN);
+      if (d < 1.7 && Math.abs(rp.y - p.y) < 1.6) { const dir = V(rp.x - p.x, 0, rp.z - p.z).normalize(); ragdoll(r, V(dir.x * 13, 0, dir.z * 13), null); r.body && r.body.setLinvel({ x: dir.x * 13, y: 8, z: dir.z * 13 }, true);
+        sfx('hit', rp); sfx('baaAngry', rp); fxBurst(rp, 0xffffff, 1.2, .25); if (r.isPlayer) { toast('HEADBUTTED BY A GOAT!'); shake = Math.max(shake, .35); } H_.st = 'back'; H_.t = 0; H_.cool = rr(4, 7); }
+      continue; }
+    if (H_.st === 'back') { e.noWander = true; // trotting home (and back up its tree)
+      if (H_.kind === 'tree') { const t = H_.tree; if (t.goat && t.goat !== e) { let best = null, bd = 1e9; for (const q of TREES) { if (!q.perch || q.goat || tgSide(q.x, q.z) !== tgSide(p.x, p.z)) continue; const dd = Math.hypot(q.x - p.x, q.z - p.z); if (dd < bd) { bd = dd; best = q; } } if (best) { H_.tree = best; H_.home = V(best.x, 0, best.z); } }
+        const d = Math.hypot(H_.tree.x - p.x, H_.tree.z - p.z); if (d > 3.2 && H_.t < 7) { goatRun(e, H_.tree.x, H_.tree.z, 4.2); continue; }
+        H_.tree.goat = e; goatArc(e, V(H_.tree.x, TH(H_.tree.x, H_.tree.z) + H_.tree.perch + .75, H_.tree.z), 1, 2.5); H_.st = 'rest'; H_.t = 0; H_.cool = Math.max(H_.cool, 1.5); sfx('baa', V(p.x, p.y, p.z)); continue; }
+      const d = Math.hypot(H_.home.x - p.x, H_.home.z - p.z); if (d > 4 && H_.t < 12) { goatRun(e, H_.home.x, H_.home.z, 4.2); continue; } H_.st = 'rest'; H_.t = 0; }
   }
 }
+// ============================================================
+// THE EAGLE: circles high over the island. Every so often it picks someone (not in a fort), screeches and swoops,
+// snatches them up (they drop whatever they're carrying), carries them right across the island and lets go over the
+// far side. A big shadow on the ground follows it down, so you can see it coming.
+// ============================================================
+const EG = { st: 'circle', t: rr(25, 40), a: 0, x: 0, y: 46, z: 0, yaw: 0, tgt: null, g: null, wings: [], sh: null };
+if (VOLC) { const g = new THREE.Group(), M_ = c => new LiteMat({ color: c }), brown = M_(0x5a3a22), white = M_(0xf4f0e6), gold = M_(0xf0b020);
+  const box = (w, h, d, m, x = 0, y = 0, z = 0, p = g) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; p.add(o); return o; };
+  box(1.3, 1, 2.6, brown); box(1, .95, .95, white, 0, .35, 1.6); box(.4, .3, .55, gold, 0, .2, 2.3); box(.08, .14, .02, M_(0x111111), .3, .5, 2.08); box(.08, .14, .02, M_(0x111111), -.3, .5, 2.08); // (body, white head, hooked yellow beak, eyes)
+  box(1.4, .25, 1.2, brown, 0, -.1, -1.8); for (const sx of [-1, 1]) { const w = new THREE.Group(); w.position.set(sx * .6, .25, .1); g.add(w); box(3.4, .18, 1.6, brown, sx * 1.7, 0, 0, w); box(1.6, .14, 1.2, M_(0x4a2e1a), sx * 3.9, 0, -.15, w); EG.wings.push({ w, sx }); }
+  for (const sx of [-1, 1]) box(.25, .5, .25, gold, sx * .35, -.7, .3); // (talons)
+  g.scale.setScalar(1.3); scene.add(g); EG.g = g;
+  EG.sh = new THREE.Mesh(new THREE.CircleGeometry(2.4, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })); EG.sh.renderOrder = 2; scene.add(EG.sh); }
+const egSafe = (x, z) => Math.abs(x) < MX - 8 && Math.abs(z) < MZ - 8 && lavaD(x, z) > 4 && Math.hypot(x, z) > VOLCANO.R + 3 && !Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 3 && Math.abs(z - F.z) < FORT_RZ + 3);
+function updateEagle(dt) {
+  if (!VOLC || !EG.g) return; const live = match.state === 'play' && !RW_LOCK && !(NET && NET.client); EG.t -= dt;
+  if (match.state !== 'play' && EG.st !== 'circle') { if (EG.tgt) EG.tgt.glitchHeld = null; EG.tgt = null; EG.st = 'circle'; EG.t = rr(25, 40); }
+  const at = (x, y, z, k) => { EG.x += (x - EG.x) * k; EG.y += (y - EG.y) * k; EG.z += (z - EG.z) * k; };
+  if (EG.st === 'circle') { EG.a += dt * .22; const tx = Math.cos(EG.a) * 52, tz = Math.sin(EG.a) * 30; at(tx, 46, tz, Math.min(1, dt * 1.5));
+    if (live && EG.t <= 0) { const c = robots.filter(r => r.state === 'play' && r.body && !r.glitchHeld && r.ghostT <= 0 && egSafe(rPos(r).x, rPos(r).z) && rPos(r).y - TH(rPos(r).x, rPos(r).z) < 3);
+      const r = c[Math.floor(Math.random() * c.length)]; if (r) { EG.st = 'dive'; EG.tgt = r; EG.t = 2.2; sfx('swoop', V(EG.x, EG.y, EG.z)); sfx('screech', rPos(r)); if (r.isPlayer) toast('EAGLE!'); } else EG.t = 5; } }
+  else if (EG.st === 'dive') { const r = EG.tgt, q = r && r.body ? rPos(r) : null; // down it comes, homing in (dodge out of the way!)
+    if (!q || r.state !== 'play' || r.glitchHeld) { EG.st = 'circle'; EG.t = rr(15, 25); }
+    else { at(q.x, q.y + 1.6, q.z, Math.min(1, dt * (1.2 + 2.2 * (1 - EG.t / 2.2)))); const d = Math.hypot(EG.x - q.x, EG.y - q.y - 1.6, EG.z - q.z);
+      if (d < 1.4) { EG.st = 'carry'; dropFlags(r); if (r.stack.length) { for (const e of r.stack.splice(0)) { e.holder = null; makeBody(e, V(q.x, q.y + 1.5, q.z), null, { x: rr(-2, 2), y: 3, z: rr(-2, 2) }); } refreshHeld(r); }
+        r.glitchHeld = EG; let tx = -q.x, tz = -q.z; for (let k = 0; k < 30 && !egSafe(tx, tz); k++) { tx = -q.x + rr(-14, 14); tz = -q.z + rr(-10, 10); } if (!egSafe(tx, tz)) { tx = -FORT.blue.x * .55 * Math.sign(q.x || 1); tz = 0; }
+        EG.drop = V(tx, 0, tz); EG.from = V(EG.x, EG.y, EG.z); EG.t = 0; EG.T = clamp(Math.hypot(tx - q.x, tz - q.z) / 16, 2, 5); sfx('screech', q); if (r.isPlayer) { toast('CARRIED OFF BY THE EAGLE!'); buzz('lock'); } }
+      else if (EG.t < -1.5) { EG.st = 'circle'; EG.t = rr(12, 20); } } } // (missed: back up it goes)
+  else if (EG.st === 'carry') { const r = EG.tgt; EG.t += dt; const k = Math.min(1, EG.t / EG.T), hs = k * k * (3 - 2 * k);
+    EG.x = EG.from.x + (EG.drop.x - EG.from.x) * hs; EG.z = EG.from.z + (EG.drop.z - EG.from.z) * hs; EG.y = EG.from.y + (TH(EG.drop.x, EG.drop.z) + 12 - EG.from.y) * k + 18 * Math.sin(k * Math.PI);
+    if (r && r.body && r.state === 'play') { r.body.setTranslation({ x: EG.x, y: EG.y - 2, z: EG.z }, true); r.body.setLinvel({ x: 0, y: 0, z: 0 }, true); r.pt = null; }
+    if (k >= 1 || !r || r.state !== 'play') { if (r) { r.glitchHeld = null; if (r.body) r.body.setLinvel({ x: rr(-1, 1), y: -2, z: rr(-1, 1) }, true); } EG.tgt = null; EG.st = 'circle'; EG.t = rr(25, 45); sfx('screech', V(EG.x, EG.y, EG.z)); } }
+  // flapping, leaning into its turns, and the shadow underneath
+  const px = EG.g.position.x, pz = EG.g.position.z; EG.g.position.set(EG.x, EG.y, EG.z); const mx = EG.x - px, mz = EG.z - pz; if (Math.hypot(mx, mz) > .01) { const ty = Math.atan2(mx, mz); EG.g.rotation.z = clamp(angDiff(EG.yaw, ty) * 8, -.6, .6); EG.yaw += angDiff(EG.yaw, ty) * Math.min(1, dt * 4); }
+  EG.g.rotation.y = EG.yaw; const fl = EG.st === 'circle' ? Math.sin(now() / 400) * .25 : EG.st === 'dive' ? -.7 : Math.sin(now() / 120) * .6; for (const W of EG.wings) W.w.rotation.z = W.sx * fl;
+  const gy = TH(EG.x, EG.z); EG.sh.position.set(EG.x, gy + .12, EG.z); EG.sh.material.opacity = clamp(.45 - (EG.y - gy) / 90, .08, .45); EG.sh.scale.setScalar(EG.st === 'dive' ? 1.3 : 1);
+}
+Object.assign(SFX_SYNTH, { screech: () => { const o = AC.createOscillator(), g = AC.createGain(), t0 = AC.currentTime; o.type = 'sawtooth'; o.frequency.setValueAtTime(2200, t0); o.frequency.exponentialRampToValueAtTime(3400, t0 + .12); o.frequency.exponentialRampToValueAtTime(1400, t0 + .7); g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.09, t0 + .04); g.gain.exponentialRampToValueAtTime(.0001, t0 + .75); o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + .8); } });
 // ============================================================
 // ASH RAIN: now and then the sky darkens and grey ash drifts down
 // ============================================================
