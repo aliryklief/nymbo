@@ -892,10 +892,23 @@ function craterH(x, z) { let h = 0; if (!DESERT) return 0;
 function duneH(x, z) { let h = 0; for (const D of DUNES) { const ca = Math.cos(D.a), sa = Math.sin(D.a), dx = x - D.x, dz = z - D.z, u = dx * ca + dz * sa, v = -dx * sa + dz * ca;
     const along = Math.max(0, 1 - (u / D.l) ** 2); if (along <= 0) continue; const s = v < 0 ? -v / D.w : v / (D.w * .38); if (s >= 1) continue; // (steep slip face on the +v side)
     h = Math.max(h, D.h * Math.sqrt(along) * (v < 0 ? .5 + .5 * Math.cos(Math.PI * s) : 1 - s * s)); } return h; }
+// volcano island's rough lava-rock ground: lumpy mounds and ridges everywhere (the same both sides, turned round the middle),
+// flattening out round the forts, the lava rivers (they run along the valley floors), the vents, hubs, portals, pastures and the edge
+function volcRough(x, z) {
+  let n = .55 * Math.cos(x * .13 + z * .07) * Math.cos(z * .17 - x * .05) + .35 * Math.cos(x * .23 - z * .19) + .22 * Math.cos(x * .41 + z * .33) + .15 * Math.cos(x * .07 + z * .29);
+  n = Math.max(0, n - .05); if (n <= 0) return 0; let k = 1;
+  for (const t of ['blue', 'red']) { const F = FORT[t], dx = Math.max(0, Math.abs(x - F.x) - (FORT_RX + 3)), dz = Math.max(0, Math.abs(z - F.z) - (FORT_RZ + 3)); k = Math.min(k, clamp((Math.hypot(dx, dz) - 1) / 7, 0, 1)); }
+  if (Math.abs(z) >= 8) k = Math.min(k, clamp((Math.abs(x - lavaX(z)) - 3.5) / 4, 0, 1));
+  for (const p of [...TRAMP_SPOTS, ...HUBS, ...PORTAL_SPOTS]) k = Math.min(k, clamp((Math.hypot(x - p.x, z - p.z) - 5) / 5, 0, 1));
+  for (const p of PASTURE_C) k = Math.min(k, clamp((Math.hypot(x - p.x, z - p.z) - 10) / 4, 0, 1));
+  for (const S_ of STRIP_SPOTS) k = Math.min(k, clamp((Math.hypot(x - S_.x - S_.dx * 4, z - S_.z - S_.dz * 4) - 7) / 5, 0, 1));
+  k = Math.min(k, clamp((MX - Math.abs(x)) / 5 - .4, 0, 1), clamp((MZ - Math.abs(z)) / 5 - .4, 0, 1));
+  return 4.2 * n * k;
+}
 function TH(x, z) {
   if (!TERRAIN) return 0;
   if (PLAT) { const o = plStaticAt(x, z); return o ? o.y : 0; }
-  if (VOLC) return volcanoH(x, z);
+  if (VOLC) return Math.max(volcanoH(x, z), volcRough(x, z));
   if (DESERT) { let h = duneH(x, z), c = craterH(x, z); if (h <= 0 && c <= 0) return 0; let k = 1;
     for (const t of ['blue', 'red']) { const F = FORT[t], dx = Math.max(0, Math.abs(x - F.x) - (FORT_RX + 4)), dz = Math.max(0, Math.abs(z - F.z) - (FORT_RZ + 4)); k = Math.min(k, clamp(Math.hypot(dx, dz) / 6, 0, 1)); }
     for (const p of [...TRAMP_SPOTS, ...HUBS, ...PORTAL_SPOTS, ...PASTURE_C]) k = Math.min(k, clamp((Math.hypot(x - p.x, z - p.z) - (PASTURE_C.includes(p) ? 11 : 5)) / 5, 0, 1));
@@ -951,7 +964,7 @@ function tree(x, z, h) {
 }
 // trees: two groves on the flanks give cover for sneaking round, plus a few loners. The middle stays open.
 // same 27 trees as before, spread wider: smaller groves, a few round each pasture (the corners looked empty), more loners
-const GROVES = (TOY ? [{ x: -60, z: 24, n: 3 }, { x: 60, z: -24, n: 3 }, { x: -24, z: -42, n: 3 }, { x: 24, z: 42, n: 3 }] : JUNGLE ? [{ x: -60, z: -10, n: 6 }, { x: 60, z: 10, n: 6 }, { x: -30, z: 44, n: 5 }, { x: 30, z: -44, n: 5 }, { x: -42, z: -40, n: 4 }, { x: 42, z: 40, n: 4 }] : VOLC ? [{ x: -62, z: -38, n: 4 }, { x: 62, z: 38, n: 4 }, { x: -36, z: 44, n: 3 }, { x: 36, z: -44, n: 3 }] : ICEMAP ? [{ x: -64, z: -38, n: 4 }, { x: 64, z: 38, n: 4 }, { x: -28, z: 46, n: 3 }, { x: 28, z: -46, n: 3 }] : DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
+const GROVES = (TOY ? [{ x: -60, z: 24, n: 3 }, { x: 60, z: -24, n: 3 }, { x: -24, z: -42, n: 3 }, { x: 24, z: 42, n: 3 }] : JUNGLE ? [{ x: -60, z: -10, n: 6 }, { x: 60, z: 10, n: 6 }, { x: -30, z: 44, n: 5 }, { x: 30, z: -44, n: 5 }, { x: -42, z: -40, n: 4 }, { x: 42, z: 40, n: 4 }] : VOLC ? [{ x: -62, z: -38, n: 5 }, { x: 62, z: 38, n: 5 }, { x: -36, z: 44, n: 4 }, { x: 36, z: -44, n: 4 }] : ICEMAP ? [{ x: -64, z: -38, n: 4 }, { x: 64, z: 38, n: 4 }, { x: -28, z: 46, n: 3 }, { x: 28, z: -46, n: 3 }] : DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
 for (const p of PORTAL_SPOTS) { const L = Math.hypot(p.x, p.z), pa = { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; // trees scattered round the pasture fence, never in the portal's way
   for (let i = 0, n = 0; i < 120 && n < 4; i++) { const a = rnd() * Math.PI * 2, d = rr(11, 16), x = Math.round(pa.x + Math.cos(a) * d), z = Math.round(pa.z + Math.sin(a) * d);
     if (Math.hypot(x - p.x, z - p.z) < 7 || !clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue; tree(x, z, 2 + Math.floor(rnd() * 3)); n++; } }
@@ -1932,6 +1945,7 @@ function updateAnimals(dt) {
       continue;
     }
     if (e.live) continue;
+    if (e.noWander) continue; // (the volcano's tree goats: sitting up a tree, or climbing one — they look after themselves)
     w.t -= dt;
     const pa = e.pasture || w.home, away = Math.hypot(t.x - pa.x, t.z - pa.z);
     if (away > PASTURE_R + 1.5) {
@@ -1977,9 +1991,14 @@ for (const t of TREES) {
       mk(V(t.x, H + .4, t.z), V(4.4, .8, 4.4), '#2c6e2a'); mk(V(t.x, H + 1.2, t.z), V(3.2, .8, 3.2), '#348034'); mk(V(t.x, H + 1.9, t.z), V(1.8, .6, 1.8), '#3c8f3a');
       for (const [fx, fz] of [[1.6, .8], [-1.4, -1.2], [.6, -1.7]]) mk(V(t.x + fx, H - .9, t.z + fz), V(.25, 1.8, .25), '#3f7a2a'); // (vines)
     } else if (VOLC) { // volcano island: burnt, dead trees (a charred trunk, a couple of bare crooked branches)
-      const H = t.h + 1; for (let y = 0; y < H; y++) mk(V(t.x, y + .5, t.z), V(.8, 1, .8), y % 2 ? '#2e2624' : '#3a302c');
-      const ax = (Math.round(t.x + t.z) & 1) ? 1 : -1; mk(V(t.x + ax * .9, H - 1.2, t.z), V(1.2, .4, .4), '#2e2624'); mk(V(t.x + ax * 1.4, H - .6, t.z), V(.4, .9, .4), '#3a302c');
-      mk(V(t.x, H - 2.2, t.z - ax * .8), V(.4, .4, 1), '#2e2624'); mk(V(t.x, H + .2, t.z), V(.5, .4, .5), '#4a3a34');
+      // big old burnt trees now: a thick charred trunk with glowing embers in the cracks, crooked bare branches, and a broad
+      // flat broken-off top where a mountain goat likes to sit
+      const H = t.h + 4; for (let y = 0; y < H; y++) mk(V(t.x, y + .5, t.z), V(y < 2 ? 1.4 : 1.05, 1, y < 2 ? 1.4 : 1.05), y % 3 === 1 ? '#5a2a1a' : y % 2 ? '#2e2624' : '#3a302c');
+      const ax = (Math.round(t.x + t.z) & 1) ? 1 : -1;
+      mk(V(t.x + ax * 1.2, H - 2.4, t.z), V(1.6, .45, .45), '#2e2624'); mk(V(t.x + ax * 1.9, H - 1.6, t.z), V(.45, 1.3, .45), '#3a302c'); mk(V(t.x + ax * 1.9, H - .7, t.z + .4), V(.35, .6, .35), '#2e2624');
+      mk(V(t.x, H - 3.6, t.z - ax * 1.1), V(.45, .45, 1.5), '#2e2624'); mk(V(t.x, H - 2.9, t.z - ax * 1.7), V(.4, 1.1, .4), '#3a302c');
+      mk(V(t.x - ax * .9, H - 1.3, t.z + ax * .8), V(1.1, .4, .4), '#3a302c');
+      mk(V(t.x, H + .2, t.z), V(2, .4, 2), '#4a3a34'); t.perch = H + .4; // (the goat's seat)
     } else if (ICEMAP) { // the frozen lake: snowy pine trees (a dark trunk, three tiers of branches getting smaller, snow on each)
       const H = t.h; for (let y = 0; y < H; y++) mk(V(t.x, y + .5, t.z), V(.8, 1, .8), '#5a3a22');
       let y = H; for (const [w, c] of [[3.4, '#2f6b45'], [2.4, '#357a4d'], [1.4, '#3c8756']]) { mk(V(t.x, y + .4, t.z), V(w, .8, w), c); mk(V(t.x, y + .9, t.z), V(w * .8, .22, w * .8), '#f4f8fc'); y += 1.1; }
@@ -6553,7 +6572,7 @@ for (const e of blocks) if (e.body && e.kind !== 'animal') e.body.sleep();
 eventQueue.drainCollisionEvents(() => {});
 updateBlocks(0);
 requestAnimationFrame(frame);
-window.__nymbo = { scoreFlag, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
+window.__nymbo = { scoreFlag, get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
@@ -8452,6 +8471,42 @@ function erupt() {
     const e = newBlock('stone', from, { dims: V(sz, sz * rr(.8, 1.1), sz), color: '#3a2622' }); if (!e.body) continue;
     e.body.setLinvel({ x: (x - from.x) / T, y: (TH(x, z) - from.y) / T + 9.81 * T / 2 * (G / 9.81), z: (z - from.z) / T }, true); e.body.setAngvel({ x: rr(-4, 4), y: rr(-4, 4), z: rr(-4, 4) }, true);
     e.hotT = 25; VO.rocks.push(e); }
+  setTimeout(() => { if (match.state === 'play') volleyOfBombs(4); }, 400); // (and a volley of lava bombs with them)
+}
+// ---- VOLCANIC BOMBS: the volcano lobs big blobs of glowing lava high into the air. A dark red shadow on the ground
+// shows where each one will come down, flashing faster and faster as it falls: get out of the circle! It bursts like a
+// bomb (anyone in it is knocked out, either team) and leaves the ground scorched and smoking for a few seconds.
+const VB = { list: [], t: 12, geo: new THREE.IcosahedronGeometry(.75, 1), mat: new LiteMat({ color: 0x5a1a0a, emissive: 0xff4a10, emissiveIntensity: 2.2, roughness: .6 }),
+  ringGeo: new THREE.RingGeometry(.82, 1, 40).rotateX(-Math.PI / 2), discGeo: new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2) };
+const VB_R = BOMB_R0 * .5; // (how far the blast reaches: about half a bomb block's)
+function lavaBomb(x, z) {
+  const from = V(rr(-1.5, 1.5), VOLCANO.H + .5, rr(-1.5, 1.5)), T = rr(2.6, 3.4), y = TH(x, z), to = V(x, y, z);
+  const m = new THREE.Mesh(VB.geo, VB.mat); m.position.copy(from); m.scale.setScalar(rr(.9, 1.3)); scene.add(m);
+  const zm = new THREE.MeshBasicMaterial({ color: 0x5a0a00, transparent: true, opacity: .0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), disc = new THREE.Mesh(VB.discGeo, zm);
+  const rm = new THREE.MeshBasicMaterial({ color: 0xff5a1a, transparent: true, opacity: .9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -6 }), ring = new THREE.Mesh(VB.ringGeo, rm);
+  for (const o of [disc, ring]) { o.geometry = o.geometry.clone().scale(VB_R * .85, 1, VB_R * .85).translate(x, 0, z); const P_ = o.geometry.attributes.position; // (draped over the bumps in the ground)
+    for (let i = 0; i < P_.count; i++) P_.setY(i, TH(P_.getX(i), P_.getZ(i)) + .15); P_.needsUpdate = true; o.renderOrder = 2; scene.add(o); }
+  VB.list.push({ m, disc, ring, from, to, T, t: 0, vy: (y - from.y) / T + G * T / 2 });
+}
+function volleyOfBombs(n) { for (let k = 0; k < n; k++) { let x = 0, z = 0; for (let t = 0; t < 40; t++) { x = rr(-MX + 8, MX - 8); z = rr(-MZ + 8, MZ - 8); if (Math.hypot(x, z) > VOLCANO.R + 3 && lavaD(x, z) > 2.5 && !Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 2 && Math.abs(z - F.z) < FORT_RZ + 2)) break; }
+    // (half of them come down near somebody: you'll have to move)
+    if (Math.random() < .5) { const live = robots.filter(r => r.state === 'play' && r.body && !Object.values(FORT).some(F => Math.abs(rPos(r).x - F.x) < FORT_RX + 2 && Math.abs(rPos(r).z - F.z) < FORT_RZ + 2)); const r = live[Math.floor(Math.random() * live.length)]; if (r) { const p = rPos(r); const xx = p.x + rr(-4, 4), zz = p.z + rr(-4, 4); if (lavaD(xx, zz) > 2 && Math.hypot(xx, zz) > VOLCANO.R) { x = xx; z = zz; } } }
+    setTimeout(() => { if (match.state === 'play') lavaBomb(x, z); }, k * rr(250, 600)); }
+  sfx('boom', V(0, VOLCANO.H, 0)); fxBurst(V(0, VOLCANO.H + 1, 0), 0xff6a1a, 3.5, .4); for (let k = 0; k < 16; k++) emit(V(rr(-1.5, 1.5), VOLCANO.H, rr(-1.5, 1.5)), k % 2 ? 0xff8a2a : 0x3a2a26, V(rr(-2, 2), rr(8, 14), rr(-2, 2)), rr(.3, .6), rr(1, 2), -5); }
+function updateLavaBombs(dt) {
+  if (match.state === 'play' && !(NET && NET.client) && !RW_LOCK) { VB.t -= dt; if (VB.t <= 0) { VB.t = rr(14, 22); volleyOfBombs(2 + Math.floor(Math.random() * 3)); } }
+  for (let i = VB.list.length - 1; i >= 0; i--) { const B = VB.list[i]; B.t += dt; const k = Math.min(1, B.t / B.T), left = B.T - B.t;
+    B.m.position.set(B.from.x + (B.to.x - B.from.x) * k, B.from.y + B.vy * B.t - G / 2 * B.t * B.t, B.from.z + (B.to.z - B.from.z) * k); B.m.rotation.x += dt * 5; B.m.rotation.y += dt * 3;
+    if (Math.random() < dt * 40) emit(B.m.position.clone(), Math.random() < .5 ? 0xff7a1a : 0x4a3a36, V(rr(-.5, .5), rr(-.5, .5), rr(-.5, .5)), rr(.2, .45), .8, -1); // (a smoking, sparking trail)
+    // the warning: a dark shadow that grows darker, and a ring that flashes faster and faster
+    const f = Math.sin(B.t * (6 + 30 * k * k)) > 0; B.disc.material.opacity = .15 + .4 * k; B.ring.material.opacity = f ? .95 : .25; B.ring.material.color.set(f ? 0xffd04a : 0xff3a10);
+    if (left > 0) continue;
+    const at = B.to.clone().setY(B.to.y + .5); explode(at, null, null, .5); fxDebris(at, 0xff6a1a, 26, 9); fxDebris(at, 0x2a2020, 16, 6); for (let q = 0; q < 20; q++) emit(at.clone(), q % 2 ? 0xff9a2a : 0xff4a10, V(rr(-5, 5), rr(4, 10), rr(-5, 5)), rr(.2, .4), rr(.6, 1.2), 14);
+    scene.remove(B.m); B.ring.material.dispose(); B.ring.geometry.dispose(); scene.remove(B.ring);
+    B.disc.material.color.set(0x1a0a06); B.scorch = 6; VB.scorched = VB.scorched || []; VB.scorched.push(B); VB.list.splice(i, 1); }
+  if (VB.scorched) for (let i = VB.scorched.length - 1; i >= 0; i--) { const B = VB.scorched[i]; B.scorch -= dt; B.disc.material.opacity = .55 * clamp(B.scorch / 2, 0, 1);
+    if (Math.random() < dt * 5) emit(V(B.to.x + rr(-1.5, 1.5), B.to.y + .2, B.to.z + rr(-1.5, 1.5)), 0x5a4a46, V(rr(-.2, .2), rr(1, 2), rr(-.2, .2)), rr(.25, .5), 1.4, -1);
+    if (B.scorch <= 0) { scene.remove(B.disc); B.disc.material.dispose(); B.disc.geometry.dispose(); VB.scorched.splice(i, 1); } }
 }
 function updateVolcano(dt) {
   if (!VOLC) return;
@@ -8481,7 +8536,7 @@ function updateVolcano(dt) {
   if (VO.star && VO.star.dead) { VO.star = null; VO.starT = 90; }
   if (!VO.star && match.state === 'play') { VO.starT -= dt; if (VO.starT <= 0) volcanoStar(); }
   if (VO.star && VO.star.mesh) { VO.star.mesh.material.emissiveIntensity = .45 + .25 * Math.sin(t * 5); if (Math.random() < dt * 8) emit(V(VO.starAt.x + rr(-.6, .6), VO.starAt.y + rr(-.4, .6), VO.starAt.z + rr(-.6, .6)), 0xffe27a, V(0, .8, 0), .12, .7, 0); }
-  updateGoats(dt); updateAsh(dt);
+  updateGoats(dt); updateTreeGoats(dt); updateAsh(dt); updateLavaBombs(dt);
 }
 Object.assign(SFX_SYNTH, { rumble: () => { thump(38, 1, .05, 2.4); noiseHit(2.6, 'lowpass', 160, .7, 0, true, 60, 1); } });
 // ============================================================
@@ -8507,6 +8562,47 @@ function updateGoats(dt) {
     const p = best.body.translation(), to = V(p.x, p.y + best.dims.y / 2 + .9, p.z), T = .9, toward = V(rp.x - p.x, 0, rp.z - p.z).normalize();
     a.body.setLinvel({ x: (to.x - g.x) / T, y: (to.y - g.y) / T + G * T / 2, z: (to.z - g.z) / T }, true); a.upright = false;
     L.leap = { t: 0, T, to, toward }; sfx('baa', V(g.x, g.y, g.z)); }
+}
+// ============================================================
+// TREE GOATS: more goats, roaming all over the island. They love the big burnt trees: they leap up and sit on the
+// broad top for a while, gazing about, then hop down and wander off again. Grab one and it's an ordinary goat
+// (it still leaps and kicks, like all the goats).
+// ============================================================
+const TGOATS = [], tgSide = (x, z) => Math.abs(z) < 8 ? Math.sign(x) || 1 : Math.sign(x - lavaX(z)) || 1; // (which side of the lava rivers)
+if (VOLC) { const side = tgSide;
+  const trees = TREES.filter(t => t.perch).sort((a, b) => a.x - b.x), pickT = [trees[0], trees[1], trees[Math.floor(trees.length / 2)], trees[trees.length - 1], trees[trees.length - 2], trees[Math.floor(trees.length / 2) - 1]].filter(Boolean);
+  for (const t of [...new Set(pickT)]) { const y = TH(t.x, t.z) + t.perch + .7, e = newBlock('animal', V(t.x, y, t.z), { animal: 'cow', dims: V(1, 1.15, 2.1), color: '#f2f2ee' });
+    e.body.setEnabledRotations(false, true, false, true); e.upright = true; e.noWander = true; e.tg = { st: 'perch', tree: t, t: rr(8, 25), side: side(t.x, t.z) }; t.goat = e; TGOATS.push(e); }
+}
+function updateTreeGoats(dt) {
+  if (!VOLC || (NET && NET.client)) return;
+  for (const e of TGOATS) { if (e.dead || !e.body) continue; const G_ = e.tg, p = e.body.translation(), w = e.wander;
+    if (e.holder || e.rage || (e.goat && e.goat.leap) || e.live) { if (G_.st !== 'roam') { if (G_.tree.goat === e) G_.tree.goat = null; G_.st = 'roam'; G_.t = rr(10, 20); } e.noWander = false; continue; }
+    G_.t -= dt;
+    if (G_.st === 'perch') { e.noWander = true; const lv = e.body.linvel(); e.body.setLinvel({ x: 0, y: Math.min(lv.y, 0), z: 0 }, true);
+      const r_ = e.body.rotation(), yaw = 2 * Math.atan2(r_.y, r_.w); e.body.setAngvel({ x: 0, y: Math.sin(now() / 1300 + e.id) * .6, z: 0 }, true); animateLegs(e, 'walk', 0);
+      const top = TH(G_.tree.x, G_.tree.z) + G_.tree.perch; if (p.y < top - .3) { G_.tree.goat = null; G_.st = 'roam'; G_.t = rr(10, 20); continue; } // (knocked off)
+      if ((e.idleT = (e.idleT ?? rr(4, 10)) - dt) <= 0) { e.idleT = rr(8, 16); if (P && rPos(P).distanceTo(V(p.x, p.y, p.z)) < 30) sfx('baa', V(p.x, p.y, p.z)); }
+      if (G_.t <= 0 && e.upright) { // hop down and go for a wander
+        const a = rr(0, 6.28), to = V(p.x + Math.cos(a) * 4, 0, p.z + Math.sin(a) * 4); to.y = TH(to.x, to.z) + .7; const T = .8;
+        e.body.setLinvel({ x: (to.x - p.x) / T, y: (to.y - p.y) / T + G * T / 2, z: (to.z - p.z) / T }, true); e.upright = false; e.body.setEnabledRotations(true, true, true, true);
+        G_.tree.goat = null; G_.st = 'roam'; G_.t = rr(12, 22); e.noWander = false; sfx('baa', V(p.x, p.y, p.z)); }
+      continue; }
+    if (G_.st === 'climb') { e.noWander = true; const A = G_.arc, k = clamp(1 - G_.t / A.T, 0, 1); // a goat's leap: straight up through the branches onto the top
+      e.body.setTranslation({ x: A.from.x + (A.to.x - A.from.x) * k, y: A.from.y + (A.to.y - A.from.y) * k + 4 * A.h * k * (1 - k), z: A.from.z + (A.to.z - A.from.z) * k }, true); e.body.setLinvel({ x: 0, y: 0, z: 0 }, true); animateLegs(e, 'held');
+      if (G_.t <= 0) { G_.st = 'perch'; G_.t = rr(15, 35); e.upright = true; e.body.setEnabledRotations(false, true, false, true); } continue; }
+    // roaming: off to somewhere new every so often (never across the lava), then back to a free tree
+    e.noWander = false; if (!e.upright) continue;
+    if (G_.t > 0) { if (!G_.to || Math.hypot(p.x - G_.to.x, p.z - G_.to.z) < 3 || (G_.re = (G_.re || 0) - dt) <= 0) { G_.re = rr(6, 10);
+        for (let k = 0; k < 20; k++) { const x = rr(-MX + 6, MX - 6), z = rr(-MZ + 6, MZ - 6); if (lavaD(x, z) > 4 && Math.hypot(x, z) > VOLCANO.R + 3 && tgSide(x, z) === tgSide(p.x, p.z) && !Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 3 && Math.abs(z - F.z) < FORT_RZ + 3)) { G_.to = V(x, 0, z); break; } } }
+      if (G_.to) w.home = G_.to.clone(); continue; }
+    if (!G_.tree || G_.tree.goat) { let best = null, bd = 1e9; for (const t of TREES) { if (!t.perch || (t.goat && t.goat !== e) || tgSide(t.x, t.z) !== tgSide(p.x, p.z)) continue; const d = Math.hypot(t.x - p.x, t.z - p.z); if (d < bd) { bd = d; best = t; } } if (!best) { G_.t = 5; continue; } G_.tree = best; }
+    const t = G_.tree, d = Math.hypot(t.x - p.x, t.z - p.z); w.home = V(t.x, 0, t.z);
+    if (d < 10 && d >= 3.2) { e.noWander = true; const dx = (t.x - p.x) / d, dz = (t.z - p.z) / d, lv = e.body.linvel(); e.body.setLinvel({ x: dx * 3.6, y: lv.y, z: dz * 3.6 }, true); const r_ = e.body.rotation(), yaw = 2 * Math.atan2(r_.y, r_.w); e.body.setAngvel({ x: 0, y: angDiff(yaw, Math.atan2(dx, dz)) * 3, z: 0 }, true); animateLegs(e, 'walk', 3.6);
+      G_.stuck = Math.hypot(lv.x, lv.z) < .6 ? (G_.stuck || 0) + dt : 0; if (G_.stuck > 2) { G_.stuck = 0; t.goat = null; G_.tree = null; G_.t = rr(5, 9); } } // (trotting up to the tree; give up if something's in the way)
+    if (d < 3.2) { const to = V(t.x, TH(t.x, t.z) + t.perch + .75, t.z), T = 1.0; t.goat = e; // a huge leap up onto the top
+      G_.arc = { from: V(p.x, p.y, p.z), to, T, h: 2.5 }; G_.st = 'climb'; G_.t = T; e.noWander = true; sfx('baa', V(p.x, p.y, p.z)); }
+  }
 }
 // ============================================================
 // ASH RAIN: now and then the sky darkens and grey ash drifts down
