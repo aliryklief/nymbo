@@ -566,7 +566,7 @@ function netUV(geo, ox, oy) {
 }
 function whiteUV(geo) { const uv = geo.attributes.uv; if (!uv) return geo; for (let i = 0; i < uv.count; i++) uv.setXY(i, (PNET.W - 1.5) / PNET.W, 1.5 / PNET.H); uv.needsUpdate = true; return geo; }
 const MAP = (() => { try { const m = localStorage.getItem('nymbo-map'); return m === 'clouds' || m === 'rainbow' || m === 'sky' ? 'sky' : ['desert', 'ice', 'volcano', 'jungle', 'toy', 'portal'].includes(m) ? m : 'classic'; } catch (e) { return 'classic'; } })(); // (the cloud and rainbow maps were merged into one: 'sky')
-const MS = { sky: 1.3, desert: 1.3, ice: 1.15, volcano: 1.2, jungle: 1.2, toy: 1.1, portal: 1.35 }[MAP] || 1; // (the desert: as big as the sky map, a good deal bigger than the classic island)
+const MS = { sky: 1.3, desert: 1.3, ice: 1.15, volcano: 1.2, jungle: 1.2, toy: 1.4, portal: 1.35 }[MAP] || 1; // (the desert: as big as the sky map, a good deal bigger than the classic island)
 const ICEMAP = MAP === 'ice', VOLC = MAP === 'volcano', JUNGLE = MAP === 'jungle', TOY = MAP === 'toy', PLAT = MAP === 'portal'; // the newer maps: the frozen lake, volcano island, the jungle temple, the toy room (09n-09q)
 // each map's air and light: fog colour; the sky's four bands (overhead, middle, horizon, below); sky light / ground light / strength; sun colour / strength
 const THEME = { ice: { fog: 0xc9dbee, sky: ['#2f5f9e', '#7aa8da', '#e2eef8', '#c9dbee'], hemi: [0xe0eeff, 0x6f86a4, .95], sun: [0xfff1e0, 2.2] },
@@ -598,19 +598,19 @@ const FORT = ICEMAP ? { blue: { x: -52, z: 22 }, red: { x: 52, z: -22 } } /* the
   : VOLC ? { blue: { x: -56, z: 18 }, red: { x: 56, z: -18 } } /* volcano island: on black lava shelves either side of the volcano */
   : JUNGLE ? { blue: { x: -48, z: 28 }, red: { x: 48, z: -28 } }
   : PLAT ? { blue: { x: -64, z: 0 }, red: { x: 64, z: 0 } } /* (portal platforms: each fort on its own big floating platform, at different heights) */
-  : TOY ? { blue: { x: -46, z: 0 }, red: { x: 46, z: 0 } } /* (the toy room: either end of the room, so the bed and the wardrobe by the far wall are the same distance from both) */
+  : TOY ? { blue: { x: -62, z: 0 }, red: { x: 62, z: 0 } } /* (the toy room: either end of the room, so the bed and the wardrobe by the far wall are the same distance from both) */
   : DESERT ? { blue: { x: Math.round(-14 * MS), z: Math.round(22 * MS) }, red: { x: Math.round(14 * MS), z: Math.round(-22 * MS) } } /* the desert: across the map, each a little off-centre, sunk in its own crater */ : { blue: { x: Math.round(-45 * MS), z: Math.round(25 * MS) }, red: { x: Math.round(45 * MS), z: Math.round(-25 * MS) } }; // near the corners with room to walk behind
 const FORT_RX = 17, FORT_RZ = 14;  // fort half-size (outer wall): a rectangle, longer towards the middle
 const FORT_R = FORT_RX;            // the bigger half-size, for rough 'near the fort' checks
-const FOG_N = 62 * MS, FOG_F = 150 * MS;     // haze distances (bigger map: see further)
-const PORTAL_SPOTS = PLAT ? [{ x: 0, z: -70 }, { x: 0, z: 70 }] /* (not used: the platforms have their own portals, 09r) */ : ICEMAP ? [{ x: -6, z: -44 }, { x: 6, z: 44 }] : VOLC ? [{ x: -22, z: -46 }, { x: 22, z: 46 }] : JUNGLE ? [{ x: -60, z: -38 }, { x: 60, z: 38 }] : TOY ? [{ x: -58, z: -36 }, { x: 58, z: 36 }] : DESERT ? [{ x: Math.round(-57 * MS), z: Math.round(-8 * MS) }, { x: Math.round(57 * MS), z: Math.round(8 * MS) }] /* (the desert: out at the two ends of the map) */ : [{ x: Math.round(-56 * MS), z: Math.round(-34 * MS) }, { x: Math.round(56 * MS), z: Math.round(34 * MS) }];
+const FOG_N = TOY ? 260 : 62 * MS, FOG_F = TOY ? 700 : 150 * MS; /* (indoors in the toy room: hardly any haze) */     // haze distances (bigger map: see further)
+const PORTAL_SPOTS = PLAT ? [{ x: 0, z: -70 }, { x: 0, z: 70 }] /* (not used: the platforms have their own portals, 09r) */ : ICEMAP ? [{ x: -6, z: -44 }, { x: 6, z: 44 }] : VOLC ? [{ x: -22, z: -46 }, { x: 22, z: 46 }] : JUNGLE ? [{ x: -60, z: -38 }, { x: 60, z: 38 }] : TOY ? [{ x: -62, z: -36 }, { x: 62, z: 36 }] : DESERT ? [{ x: Math.round(-57 * MS), z: Math.round(-8 * MS) }, { x: Math.round(57 * MS), z: Math.round(8 * MS) }] /* (the desert: out at the two ends of the map) */ : [{ x: Math.round(-56 * MS), z: Math.round(-34 * MS) }, { x: Math.round(56 * MS), z: Math.round(34 * MS) }];
 // speed strips (start x, z, direction, team). Classic: out on the flanks. Sky map: on the LEFT of each base (looking out
 // towards the middle), near the map's edge, pointing at the foot of the rainbow on that side
 const STRIP_SPOTS = PLAT ? [] : MAP === 'sky' ? [['blue', -1], ['red', 1]].map(([team, s]) => { const x = Math.round(s * 58 * MS), z = Math.round(-s * 8 * MS), P_ = PORTAL_SPOTS[s < 0 ? 0 : 1], d = Math.hypot(P_.x - x, P_.z - z); return { x, z, dx: (P_.x - x) / d, dz: (P_.z - z) / d, team }; })
   : ICEMAP ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 36, z: s * 40, dx: s, dz: 0, team })) /* (along the north/south shore towards the other side) */
   : VOLC ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 40, z: -s * 40, dx: s, dz: 0, team }))
   : JUNGLE ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 22, z: s * 46, dx: s, dz: 0, team }))
-  : TOY ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 30, z: -s * 34, dx: s, dz: 0, team }))
+  : TOY ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: -s * 38, z: -s * 30, dx: s, dz: 0, team }))
   : DESERT ? [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: Math.round(-s * 46 * MS), z: Math.round(s * 16 * MS), dx: 0, dz: -s, team })) /* (the desert: down the flank from your crater towards theirs) */
   : [['blue', 1], ['red', -1]].map(([team, s]) => ({ x: Math.round(-s * 13 * MS), z: Math.round(s * 42 * MS), dx: s, dz: 0, team }));
 // two power-block hubs, each the same distance from both forts (fair for both teams)
@@ -868,7 +868,7 @@ const TRAMP_SPOTS = PLAT ? [] : MAP === 'sky' ? (() => { const A = PORTAL_SPOTS[
   : ICEMAP ? [{ x: -32, z: -38 }, { x: 32, z: 38 }]
   : VOLC ? [{ x: -30, z: 30 }, { x: 30, z: -30 }] /* (steam vents) */
   : JUNGLE ? [{ x: -22, z: -30 }, { x: 22, z: 30 }]
-  : TOY ? [{ x: -26, z: 26 }, { x: 26, z: -26 }]
+  : TOY ? [{ x: -33, z: 30 }, { x: 33, z: -30 }]
   : DESERT ? [{ x: Math.round(34 * MS), z: Math.round(-4 * MS) }, { x: Math.round(-34 * MS), z: Math.round(4 * MS) }]
   : [{ x: Math.round(18 * MS), z: Math.round(26 * MS) }, { x: Math.round(-18 * MS), z: Math.round(-26 * MS) }];
 // TERRAIN (sky bridge map only): each fort stands on a plateau 4 blocks up that slopes gently down towards the gorge,
@@ -957,14 +957,14 @@ function tree(x, z, h) {
   if (PLAT) return; // (no trees floating in the void)
   if (ICEMAP && lakeD(x, z) < 1.15) return; // (nothing grows out on the ice)
   if (VOLC && (lavaD(x, z) < 3 || Math.hypot(x, z) < VOLCANO.R + 2)) return; // (nor in the lava or on the volcano)
-  if (TOY && (Math.abs(z) > MZ - 16 || Math.hypot(x, z) < 12)) return; // (the toy room: not against the bed/desk wall or on the rug)
+  if (TOY && (Math.abs(z) > MZ - 24 || Math.hypot(x, z) < 21)) return; // (the toy room: not against the bed/desk wall or on the rug)
   if (JUNGLE && (Math.abs(z - BOULDER_Z) < 4 || Math.hypot(x, z) < 10 || QSAND.some(q => Math.hypot(x - q.x, z - q.z) < q.r + 2.5))) return; // (the jungle: not in the boulder's way, the idol's, or the quicksand)
   TREES.push({ x, z, h, birds: MAP === 'classic' && rnd() < .3 }); // about a third of the trees have a nest (the easter-egg birds)
   staticBoxes.push({ x0: x - 1.5, y0: 0, z0: z - 1.5, x1: x + 1.5, y1: h + 3, z1: z + 1.5, foot: true }); // keeps other scenery and animals clear
 }
 // trees: two groves on the flanks give cover for sneaking round, plus a few loners. The middle stays open.
 // same 27 trees as before, spread wider: smaller groves, a few round each pasture (the corners looked empty), more loners
-const GROVES = (TOY ? [{ x: -60, z: 24, n: 3 }, { x: 60, z: -24, n: 3 }, { x: -24, z: -42, n: 3 }, { x: 24, z: 42, n: 3 }] : JUNGLE ? [{ x: -60, z: -10, n: 6 }, { x: 60, z: 10, n: 6 }, { x: -30, z: 44, n: 5 }, { x: 30, z: -44, n: 5 }, { x: -42, z: -40, n: 4 }, { x: 42, z: 40, n: 4 }] : VOLC ? [{ x: -62, z: -38, n: 5 }, { x: 62, z: 38, n: 5 }, { x: -36, z: 44, n: 4 }, { x: 36, z: -44, n: 4 }] : ICEMAP ? [{ x: -64, z: -38, n: 4 }, { x: 64, z: 38, n: 4 }, { x: -28, z: 46, n: 3 }, { x: 28, z: -46, n: 3 }] : DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
+const GROVES = (TOY ? [{ x: -70, z: 30, n: 3 }, { x: 70, z: -30, n: 3 }, { x: -40, z: -40, n: 3 }, { x: 40, z: 40, n: 3 }] : JUNGLE ? [{ x: -60, z: -10, n: 6 }, { x: 60, z: 10, n: 6 }, { x: -30, z: 44, n: 5 }, { x: 30, z: -44, n: 5 }, { x: -42, z: -40, n: 4 }, { x: 42, z: 40, n: 4 }] : VOLC ? [{ x: -62, z: -38, n: 5 }, { x: 62, z: 38, n: 5 }, { x: -36, z: 44, n: 4 }, { x: 36, z: -44, n: 4 }] : ICEMAP ? [{ x: -64, z: -38, n: 4 }, { x: 64, z: 38, n: 4 }, { x: -28, z: 46, n: 3 }, { x: 28, z: -46, n: 3 }] : DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
 for (const p of PORTAL_SPOTS) { const L = Math.hypot(p.x, p.z), pa = { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; // trees scattered round the pasture fence, never in the portal's way
   for (let i = 0, n = 0; i < 120 && n < 4; i++) { const a = rnd() * Math.PI * 2, d = rr(11, 16), x = Math.round(pa.x + Math.cos(a) * d), z = Math.round(pa.z + Math.sin(a) * d);
     if (Math.hypot(x - p.x, z - p.z) < 7 || !clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue; tree(x, z, 2 + Math.floor(rnd() * 3)); n++; } }
@@ -4406,8 +4406,7 @@ function updatePlayerControl(dt) {
     const e = grabbable(P, 1.5, true, b => (b.kind === 'stone' || b.kind === 'tree' || b.kind === 'prop' || (b.kind === 'fort' && b.team !== P.team)) && !b.anchored);
     if (e) { grabBlock(P, e); sfx('grab'); }
   }
-  P.want.copy(f); P.wantSpeed = stopped ? -REVERSE_SPEED * back * (nearEdge ? .35 : 1) : RUN * (nearEdge ? .35 : 1) * (P.stack[0] && P.stack[0].kind === 'flag' ? 1.2 : 1); // flag carriers get a 1.2x boost
-  if (PLAT && P.grounded && P.wantSpeed > 0) { const cur = platUnder(p.x, p.z, p.y - .4), ah = platUnder(p.x + f.x * 1.1, p.z + f.z * 1.1, p.y - .4, -.3); if (cur && (!ah || ah.py < cur.py - 2.5)) P.wantSpeed = 0; } // (portal platforms: running on its own, you stop right at the edge — jump to cross)
+  P.want.copy(f); P.wantSpeed = stopped ? -REVERSE_SPEED * back * (nearEdge && !PLAT ? .35 : 1) : RUN * (nearEdge && !PLAT ? .35 : 1) * (P.stack[0] && P.stack[0].kind === 'flag' ? 1.2 : 1); // flag carriers get a 1.2x boost
 }
 
 // ---------------- aim / lock-on ----------------
@@ -8842,12 +8841,12 @@ function tBox(w, h, d, x, y, z, color, col = true, round = .12) {
 }
 if (TOY) {
   // no sky clouds and no mountains in a bedroom: walls, a ceiling, a window
-  for (const o of scene.children) if (o.isInstancedMesh && o !== plainIM && o.material && o.material.color && o.material.color.getHSL({}).l > .8) o.visible = false;
+  for (const o of scene.children) if (o.isInstancedMesh && !o.instanceColor && o !== plainIM && o.material && o.material.color && o.material.color.getHSL({}).l > .8) o.visible = false; // (only the clouds: not the scoring gateways' posts or the sparks)
   const wallTex = (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#bfe0f0'; g.fillRect(0, 0, 128, 128);
     g.fillStyle = '#a8d2e8'; for (let x = 0; x < 128; x += 32) g.fillRect(x, 0, 14, 128); // (stripes)
     g.fillStyle = '#fff6c8'; for (const [x, y] of [[24, 24], [88, 80]]) { g.beginPath(); for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283 - Math.PI / 2, r = k % 2 ? 5 : 12; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.fill(); } // (little stars)
     const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t; })();
-  const WH = 70;
+  const WH = 56; // (the whole room is built to real proportions: 1 unit ≈ 4.5 cm, so the robots are toys about 9 cm tall — a 2.5 m ceiling)
   for (const [w, x, z, ry] of [[MX * 2 + 2, 0, -MZ - 1, 0], [MX * 2 + 2, 0, MZ + 1, Math.PI], [MZ * 2 + 2, -MX - 1, 0, Math.PI / 2], [MZ * 2 + 2, MX + 1, 0, -Math.PI / 2]]) {
     const t = wallTex.clone(); t.repeat.set(w / 12, WH / 12); t.needsUpdate = true;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, WH), new LiteMat({ map: t })); m.position.set(x, WH / 2 - .5, z); m.rotation.y = ry; m.receiveShadow = true; scene.add(m);
@@ -8855,37 +8854,51 @@ if (TOY) {
     const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, WH / 2, .5).setTranslation(x, WH / 2, z).setRotation(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), ry))); byCollider.set(c.handle, { type: 'static' }); }
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(MX * 2 + 2, MZ * 2 + 2).rotateX(Math.PI / 2), new LiteMat({ color: 0xf6f2ea })); ceil.position.y = WH - .5; scene.add(ceil);
   // a window on the left wall (sky and a tree outside), a door on the right
-  { const win = new THREE.Mesh(new THREE.PlaneGeometry(30, 22), new THREE.MeshBasicMaterial({ color: 0x8cc8ff, fog: false })); win.position.set(-MX - .4, 30, -6); win.rotation.y = Math.PI / 2; scene.add(win);
-    for (const [w, h, y, z] of [[32, 1.6, 41, -6], [32, 1.6, 19, -6], [1.6, 22, 30, -22], [1.6, 22, 30, 10], [1, 22, 30, -6], [30, 1, 30, -6]]) tBox(.8, h, w > 2 ? w : 1.6, -MX - .2, y, z, 0xffffff, false, .05).scale.set(1, 1, w > 2 ? 1 : 1);
-    const door = tBox(.6, 34, 16, MX + .2, 17, 14, 0xd8b484, false, .1); const knob = new THREE.Mesh(new THREE.SphereGeometry(.8, 12, 8), new LiteMat({ color: 0xe8c25a })); knob.position.set(MX - .4, 16, 8); scene.add(knob); }
+  { const win = new THREE.Mesh(new THREE.PlaneGeometry(27, 23), new THREE.MeshBasicMaterial({ color: 0x8cc8ff, fog: false })); win.position.set(-MX - .4, 31, -8); win.rotation.y = Math.PI / 2; scene.add(win);
+    for (const [w, h, y, z] of [[29, 1.6, 43, -8], [29, 1.6, 19, -8], [1.6, 23, 31, -22], [1.6, 23, 31, 6], [1, 23, 31, -8], [27, 1, 31, -8]]) tBox(.8, h, w > 2 ? w : 1.6, -MX - .2, y, z, 0xffffff, false, .05);
+    tBox(3, 1, 31, -MX + 1, 19, -8, 0xffffff); // (the window sill)
+    tBox(.6, 44, 18, MX + .2, 22, 2, 0xd8b484, false, .1); const knob = new THREE.Mesh(new THREE.SphereGeometry(.8, 12, 8), new LiteMat({ color: 0xe8c25a })); knob.position.set(MX - .4, 21, -5); scene.add(knob); }
   // a big round rug in the middle
   { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); for (let k = 8; k >= 1; k--) { g.fillStyle = ['#ff8a8a', '#ffd27a', '#8ad8ff', '#b8f08a', '#d0a0ff', '#ff8a8a', '#ffd27a', '#8ad8ff'][k - 1]; g.beginPath(); g.arc(128, 128, k * 16, 0, 7); g.fill(); }
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const rug = new THREE.Mesh(new THREE.CircleGeometry(15, 48).rotateX(-Math.PI / 2), new LiteMat({ map: t, polygonOffset: true, polygonOffsetFactor: -2 })); rug.position.y = .03; rug.receiveShadow = true; scene.add(rug); }
-  // ---- the far wall: the bed, a bookshelf each side, the wardrobe behind ----
-  const Z = MZ;
-  tBox(22, 2.2, 15, 0, 1.1, Z - 9.5, 0x8a5a34); // bed frame
-  const mat = tBox(21, 1.4, 14, 0, 2.9, Z - 9.5, 0xf4f4fa, false); // mattress (no collider of its own: it's a trampoline)
-  { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(10.5, .7, 7).setTranslation(0, 2.9, Z - 9.5).setFriction(.9)); byCollider.set(c.handle, { type: 'static' }); }
-  tBox(21.2, .5, 9, 0, 3.75, Z - 7.5, 0x5a8ad8, false); tBox(6, 1, 3, -5, 4.1, Z - 15, 0xffffff, false, .4); tBox(6, 1, 3, 5, 4.1, Z - 15, 0xffffff, false, .4); // duvet, pillows
-  tBox(23, 8, 1.2, 0, 4, Z - 2.2, 0x7a4a2a); // headboard
-  TR.bed = { x0: -10.5, x1: 10.5, z0: Z - 16.5, z1: Z - 2.5, y: 3.6 };
-  for (const s of [-1, 1]) { // bookshelves: shelves stepping up towards the wardrobe in the middle
-    const x0 = s * 17; tBox(10, 1, 4, x0, 13, Z - 2.5, 0x9a6a3e); // (the top)
-    for (let k = 0; k < 4; k++) { const h = 2.5 + k * 2.5, x = s * (21 - k * 2.5); tBox(2.5, .5, 4, x, h, Z - 2.5, 0xa87848); // (each shelf, one step higher towards the middle)
-      for (let b = 0; b < 3; b++) tBox(.6, 1.6, 2.6, x - .8 + b * .7, h + 1.05, Z - 2.5, [0xd84a4a, 0x4a8ad8, 0x4ad084, 0xe8c25a, 0x9a5aff][(k + b) % 5], false, .05); } // (books)
-    tBox(.6, 13.5, 4, s * 22.3, 6.75, Z - 2.5, 0x8a5a34); tBox(.6, 13.5, 4, s * 12.3, 6.75, Z - 2.5, 0x8a5a34); }
-  tBox(14, 18, 5, 0, 9, Z - 2.5 - 0, 0xc8956a); // the wardrobe (behind the headboard, up against the wall)
-  for (const s of [-1, 1]) { tBox(.2, 15, 4.6, s * .1, 9.4, Z - 4.9, 0x8a5a34, false, .02); const k = new THREE.Mesh(new THREE.SphereGeometry(.35, 10, 8), new LiteMat({ color: 0xe8c25a })); k.position.set(s * .9, 9, Z - 5.1); scene.add(k); }
-  TR.starAt = V(0, 18.7, Z - 3);
-  // ---- the near wall: a desk and chair, a toy box ----
-  const Zs = -MZ;
-  tBox(18, 1, 8, 12, 8, Zs + 5, 0xb07a48); for (const [x, z] of [[4, Zs + 2], [20, Zs + 2], [4, Zs + 8], [20, Zs + 8]]) tBox(1, 7.5, 1, x, 3.75, z, 0x8a5a34);
-  tBox(6, .6, 6, 12, 4.5, Zs + 12, 0xd84a4a); tBox(6, 6, .8, 12, 7.5, Zs + 14.6, 0xd84a4a); for (const [x, z] of [[9.5, Zs + 9.5], [14.5, Zs + 9.5], [9.5, Zs + 14.5], [14.5, Zs + 14.5]]) tBox(.6, 4.2, .6, x, 2.1, z, 0xa83a3a); // chair
-  tBox(3, 3, 3, 8, 10, Zs + 5, 0xe8c25a, false, .5); { const lp = new THREE.PointLight(0xffd890, 0, 26, 1.4); lp.position.set(8, 12, Zs + 6); scene.add(lp); TR.lamp = lp; } // a lamp on the desk
-  tBox(12, 6, 7, -16, 3, Zs + 4.5, 0x4ab0d8); tBox(12.4, .8, 7.4, -16, 6.4, Zs + 4.5, 0x3a90b8); // toy box
-  { const nl = new THREE.Mesh(new THREE.SphereGeometry(.9, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffd88a })); nl.position.set(-30, 2.2, Zs + .9); scene.add(nl); const p = new THREE.PointLight(0xffc870, 0, 40, 1.3); p.position.set(-30, 3, Zs + 2); scene.add(p); TR.night = p; } // the night-light
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const rug = new THREE.Mesh(new THREE.CircleGeometry(19, 48).rotateX(-Math.PI / 2), new LiteMat({ map: t, polygonOffset: true, polygonOffsetFactor: -2 })); rug.position.y = .03; rug.receiveShadow = true; scene.add(rug); }
+  const Z = MZ, Zs = -MZ, book = k => [0xd84a4a, 0x4a8ad8, 0x4ad084, 0xe8c25a, 0x9a5aff, 0xff8a3a][k % 6];
+  // ---- the BED: a child's single bed in the far corner (90 × 190 cm), headboard against the end wall ----
+  { const W = 20, L = 42, x1 = MX - .5, x0 = x1 - L, bx = (x0 + x1) / 2, bz = Z - .5 - W / 2, top = 11;
+    tBox(L, 6, W + .4, bx, 3, bz, 0x8a5a34); for (const [lx, lz] of [[x0 + 1, bz - W / 2 + 1], [x0 + 1, bz + W / 2 - 1]]) tBox(1.4, 1, 1.4, lx, .5, lz, 0x6a4024); // the frame (on stubby legs)
+    tBox(L - 1, top - 6, W, bx + .3, 6 + (top - 6) / 2, bz, 0xf4f4fa, false); // the mattress (no collider of its own: it's a trampoline)
+    { const c = world.createCollider(RAPIER.ColliderDesc.cuboid((L - 1) / 2, (top - 6) / 2, W / 2).setTranslation(bx + .3, 6 + (top - 6) / 2, bz).setFriction(.9)); byCollider.set(c.handle, { type: 'static' }); }
+    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#5a8ad8'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#ffe27a';
+    for (const [x, y] of [[20, 20], [80, 30], [40, 70], [100, 90], [64, 110], [10, 100]]) { g.beginPath(); for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283 - Math.PI / 2, r = k % 2 ? 4 : 10; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.5, 1.2);
+    tBox(L - 11, 1, W + .6, bx - 5, top + .5, bz, new LiteMat({ map: t }), false, .4); tBox(L - 11, 7, .6, bx - 5, top - 3, bz - W / 2 - .4, new LiteMat({ map: t }), false, .3); // the duvet with stars on, turned back at the top, hanging down the side
+    tBox(7, 2.4, W - 4, x1 - 5.5, top + 1.2, bz, 0xffffff, false, .9); // the pillow, up by the headboard
+    tBox(1.2, 22, W + 1, x1 - .1, 11, bz, 0x7a4a2a); tBox(1.2, 14, W + 1, x0 - .1, 7, bz, 0x7a4a2a); // headboard and footboard
+    const bear = new THREE.Group(), fur = new LiteMat({ color: 0xc8925a }); const add = (geo, x, y, z) => { const m = new THREE.Mesh(geo, fur); m.position.set(x, y, z); m.castShadow = true; bear.add(m); };
+    add(new THREE.SphereGeometry(1.1, 12, 10), 0, 1.1, 0); add(new THREE.SphereGeometry(.8, 12, 10), 0, 2.6, 0); for (const s of [-1, 1]) { add(new THREE.SphereGeometry(.32, 8, 6), s * .6, 3.25, 0); add(new THREE.SphereGeometry(.38, 8, 6), s * 1, 1.4, .3); add(new THREE.SphereGeometry(.42, 8, 6), s * .6, .3, .7); }
+    const sn = new THREE.Mesh(new THREE.SphereGeometry(.3, 8, 6), new LiteMat({ color: 0xf0d8b0 })); sn.position.set(0, 2.5, .72); bear.add(sn); for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.1, 6, 4), new LiteMat({ color: 0x1c1c22 })); e.position.set(s * .3, 2.85, .66); bear.add(e); }
+    bear.scale.setScalar(2.2); bear.position.set(x1 - 9, top + 2.4, bz - 3); bear.rotation.y = -Math.PI / 2 - .3; scene.add(bear); // a big teddy against the pillow
+    // a way up for little robots: a staircase of toy blocks at the foot of the bed
+    for (let k = 0; k < 3; k++) tBox(3, 2.8 * (k + 1), 5, x0 - 10 + k * 3, 1.4 * (k + 1), bz - 2, [0xe84a4a, 0x4ab0d8, 0xffd23a][k], true, .3);
+    TR.bed = { x0: x0 + 1, x1: x1 - 1, z0: bz - W / 2, z1: bz + W / 2, y: top }; }
+  // ---- the far wall: the WARDROBE in the middle (the star's on top), a BOOKSHELF each side to climb ----
+  { const ww = 22, wh = 44, wd = 13; tBox(ww, wh, wd, 0, wh / 2, Z - wd / 2 - .5, 0xc8956a); // 1 m wide, 2 m tall
+    for (const s of [-1, 1]) { tBox(.3, wh - 4, .3, s * .15, wh / 2, Z - wd - .6, 0x8a5a34, false, .02); const k = new THREE.Mesh(new THREE.SphereGeometry(.5, 10, 8), new LiteMat({ color: 0xe8c25a })); k.position.set(s * 1.4, 22, Z - wd - .9); scene.add(k); }
+    tBox(ww + 1, 1, wd + 1, 0, wh + .5, Z - wd / 2 - .5, 0xb07a48);
+    for (const s of [-1, 1]) { const xc = s * (ww / 2 + 8.5), bw = 16, bd = 8; // the shelves are 27 cm apart: a good double jump each
+      for (const sx of [-1, 1]) tBox(.8, 34, bd, xc + sx * (bw / 2 - .4), 17, Z - bd / 2 - .5, 0x8a5a34);
+      for (let k = 0; k <= 5; k++) { const h = k * 6.2 + .5; tBox(bw, .8, bd, xc, h, Z - bd / 2 - .5, 0xa87848);
+        if (k < 5) for (let b = 0; b < 6; b++) if ((b + k) % 4) tBox(1.3, 4.4 + (b % 2) * .6, bd - 2.6, xc - bw / 2 + 2 + b * 2.2, h + .4 + 2.3, Z - bd / 2 - 1.8, book(b + k), true, .05); } // (books, standing on the back of each shelf: there's room at the front to land)
+      tBox(6, 5.6, 6, s * (ww / 2 + 3.5), 31.5 + 3.2, Z - 4.5, book(s > 0 ? 2 : 4), true, .1); tBox(5, 1.4, 5.4, s * (ww / 2 + 3.5), 31.5 + 6.7, Z - 4.5, book(s > 0 ? 0 : 1), true, .05); } // (a pile of books on top: the last step up to the wardrobe)
+    TR.starAt = V(0, wh + 1.7, Z - wd / 2 - .5); }
+  // ---- the near wall: a DESK and chair, a TOY BOX, the night-light ----
+  { const dx = 20, dw = 27, dd = 13, dh = 17; tBox(dw, 1, dd, dx, dh - .5, Zs + dd / 2 + .5, 0xb07a48); for (const [x, z] of [[dx - dw / 2 + 1, Zs + 1.5], [dx + dw / 2 - 1, Zs + 1.5], [dx - dw / 2 + 1, Zs + dd - .5], [dx + dw / 2 - 1, Zs + dd - .5]]) tBox(1.2, dh - 1, 1.2, x, (dh - 1) / 2, z, 0x8a5a34);
+    const cz = Zs + dd + 4.5; tBox(10, 1, 10, dx, 10, cz, 0xd84a4a); tBox(10, 11, 1, dx, 15.5, cz + 5, 0xd84a4a); for (const [x, z] of [[dx - 4.5, cz - 4.5], [dx + 4.5, cz - 4.5], [dx - 4.5, cz + 4.5], [dx + 4.5, cz + 4.5]]) tBox(.8, 9.5, .8, x, 4.75, z, 0xa83a3a); // the chair (a seat to hop up on, then the desk)
+    tBox(3, 5, 3, dx - 9, dh + 2.5, Zs + 4, 0xe8c25a, true, .5); tBox(5, .6, 4, dx - 9, dh + .3, Zs + 4, 0x3a3a44); { const lp = new THREE.PointLight(0xffd890, 0, 34, 1.4); lp.position.set(dx - 9, dh + 6, Zs + 5); scene.add(lp); TR.lamp = lp; } // a lamp
+    for (let b = 0; b < 4; b++) tBox(5, 1.1, 7, dx + 6, dh + .55 + b * 1.1, Zs + 5, book(b), true, .05); // (a pile of school books)
+    tBox(14, 9, 9, -26, 4.5, Zs + 5, 0x4ab0d8); tBox(14.4, .9, 9.4, -26, 9.45, Zs + 5, 0x3a90b8); } // the toy box (60 × 40 cm)
+  { const nl = new THREE.Mesh(new THREE.SphereGeometry(.9, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffd88a })); nl.position.set(-44, 2.2, Zs + .9); scene.add(nl); const p = new THREE.PointLight(0xffc870, 0, 40, 1.3); p.position.set(-44, 3, Zs + 2); scene.add(p); TR.night = p; } // the night-light
   // ---- the ceiling fan ----
-  { const g = new THREE.Group(); g.position.set(0, WH - 4, 0); const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.8, 1.6, 16), new LiteMat({ color: 0xf0ece4 })); g.add(hub);
+  { const g = new THREE.Group(); g.position.set(0, WH - 5, 0); g.scale.setScalar(1.6); const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.8, 1.6, 16), new LiteMat({ color: 0xf0ece4 })); g.add(hub);
     const rod = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, 3.5, 8), new LiteMat({ color: 0xd8d4cc })); rod.position.y = 2.4; g.add(rod);
     for (let k = 0; k < 4; k++) { const b = new THREE.Mesh(new RoundedBoxGeometry(11, .3, 2.6, 2, .1), new LiteMat({ color: 0xc8956a })); b.position.set(Math.cos(k * Math.PI / 2) * 6.2, -.2, Math.sin(k * Math.PI / 2) * 6.2); b.rotation.y = -k * Math.PI / 2; b.rotation.x = .12; g.add(b); }
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(1.1, 14, 10), new THREE.MeshBasicMaterial({ color: 0xfff4d8 })); bulb.position.y = -1.3; g.add(bulb); TR.bulb = bulb;
@@ -8924,7 +8937,7 @@ function updateToy(dt) {
   const t = now() / 1000;
   // the bed: land on it and you bounce up high
   for (const r of robots) { if (r.state !== 'play' || !r.body) continue; const p = r.body.translation(), B = TR.bed; if (p.x < B.x0 || p.x > B.x1 || p.z < B.z0 || p.z > B.z1 || p.y > B.y + 1.6) continue;
-    const lv = r.body.linvel(); if (r.grounded || lv.y < -1) { r.body.setLinvel({ x: lv.x, y: 17, z: lv.z }, true); r.grounded = false; r.jumps = 1; r.padT = 1.4; sfx('boing', V(p.x, p.y, p.z)); r.model.sq = -.4; r.model.sqv = 6; } }
+    const lv = r.body.linvel(); if (r.grounded || lv.y < -1) { r.body.setLinvel({ x: lv.x, y: 23, z: lv.z }, true); r.grounded = false; r.jumps = 1; r.padT = 1.4; sfx('boing', V(p.x, p.y, p.z)); r.model.sq = -.4; r.model.sqv = 6; } }
   // the fan: spins, and blows anyone under it outwards
   if (TR.fan) { TR.fan.rotation.y += dt * 4; for (const r of robots) { if (r.state !== 'play' || !r.body) continue; const p = r.body.translation(), d = Math.hypot(p.x, p.z); if (d > 14 || d < .3) continue; const k = (1 - d / 14) * 6 * dt, lv = r.body.linvel(); r.body.setLinvel({ x: lv.x + p.x / d * k * 4, y: lv.y, z: lv.z + p.z / d * k * 4 }, true); } }
   // the light goes off now and then
