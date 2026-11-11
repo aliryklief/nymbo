@@ -7622,8 +7622,8 @@ function flop(r, t, push) { // hit by a sliding penguin: knocked flat on your ba
 const _pq = new THREE.Quaternion(), _pe = new THREE.Euler(0, 0, 0, 'YXZ');
 function knockAlong(pos, dir, R, by, hit, strength, sideways) { // a heavy penguin: knocks standing blocks loose and sweeps everything aside; anyone it reaches gets bonked
   unanchorAround(V(pos.x, pos.y, pos.z), R * .7);
-  for (const b of blocks) { if (b.dead || !b.body || b.holder || b.anchored || b.kind === 'flag' || b.peng) continue; const t = b.body.translation(); if (Math.hypot(t.x - pos.x, t.z - pos.z) > R || Math.abs(t.y - pos.y) > 1.5) continue;
-    const side = V(t.x - pos.x, 0, t.z - pos.z).normalize(), m = b.body.mass(); b.body.applyImpulse({ x: (dir.x + side.x * .8) * 9 * m, y: 4 * m, z: (dir.z + side.z * .8) * 9 * m }, true); b.live = false; }
+  for (const b of blocks) { if (b.dead || !b.body || b.holder || b.anchored || b.kind === 'flag' || b.peng || hit.has(b)) continue; const t = b.body.translation(); if (Math.hypot(t.x - pos.x, t.z - pos.z) > R || Math.abs(t.y - pos.y) > 1.5) continue;
+    const side = V(t.x - pos.x, 0, t.z - pos.z).normalize(), m = b.body.mass(); b.body.applyImpulse({ x: (dir.x + side.x * .8) * 9 * m, y: 4 * m, z: (dir.z + side.z * .8) * 9 * m }, true); b.live = false; hit.add(b); } // (each thing gets knocked once, not every frame)
   for (const r of robots) { if (r.state !== 'play' || hit.has(r) || r.flopT > 0) continue; const c = rPos(r); if (Math.hypot(c.x - pos.x, c.z - pos.z) > R || Math.abs(c.y - pos.y) > 1.6) continue;
     hit.add(r); let side = V(c.x - pos.x, 0, c.z - pos.z).normalize();
     if (sideways) { const n_ = V(-dir.z, 0, dir.x).normalize(); side = n_.multiplyScalar((c.x - pos.x) * n_.x + (c.z - pos.z) * n_.z >= 0 ? 1 : -1); if (!side.lengthSq()) side.set(-dir.z, 0, dir.x); r.slideNoGlue = now() + 900; } /* (on a slide: flung off to the left or right) */
@@ -8276,7 +8276,7 @@ if (ICEMAP) { const bl0 = breakLoose; breakLoose = function (a, r) { if (a.anima
     const p = rPos(r), f = fwdOf(r.yaw), at = V(p.x + f.x * 1.6, Math.max(p.y - .3, TH(p.x, p.z) + .8), p.z + f.z * 1.6);
     looseAnimal(a, at, r.yaw, { x: f.x * 14, y: 1, z: f.z * 14 }); a.upright = true;
     a.body.setRotation(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), r.yaw), true); a.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
-    a.sealRide = { dir: f.clone(), sp: 14, by: r, hit: new Set([r]), t: 0 }; sfx('honk', at); if (r.isPlayer) toast('THE SEAL WRIGGLED OFF!'); }; }
+    a.sealRide = { dir: f.clone(), sp: 14, by: r, hit: new Set([r, a]), t: 0 }; /* (never knocks itself: that sent seals flying into the sky) */ sfx('honk', at); if (r.isPlayer) toast('THE SEAL WRIGGLED OFF!'); }; }
 function updateSeals(dt) {
   for (const a of blocks) { const S_ = a.sealRide; if (!S_ || a.dead || !a.body) continue; if (a.holder) { a.sealRide = null; continue; }
     S_.t += dt; S_.sp = Math.max(0, S_.sp - dt * (onIce(a.body.translation()) ? 2.2 : 6)); const t = a.body.translation(), lv = a.body.linvel();
