@@ -719,7 +719,7 @@ function canvasTex(w, h, draw, repeatX = 1, repeatY = 1) {
 // ---- the ground can get holes (a bomb on frozen ground smashes it): ----
 // physics: the island floor is made of 4x4 chunks; a chunk with a hole in it is rebuilt from single squares
 // drawing: a tiny texture with one pixel per ground square tints the grass (icy where frozen) and cuts holes in it
-const GCH = 4, GW = MX * 2, GD = MZ * 2, HOLES = new Set(), chunkCols = new Map();
+const GCH = 4, GW = MX * 2, GD = MZ * 2, HOLES = new Set(), chunkCols = new Map(), SEA = new Set(); // (SEA: squares off the island's outline, never filled in)
 // CLOUD CONVEYOR map: a band of open sky runs through the middle from near one portal to near the other (stopping short
 // of the pastures, so you can still walk round the ends). Clouds with tiles on top ride round it in two lanes.
 // SKY BRIDGE map: a gorge of open sky runs right across the island and off both edges, splitting it into the blue half and
@@ -731,6 +731,23 @@ const chasmDist = (x, z) => { if (!CH) return 99; const o = x * CH.n.x + z * CH.
   return d; }; // < 0 inside the gorge (the pasture islands are outside it)
 const inChasm = (x, z) => CH && chasmDist(x, z) < 0 && Math.hypot(x, z) > 2.4; // (the pole keeps a little island of its own)
 const cellOf = (x, z) => [Math.floor(x + MX), Math.floor(z + MZ)];
+// ISLAND SHAPES: every map but the classic one (and the toy room, which is a room) has its own outline instead of a plain
+// rectangle: a lumpy round desert island, a volcano island with wobbly shores, the ski resort bulging out round its two
+// mountains, the jungle tapering to a point past each temple. Always the same turned round the middle (fair for both teams).
+const SHAPED = DESERT || ICEMAP || VOLC || JUNGLE;
+const SHAPE_P = DESERT ? { n: 2.4, h: [[4, .07, .5], [6, .05, 1.2], [2, .03, .3]] } : VOLC ? { n: 2, h: [[4, .06, 1], [6, .05, .3], [8, .03, 0]] } : ICEMAP ? { n: 2.2, h: [[2, -.04, 0], [6, .05, .7]] } : null;
+function inShape(x, z, m = 0) { // is this spot on the island (at least m in from its edge)?
+  if (!SHAPED) return Math.abs(x) <= MX - m && Math.abs(z) <= MZ - m;
+  const r0 = Math.hypot(x, z) || 1e-6, X = x + x / r0 * m, Z = z + z / r0 * m;
+  if (Math.abs(X) > MX || Math.abs(Z) > MZ) return false;
+  if (JUNGLE) return Math.abs(Z) <= MZ - Math.max(0, Math.abs(X) - 92) * .9;
+  for (const t of ['blue', 'red']) { const F = FORT[t]; if (Math.hypot(x - F.x, z - F.z) + m < (ICEMAP ? 27 : FORT_R + 8)) return true; }
+  const u = X / MX, v = Z / MZ, th = Math.atan2(v, u), P_ = SHAPE_P; let R = Math.pow(Math.abs(Math.cos(th)) ** P_.n + Math.abs(Math.sin(th)) ** P_.n, -1 / P_.n);
+  for (const [k, a, ph] of P_.h) R *= 1 + a * Math.cos(k * th + ph);
+  return Math.hypot(u, v) <= R; }
+let SHAPE_FADE = null; // (hills flatten out towards the shore: worked out once per ground square)
+const shapeFade = (x, z) => { if (!SHAPED) return 1; if (!SHAPE_FADE) { SHAPE_FADE = new Float32Array(GW * GD); for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { let k = 0; for (let m = 1; m <= 5; m++) if (inShape(cx - MX + .5, cz - MZ + .5, m)) k = m / 5; else break; SHAPE_FADE[cz * GW + cx] = k; } }
+  const cx = clamp(Math.floor(x + MX), 0, GW - 1), cz = clamp(Math.floor(z + MZ), 0, GD - 1); return SHAPE_FADE[cz * GW + cx]; };
 const isHole = (x, z) => { const [cx, cz] = cellOf(x, z); return HOLES.has(cx + ',' + cz); };
 const RAISED = new Set();
 function buildChunk(i, j) {
@@ -834,11 +851,23 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
   const slab = new THREE.Mesh(new THREE.BoxGeometry(MX * 2, 6, MZ * 2), [mX, mX, mTop, mTop, mZ, mZ]);
   slab.position.y = -3; slab.receiveShadow = true; scene.add(slab); if (PLAT) slab.visible = false; // (portal platforms: no ground at all)
   groundPatch(mTop);
+  if (SHAPED) for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) if (!inShape(cx - MX + .5, cz - MZ + .5)) { HOLES.add(cx + ',' + cz); setCell(cx, cz, 255, 255, 255, 0); SEA.add(cx + ',' + cz); } // (off the island's own outline)
   if (CH) for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) if (inChasm(cx - MX + .5, cz - MZ + .5)) { HOLES.add(cx + ',' + cz); setCell(cx, cz, 255, 255, 255, 0); } // the sky band
   if (!PLAT) for (let i = 0; i < Math.ceil(MX * 2 / GCH); i++) for (let j = 0; j < Math.ceil(MZ * 2 / GCH); j++) buildChunk(i, j);
   // thin yellow line warns you where the island ends
   const em = new THREE.MeshBasicMaterial({ color: 0xffd400, transparent: true, opacity: .5 });
-  if (!CH && !PLAT) for (const [x, z, w, d] of [[0, -MZ + .2, MX * 2, .4], [0, MZ - .2, MX * 2, .4], [-MX + .2, 0, .4, MZ * 2], [MX - .2, 0, .4, MZ * 2]]) {
+  if (SHAPED) { // the island's sides and the yellow edge line, following its outline square by square
+    const inv = new THREE.MeshBasicMaterial({ visible: false }); slab.material = [inv, inv, mTop, mTop, inv, inv];
+    const sideG = [], lineG = [], out = (cx, cz) => cx < 0 || cz < 0 || cx >= GW || cz >= GD || SEA.has(cx + ',' + cz);
+    for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { if (out(cx, cz)) continue; const x = cx - MX, z = cz - MZ;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { if (!out(cx + dx, cz + dz)) continue;
+        const ex = x + .5 + dx * .5, ez = z + .5 + dz * .5, ry = dx ? (dx > 0 ? Math.PI / 2 : -Math.PI / 2) : (dz > 0 ? 0 : Math.PI);
+        const q = new THREE.PlaneGeometry(1, 6); q.rotateY(ry); q.translate(ex, -3, ez); sideG.push(q);
+        const l = new THREE.PlaneGeometry(dx ? .4 : 1, dx ? 1 : .4).rotateX(-Math.PI / 2); l.translate(ex - dx * .2, .02, ez - dz * .2); lineG.push(l); } }
+    const tx = side.clone(); tx.repeat.set(1, 1); tx.needsUpdate = true;
+    if (sideG.length) { const m = new THREE.Mesh(mergeGeometries(sideG), new LiteMat({ map: tx, roughness: 1 })); scene.add(m); sideG.forEach(g => g.dispose()); }
+    if (lineG.length) { const m = new THREE.Mesh(mergeGeometries(lineG), em); scene.add(m); lineG.forEach(g => g.dispose()); } }
+  else if (!CH && !PLAT) for (const [x, z, w, d] of [[0, -MZ + .2, MX * 2, .4], [0, MZ - .2, MX * 2, .4], [-MX + .2, 0, .4, MZ * 2], [MX - .2, 0, .4, MZ * 2]]) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), em); m.rotation.x = -Math.PI / 2; m.position.set(x, .02, z); scene.add(m);
   }
   else if (CH) { // the sky map: the edge line and the island's sides only where there's ground (nothing drawn across the gorge's open ends)
@@ -852,7 +881,7 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
       const tx = side.clone(); tx.repeat.set(L, 1); tx.needsUpdate = true; const w = new THREE.Mesh(new THREE.PlaneGeometry(L, 6), new LiteMat({ map: tx, roughness: 1 })); w.position.set(sx * MX, -3, cz); w.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; scene.add(w); }
   }
 }
-const onIsland = (x, z) => PLAT ? !!platUnder(x, z) : Math.abs(x) <= MX && Math.abs(z) <= MZ; // (portal platforms: over a platform)
+const onIsland = (x, z) => PLAT ? !!platUnder(x, z) : Math.abs(x) <= MX && Math.abs(z) <= MZ && (!SHAPED || inShape(x, z)); // (portal platforms: over a platform)
 
 // ---- fixed scenery: unit cells for drawing, boxes for colliders ----
 const staticCells = [];   // [x,y,z,color]
@@ -928,7 +957,7 @@ function TH(x, z) {
   if (!TERRAIN) return 0;
   if (ICEMAP) return iceH(x, z);
   if (PLAT) { const o = plStaticAt(x, z); return o ? o.y : 0; }
-  if (VOLC) return Math.max(volcanoH(x, z), volcRough(x, z));
+  if (VOLC) return Math.max(volcanoH(x, z), volcRough(x, z) * shapeFade(x, z));
   if (DESERT) { let h = duneH(x, z), c = craterH(x, z); if (h <= 0 && c <= 0) return 0; let k = 1;
     for (const t of ['blue', 'red']) { const F = FORT[t], dx = Math.max(0, Math.abs(x - F.x) - (FORT_RX + 4)), dz = Math.max(0, Math.abs(z - F.z) - (FORT_RZ + 4)); k = Math.min(k, clamp(Math.hypot(dx, dz) / 6, 0, 1)); }
     for (const p of [...TRAMP_SPOTS, ...HUBS, ...PORTAL_SPOTS, ...PASTURE_C]) k = Math.min(k, clamp((Math.hypot(x - p.x, z - p.z) - (PASTURE_C.includes(p) ? 11 : 5)) / 5, 0, 1));
@@ -936,7 +965,7 @@ function TH(x, z) {
     let k2 = 1; for (const p of [...TRAMP_SPOTS, ...HUBS, ...PORTAL_SPOTS]) k2 = Math.min(k2, clamp((Math.hypot(x - p.x, z - p.z) - 5) / 5, 0, 1));
     for (const S_ of STRIP_SPOTS) k2 = Math.min(k2, clamp((Math.hypot(x - S_.x - S_.dx * 4, z - S_.z - S_.dz * 4) - 7) / 5, 0, 1));
     const ke = Math.min(clamp((MX - Math.abs(x)) / 4, 0, 1), clamp((MZ - Math.abs(z)) / 4, 0, 1));
-    k = Math.min(k, clamp(Math.hypot(x, z) / 6 - .6, 0, 1), ke); return Math.max(h * k, c * Math.min(k2, ke, clamp(Math.hypot(x, z) / 4 - .5, 0, 1))); }
+    k = Math.min(k, clamp(Math.hypot(x, z) / 6 - .6, 0, 1), ke, shapeFade(x, z)); return Math.max(h * k, c * Math.min(k2, ke, clamp(Math.hypot(x, z) / 4 - .5, 0, 1))); }
   let h = 0;
   for (const t of ['blue', 'red']) { const F = FORT[t], dx = Math.max(0, Math.abs(x - F.x) - (FORT_RX + 3)), dz = Math.max(0, Math.abs(z - F.z) - (FORT_RZ + 3)), d = Math.hypot(dx, dz); if (d < 16) h = Math.max(h, 4 * _sm(1 - d / 16)); }
   for (const g of HILLS) { const d = Math.hypot(x - g.x, z - g.z); if (d < g.r) h = Math.max(h, g.h * (.5 + .5 * Math.cos(Math.PI * d / g.r))); }
@@ -970,7 +999,7 @@ const keepClear = [ // places scenery must avoid
   ...(MAP === 'sky' ? STRIP_SPOTS.map(S_ => ({ x: S_.x + S_.dx * 4, z: S_.z + S_.dz * 4, r: 8 })) : []),
   ...(ICEMAP ? [] : PORTAL_SPOTS).map(p => { const L = Math.hypot(p.x, p.z); return { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5, r: 10 }; }), // the pastures
 ];
-const clearAt = (x, z, pad = 0) => (!TERRAIN || pad < 0 || TH(x, z) < .05 || pad === 2) && keepClear.every(k => Math.hypot(x - k.x, z - k.z) > k.r + pad) && Math.abs(x) < MX - 3 && Math.abs(z) < MZ - 3 && chasmDist(x, z) > 2.5 + Math.max(0, pad);
+const clearAt = (x, z, pad = 0) => (!TERRAIN || pad < 0 || TH(x, z) < .05 || pad === 2) && keepClear.every(k => Math.hypot(x - k.x, z - k.z) > k.r + pad) && Math.abs(x) < MX - 3 && Math.abs(z) < MZ - 3 && (!SHAPED || inShape(x, z, 3)) && chasmDist(x, z) > 2.5 + Math.max(0, pad);
 // trees are made of real blocks now (built in the blocks file, asleep until something hits them)
 const TREES = [];
 function tree(x, z, h) {
@@ -984,7 +1013,7 @@ function tree(x, z, h) {
 }
 // trees: two groves on the flanks give cover for sneaking round, plus a few loners. The middle stays open.
 // same 27 trees as before, spread wider: smaller groves, a few round each pasture (the corners looked empty), more loners
-const GROVES = (TOY ? [{ x: -58.6, z: 21.4, n: 3 }, { x: 58.6, z: -21.4, n: 3 }, { x: -16, z: -16, n: 2 }, { x: 16, z: 16, n: 2 }] : JUNGLE ? [{ x: -112, z: 34, n: 2 }, { x: 112, z: -34, n: 2 }, { x: -112, z: -34, n: 2 }, { x: 112, z: 34, n: 2 }] : VOLC ? [{ x: -62, z: -38, n: 5 }, { x: 62, z: 38, n: 5 }, { x: -36, z: 44, n: 4 }, { x: 36, z: -44, n: 4 }] : ICEMAP ? [{ x: -64, z: -38, n: 4 }, { x: 64, z: 38, n: 4 }, { x: -28, z: 46, n: 3 }, { x: 28, z: -46, n: 3 }] : DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
+const GROVES = (TOY ? [{ x: -58.6, z: 21.4, n: 3 }, { x: 58.6, z: -21.4, n: 3 }, { x: -16, z: -16, n: 2 }, { x: 16, z: 16, n: 2 }] : JUNGLE ? [{ x: -90, z: 23, n: 2 }, { x: 90, z: -23, n: 2 }, { x: -90, z: -23, n: 2 }, { x: 90, z: 23, n: 2 }] : VOLC ? [{ x: -62, z: -38, n: 5 }, { x: 62, z: 38, n: 5 }, { x: -36, z: 44, n: 4 }, { x: 36, z: -44, n: 4 }] : ICEMAP ? [{ x: -64, z: -38, n: 4 }, { x: 64, z: 38, n: 4 }, { x: -28, z: 46, n: 3 }, { x: 28, z: -46, n: 3 }] : DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
 for (const p of (ICEMAP ? [] : PORTAL_SPOTS)) { const L = Math.hypot(p.x, p.z), pa = { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; // trees scattered round the pasture fence, never in the portal's way
   for (let i = 0, n = 0; i < 120 && n < 4; i++) { const a = rnd() * Math.PI * 2, d = rr(11, 16), x = Math.round(pa.x + Math.cos(a) * d), z = Math.round(pa.z + Math.sin(a) * d);
     if (Math.hypot(x - p.x, z - p.z) < 7 || !clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue; tree(x, z, 2 + Math.floor(rnd() * 3)); n++; } }
