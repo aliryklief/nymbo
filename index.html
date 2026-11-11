@@ -5285,7 +5285,7 @@ function updateBlackHole(dt) {
   // strong from the first second, and every block or robot it eats makes it reach further and pull harder (exponential)
   // gentle for the first seconds, then the pull doubles every ~3.5 s: by 20 s nothing on the map can hold on.
   // The suction is a spiral: things swing round the pole as they come in.
-  BH.R = 230; const grip = .12 * Math.exp(BH.t * .2); // 0.12 → ~6.5 at 20 s
+  BH.R = 230; const grip = .3 * Math.exp(BH.t * .17); // 0.3 → ~9 at 20 s (you can feel it straight away)
   const swirl = (x, z, d) => { const a = .9 * Math.min(1, d / 30); return { x: x + (-z) * a, z: z + x * a }; }; // a spiral: sideways far out, straight in close up
   const eatR = 3.2 + Math.max(0, BH.t - 18) * 1.2; // after ~18 s the mouth itself widens so nothing can hide
   const H = BH.pos;
@@ -5295,33 +5295,39 @@ function updateBlackHole(dt) {
     const p = rPos(r), dx = H.x - p.x, dy = H.y - p.y, dz = H.z - p.z, d = Math.hypot(dx, dy, dz), dxz = Math.hypot(dx, dz);
     if (d > BH.R) { r.pull = null; continue; }
     const k = 1 - d / BH.R, s = Math.min(40, (4 + 10 * k) * grip), sw = swirl(dx / d, dz / d, dxz);
-    r.pull = V(sw.x * s, dxz < 9 ? Math.min(30, (4 + 8 * k) * grip) : 0, sw.z * s); // lifted off the ground only when right under it
-    if (d < eatR || dxz < eatR + .3) swallow(r); // right under the pole: there's no escaping from there
+    const lift = dxz < 16 && dy > 0 ? 30 * Math.min(1, grip * 2) * (1 - dxz / 18) * Math.min(1, dy / 5) : 0; // close in, it lifts you off your feet and you float up into it
+    r.pull = V(sw.x * s, lift, sw.z * s);
+    if (lift > 6 && Math.random() < dt * 20) emit(V(p.x + rr(-.4, .4), p.y + rr(-.6, .6), p.z + rr(-.4, .4)), 0xb36bff, V(dx / d * 6, dy / d * 6, dz / d * 6), .14, .7, 0); // (a trail being sucked in with you)
+    if (d < eatR + 1 || dxz < eatR + .3) swallow(r); // touch it and you're gone (and right under it, there's no escape)
   }
   // blocks — kept cheap so the hole never lags the game:
   //  • loose blocks are pulled (one third of them per frame, in turn), the closest vanish
   //  • anchored walls aren't turned into hundreds of physics bodies: inside the hole's reach they just get torn off and
   //    eaten straight away, a handful per frame, nearest first (you see them streak in as bursts)
   //  • if the loose pile ever gets big, the furthest-in ones are eaten early
-  const near = Math.min(230, 8 + 222 * Math.pow(BH.t / 20, 2)); let torn = 0, loose = 0; const phase = (BH.frame = (BH.frame || 0) + 1) % 3;
+  const near = Math.min(230, 8 + 222 * Math.pow(BH.t / 20, 2)); let torn = 0, loose = 0, flying = 0; const phase = (BH.frame = (BH.frame || 0) + 1) % 3;
   const fxOk = () => (BH.fxN = (BH.fxN || 0) + 1) % 3 === 0; // one burst for every three eaten (particles cost too)
   for (let i = 0; i < blocks.length; i++) {
     const e = blocks[i]; if (e.dead || e.holder || !e.body || e.kind === 'flag' || e.kind === 'animal') continue;
     if (e.anchored) {
       if (torn >= (BH.t < 10 ? 3 : 8)) continue;
       const t = e.ap || e.body.translation(), d = Math.hypot(H.x - t.x, H.y - t.y, H.z - t.z);
-      if (d < near * .55) { if (fxOk()) fxBurst(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(e); BH.eaten++; torn++; netEv(['bhx', e.id]); ANCH.dirty = true; }
+      if (d < near * .55) { torn++; ANCH.dirty = true;
+        if ((BH.flying || 0) < 90 && d < 60) { unanchor(e); if (e.body) { e.body.applyImpulse({ x: 0, y: e.body.mass() * rr(4, 7), z: 0 }, true); e.bhFly = true; } } // ripped off and pulled in, so you SEE it go
+        else { if (fxOk()) fxBurst(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(e); BH.eaten++; netEv(['bhx', e.id]); } } // (too many in the air already: far ones just vanish)
       continue;
     }
-    loose++;
+    loose++; if (e.bhFly) flying++;
     if (i % 3 !== phase) continue;
     const t = e.body.translation(), dx = H.x - t.x, dy = H.y - t.y, dz = H.z - t.z, d = Math.hypot(dx, dy, dz);
     if (d > BH.R) continue;
     if (d < eatR + 1.3 || (loose > 220 && d < 14)) { if (fxOk()) fxBurst(V(t.x, t.y, t.z), 0xb36bff, .5, .15); destroyBlock(e); BH.eaten++; netEv(['bhx', e.id]); continue; }
     const k = 1 - d / BH.R, m = e.body.mass(), s = Math.min(45, (4 + 10 * k) * grip) * dt * 3, sw = swirl(dx / d, dz / d, Math.hypot(dx, dz)); // ×3: each block is only pushed every third frame
-    e.body.applyImpulse({ x: sw.x * s * m, y: (dy / d * s + G * dt * 3 * Math.min(.95, grip * .3)) * m, z: sw.z * s * m }, true); // weight fades as the pull grows: they drift up and spiral in
+    const dxz = Math.hypot(dx, dz), up = dxz < 28 && dy > 0 ? Math.min(1.25, grip * .6) * (1 - dxz / 32) : 0; // close in, blocks float up into it
+    e.body.applyImpulse({ x: sw.x * s * m, y: (dy / d * s + G * dt * 3 * Math.min(1.3, grip * .3 + up)) * m, z: sw.z * s * m }, true); // weight fades as the pull grows: they drift up and spiral in
     if (e.body.isSleeping()) e.body.wakeUp();
   }
+  BH.flying = flying;
   // WIN RULES while the hole is open: 4 flags scored = you win on the spot, whatever happens after.
   // Otherwise the LAST TEAM STANDING wins (any team, not just whoever opened it).
   if (!BH.won && match.state === 'play') {
@@ -7797,15 +7803,18 @@ function updateBear(dt) {
   const B = BEAR.b; if (!B) return; const t = now() / 1000, m = B.m;
   if (B.fight) { const F = B.fight; F.t -= dt; animFightCloud(F.cloud, dt); if ((F.sT = (F.sT || 0) - dt) <= 0) { F.sT = rr(.1, .2); sfx(Math.random() < .3 ? 'roar' : Math.random() < .5 ? 'hit' : 'dodge', F.at); } shake = Math.max(shake, .25);
     if (F.t <= 0 || F.r.state !== 'play') { endBearFight(B, true); if (B.kills >= 3) bearLeave(B); } return; }
+  if (B.frozenT > 0) { B.frozenT -= dt; // frozen solid: it can't move at all
+    if (Math.random() < dt * 6) emit(V(B.x + rr(-1.2, 1.2), B.y + rr(.5, 5), B.z + rr(-1.2, 1.2)), 0xe8f8ff, V(0, rr(.3, 1), 0), .12, .6, 0);
+    if (B.frozenT <= 0) bearThaw(B); return; }
   B.life -= dt; if (!B.leaving && B.life <= 0) bearLeave(B);
   if (B.flinch > 0) B.flinch -= dt;
   // where to: whoever's closest (looked at again every half second), or the way out
   let goal; if (B.leaving) goal = V(B.leaving.x, 0, B.leaving.z);
   else {
     if (B.mode === 'run' && (!B.target || B.target.state !== 'play' || B.target.inFight || isInvisible(B.target))) { B.mode = 'rise'; B.riseT = 3; B.target = null; }
-    let near = null, bd = 1e9; for (const r of robots) { if (r.state !== 'play' || r.inFight || isInvisible(r)) continue; const c = rPos(r), dd = Math.hypot(c.x - B.x, c.z - B.z); if (dd < bd) { bd = dd; near = r; } }
+    let near = null, bd = 1e9; for (const r of robots) { if (r.state !== 'play' || r.inFight || isInvisible(r)) continue; if (r === B.avoid && robots.some(o => o !== r && o.state === 'play' && !o.inFight && !isInvisible(o))) continue; const c = rPos(r), dd = Math.hypot(c.x - B.x, c.z - B.z); if (dd < bd) { bd = dd; near = r; } }
     if (B.mode === 'rise') { B.riseT -= dt; if (near) { const c = rPos(near); goal = V(c.x, 0, c.z); } else goal = V(B.x + Math.sin(B.yaw), 0, B.z + Math.cos(B.yaw));
-      if (B.riseT <= 0 && near) { B.mode = 'run'; B.target = near; sfx('roar', V(B.x, 3, B.z));  } }
+      if (B.riseT <= 0 && near) { B.mode = 'run'; B.target = near; B.avoid = null; sfx('roar', V(B.x, 3, B.z));  } }
     else { const c = rPos(B.target); goal = V(c.x, 0, c.z); } }
   const d = V(goal.x - B.x, 0, goal.z - B.z), L = d.length(); if (L > .01) d.divideScalar(L);
   const want = Math.atan2(d.x, d.z); B.yaw += angDiff(B.yaw, want) * Math.min(1, dt * 5);
@@ -7839,12 +7848,25 @@ function updateBear(dt) {
     const at = c.clone(), cloud = fightCloud(B.target, at); cloud.scale.setScalar(2.3); cloud.traverse(o => { if (o.material && o.material.color && (o.material.color.getHex() === 0xc27a3a || o.material.color.getHex() === 0x6b3e1c)) { o.material = o.material.clone(); o.material.color.set(0xf3f0e6); } });
     B.fight = { t: 2, at, cloud, r: B.target }; B.target.inFight = at.clone(); m.g.visible = false; sfx('roar', at); shake = Math.max(shake, B.target.isPlayer ? .9 : .4); if (B.target.isPlayer) buzz('ko'); } }
 }
-// bombs: five and it runs off; ice slows it for a moment
+// ICE: a freeze block on it freezes it solid for a few seconds. When it thaws it picks someone NEW to chase, and its
+// minute starts again from the top
+function bearFreeze(B) { if (!B || B.leaving || B.frozenT > 0) return; if (B.fight) endBearFight(B, false);
+  B.frozenT = 4; B.avoid = B.target; B.target = null; B.mode = 'rise';
+  B.m.g.traverse(o => { if (!o.isMesh || !o.material || !o.material.color) return; const mt = o.material; if (!mt.userData.c0) mt.userData.c0 = mt.color.clone(); mt.color.copy(mt.userData.c0).lerp(new THREE.Color(0x9fe0ff), .55); if (mt.emissive) { mt.userData.e0 = mt.userData.e0 || mt.emissive.clone(); mt.emissive.set(0x2a8fc4); } });
+  sfx('freeze', V(B.x, 3, B.z)); fxBurst(V(B.x, B.y + 2.5, B.z), 0xbfe6ff, 4, .5); fxDebris(V(B.x, B.y + 2, B.z), 0xe8f6ff, 30, 6); }
+function bearThaw(B) {
+  B.m.g.traverse(o => { if (!o.isMesh || !o.material || !o.material.userData.c0) return; const mt = o.material; mt.color.copy(mt.userData.c0); if (mt.emissive && mt.userData.e0) mt.emissive.copy(mt.userData.e0); });
+  fxDebris(V(B.x, B.y + 2, B.z), 0xe8f6ff, 30, 7); sfx('roar', V(B.x, 3, B.z)); B.mode = 'rise'; B.riseT = 1; B.life = 60; // (a new victim, and a fresh minute)
+}
+// a power block flying into the bear goes off on it (it's not solid, so otherwise they'd fly straight through)
+{ const umF = updateMorePowers; updateMorePowers = function (dt) { umF(dt); const B = BEAR.b; if (!B || B.fight || B.leaving) return;
+    for (const e of blocks) { if (!e.live || !e.body || e.dead || !isPower(e.kind)) continue; const p = e.body.translation(); if (Math.hypot(p.x - B.x, p.z - B.z) < 2 && p.y > B.y - .5 && p.y < B.y + 6) detonate(e); } }; }
+// bombs: five and it runs off
 { const exB = explode; explode = function (pos, team, by, scale = 1) {
     const B = BEAR.b; if (B && !B.leaving && Math.hypot(B.x - pos.x, B.y + 2 - pos.y, B.z - pos.z) < BOMB_R0 * scale + 1.5) { B.hits++; B.flinch = .8; sfx('roar', V(B.x, 3, B.z)); fxBurst(V(B.x, B.y + 2.5, B.z), 0xffffff, 1.5, .3); if (B.hits >= 5) bearLeave(B, 'bombs'); }
     return exB(pos, team, by, scale);
   }; }
-{ const fzB = freezeArea; freezeArea = function (pos, team, by, R = FREEZE_R0) { const B = BEAR.b; if (B && by && Math.hypot(B.x - pos.x, B.z - pos.z) < R + 1.5) B.flinch = 2; return fzB(pos, team, by, R); }; }
+{ const fzB = freezeArea; freezeArea = function (pos, team, by, R = FREEZE_R0) { const B = BEAR.b; if (B && by && Math.hypot(B.x - pos.x, B.z - pos.z) < R + 1.5 && Math.abs(pos.y - B.y - 2) < R + 3) { bearFreeze(B); if (by.isPlayer) toast('THE BEAR FROZE SOLID!'); } return fzB(pos, team, by, R); }; }
 { const umB = updateMorePowers; updateMorePowers = function (dt) { umB(dt); updateBear(dt); }; }
 
 // ============================================================
