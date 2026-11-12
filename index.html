@@ -9518,15 +9518,14 @@ function pxShuffle() {
 function pxApply(k) {
   if (k === PX.rk) return; PX.rk = k; const ord = PX.rh[k], n = ord.length;
   for (let i = 0; i < n; i++) { const a = PL[ord[i]].ports[1], b = PL[ord[(i + 1) % n]].ports[0]; PX.link[a.i] = b.i; PX.link[b.i] = a.i; }
-  for (let i = 0; i < n; i++) { const a = PL[ord[i]].ports[1], b = PL[ord[(i + 1) % n]].ports[0], sh = PX_ICONS[i % PX_ICONS.length], shade = Math.floor(i / PX_ICONS.length) % 3;
-    for (const [P_, Q] of [[a, b], [b, a]]) { // the two ends of a link wear the SAME shape; the colour says which way it takes you: reddish = towards red's side, bluish = towards blue's
-      const c = new THREE.Color(Q.o.x > P_.o.x ? PX_RED[shade] : PX_BLUE[shade]); P_.col = c;
-      P_.ring.material.color.copy(c); P_.ring.material.emissive.copy(c); P_.disc.material.color.copy(c).lerp(new THREE.Color(0xffffff), .35); P_.cube.material.color.copy(c);
+  for (let i = 0; i < n; i++) { const a = PL[ord[i]].ports[1], b = PL[ord[(i + 1) % n]].ports[0], sh = PX_ICONS[i % PX_ICONS.length], c = new THREE.Color(PX_COLS[(i * 3) % PX_COLS.length]);
+    for (const P_ of [a, b]) { // the two ends of a link: the SAME colour and the SAME shape (green triangle → the other green triangle)
+      P_.col = c; P_.ring.material.color.copy(c); P_.ring.material.emissive.copy(c); P_.disc.material.color.copy(c).lerp(new THREE.Color(0xffffff), .35); P_.cube.material.color.copy(c);
       P_.cube.geometry = pxShapeGeo(sh); P_.cube.scale.setScalar(1); } }
   for (const P_ of [PX.hid, PX.starP]) { P_.cube.geometry = pxShapeGeo('star', true); P_.cube.material.color.set(0xffffff); P_.cube.material.vertexColors = true; P_.cube.material.needsUpdate = true; P_.icon.visible = true; } // (the secret one: a rainbow star)
 }
-// the hint over each portal: a bright shape (the drawing shapes plus a few more). Matching shapes are the two ends of one link
-const PX_SG = {}, PX_RED = ['#FF2D2D', '#FF7A00', '#FF1493'], PX_BLUE = ['#008CFF', '#00E5FF', '#8A2BE2'];
+// the hint over each portal: a bright shape (the drawing shapes plus a few more) in a bright colour. Same shape AND colour = the two ends of one link
+const PX_SG = {}, PX_COLS = ['#FF2D2D', '#FF8A00', '#FFE000', '#22E04A', '#00E5FF', '#1E6BFF', '#9B3BFF', '#FF3FB4', '#FFFFFF', '#8B5A2B', '#7FFFD4'];
 const PX_ICONS = ['circle', 'triangle', 'square', 'zigzag', 'check', 'heart', 'diamond', 'plus'];
 const PX_XTRA = { heart: () => { const a = []; for (let k = 0; k <= 32; k++) { const t = k / 32 * Math.PI * 2; a.push([.5 + .026 * 16 * Math.sin(t) ** 3, .45 - .026 * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))]); } return a; },
   diamond: () => [[.5, .1], [.82, .5], [.5, .9], [.18, .5], [.5, .1]], plus: [[[.5, .12], [.5, .88]], [[.12, .5], [.88, .5]]],
@@ -9703,7 +9702,9 @@ if (PLAT) {
       if (!o || !o.mv || p.y - o.py > 1.6) continue; r.body.setTranslation({ x: p.x + o.dx, y: p.y, z: p.z + o.dz }, true); if (r.pt) { r.pt.x += o.dx; r.pt.z += o.dz; } }
     for (const o of PL) { if (!o.mv || (!o.dx && !o.dy && !o.dz)) continue;
       for (const e of blocks) { if (e.dead || !e.body || e.holder || e.kind === 'animal') continue; const t = e.body.translation(); if (Math.abs(t.x - o.px) > o.hx + .3 || Math.abs(t.z - o.pz) > o.hz + .3) continue; const h = t.y - o.py; if (h < -.3 || h > e.size * .75 + .5 || e.live) continue;
-        e.body.setTranslation({ x: t.x + o.dx, y: t.y + o.dy, z: t.z + o.dz }, false); if (e.anchored) e.drawn = false; } }
+        if (e.anchored || e.body.isSleeping()) { e.body.setTranslation({ x: t.x + o.dx, y: t.y + o.dy, z: t.z + o.dz }, false); if (e.anchored) e.drawn = false; continue; }
+        const lv = e.body.linvel(), vx = o.dx / world.timestep, vz = o.dz / world.timestep; // (awake and resting on it: move WITH the platform, not slide about on it)
+        if (Math.hypot(lv.x - vx, lv.z - vz) < 2.5 && Math.abs(lv.y - o.dy / world.timestep) < 2) { e.body.setLinvel({ x: vx, y: lv.y, z: vz }, true); const av = e.body.angvel(); e.body.setAngvel({ x: av.x * .5, y: av.y * .5, z: av.z * .5 }, true); } } }
     twinHold();
   };
 }
