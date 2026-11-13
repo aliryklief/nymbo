@@ -4127,6 +4127,13 @@ let NBR_SCRG = null;
 // the arm: one smooth piece, narrower at the shoulder and wider at the hand (like a mitten), its top leaning in against
 // the body so the shoulder is covered; a colour stripe round it
 let NBR_ANTG = { ring: new THREE.TorusGeometry(.017, .0055, 12, 32).rotateX(Math.PI / 2), dome: new THREE.SphereGeometry(.017, 24, 12).scale(1, .35, 1), stalk: new THREE.CylinderGeometry(.0045, .006, .125, 12).translate(0, .0625, 0), tip: new THREE.SphereGeometry(.016, 20, 14), len: .127 };
+// the antenna tip is a light: dark normally; carrying an enemy flag it shines that flag's colour, bright enough to spot
+// across the map. Carrying your own twin's flag (the other half of you: the enemy flag of your own number) it shines white.
+let NBR_GLOWT = null; const nbrGlowTex = () => NBR_GLOWT || (NBR_GLOWT = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.18, 'rgba(255,255,255,.85)'); gr.addColorStop(.45, 'rgba(255,255,255,.25)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })());
+function nbrAntLight(r) { const N = r.model.ant; if (!N) return; const f = r.state === 'play' && r.stack[0] && r.stack[0].kind === 'flag' ? r.stack[0] : null, key = f ? (f.owner === r.idx && !f.fake ? 'twin' : '#' + f.color.getHexString()) : '';
+  if (N.lit === key) { if (key) N.glow.scale.setScalar(.045 + .008 * Math.sin(performance.now() / 160)); return; } N.lit = key;
+  if (!key) { N.tipM.color.set(0xdfe3ea); N.tipM.emissive.set(0); N.tipM.emissiveIntensity = 0; N.glow.visible = false; return; }
+  const c = new THREE.Color(key === 'twin' ? 0xffffff : key); N.tipM.color.copy(c); N.tipM.emissive.copy(c); N.tipM.emissiveIntensity = 3; N.glow.material.color.copy(c); N.glow.visible = true; }
 let NBR_ARMW = null; const NBR_ARML = .04; const NBR_ARMG = (() => { const R1 = .06, R2 = .078, L = .28, pts = [];
   for (let i = 0; i <= 12; i++) { const a = Math.PI / 2 * i / 12; pts.push(new THREE.Vector2(R2 * Math.sin(a), -L - R2 * Math.cos(a))); }
   for (let i = 1; i < 10; i++) { const t = i / 10, e = t * t * (3 - 2 * t); pts.push(new THREE.Vector2(R2 + (R1 - R2) * e, -L * (1 - t))); }
@@ -4179,8 +4186,9 @@ function nymMeshModel(color, happy) {
   let ant = null; if (NBR_B2) { const metal = NBR_EARM, dir = new THREE.Vector3(0, .82, -.57).normalize(), base = new THREE.Vector3(0, .321, 0).add(new THREE.Vector3(0, .181 * dir.y, .2 * dir.z)), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     const sock = new THREE.Group(); sock.position.copy(base); sock.quaternion.copy(q); rig.add(sock);
     sock.add(new THREE.Mesh(NBR_ANTG.ring, metal), new THREE.Mesh(NBR_ANTG.dome, new THREE.MeshStandardMaterial({ color, roughness: .35 })));
-    const piv = new THREE.Group(); sock.add(piv); const stalk = new THREE.Mesh(NBR_ANTG.stalk, metal); piv.add(stalk); const tip = new THREE.Mesh(NBR_ANTG.tip, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .6, roughness: .3 })); tip.position.y = NBR_ANTG.len; piv.add(tip);
-    ant = { piv, o: new THREE.Vector2(), v: new THREE.Vector2(), last: null, lv: new THREE.Vector3() }; }
+    const piv = new THREE.Group(); sock.add(piv); const stalk = new THREE.Mesh(NBR_ANTG.stalk, metal); piv.add(stalk); const tipM = new THREE.MeshStandardMaterial({ color: 0xdfe3ea, roughness: .25 }), tip = new THREE.Mesh(NBR_ANTG.tip, tipM); tip.position.y = NBR_ANTG.len; piv.add(tip);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: nbrGlowTex(), color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, sizeAttenuation: false })); glow.scale.setScalar(.045); /* (the same size on screen near or far: you can spot a flag carrier from across the map) */ glow.visible = false; tip.add(glow);
+    ant = { piv, tipM, glow, lit: null, o: new THREE.Vector2(), v: new THREE.Vector2(), last: null, lv: new THREE.Vector3() }; }
   g.traverse(o => { if (o.isMesh) o.castShadow = false; });
   const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 })); blob.renderOrder = 1; scene.add(blob);
   const ice = new THREE.Mesh(new RoundedBoxGeometry(1.45, 2.4, 1.35, 2, .14), iceOverlayMat); ice.visible = false; g.add(ice);
@@ -4196,6 +4204,7 @@ if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMesh
       const tx = thr || flag ? -1.57 : 0, tz = block && !thr ? 2.7 : .03; M.armX = (M.armX || 0) + (tx - (M.armX || 0)) * k; M.armZ = (M.armZ ?? .12) + (tz - (M.armZ ?? .12)) * k;
       A.forEach((a, i) => a.rotation.set(M.armX, 0, (i ? 1 : -1) * M.armZ));
       if (flag) { M.held.position.copy(M.heldFront); M.held.scale.setScalar(.72); } else { M.held.position.copy(M.heldTop); M.held.scale.setScalar(1); }
+      nbrAntLight(r);
       // the antenna: a spring that lags behind when he speeds up, turns or stops, and wobbles back
       const N = M.ant; if (N) { const p = M.g.position; if (N.last) { const vx = (p.x - N.last.x) / dt, vz = (p.z - N.last.z) / dt, ax = (vx - N.lv.x) / dt, az = (vz - N.lv.z) / dt, ry = M.g.rotation.y, c = Math.cos(ry), sn = Math.sin(ry), lx = ax * c - az * sn, lz = ax * sn + az * c; N.lv.set(vx, 0, vz);
           const fx = clamp(lx, -45, 45) * .9, fz = clamp(lz, -45, 45) * .9; N.v.x += (-90 * N.o.x - 3.2 * N.v.x - fx) * dt; N.v.y += (-90 * N.o.y - 3.2 * N.v.y - fz) * dt; N.o.x += N.v.x * dt; N.o.y += N.v.y * dt; N.o.clampScalar(-.7, .7);
