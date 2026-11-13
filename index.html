@@ -4050,7 +4050,7 @@ document.querySelectorAll('[data-bot]').forEach(b => { const cur = BOT_KIND === 
 // The arm as he modelled it (raised) is used when it points up; a mirror image of it (armpit and shoulder swapped)
 // when it points down, so it looks just as clean both ways. Team colour is painted on by the graphics card.
 const nbrArr = (b64, T) => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new T(u.buffer); };
-const NBR_BALLK = .9, NBR_BDROP = .37 * (1 - .9), NBR_WAIST = -.19, NBR_S = .37 / NBR.ballR, NBR_HANG = .2, NBR_SINK = .06; let NBR_TOP = null, NBR_TOPM = null, NBR_EAR = null, NBR_EARIN = null, NBR_EARM = null;
+const NBR_SEAT = .05, NBR_BALLK = .9, NBR_BDROP = .37 * (1 - .9), NBR_WAIST = -.19, NBR_S = .37 / NBR.ballR, NBR_HANG = .2, NBR_SINK = .06; let NBR_TOP = null, NBR_TOPM = null, NBR_EAR = null, NBR_EARIN = null, NBR_EARM = null;
 const NBR_B2 = typeof NBR2 !== 'undefined'; // (the Meshy rebuild of his body, with smooth shoulders)
 const NBR_BODY2 = NBR_B2 ? (() => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(nbrArr(NBR2.P, Float32Array), 3)); g.setAttribute('normal', new THREE.BufferAttribute(nbrArr(NBR2.N, Float32Array), 3)); g.setAttribute('uv', new THREE.BufferAttribute(nbrArr(NBR2.U, Float32Array), 2)); g.setIndex(new THREE.BufferAttribute(nbrArr(NBR2.I, Uint16Array), 1)); return g; })() : null;
 const NBR_PARTS = (() => {
@@ -4114,7 +4114,7 @@ function nbrScreenTex(col, happy) { const key = col + happy; if (NBR_SCR[key]) r
   // the same eyes as the classic robots: happy arcs for the good guys, angry slanted bars for the baddies
   // small eyes (like his Meshy picture): happy little arcs for the good guys; for the baddies, curved tapering slashes,
   // fat in the middle and pointed at the ends, tilted so the inner ends sit low
-  const ex = [W * .33, W * .67], ey = H * .56, bar = (x, y, w, h, rot) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, h * .45); g.fill(); g.restore(); };
+  const ex = [W * .33, W * .67], ey = H * (happy ? .5 : .47), bar = (x, y, w, h, rot) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, h * .45); g.fill(); g.restore(); };
   const happyE = (r, th) => () => { g.lineWidth = th; for (const x of ex) { g.beginPath(); g.arc(x, ey + r * .5, r, Math.PI, Math.PI * 2); g.stroke(); } };
   const slash = (x, y, len, th, rot, bow) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); const L = len / 2; g.moveTo(-L, 0); g.quadraticCurveTo(0, bow - th, L, 0); g.quadraticCurveTo(0, bow + th, -L, 0); g.fill(); g.restore(); };
   const angryE = (len, th, rot) => () => ex.forEach((x, i) => slash(x, ey, len, th, (i ? -1 : 1) * rot, 5));
@@ -4122,7 +4122,7 @@ function nbrScreenTex(col, happy) { const key = col + happy; if (NBR_SCR[key]) r
   const dizzy = (rot, sp) => () => { ex.forEach((x, i) => { for (const a of [-1, 1]) bar(x, ey, 40, 9, a * .78 + (i ? -1 : 1) * rot); });
   };
   if (happy) { frame(0, happyE(20, 8.5)); frame(1, shut(40, 6)); frame(2, () => ex.forEach((x, i) => bar(x, ey, 44, 8, (i ? 1 : -1) * .15))); frame(3, shut(40, 6)); }
-  else { frame(0, angryE(54, 11, .515)); frame(1, shut(44, 6, .3)); frame(2, angryE(50, 8, .515)); frame(3, shut(40, 6, .3)); }
+  else { frame(0, angryE(64, 11, .515)); frame(1, shut(44, 6, .3)); frame(2, angryE(60, 8, .515)); frame(3, shut(40, 6, .3)); }
   frame(4, dizzy(.12, 0)); frame(5, dizzy(-.12, 2.1)); frame(6, dizzy(.04, 4.2)); frame(7, () => {});
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return NBR_SCR[key] = t; }
 let NBR_SCRG = null;
@@ -4191,14 +4191,16 @@ function nbrBurst(r, dt) { const M = r.model, N = M.ant; if (!N) return; const n
   N.tip.getWorldPosition(_zA); for (const b of M.burst) { _zB.copy(_zA).addScaledVector(b.userData.d, .4 + .6 * Math.min(1, t * 3)); nbrBolt(b, _zA, _zB, .045); b.material.opacity = 1 - t; }
   M.burstF.position.copy(_zA); M.burstF.scale.setScalar(3.2 * (1 - t) + .4); M.burstF.material.opacity = 1 - t; }
 let NBR_ARMW = null; const NBR_ARML = .04; const NBR_ARMG = (() => { const R1 = .06, R2 = .078, L = .28, pts = [];
-  for (let i = 0; i <= 12; i++) { const a = Math.PI / 2 * i / 12; pts.push(new THREE.Vector2(R2 * Math.sin(a), -L - R2 * Math.cos(a))); }
+  // (no perfect shapes: the ends are flattened, squarish domes, not half-balls, and the arm is a little oval across)
+  const sq = (c, e) => Math.sign(c) * Math.pow(Math.abs(c), e);
+  for (let i = 0; i <= 12; i++) { const a = Math.PI / 2 * i / 12; pts.push(new THREE.Vector2(R2 * sq(Math.sin(a), .8), -L - .8 * R2 * sq(Math.cos(a), .8))); }
   for (let i = 1; i < 10; i++) { const t = i / 10, e = t * t * (3 - 2 * t); pts.push(new THREE.Vector2(R2 + (R1 - R2) * e, -L * (1 - t))); }
-  for (let i = 0; i <= 14; i++) { const a = Math.PI / 2 * i / 14; pts.push(new THREE.Vector2(R1 * Math.cos(a), R1 * Math.sin(a))); }
+  for (let i = 0; i <= 14; i++) { const a = Math.PI / 2 * i / 14; pts.push(new THREE.Vector2(R1 * sq(Math.cos(a), .75), .72 * R1 * sq(Math.sin(a), .75))); }
   pts[pts.length - 1].x = 0; pts[0].x = 0;
   const rAt = y => { const t = Math.min(1, Math.max(0, 1 + y / L)), e = t * t * (3 - 2 * t); return R2 + (R1 - R2) * e; };
   // lean: the bottom sits out where it always did, the top tucks in toward the body
   const lean = (g, sd) => { const pa = g.attributes.position; for (let i = 0; i < pa.count; i++) { const y = pa.getY(i), t = Math.min(1, Math.max(0, -y / (L + R2))); pa.setX(i, pa.getX(i) + sd * NBR_ARML * t); } g.computeVertexNormals(); return g; };
-  const ys = -.235, rr = rAt(ys) + .0025, mk = sd => { const arm = lean(new THREE.LatheGeometry(pts, 48), sd), st = new THREE.CylinderGeometry(rr, rr, .013, 48, 1, true); st.translate(0, ys, 0); lean(st, sd); return { arm, stripe: st }; };
+  const ys = -.235, rr = rAt(ys) + .0025, mk = sd => { const arm = lean(new THREE.LatheGeometry(pts, 48).scale(1, 1, .86), sd), st = new THREE.CylinderGeometry(rr, rr, .013, 48, 1, true).scale(1, 1, .86); st.translate(0, ys, 0); lean(st, sd); return { arm, stripe: st }; };
   return { [-1]: mk(-1), [1]: mk(1) }; })();
 function nbrEyes(rig, happy, ec, eyesN, eyesF, eyesX) { const F = nbrFace();
   if (!NBR_SCRG) { const gx = 28, gy = 12, x0 = NBR_B2 ? -.15 : -.131, x1 = -x0, y0 = NBR_B2 ? .25 : .257, y1 = NBR_B2 ? .395 : .373, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, pos = [], uv = [], idx = [];
@@ -4224,7 +4226,7 @@ function nymMeshModel(color, happy) {
   const hub = new THREE.Group(); hub.position.y = -.58; g.add(hub); const torso = new THREE.Group(); g.add(torso);
   const rig = new THREE.Group(); rig.scale.setScalar(NBR_S); rig.position.y = -.58 - NBR.ballC * NBR_S;
   // (a slightly smaller ball, and the top half grown to fill the same height: a bigger body, longer arms)
-  const up = new THREE.Group(); torso.add(up); up.add(rig); { const top = rig.position.y + NBR.top * NBR_S, b0 = -.58 + .37, b1 = -.58 - NBR_BDROP + .37 * NBR_BALLK, k = (top - b1) / (top - b0); up.scale.setScalar(k); up.position.y = b1 - k * b0; } const bodyM = (() => { const B = nbrMat(hex, true), m2 = B.clone(); m2.onBeforeCompile = B.onBeforeCompile; m2.customProgramCacheKey = B.customProgramCacheKey; return m2; })(); rig.add(new THREE.Mesh(NBR_BODY2 || NBR_PARTS.body, bodyM)); if (!NBR_B2) rig.add(new THREE.Mesh(nbrFace().disc, new THREE.MeshStandardMaterial({ color, roughness: .35 })));
+  const up = new THREE.Group(); torso.add(up); up.add(rig); { const top = rig.position.y + NBR.top * NBR_S, b0 = -.58 + .37, b1 = -.58 - NBR_BDROP + .37 * NBR_BALLK, k = (top - b1) / (top - b0); up.scale.setScalar(k); up.position.y = b1 - k * b0 - NBR_SEAT; } /* (NBR_SEAT: the body sits down onto the ball so the waist ring touches it) */ const bodyM = (() => { const B = nbrMat(hex, true), m2 = B.clone(); m2.onBeforeCompile = B.onBeforeCompile; m2.customProgramCacheKey = B.customProgramCacheKey; return m2; })(); rig.add(new THREE.Mesh(NBR_BODY2 || NBR_PARTS.body, bodyM)); if (!NBR_B2) rig.add(new THREE.Mesh(nbrFace().disc, new THREE.MeshStandardMaterial({ color, roughness: .35 })));
   // ears: a metal cylinder with the team colour inside
   { const metal = NBR_EARM || (NBR_EARM = new THREE.MeshStandardMaterial({ color: 0xc8ccd4, metalness: .6, roughness: .3 })), inner = new THREE.MeshStandardMaterial({ color, roughness: .35 });
     for (const sx of [-1, 1]) { const c = new THREE.Mesh(NBR_EAR || (NBR_EAR = new THREE.TorusGeometry(.046, .014, 16, 48).rotateY(Math.PI / 2)), metal); c.position.set(sx * .187, .321, 0); rig.add(c); /* (a rounded silver ring, a colour dome set inside it) */
