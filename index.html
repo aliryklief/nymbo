@@ -4089,7 +4089,7 @@ function nbrMat(col, body) { const key = col + (body ? 'b' : ''); if (NBR_MAT[ke
   M.customProgramCacheKey = () => 'nymbot' + (body ? 'b' : ''); return NBR_MAT[key] = M; }
 // the face: real eyes that sit on his visor (and change: happy or angry, focused while carrying, X X when bonked, a blink
 // now and then), plus a flat colour circle on the back of his head. Each piece is laid right onto his surface.
-let NBR_FACE = null; const nbrRay = (o, d) => { nbrFace(); const rc = new THREE.Raycaster(o, d), h = rc.intersectObject(NBR_FACE.hit)[0]; return h ? h.point.clone() : null; };
+let NBR_FACE = null; const nbrRay = (o, d, nOut) => { nbrFace(); const rc = new THREE.Raycaster(o, d), h = rc.intersectObject(NBR_FACE.hit)[0]; if (h && nOut) { nOut.copy(h.face.normal); if (nOut.dot(d) > 0) nOut.negate(); } return h ? h.point.clone() : null; };
 function nbrFace() { if (NBR_FACE) return NBR_FACE;
   const hit = new THREE.Mesh(NBR_BODY2 || NBR_PARTS.body, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })), rc = new THREE.Raycaster(), o = new THREE.Vector3(), d = new THREE.Vector3();
   hit.updateMatrixWorld(true);
@@ -4231,7 +4231,7 @@ function nymMeshModel(color, happy) {
   // the black waist ring: a band from the bottom of his body down onto the ball, so it sits right on it (no gap)
   if (NBR_B2) { if (!NBR_WR) { const bm = new THREE.Mesh(NBR_BODY2); up.updateMatrixWorld(true); rig.add(bm); bm.updateMatrixWorld(true); const pa = NBR_BODY2.attributes.position, v = new THREE.Vector3(); let mn = 1e9; const pts = [];
       for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(bm.matrixWorld); pts.push(v.clone()); if (v.y < mn) mn = v.y; } rig.remove(bm);
-      let rb = 0; for (const q of pts) if (q.y < mn + .03) rb = Math.max(rb, Math.hypot(q.x, q.z)); const R = .37 * NBR_BALLK, cy = -.58 - NBR_BDROP, rr2 = rb * .9, yb = cy + Math.sqrt(Math.max(0, R * R - rr2 * rr2)) - .01, yt = mn + .035;
+      let rb = 0; for (const q of pts) if (q.y < mn + .03) rb = Math.max(rb, Math.hypot(q.x, q.z)); const R = .37 * NBR_BALLK, cy = -.58 - NBR_BDROP, rr2 = rb * .9, yt = mn + .02, yb = Math.max(cy + Math.sqrt(Math.max(0, R * R - rr2 * rr2)) - .01, yt - .032); /* (a thin band) */
       NBR_WR = new THREE.CylinderGeometry(rb * .97, rr2, yt - yb, 48, 1, true).translate(0, (yt + yb) / 2, 0); }
     const w = new THREE.Mesh(NBR_WR, NBR_WRM || (NBR_WRM = new THREE.MeshStandardMaterial({ color: 0x111317, roughness: .35, side: THREE.DoubleSide }))); torso.add(w); } const bodyM = (() => { const B = nbrMat(hex, true), m2 = B.clone(); m2.onBeforeCompile = B.onBeforeCompile; m2.customProgramCacheKey = B.customProgramCacheKey; return m2; })(); rig.add(new THREE.Mesh(NBR_BODY2 || NBR_PARTS.body, bodyM)); if (!NBR_B2) rig.add(new THREE.Mesh(nbrFace().disc, new THREE.MeshStandardMaterial({ color, roughness: .35 })));
   // ears: a metal cylinder with the team colour inside
@@ -4251,8 +4251,8 @@ function nymMeshModel(color, happy) {
   const held = new THREE.Mesh(cubeGeo, new LiteMat({ roughness: .7 })); held.position.y = NBR.top * NBR_S + rig.position.y + .55; held.visible = false; g.add(held);
   const heldTop = held.position.clone(), heldFront = new THREE.Vector3(); if (NBR_B2) { const sh = arms[0].position; heldFront.set(0, up.position.y + up.scale.y * sh.y - .02, .6); } // (blocks ride on his head; a flag is held out in front, between his hands)
   // the antenna: a little silver socket set into the back of his head, up near the top, a thin springy stalk and a small glowing tip
-  let ant = null; if (NBR_B2) { const metal = NBR_EARM, dir = new THREE.Vector3(0, .82, -.57).normalize(), base = nbrRay(new THREE.Vector3(0, .321, 0).addScaledVector(dir, 1), dir.clone().negate()) || new THREE.Vector3(0, .321, 0).add(new THREE.Vector3(0, .17 * dir.y, .2 * dir.z)), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    const sock = new THREE.Group(); sock.position.copy(base); sock.quaternion.copy(q); rig.add(sock);
+  let ant = null; if (NBR_B2) { const metal = NBR_EARM, dir = new THREE.Vector3(0, .82, -.57).normalize(), sn = new THREE.Vector3().copy(dir), base = nbrRay(new THREE.Vector3(0, .321, 0).addScaledVector(dir, 1), dir.clone().negate(), sn) || new THREE.Vector3(0, .321, 0).add(new THREE.Vector3(0, .17 * dir.y, .2 * dir.z)), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    const sock = new THREE.Group(); sock.position.copy(base).addScaledVector(sn, -.004); sock.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), sn); rig.add(sock); /* (the socket sits flat on his head, set into it) */
     sock.add(new THREE.Mesh(NBR_ANTG.ring, metal), new THREE.Mesh(NBR_ANTG.dome, new THREE.MeshStandardMaterial({ color, roughness: .35 })));
     const piv = new THREE.Group(); sock.add(piv); const stalk = new THREE.Mesh(NBR_ANTG.stalk, metal); piv.add(stalk); const tipM = new THREE.MeshStandardMaterial({ color: 0xdfe3ea, roughness: .25 }), tip = new THREE.Mesh(NBR_ANTG.tip, tipM); tip.position.y = NBR_ANTG.len; piv.add(tip);
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: nbrGlowTex(), color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, sizeAttenuation: false })); glow.scale.setScalar(.045); /* (the same size on screen near or far: you can spot a flag carrier from across the map) */ glow.visible = false; tip.add(glow);
