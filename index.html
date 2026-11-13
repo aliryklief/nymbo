@@ -495,7 +495,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 // ============================================================
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import RAPIER from 'rapier';
 await RAPIER.init();
 // one cheap material for everything so it runs on any phone (PBR-only options are simply dropped)
@@ -503,7 +503,8 @@ await RAPIER.init();
 // anything is built. jelly: glossy, toon: flat anime bands; the rest stay on the cheap Lambert.
 const WORLD = (() => { try { return JSON.parse(localStorage.getItem('nymbo-match') || '{}').world || 'day'; } catch (e) { return 'day'; } })();
 const TOON_GRAD = (() => { const d = new Uint8Array([70, 70, 70, 255, 160, 160, 160, 255, 255, 255, 255, 255]); const t = new THREE.DataTexture(d, 3, 1); t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true; return t; })();
-const HD = WORLD === 'hd'; // HD WORLD: real (PBR) materials everywhere, worn and weathered surfaces, round edges, grass blades (12c_hd)
+const NEO = WORLD === 'ruins'; // THE NEW-LOOK SAMPLES (Nov 2026, Look lab "Ruins (sample)"): the block kit of real shapes, the ruined stone forts in a lush meadow, robot animals (12d_neo.js, 12f, 12g; Neon City in 02g/12e). Real materials, as in the HD world; every block mirrors the sky
+const HD = WORLD === 'hd' || NEO; // HD WORLD: real (PBR) materials everywhere, worn and weathered surfaces, round edges, grass blades (12c_hd)
 const LiteBase = HD ? THREE.MeshStandardMaterial : WORLD === 'jelly' ? THREE.MeshPhongMaterial : WORLD === 'toon' ? THREE.MeshToonMaterial : THREE.MeshLambertMaterial;
 class LiteMat extends LiteBase {
   constructor(o = {}) { const { roughness, metalness, clearcoat, clearcoatRoughness, ...rest } = o;
@@ -567,8 +568,9 @@ function netUV(geo, ox, oy) {
   uv.needsUpdate = true; geo.userData.net = [ox, oy]; geo.userData.netBB = bb.clone(); return geo;
 }
 function whiteUV(geo) { const uv = geo.attributes.uv; if (!uv) return geo; for (let i = 0; i < uv.count; i++) uv.setXY(i, (PNET.W - 1.5) / PNET.W, 1.5 / PNET.H); uv.needsUpdate = true; return geo; }
-const MAP = (() => { try { const m = localStorage.getItem('nymbo-map'); return m === 'clouds' || m === 'rainbow' || m === 'sky' ? 'sky' : ['desert', 'ice', 'volcano', 'jungle', 'toy', 'portal', 'reef', 'tide', 'daynight', 'lab', 'cube', 'grass', 'train', 'paint', 'cylinder'].includes(m) ? m : 'classic'; } catch (e) { return 'classic'; } })(); // (the cloud and rainbow maps were merged into one: 'sky')
-const MS = { sky: 1.3, desert: 1.3, ice: 1.15, volcano: 1.2, jungle: 1.2, toy: 1.4, portal: 1.35, reef: 1.2, tide: 1.25, daynight: 1.3, lab: 1.2, cube: 1.1, grass: 1.3, train: 1.3, paint: 1.1, cylinder: 1.3 }[MAP] || 1; // (the desert: as big as the sky map, a good deal bigger than the classic island)
+const MAP = (() => { try { const m = localStorage.getItem('nymbo-map'); return m === 'clouds' || m === 'rainbow' || m === 'sky' ? 'sky' : ['desert', 'ice', 'volcano', 'jungle', 'toy', 'portal', 'reef', 'tide', 'daynight', 'lab', 'cube', 'grass', 'train', 'paint', 'cylinder', 'neon'].includes(m) && (m !== 'neon' || NEO) ? m : 'classic'; } catch (e) { return 'classic'; } })(); // (the cloud and rainbow maps were merged into one: 'sky')
+const MS = { sky: 1.3, desert: 1.3, ice: 1.15, volcano: 1.2, jungle: 1.2, toy: 1.4, portal: 1.35, reef: 1.2, tide: 1.25, daynight: 1.3, lab: 1.2, cube: 1.1, grass: 1.3, train: 1.3, paint: 1.1, cylinder: 1.3, neon: 1.25 }[MAP] || 1; // (the desert: as big as the sky map, a good deal bigger than the classic island)
+const NEON = MAP === 'neon'; // NEON CITY (Nov 2026): the first map built from nothing for the new look: a chrome deck over a neon grid at dusk (02g_neon.js, 12e_neon.js)
 const ICEMAP = MAP === 'ice', VOLC = MAP === 'volcano', JUNGLE = MAP === 'jungle', TOY = MAP === 'toy', PLAT = MAP === 'portal', REEF = MAP === 'reef'; // the newer maps: the frozen lake, volcano island, the jungle temple, the toy room (09n-09q)
 // each map's air and light: fog colour; the sky's four bands (overhead, middle, horizon, below); sky light / ground light / strength; sun colour / strength
 const THEME = { ice: { fog: 0xc9dbee, sky: ['#2f5f9e', '#7aa8da', '#e2eef8', '#c9dbee'], hemi: [0xe0eeff, 0x6f86a4, .95], sun: [0xfff1e0, 2.2] },
@@ -584,6 +586,7 @@ const THEME = { ice: { fog: 0xc9dbee, sky: ['#2f5f9e', '#7aa8da', '#e2eef8', '#c
   train: { fog: 0xf0d8b0, sky: ['#3a7ad0', '#8ab8e8', '#fbe8c8', '#f0d8b0'], hemi: [0xfff4e0, 0x7a6a4a, 1.15], sun: [0xffecc8, 2.5] },
   paint: { fog: 0xf4e8ff, sky: ['#5a7af0', '#a8b8ff', '#fff0fa', '#f4e8ff'], hemi: [0xfff8ff, 0x8a7aa0, 1.25], sun: [0xfff6f0, 2.3] },
   cylinder: { fog: 0xc8dcf0, sky: ['#2a6ad0', '#7ab0ea', '#e8f2fb', '#c8dcf0'], hemi: [0xeaf2ff, 0x5a7a5a, 1.1], sun: [0xfff2dc, 2.4] },
+  neon: { fog: 0x8a3a8a, sky: ['#1a1466', '#6a2aa0', '#ff5a8a', '#3a1450'], hemi: [0xffc8e0, 0x4a2a6a, .95], sun: [0xffd9b0, 2.3] },
   toy: { fog: 0xf2e6d8, sky: ['#f6efe4', '#f6efe4', '#f6efe4', '#e8dccb'], hemi: [0xfff6ea, 0x9a8468, 1.3], sun: [0xfff2e0, 2.1] } }[MAP] || null;
 // ---------- THE NEW STAGES (Nov 2026): each one's size, outline, ground and layout in one place (their own files: 09u-09z) ----------
 // tide: islands in a sea that rises and falls · daynight: half sunny, half night · lab: the magnet lab (a hexagon) ·
@@ -637,6 +640,13 @@ const NM = (() => { const sm = s => s * s * (3 - 2 * s), mir = L => [...L, ...L.
       portals: [{ x: -26, z: -38 }, { x: 26, z: 38 }], hubs: [{ x: 8, z: 27 }, { x: -8, z: -27 }], tramps: [{ x: -22, z: -12 }, { x: 22, z: 12 }], strips: [], noPasture: true, fog: [80, 220],
       top: ['#f4f2f8', '#eceaf2', '#f8f6fb', '#f0eef5'], side: ['#f4f2f8', '#d8d4e4', '#c4bed8', '#b0a8c8', '#9c94b8', '#8880a8'],
       tint(x, z, j) { const v = 248 + (j - .5) * 12 | 0; return [v, v, v]; } },
+    // NEON CITY: a rounded deck (the shape of an old TV screen). The forts sit across from each other, each a step off the
+    // middle line; a warp gate on each team's own flank comes out on the other team's flank; the two power stations are
+    // each the same distance from both forts; a launch pad in front of each fort throws you to the middle
+    neon: { mx: 84, mz: 52, fort: { blue: { x: -55, z: 16 }, red: { x: 55, z: -16 } }, portals: [{ x: -22, z: 41 }, { x: 22, z: -41 }], hubs: [{ x: 9, z: 31 }, { x: -9, z: -31 }],
+      tramps: [{ x: -27, z: 4 }, { x: 27, z: -4 }], strips: [{ x: -16, z: -20, dx: 1, dz: 0, team: 'blue' }, { x: 16, z: 20, dx: -1, dz: 0, team: 'red' }], pastures: [{ x: -38, z: -33 }, { x: 38, z: 33 }],
+      noMonument: true, noMountains: true, fog: [95, 330], shaped: true, inShape: (x, z, m) => Math.pow(Math.abs(x) / (84 - m), 4) + Math.pow(Math.abs(z) / (52 - m), 4) <= 1,
+      top: ['#2a1c4a', '#2a1c4a', '#2a1c4a', '#2a1c4a'], side: ['#d8d0e8', '#241642', '#1a1034', '#ff4f9a', '#140c2a', '#0c0720'], tint() { return [255, 255, 255]; } },
     cylinder: { mx: 132, mz: 40, wrapX: true, shaped: true, fort: { blue: { x: -66, z: 0 }, red: { x: 66, z: 0 } }, hubs: [{ x: 0, z: 16 }, { x: 0, z: -16 }], tramps: [{ x: -30, z: 12 }, { x: 30, z: -12 }], portals: [{ x: -110, z: -24 }, { x: 110, z: 24 }], noPortals: true,
       strips: [{ x: -38, z: -8, dx: 1, dz: 0, team: 'blue' }, { x: 38, z: 8, dx: -1, dz: 0, team: 'red' }], pastures: [{ x: -110, z: 18 }, { x: 110, z: -18 }], noMountains: true, fog: [170, 460], camY: 30,
       inShape: (x, z, m) => Math.abs(z) <= 40 - m,
@@ -775,7 +785,9 @@ const eventQueue = new RAPIER.EventQueue(true);
 const byCollider = new Map();      // collider handle -> { type:'block'|'robot'|'static'|'animal', ref }
 
 // shared geometry
-const cubeGeo = HD ? new RoundedBoxGeometry(1, 1, 1, 2, .1) : WORLD === 'jelly' ? new RoundedBoxGeometry(1, 1, 1, 2, .3) : WORLD === 'clay' ? new RoundedBoxGeometry(1, 1, 1, 2, .2) : WORLD === 'circuit' ? new RoundedBoxGeometry(1, 1, 1, 1, .03) : new RoundedBoxGeometry(1, 1, 1, 1, .07); /* (world styles: squishy jelly, soft clay, sharp chips) */ // // 1 segment: 108 triangles a block instead of 300 (≈1,960 blocks on screen), same soft edges
+// The new look's block shape: generously rounded edges (so they catch the light), and each corner knows which of the six
+// faces it belongs to.
+const cubeGeo = NEO ? (() => { const g = new RoundedBoxGeometry(1, 1, 1, matchMedia('(pointer: coarse)').matches ? 1 : 2, .13), n = g.attributes.position.count, f = new Float32Array(n); for (let i = 0; i < n; i++) f[i] = Math.floor(i / (n / 6)); g.setAttribute('aFace', new THREE.BufferAttribute(f, 1)); return g; })() : HD ? new RoundedBoxGeometry(1, 1, 1, 2, .1) : WORLD === 'jelly' ? new RoundedBoxGeometry(1, 1, 1, 2, .3) : WORLD === 'clay' ? new RoundedBoxGeometry(1, 1, 1, 2, .2) : WORLD === 'circuit' ? new RoundedBoxGeometry(1, 1, 1, 1, .03) : new RoundedBoxGeometry(1, 1, 1, 1, .07); /* (world styles: squishy jelly, soft clay, sharp chips) */ // // 1 segment: 108 triangles a block instead of 300 (≈1,960 blocks on screen), same soft edges
 const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
 // ============================================================
@@ -923,7 +935,7 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
   const mTop = new LiteMat({ map: top, roughness: .95 });
   const mX = new LiteMat({ map: sideX, roughness: 1 }), mZ = new LiteMat({ map: sideZ, roughness: 1 });
   const slab = new THREE.Mesh(new THREE.BoxGeometry(MX * 2, 6, MZ * 2), [mX, mX, mTop, mTop, mZ, mZ]);
-  slab.position.y = -3; slab.receiveShadow = true; scene.add(slab); if (PLAT) slab.visible = false; // (portal platforms: no ground at all)
+  slab.position.y = -3; slab.receiveShadow = true; scene.add(slab); slab.userData.deck = 1; if (PLAT) slab.visible = false; // (portal platforms: no ground at all)
   groundPatch(mTop);
   if (SHAPED) for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) if (!inShape(cx - MX + .5, cz - MZ + .5)) { HOLES.add(cx + ',' + cz); setCell(cx, cz, 255, 255, 255, 0); SEA.add(cx + ',' + cz); } // (off the island's own outline)
   if (CH) for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) if (inChasm(cx - MX + .5, cz - MZ + .5)) { HOLES.add(cx + ',' + cz); setCell(cx, cz, 255, 255, 255, 0); } // the sky band
@@ -939,8 +951,8 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
         const q = new THREE.PlaneGeometry(1, 6); q.rotateY(ry); q.translate(ex, -3, ez); sideG.push(q);
         const l = new THREE.PlaneGeometry(dx ? .4 : 1, dx ? 1 : .4).rotateX(-Math.PI / 2); l.translate(ex - dx * .2, .02, ez - dz * .2); lineG.push(l); } }
     const tx = side.clone(); tx.repeat.set(1, 1); tx.needsUpdate = true;
-    if (sideG.length) { const m = new THREE.Mesh(mergeGeometries(sideG), new LiteMat({ map: tx, roughness: 1 })); scene.add(m); sideG.forEach(g => g.dispose()); }
-    if (lineG.length) { const m = new THREE.Mesh(mergeGeometries(lineG), em); scene.add(m); lineG.forEach(g => g.dispose()); } }
+    if (sideG.length) { const m = new THREE.Mesh(mergeGeometries(sideG), new LiteMat({ map: tx, roughness: 1 })); m.userData.deckSide = 1; scene.add(m); sideG.forEach(g => g.dispose()); }
+    if (lineG.length) { const m = new THREE.Mesh(mergeGeometries(lineG), em); m.userData.deckEdge = 1; scene.add(m); lineG.forEach(g => g.dispose()); } }
   else if (!CH && !PLAT) for (const [x, z, w, d] of [[0, -MZ + .2, MX * 2, .4], [0, MZ - .2, MX * 2, .4], [-MX + .2, 0, .4, MZ * 2], [MX - .2, 0, .4, MZ * 2]]) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), em); m.rotation.x = -Math.PI / 2; m.position.set(x, .02, z); scene.add(m);
   }
@@ -1086,7 +1098,7 @@ const clearAt = (x, z, pad = 0) => (!TERRAIN || pad < 0 || TH(x, z) < .05 || pad
 // trees are made of real blocks now (built in the blocks file, asleep until something hits them)
 const TREES = [];
 function tree(x, z, h) {
-  if (PLAT) return; // (no trees floating in the void)
+  if (PLAT || NEON) return; // (no trees floating in the void; and none in Neon City, where nothing grows)
   if (ICEMAP && lakeD(x, z) < 1.15) return; // (nothing grows out on the ice)
   if (VOLC && (lavaD(x, z) < 3 || Math.hypot(x, z) < VOLCANO.R + 2)) return; // (nor in the lava or on the volcano)
   if (TOY && (Math.abs(z) > MZ - 30 || Math.hypot(x, z) < 33 || (x > 5 && z > 20))) return; // (the toy room: not against the bed/desk wall or on the rug)
@@ -1122,7 +1134,7 @@ function ledges(cx, cz, sx, sz) {
   staticBox(cx + sx * (FORT_RX + 6), 0, cz - sz * 9, 2, 1, 2, st); staticBox(cx + sx * (FORT_RX + 8), 0, cz - sz * 9, 2, 2, 2, st); staticBox(cx + sx * (FORT_RX + 10), 0, cz - sz * 9, 2, 3, 2, st);
   staticBox(cx - sx * 2, 0, cz - sz * (FORT_RZ + 6), 3, 2, 3, st);
 }
-if (!DESERT && !JUNGLE && !TOY && !PLAT) { ledges(FORT.blue.x, FORT.blue.z, 1, 1); ledges(FORT.red.x, FORT.red.z, -1, -1); } // (the desert's forts have their crater rims instead)
+if (!DESERT && !JUNGLE && !TOY && !PLAT && !NEON) { ledges(FORT.blue.x, FORT.blue.z, 1, 1); ledges(FORT.red.x, FORT.red.z, -1, -1); } // (the desert's forts have their crater rims instead)
 // middle ammo ring: low stone wall with four gaps
 {
   const st = '#a7a9b0', R = 7;
@@ -1130,7 +1142,7 @@ if (!DESERT && !JUNGLE && !TOY && !PLAT) { ledges(FORT.blue.x, FORT.blue.z, 1, 1
     if (Math.max(Math.abs(x), Math.abs(z)) !== R) continue;
     if (Math.min(Math.abs(x), Math.abs(z)) <= 1) continue;
   }
-  if (!PLAT) for (const h of HUBS) for (let x = -5; x <= 5; x++) for (let z = -5; z <= 5; z++) if (Math.hypot(x, z) < 5.6) staticCells.push([h.x + x, -.47, h.z + z, new THREE.Color('#8e9097').offsetHSL(0, 0, rr(-.04, .04))]); // stone pad under each hub
+  if (!PLAT && !NEON && !(NEO && MAP === 'classic')) for (const h of HUBS) for (let x = -5; x <= 5; x++) for (let z = -5; z <= 5; z++) if (Math.hypot(x, z) < 5.6) staticCells.push([h.x + x, -.47, h.z + z, new THREE.Color('#8e9097').offsetHSL(0, 0, rr(-.04, .04))]); // stone pad under each hub
 }
 // clouds (drawing only)
 // a sea of clouds far below the island (look over the edge): the world floats in the sky
@@ -1146,7 +1158,7 @@ if (!DESERT && !JUNGLE && !TOY && !PLAT) { ledges(FORT.blue.x, FORT.blue.z, 1, 1
   }
   const cm = new THREE.InstancedMesh(geo, mat, puffs.length);
   puffs.forEach(([x, y, z, w, h, d], i) => { tmpM.compose(tmpV.set(x, y, z), tmpQ.setFromAxisAngle(V(0, 1, 0), rnd() * 3), tmpS.set(w, h, d)); cm.setMatrixAt(i, tmpM); });
-  scene.add(cm);
+  if (!NEON) scene.add(cm); // (Neon City floats over a grid of light, not a sea of cloud)
 }
 const cloudCells = [];
 for (const [x, y, z] of [[-60, 24, -70], [10, 28, -85], [55, 22, -60], [-85, 20, -30], [85, 26, -20], [-40, 26, 70], [40, 22, 75]])
@@ -1156,7 +1168,8 @@ for (const [x, y, z] of [[-60, 24, -70], [10, 28, -85], [55, 22, -60], [-85, 20,
 const GATES = {};
 function gateway(team) {
   const F0 = FORT[team], { x, z } = MAP === 'sky' ? { x: F0.x + Math.sign(F0.x) * 9.5, z: F0.z } : F0, st = '#8f9199'; // (the sky map: at the back of the fort, halfway between the two back flag towers, clear of them all)
-  if (!(NM && NM.gateOnTrain)) { staticBox(x, 0, z - 2, 1, 3, 1, st); staticBox(x, 0, z + 2, 1, 3, 1, st); staticBox(x, 3, z - 2, 1, 1, 5, '#80828a'); } // (the train: the gate rides on the train, 09uf)
+  if (NEON || (NEO && MAP === 'classic')) for (const [gx, gy, gz, gw, gh, gd] of [[x, 1.5, z - 2, 1, 3, 1], [x, 1.5, z + 2, 1, 3, 1], [x, 3.5, z, 1, 1, 5]]) { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(gw / 2, gh / 2, gd / 2).setTranslation(gx, gy, gz).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); staticBoxes.push({ x0: gx - gw / 2, y0: gy - gh / 2, z0: gz - gd / 2, x1: gx + gw / 2, y1: gy + gh / 2, z1: gz + gd / 2 }); } /* (Neon City: the same solid posts and beam, nothing drawn: its own gate is built in 12e) */
+  else if (!(NM && NM.gateOnTrain)) { staticBox(x, 0, z - 2, 1, 3, 1, st); staticBox(x, 0, z + 2, 1, 3, 1, st); staticBox(x, 3, z - 2, 1, 1, 5, '#80828a'); } // (the train: the gate rides on the train, 09uf)
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: TEAMS[team].gate, transparent: true, opacity: .55, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
   const gy = TH(x, z); glow.rotation.y = Math.PI / 2; glow.position.set(x, 1.5 + gy, z); scene.add(glow);
   const light = { intensity: 0 }; // no real light: cheaper
@@ -1170,9 +1183,10 @@ const inGate = (team, p) => { const g = GATES[team]; return Math.abs(p.x - g.x) 
 // ---- linked portals ----
 const PORTALS = (MAP === 'sky' || PLAT || (NM && NM.noPortals) ? [] : PORTAL_SPOTS).map((sp, i) => { // (the rainbow map has a rainbow bridge instead)
   const n = sp.n ? V(sp.n.x, 0, sp.n.z).normalize() : V(-sp.x, 0, -sp.z).normalize(), t = V(-n.z, 0, n.x), by = TH(sp.x, sp.z); // (by: the ground it stands on)
-  for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) staticCells.push([sp.x + a, -.47 + by, sp.z + b, new THREE.Color(ICEMAP ? '#c8d8ea' : '#74767e').offsetHSL(0, 0, rr(-.04, .04))]);
+  if (!NEON && !(NEO && MAP === 'classic')) for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) staticCells.push([sp.x + a, -.47 + by, sp.z + b, new THREE.Color(ICEMAP ? '#c8d8ea' : '#74767e').offsetHSL(0, 0, rr(-.04, .04))]);
   // stone feet either side of the ring
-  for (const s of [-1, 1]) staticBox(Math.round(sp.x + t.x * 2.2 * s), 0, Math.round(sp.z + t.z * 2.2 * s), 1, 1, 1, '#8a8c94');
+  if (NEO && MAP === 'classic') for (const s of [-1, 1]) { const w = V(sp.x + t.x * 2.45 * s, 0, sp.z + t.z * 2.45 * s), c = world.createCollider(RAPIER.ColliderDesc.cuboid(.5, 2.2, .5).setTranslation(w.x, 2.2 + by, w.z).setRotation(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.atan2(n.x, n.z))).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); staticBoxes.push({ x0: w.x - .6, y0: 0, z0: w.z - .6, x1: w.x + .6, y1: 4.4, z1: w.z + .6 }); } /* (the ruined field: the arch's two pillars, drawn in 12g) */
+  else if (!NEON) for (const s of [-1, 1]) staticBox(Math.round(sp.x + t.x * 2.2 * s), 0, Math.round(sp.z + t.z * 2.2 * s), 1, 1, 1, '#8a8c94');
   const g = new THREE.Group(); g.position.set(sp.x, 2.05 + by, sp.z); g.rotation.y = Math.atan2(n.x, n.z); scene.add(g);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(1.6, .2, 14, 48), new LiteMat({ color: 0xc58bff, emissive: 0xa040ff, emissiveIntensity: 2 }));
   g.add(ring);
@@ -1209,7 +1223,7 @@ function portalCheck(p) { // is point p inside a portal's doorway? returns the p
   }
   const cm = new THREE.InstancedMesh(boxGeo, new LiteMat({ color: 0xffffff, emissive: 0xc8dcf5, emissiveIntensity: .5, roughness: 1 }), cloudCells.length);
   cloudCells.forEach(([x, y, z], i) => { tmpM.compose(tmpV.set(x, y, z), tmpQ.identity(), tmpS.set(2, 2, 2)); cm.setMatrixAt(i, tmpM); });
-  scene.add(cm);
+  if (!NEON) scene.add(cm);
 }
 
 // ---- animals: blocky cows and sheep near the portals (made pick-up-able in the blocks file) ----
@@ -1331,10 +1345,10 @@ PASTURES.forEach((pa, i) => (VOLC ? ['cow', 'cow', 'cow'] /* (the volcano: goats
   g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 160; i++) { const a = rnd() * 6.28, r = Math.sqrt(rnd()) * 105; g.fillStyle = NIGHT ? ['#ffffff', '#cfe4ff', '#9fffe0'][i % 3] : ['#ffffff', '#ffe14a', '#ff9ad0', '#4f9a35'][i % 4]; g.beginPath(); g.arc(128 + Math.cos(a) * r, 128 + Math.sin(a) * r, i % 4 === 3 ? 3 : 2, 0, 7); g.fill(); }
   const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
-  const postMat = new LiteMat({ color: NIGHT ? 0x5b6b8c : 0x9a6a3e }), capMat = new LiteMat({ color: NIGHT ? 0xdfeaff : 0x7a5230 });
-  for (const pa of PASTURES) { if (MAP === 'sky' || DESERT || ICEMAP || VOLC || JUNGLE || TOY || PLAT) continue; /* (the sky map's pastures are pools of water now: 09g_maps; the desert's are oases: 09m) */
+  const postMat = new LiteMat({ color: NEO && MAP === 'classic' ? 0x8c887c : NIGHT ? 0x5b6b8c : 0x9a6a3e, roughness: .9 }), capMat = new LiteMat({ color: NEO && MAP === 'classic' ? 0x5a6e2c : NIGHT ? 0xdfeaff : 0x7a5230, roughness: .95 }); // (the ruined field: old stone posts, moss on their tops)
+  for (const pa of PASTURES) { if (MAP === 'sky' || DESERT || ICEMAP || VOLC || JUNGLE || TOY || PLAT || NEON) continue; /* (the sky map's pastures are pools of water now: 09g_maps; the desert's are oases: 09m) */
     const d = new THREE.Mesh(new THREE.CircleGeometry(PASTURE_R + 1.2, 48).rotateX(-Math.PI / 2), new LiteMat({ map: tx, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
-    d.position.set(pa.x, .015, pa.z); d.receiveShadow = true; scene.add(d);
+    d.position.set(pa.x, .015, pa.z); d.receiveShadow = true; if (!(NEO && MAP === 'classic')) scene.add(d); // (the ruined field is all meadow anyway)
     const n = 18; // (was 22: a little more room between posts so animals don't wedge)
     for (let k = 0; k < n; k++) {
       if (k % 9 === 0 || k % 9 === 1) continue; // two wide gaps (gates)
@@ -1882,6 +1896,122 @@ function buildIgloo(team) {
 }
 
 // ============================================================
+// NEON CITY: what it is built from (the forts and the scrap heaps). Its look is in 12d_neo.js (the block kit) and
+// 12e_neon.js (the deck, the sky, the gates, the signs).
+//
+// THE KIT. In the new look a plain block is a real shape, not a cube: it is still a box to the game (it stacks, it is
+// carried and thrown as ever), but what you see is one of the models named below. A builder can say which model a block
+// is (e.neoM) and which way round it sits (e.neoT: quarter turns); a block nobody chose for gets one that suits it.
+//   shiny blocks (candy paint, cream enamel, gold, chrome, lights): pillow · halves · diag · band · hexa · wedge · arch ·
+//     halfpipe · cframe · ringp · octp · starb · trap · facet · hole · cyl · cross · steps · ell · pyra · dome · fins ·
+//     cage · lamp · three neon signs on a base · neonbox · octa · cup
+//   scrap (steel, chrome, black glass, a light here and there): crate · pipe · cog · battery · plates · girder · tv ·
+//     speaker · barrel · capsule
+//   long ones that stretch well: beam · slab (and pipe, girder, plates, band)
+// ============================================================
+const KM = {}; ['pillow', 'halves', 'diag', 'band', 'hexa', 'wedge', 'arch', 'halfpipe', 'cframe', 'ringp', 'octp', 'starb', 'trap', 'facet', 'hole', 'cyl', 'cross', 'steps', 'ell', 'pyra', 'dome', 'fins', 'cage', 'lamp',
+  'signStar', 'signArrow', 'signBolt', 'neonbox', 'crate', 'pipe', 'cog', 'battery', 'plates', 'girder', 'tv', 'speaker', 'barrel', 'capsule', 'beam', 'slab', 'pillar', 'bush', 'octa', 'cup'].forEach((n, i) => { KM[n] = i; });
+// pick one name from a list of [name, weight]
+const kmPick = L => { let t = 0; for (const q of L) t += q[1]; let k = rnd() * t; for (const q of L) if ((k -= q[1]) < 0) return q[0]; return L[0][0]; };
+const KM_SHINY = [['pillow', 13], ['halves', 11], ['diag', 11], ['band', 8], ['ringp', 6], ['octp', 6], ['starb', 3], ['facet', 6], ['hole', 4], ['cframe', 3], ['arch', 3], ['cross', 2], ['hexa', 5], ['cage', 3], ['neonbox', 4], ['cyl', 3], ['octa', 3]];
+const KM_SCRAP = [['crate', 6], ['tv', 5], ['speaker', 4], ['barrel', 4], ['cog', 3], ['battery', 3], ['plates', 3], ['capsule', 3]];
+const KM_LONG = [['beam', 12], ['band', 6], ['pillow', 5], ['plates', 3]], KM_LONG_SCRAP = [['pipe', 5], ['girder', 5], ['plates', 3]];
+const KM_TOP = [['wedge', 7], ['trap', 4], ['pyra', 3], ['dome', 3], ['lamp', 5], ['fins', 3], ['steps', 3], ['halfpipe', 3], ['signStar', 2], ['signArrow', 2], ['signBolt', 2], ['ell', 2], ['cup', 2]];
+// which way round: a slope that faces out of a wall · a front (a sign, a screen) that faces out of a wall
+const kmSlope = (nx, nz) => nx > 0 ? 0 : nx < 0 ? 2 : nz > 0 ? 3 : 1, kmFace = (nx, nz) => nx > 0 ? 1 : nx < 0 ? 3 : nz > 0 ? 0 : 2;
+// the two teams' paint: candy-apple blues and candy-apple reds (each wall block takes one, a touch off)
+const NEON_PAL = { blue: ['#1546ee', '#0e84f2', '#0aa3c2', '#5636e2', '#1546ee'], red: ['#ee1630', '#ff5418', '#dc1672', '#f59a0c', '#ee1630'] };
+
+// ---- the fort ----
+// The same plot as ever (the same size, a doorway in the middle of each side, four flag towers, the gate in the middle),
+// so everything that knows its way round a fort still does. Built like a real wall, in courses, every block a whole one
+// (nothing stretched): a plinth course (a cream belt between chrome rails), three courses of the team's candy blocks with
+// a lit window every fourth block, then a battlement. Each doorway has a lintel of plinth blocks and a lamp each side.
+// A round drum tower stands on each corner. In two places the wall has been knocked about and patched with scrap.
+// Red's fort is blue's turned round the middle of the map.
+function buildNeonFort(team) {
+  const { x: cx, z: cz } = FORT[team], RX = FORT_RX, RZ = FORT_RZ, sg = team === 'blue' ? 1 : -1, pal = NEON_PAL[team], base = new THREE.Color(pal[0]);
+  const col = () => base.clone().offsetHSL(rr(-.008, .008), 0, rr(-.035, .02)); // (one paint, each block a hair different, as real paint is)
+  const put = (x, y, z, model, o = {}) => { const d = o.d || V(1, 1, 1), e = newBlock('fort', V(cx + sg * x, y + d.y / 2, cz + sg * z), { color: o.c || col(), team, dims: d }); e.neoM = KM[model]; e.neoT = o.t === undefined ? -1 : (o.t + (sg < 0 ? 2 : 0)) % 4; e.neoV = o.v || 0; return e; };
+  const ring = (x, z) => Math.abs(x) <= RX && Math.abs(z) <= RZ && (Math.abs(x) >= RX - 1 || Math.abs(z) >= RZ - 1);
+  const door = (x, z) => (Math.abs(x) >= RX - 1 && Math.abs(z) <= 1) || (Math.abs(z) >= RZ - 1 && Math.abs(x) <= 1), corner = (x, z) => Math.abs(x) >= RX - 2 && Math.abs(z) >= RZ - 2;
+  const outer = (x, z) => Math.abs(x) === RX || Math.abs(z) === RZ, outN = (x, z) => Math.abs(x) === RX ? [Math.sign(x), 0] : [0, Math.sign(z)];
+  const along = (x, z) => Math.abs(x) >= RX - 1 ? z : x; // (how far along its own side a block is)
+  const BREACH = [{ x: RX, z: -7, w: 2, h: 2 }, { x: -6, z: RZ, w: 1, h: 1 }]; // (outer row; turned round the middle for red, so it is the same breach)
+  const breached = (x, z, y) => BREACH.some(B => (Math.abs(x) === Math.abs(B.x) && Math.sign(x) === Math.sign(B.x) && B.x === x || B.z === z && Math.abs(z) === Math.abs(B.z)) && Math.abs((B.x === x ? z - B.z : x - B.x)) <= B.w && y >= 4 - B.h);
+  // THE WALL'S DESIGN: an old fort, half ruined. Each side reads as: a round corner tower · a stretch of curtain wall ·
+  // a pair of gate towers flanking the doorway, a lintel between them · curtain wall · the next corner tower. Built of
+  // old weathered stone (lighter and darker stones mixed in, moss on everything), and here and there patched with newer
+  // blocks in the team's candy paint, as if someone had started to rebuild it.
+  //  - curtain wall: up to four high (a plinth course, a heavy course, a course with an open window every third block,
+  //    a light course), merlons where it still stands full height; but the top is ragged: whole stretches have lost a
+  //    course or two, and their stones lie on the ground below. The inner row a step lower, a walkway on top.
+  //  - gate towers: round, taller than the wall, a bronze spire; one of each pair has lost its top
+  //  - corner towers: round, the tallest, a dome; one of the four is broken off short
+  // Red's fort is blue's turned round the middle of the map: as broken in the same places, but no two stones alike.
+  const HEAVY = [['facet', 3], ['diag', 3], ['pillow', 3], ['halves', 1]], LIGHT = [['halves', 4], ['pillow', 4], ['diag', 2]];
+  const gate = (x, z) => { const t = Math.abs(Math.abs(x) >= RX - 1 ? z : x); return !corner(x, z) && (t === 2 || t === 3); };
+  const nz_ = (u, k) => { const v = Math.sin(u * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); }, smooth = (u, k) => { const i = Math.floor(u), f = u - i, w = f * f * (3 - 2 * f); return nz_(i, k) * (1 - w) + nz_(i + 1, k) * w; };
+  const sideK = (x, z) => Math.abs(x) >= RX - 1 ? (x > 0 ? 0 : 2) : (z > 0 ? 1 : 3);
+  const topH = (x, z) => { const k = sideK(x, z), t = along(x, z), r = smooth(t / 3.2, k * 7 + 1); return r < .3 ? 2 : r < .5 ? 3 : 4; }; // (how much of the wall still stands here)
+  const newer = (x, z) => smooth(along(x, z) / 2.5, sideK(x, z) * 5 + 3) > .74; // (a stretch someone has started to rebuild)
+  const rubble = [];
+  for (let x = -RX; x <= RX; x++) for (let z = -RZ; z <= RZ; z++) { if (!ring(x, z) || door(x, z) || corner(x, z) || gate(x, z)) continue;
+    const o = outer(x, z), a = along(x, z), [nx, nz] = outN(x, z), face = kmFace(nx, nz), full = topH(x, z), H = o ? full : Math.max(2, full - 1), nw = newer(x, z);
+    for (let y = 0; y < H; y++) {
+      if (y === 0) { put(x, 0, z, 'band', { v: 2 }); continue; } // the plinth
+      if (!o && y === H - 1) { put(x, y, z, 'band', { v: 1 }); continue; } // the walkway along the inside
+      if (y === 2 && o && ((a % 3) + 3) % 3 === 0) { put(x, y, z, 'cframe', { t: face }); continue; } // an open window
+      const m = kmPick(y === 1 ? HEAVY : LIGHT); put(x, y, z, m, { t: Math.floor(rnd() * 4), v: nw && y >= 2 ? 4 : m === 'halves' || m === 'diag' ? (rnd() < .5 ? 0 : 1) : rnd() < .15 ? 2 : 0 }); }
+    if (o && full === 4 && ((a % 2) + 2) % 2 === 0) put(x, 4, z, 'trap', { v: 1 }); // merlons, where the wall still stands full height
+    if (o && full < 4 && rnd() < .45) rubble.push([x + nx * rr(1.4, 3.2), z + nz * rr(1.4, 3.2)]); } // (and its fallen stones lie outside)
+  for (const [x, z] of rubble) { const e = put(x, 0, z, kmPick([['pillow', 3], ['facet', 2], ['halves', 1]]), { v: rnd() < .3 ? 2 : 0 }); }
+  // gate towers either side of every doorway, a lintel across (newer: candy paint); one tower of each pair broken
+  for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const R_ = (nx ? RX : RZ) - .5, broke = nx > 0 ? 1 : nx < 0 ? -1 : nz > 0 ? -1 : 1;
+    for (const s of [-1, 1]) { const px = nx ? nx * R_ : s * 2.5, pz = nx ? s * 2.5 : nz * R_, n = s === broke ? 2 : 3;
+      for (let k = 0; k < n; k++) put(px, k * 2, pz, k === 1 ? 'octa' : 'cyl', { d: V(2, 2, 2), v: k === 2 ? 1 : 0 });
+      if (n === 3) put(px, 6, pz, 'pyra', { d: V(2, 2, 2), v: 3 }); }
+    for (let r = 0; r < 2; r++) { const Rr = (nx ? RX : RZ) - r; for (let k = -1; k <= 1; k++) put(nx * Rr + (nx ? 0 : k), 4, nz * Rr + (nx ? k : 0), 'band', { v: 4 }); } }
+  // a round tower on each corner, a dome on top; the one at the back left has broken off short
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const px = sx * (RX - .5), pz = sz * (RZ - .5), n = sx < 0 && sz > 0 ? 2 : 4;
+    for (let k = 0; k < n; k++) put(px, k * 2, pz, k === 2 ? 'octa' : 'cyl', { d: V(2, 2, 2), v: k === 1 || k === 3 ? 1 : 0 });
+    if (n === 4) put(px, n * 2, pz, 'dome', { d: V(2, 2, 2), v: 4 }); else put(px + sx * 2.2, 0, pz + sz * .6, 'cyl', { d: V(2, 2, 2) }); }
+  // four flag towers, each holding one player's flag high up, in its own player's colour. The same seats as ever:
+  //  standing at the back of the fort looking at the middle: violet / pink at the BACK corner, blue / red on their LEFT,
+  //  cyan / orange on their RIGHT, lime / gold at the FRONT corner nearest the middle
+  const ox = Math.sign(cx) * 8, oz = Math.sign(cz) * 6, back = [ox, oz], front = [-ox, -oz], left = [Math.sign(-oz) * 8, Math.sign(ox) * 6], right = [Math.sign(oz) * 8, Math.sign(-ox) * 6];
+  [left, right, front, back].forEach(([dx, dz], i) => { // index = player: 0 blue/red · 1 cyan/orange · 2 lime/gold · 3 violet/pink
+    const pc = new THREE.Color(TEAMS[team].cols[i]).offsetHSL(0, 0, -.08);
+    for (let y = 0; y < TOWER_H; y++) { const top = y === TOWER_H - 1, e = newBlock('fort', V(cx + dx, y + .5, cz + dz), { color: pc.clone().offsetHSL(0, 0, rr(-.02, .02)), team });
+      e.neoM = KM[top ? 'cup' : y % 4 === 3 ? 'band' : 'cyl']; e.neoT = 0; e.neoV = y % 4 === 3 ? 1 : 4; } /* (the flag towers are the newest of all: each in its own player's candy paint) */
+    const home = V(cx + dx, TOWER_H + .5, cz + dz);
+    FLAGS[team].push(newBlock('flag', home.clone(), { team, color: TEAMS[team].cols[i], home, owner: i })); });
+}
+
+// ---- the scrap heaps: the loose blocks you throw ----
+// Twelve heaps of six, as many blocks as there have always been, but nothing here is a grey cube: televisions, speakers,
+// barrels, pipes, cogs, crates, girders. Six heaps stand on blue's half and six in the same spots turned round the
+// middle on red's half; the heap in each spot is a different one, so the two halves match in where things are, not in
+// what they are.
+function neonScrap() {
+  const U = (x, y, z, m, w = 1, h = 1, d = 1, t = -1) => ({ x, y, z, m, w, h, d, t });
+  const HEAPS = [
+    [U(-.6, 0, 0, 'tv', 1, 1, 1, 0), U(.6, 0, 0, 'tv', 1, 1, 1, 0), U(0, 1, 0, 'speaker', 1, 1, 1, 0), U(0, 2, 0, 'tv', 1, 1, 1, 0), U(1.9, 0, .2, 'battery'), U(-1.9, 0, -.1, 'capsule')],        // a wall of televisions
+    [U(-1.1, 0, 0, 'barrel'), U(0, 0, 0, 'barrel'), U(1.1, 0, 0, 'barrel'), U(-.55, 1, 0, 'barrel'), U(.55, 1, 0, 'barrel'), U(0, 2, 0, 'capsule')],                                              // a stack of drums
+    [U(-1, 0, 0, 'crate'), U(1, 0, 0, 'crate'), U(0, 1, 0, 'pipe', 3, 1, 1, 0), U(0, 2, 0, 'pipe', 3, 1, 1, 0), U(0, 0, 1.4, 'cog'), U(0, 3, 0, 'cog')],                                          // pipes racked on two crates
+    [U(0, 0, 0, 'crate', 1.5, 1.5, 1.5), U(0, 1.5, 0, 'crate'), U(0, 2.5, 0, 'speaker', .7, .7, .7), U(1.5, 0, 0, 'plates'), U(1.5, 1, 0, 'battery'), U(-1.4, 0, .3, 'slab', 2, .5, 2)],          // crates, big to small
+    [U(-1, 0, 0, 'plates'), U(-1, 1, 0, 'plates'), U(1, 0, 0, 'plates'), U(1, 1, 0, 'plates'), U(0, 2, 0, 'girder', 3, 1, 1, 0), U(0, 3, 0, 'tv', 1, 1, 1, 0)],                                    // a girder on two piers, a television on top
+    [U(0, 0, 0, 'cog'), U(0, 1, 0, 'battery'), U(0, 2, 0, 'cog'), U(0, 3, 0, 'capsule'), U(1.2, 0, 0, 'speaker', 1, 1, 1, 0), U(-1.2, 0, 0, 'barrel')],                                          // a totem of cogs
+  ];
+  const SPOTS = [[-31, 26], [-14, 16], [-48, -8], [-20, -37], [-63, -14], [5, 45]];
+  for (let side = 0; side < 2; side++) SPOTS.forEach(([sx, sz], i) => { const sg = side ? -1 : 1; let x = sx * sg, z = sz * sg;
+    while (slots.some(s => Math.hypot(s.pos.x - x, s.pos.z - z) < 3.5)) x += 4; // (never on top of a power block)
+    const H = HEAPS[(i + side * 3) % HEAPS.length], a = Math.floor(rnd() * 4), c = Math.cos(a * Math.PI / 2), s = Math.sin(a * Math.PI / 2);
+    for (const u of H) { const d = a % 2 ? V(u.d, u.h, u.w) : V(u.w, u.h, u.d), e = newBlock('stone', V(x + u.x * c - u.z * s, u.y + u.h / 2, z + u.x * s + u.z * c), { dims: d, anchored: true }); e.neoM = KM[u.m]; e.neoT = u.t < 0 ? -1 : (u.t + 4 - a) % 4; } });
+  ANCH.dirty = true;
+}
+
+// ============================================================
 // BLOCKS: every movable block is a physics body. Forts, towers, flags, ammo, power blocks.
 // ============================================================
 const blocks = [];
@@ -1942,6 +2072,7 @@ for (const k in KIND_COL) {
     emissive: k === 'homing' ? 0x6a2bc0 : k === 'warp' ? 0xc02aa0 : k === 'freeze' ? 0x9fcfee : 0x000000, emissiveMap: t, emissiveIntensity: k === 'bomb' ? 0 : .35 });
   coreMat[k] = new LiteMat({ color: GLASS[k][1], emissive: k === 'freeze' ? 0x5aa8d8 : k === 'homing' ? 0x5a14b8 : k === 'warp' ? 0xff2ac0 : 0x000000, emissiveIntensity: .4 });
 }
+const KIND_EI = {}, BOMB_E0 = new THREE.Color(0, 0, 0); for (const k in kindMat) KIND_EI[k] = kindMat[k].emissiveIntensity; // (how much each power block glows when nothing else is going on; the new look sets its own)
 const coreGeo = new RoundedBoxGeometry(1, 1, 1, 1, .12);
 // what you can see inside each glass block: loose gunpowder in the bomb, sloshing icy water in the freeze block,
 // a gold arrowhead in the homing block that points at the nearest enemy, a spider web strung inside the sticky grenade.
@@ -2203,6 +2334,7 @@ const TOWER_H = 12; // flags high up: you can spot them from anywhere on the map
 // Big brick forts (Toblo scale): 2-thick, 3-high outer walls of 2x1 bricks laid in a staggered pattern,
 // a doorway in the middle of each side, two inner wall pieces, and four tall towers carrying the flags.
 function buildFort(team) {
+  if (NEON || (NEO && MAP === 'classic')) return buildNeonFort(team); // (Neon City: built from the new kit of shaped blocks and scrap, 02g)
   if (JUNGLE) return buildTemple(team); // (the jungle: an Aztec step temple, 02e)
   if (ICEMAP) return buildIgloo(team); // (the ski resort: a big igloo on the mountain top, 02f)
   const { x: cx, z: cz } = FORT[team], cols = TEAMS[team].cols.map(fadeCol), RX = FORT_RX, RZ = FORT_RZ;
@@ -2445,7 +2577,7 @@ for (const h of HUBS) {
 for (let i = 0; i < 3; i++) { slotAt(...freeSpot(), 'bomb'); slotAt(...freeSpot(), 'freeze'); } // and a few anywhere on the map
 // the loose ammo isn't scattered about any more: it stands in a dozen tiny stone structures (same block count, ~72) that
 // you have to knock down for blocks — the map starts tidy and calm and turns to rubble as the match goes on
-{
+if (NEON) neonScrap(); /* (Neon City: heaps of scrap instead, 02g) */ else {
   const U = (x, y, z, w = 1, h = 1, d = 1) => ({ x, y, z, w, h, d });
   const SHAPES = [
     [U(0, 0, 0), U(0, 1, 0), U(0, 2, 0), U(1.2, 0, 0), U(1.2, 1, 0), U(1.2, 2, 0)],                       // two pillars
@@ -2745,9 +2877,9 @@ const parts = []; let pNext = 0;
 for (let i = 0; i < PCAP; i++) { parts.push({ life: 0, max: 1, p: V(), v: V(), s: .2, g: 0 }); pIM.setMatrixAt(i, ZERO_M); pIM.setColorAt(i, new THREE.Color(1, 1, 1)); }
 function emit(pos, color, v, size, life, grav = 0) {
   const k = pNext; pNext = (pNext + 1) % PCAP; const q = parts[k];
-  q.p.copy(pos); q.v.copy(v); q.s = size; q.life = q.max = life; q.g = grav; pIM.setColorAt(k, tmpCol.set(color));
+  q.p.copy(pos); q.v.copy(v); q.s = size; q.life = q.max = life; q.g = grav; q.rx = rr(-9, 9); q.rz = rr(-9, 9); /* (each bit tumbles its own way) */ pIM.setColorAt(k, tmpCol.set(color));
 }
-const tmpCol = new THREE.Color();
+const tmpCol = new THREE.Color(), fxE = new THREE.Euler();
 function fxTrail(pos, color) { emit(pos, color, V(rr(-.3, .3), rr(-.3, .3), rr(-.3, .3)), .32, .32); }
 function fxDebris(pos, color, n = 22, speed = 9) {
   for (let i = 0; i < n; i++) emit(pos, color, V(rr(-1, 1), rr(.2, 1.4), rr(-1, 1)).normalize().multiplyScalar(rr(speed * .4, speed)), rr(.12, .32), rr(.5, .9), 18);
@@ -2765,7 +2897,7 @@ function updateFx(dt) {
     q.life -= dt; if (q.life <= 0) { pIM.setMatrixAt(i, ZERO_M); continue; }
     q.v.y -= q.g * dt; q.p.addScaledVector(q.v, dt);
     const s = q.s * (q.life / q.max);
-    tmpM.compose(q.p, tmpQ.identity(), tmpS.setScalar(s)); pIM.setMatrixAt(i, tmpM);
+    const a = q.max - q.life; tmpM.compose(q.p, tmpQ.setFromEuler(fxE.set(a * (q.rx || 0), 0, a * (q.rz || 0))), tmpS.setScalar(s)); pIM.setMatrixAt(i, tmpM);
   }
   pIM.instanceMatrix.needsUpdate = true; if (pIM.instanceColor) pIM.instanceColor.needsUpdate = true;
 }
@@ -3941,10 +4073,11 @@ function syncRobot(r) {
 
 // ============================================================
 // THE ROBOTS YOU CAN PICK (Look lab → Robots; the page reloads with the chosen robots for everyone in the game):
-//  - Classic: the blocky robots the game began with (05_robots.js). What everyone gets unless they pick otherwise.
 //  - Nym: a glossy white robot that rolls on a ball: a round head with a black visor and a little screen for a face,
-//    ear rings, a springy antenna, a team-colour bib, mitten arms. All of it is in this file.
+//    ear rings, a springy antenna, a team-colour bib, mitten arms. All of it is in this file. Since the new look
+//    (Nov 2026) the Nym are what everyone gets unless they pick otherwise: the world is built around them.
 //  - Nym · colour swap: the same robot with its white and its team colour changed over.
+//  - Classic: the blocky robots the game began with (05_robots.js).
 // ============================================================
 const BOT_KIND = (() => { try { const k = localStorage.getItem('nymbo-bot'); return k === 'ball' || k === 'legs' ? 'ball' : 'classic'; } catch (e) { return 'classic'; } })();
 document.querySelectorAll('[data-bot]').forEach(b => { const cur = BOT_KIND === 'ball' ? (localStorage.getItem('nymbo-botswap') === '1' ? 'ballswap' : 'ball') : 'classic', on = b.dataset.bot === cur; b.classList.toggle('on', on); if (on) b.style.outline = '3px solid #ffd23a';
@@ -5830,8 +5963,8 @@ function applyDark(b) {
   scene.fog.color.copy(LIGHT0.fog).lerp(new THREE.Color(0xff9a5a), .35 * skyU.dusk.value).lerp(BLACK, fb); scene.fog.near = FOG_N + (3 - FOG_N) * fb; scene.fog.far = FOG_F + (26 - FOG_F) * fb;
   for (const r of robots) { const m = r.model.mats[0]; if (r.model.frozen) continue; m.emissive.set(r.color).multiplyScalar(.65 * b); }
   for (const k in flagMats) { flagMats[k].emissive.set(k); flagMats[k].emissiveIntensity = .7 + 1.3 * b; }
-  for (const k in kindMat) kindMat[k].emissiveIntensity = (k === 'bomb' ? 0 : .35) + b * 1.2;
-  if (b > 0) kindMat.bomb.emissive.setRGB(.5 * b, .25 * b, 0); else kindMat.bomb.emissive.setRGB(0, 0, 0);
+  for (const k in kindMat) kindMat[k].emissiveIntensity = KIND_EI[k] + b * 1.2;
+  kindMat.bomb.emissive.copy(BOMB_E0); if (b > 0) { kindMat.bomb.emissive.r += .5 * b; kindMat.bomb.emissive.g += .25 * b; }
   for (const e of blocks) if (e.kind === 'animal' && !e.dead && !(e.heldT > 6)) e.mesh.material.emissive.setRGB(.35 * b, .35 * b, .33 * b);
 }
 // slow-mo hits everyone except you and team-mates running with a flag
@@ -8681,6 +8814,7 @@ const WORLD_LIST = [
   { id: 'toon', name: 'Toon world', tag: 'flat anime shading, thick ink outlines', bg: 'linear-gradient(160deg,#1c6dff,#7fd0ff 50%,#59d24a 51%,#3fae37)' },
   { id: 'hd', name: 'HD world', tag: 'real-looking: weathered blocks, grass blades, glassy water, shiny robots', bg: 'radial-gradient(circle at 70% 25%,#fff8e0 0 5%,transparent 6%),linear-gradient(170deg,#4d86d6,#bcd9f2 52%,#4f7d2e 53%,#2f5a1c)' },
   { id: 'clay', name: 'Clay planet', tag: 'lumpy hand-squashed plasticine everything', bg: 'linear-gradient(160deg,#ffcf9a,#ffe9c9 50%,#8fc760 51%,#6aa646)' },
+  { id: 'ruins', name: 'Ruins (sample)', tag: 'samples of the new assets: shaped blocks, stone ruins in a meadow, robot animals (classic map)', bg: 'linear-gradient(160deg,#1f66da,#a6d0fa 50%,#4a8a2c 51%,#8e8a7c)' },
 ];
 const WT = { value: 0 }; // (time, for the wobble)
 if (['jelly', 'circuit', 'toon', 'clay'].includes(WORLD)) {
@@ -12520,6 +12654,9 @@ setInterval(() => { if (!odenOn() || match.state !== 'play' || !P || P.state !==
 // switch themselves off (along with the shadows, see 09_main).
 // ============================================================
 const HDW = { grass: null, haze: null };
+// what the ground is made of. The old HD world knew grass and sand; the new look gives every map its own surface.
+const NEO_PLAZA = NEO && MAP === 'classic'; // (the classic map, rebuilt as a polished plaza: 12d_neo.js lays its floor)
+const HD_GK = NEO_PLAZA || MAP === 'neon' ? null : NEO ? ({ classic: 'grass', daynight: 'grass', grass: 'grass', train: 'grass', cylinder: 'grass', cube: 'grass', jungle: 'moss', desert: 'sand', ice: 'snow', volcano: 'rock', toy: 'wood', lab: 'metal', sky: null }[MAP] ?? (MAP in { sky: 1 } ? null : 'plain')) : DESERT ? 'sand' : MAP === 'sky' ? null : 'grass';
 const HD_NOISE = `
 float hdH(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float hdN(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
@@ -12541,7 +12678,17 @@ function hdWear(mat, kind) {
   vHl = position; vHp = position * hSc + vec3(hSeed, hSeed * .37, hSeed * 1.71);
   { vec3 ap = min(abs(position) * 2.0, 1.0); float mx = max(ap.x, max(ap.y, ap.z)), mn = min(ap.x, min(ap.y, ap.z)); vHe = smoothstep(.8, .97, ap.x + ap.y + ap.z - mx - mn); }`);
     sh.fragmentShader = 'varying vec3 vHp; varying vec3 vHl; varying float vHe;\n' + HD_NOISE + sh.fragmentShader
-      .replace('#include <color_fragment>', '#include <color_fragment>\n' + (kind === 'robot' ? `
+      .replace('#include <color_fragment>', '#include <color_fragment>\n' + (kind === 'neo' ? `
+  /* the new look: glossy panels, lightly used. Every block its own tone, a faint sun-fade here, a stain there, a little dirt low down, edges worn pale, and duller where it's worn (kept cheap: two looks at the noise, not eight) */
+  float hN1 = hdN(vHp * 2.3), hN2 = hdN(vHp * 13.0);
+  vec3 hC = diffuseColor.rgb * mix(.9, 1.06, hN1);
+  hC = mix(hC, hC * vec3(.97, .95, .9) + .03, smoothstep(.58, .82, hN1) * .45);
+  hC *= mix(1.0, .8, smoothstep(.7, .9, hN2 * .45 + (1. - hN1) * .6) * .6);
+  hC *= mix(.8, 1.0, smoothstep(-.5, -.12, vHl.y));
+  float hChip = vHe * smoothstep(.5, .7, hN2 * .6 + hN1 * .6);
+  hC = mix(hC, hC * 1.18 + .09, hChip * .65);
+  diffuseColor.rgb = hC;
+  float hR = 1.0 + .5 * (hN1 - .45) + hChip * .6, hB = hN2 * .1 - hChip * .3;` : kind === 'robot' ? `
   float hN1 = hdF(vHp * 5.0), hN2 = hdN(vHp * vec3(60.0, 3.0, 60.0)), hN3 = hdN(vHp * 22.0);
   float hScr = smoothstep(.86, .95, hN2) * smoothstep(.45, .7, hN1); /* (scratches) */
   diffuseColor.rgb *= .9 + .16 * hN1; diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * .55 + vec3(.08), smoothstep(.62, .8, hN1) * .35); /* (scuffs) */
@@ -12560,21 +12707,52 @@ function hdWear(mat, kind) {
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = clamp(roughnessFactor * hR, .08, 1.0);')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
   { vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); float hx = dFdx(hB), hy = dFdy(hB); vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
-    vec3 grd = sign(det) * (hx * r1 + hy * r2) * ${kind === 'robot' ? '.008' : '.05'}; normal = normalize(abs(det) * normal - grd); }`);
+    vec3 grd = sign(det) * (hx * r1 + hy * r2) * ${kind === 'robot' ? '.008' : kind === 'neo' ? '.02' : '.05'}; normal = normalize(abs(det) * normal - grd); }`);
   };
   const key = mat.customProgramCacheKey ? mat.customProgramCacheKey() : ''; mat.customProgramCacheKey = () => key + 'hd_' + kind; mat.needsUpdate = true; return mat;
 }
 // a seamless, detailed ground texture (and a matching bump map) for HD
-function hdGroundTex() {
+function hdGroundTex(old) {
   const N = 256, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d');
   const wrap = (f) => { for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) f(ox, oy); };
   const R = (() => { let s = 97; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
-  if (DESERT) {
+  // (the map's own ground colour, for the surfaces that keep it)
+  const avg = (() => { try { const d = old.getContext('2d').getImageData(0, 0, old.width, old.height).data; let r = 0, gg = 0, b = 0, n = 0; for (let i = 0; i < d.length; i += 4 * 53) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; } return [r / n, gg / n, b / n]; } catch (e) { return [150, 150, 150]; } })();
+  const rgb = (k, a = 1) => `rgba(${avg.map(v => Math.max(0, Math.min(255, v * k)) | 0)},${a})`;
+  const blots = (n, r0, r1, a, b) => { for (let k = 0; k < n; k++) { const x = R() * N, y = R() * N, r = r0 + R() * (r1 - r0), col = R() < .5 ? a : b; wrap((ox, oy) => { const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2); }); } };
+  const grit = (n, a, b) => { for (let k = 0; k < n; k++) { g.fillStyle = R() < .5 ? a : b; g.fillRect(R() * N, R() * N, 1, 1); } };
+  if (HD_GK === 'snow') { // wind-packed snow: soft blue hollows, bright crests, drift lines, sparkles
+    g.fillStyle = '#edf3fa'; g.fillRect(0, 0, N, N); blots(34, 16, 54, 'rgba(176,200,230,.34)', 'rgba(255,255,255,.5)');
+    for (let k = 0; k < 7; k++) for (const [col, dy] of [['rgba(255,255,255,.55)', 0], ['rgba(150,180,215,.3)', 3]]) { g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); for (let x = 0; x <= N; x += 4) g.lineTo(x, (k * N / 7 + 7 * Math.sin(x / N * 6.283 * 2 + k * 1.7) + dy + N) % N); g.stroke(); }
+    grit(900, 'rgba(255,255,255,.9)', 'rgba(150,180,220,.35)');
+  } else if (HD_GK === 'rock') { // volcanic ground: ash and cooled rock, cracked, with loose stones
+    g.fillStyle = rgb(.82); g.fillRect(0, 0, N, N); blots(30, 18, 50, rgb(1.25, .3), rgb(.45, .35));
+    g.lineCap = 'round'; for (let k = 0; k < 9; k++) { let x = R() * N, y = R() * N; g.strokeStyle = 'rgba(20,12,10,.5)'; g.lineWidth = 1 + R() * 1.6; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 7; j++) { x += (R() - .5) * 44; y += (R() - .5) * 44; g.lineTo(x, y); } g.stroke(); }
+    for (let k = 0; k < 70; k++) { const x = R() * N, y = R() * N, r = 2 + R() * 6; wrap((ox, oy) => { g.fillStyle = 'rgba(25,16,14,.5)'; g.beginPath(); g.ellipse(x + ox + 1, y + oy + 1.5, r, r * .75, 0, 0, 7); g.fill(); g.fillStyle = rgb(.9 + R() * .5); g.beginPath(); g.ellipse(x + ox, y + oy, r, r * .75, 0, 0, 7); g.fill(); }); }
+    grit(2600, 'rgba(15,10,10,.4)', rgb(1.6, .4));
+  } else if (HD_GK === 'moss') { // jungle floor: dark moss, bare earth showing through, fallen leaves
+    g.fillStyle = '#3b6a2b'; g.fillRect(0, 0, N, N); blots(30, 18, 50, 'rgba(92,70,40,.42)', 'rgba(26,62,20,.4)'); g.lineCap = 'round';
+    for (let k = 0; k < 1500; k++) { const x = R() * N, y = R() * N, L = 3 + R() * 7, a = -Math.PI / 2 + (R() - .5) * 1.8; g.strokeStyle = R() < .4 ? 'rgba(20,50,14,.55)' : `rgba(${70 + R() * 40 | 0},${125 + R() * 45 | 0},${44 + R() * 26 | 0},.55)`; g.lineWidth = .8 + R() * 1.2; wrap((ox, oy) => { g.beginPath(); g.moveTo(x + ox, y + oy); g.lineTo(x + ox + Math.cos(a) * L, y + oy + Math.sin(a) * L); g.stroke(); }); }
+    for (let k = 0; k < 110; k++) { const x = R() * N, y = R() * N, a = R() * 3.14, r = 2.5 + R() * 3.5, col = ['rgba(150,96,40,.8)', 'rgba(196,150,52,.75)', 'rgba(110,62,30,.8)'][k % 3]; wrap((ox, oy) => { g.fillStyle = col; g.beginPath(); g.ellipse(x + ox, y + oy, r, r * .45, a, 0, 7); g.fill(); }); }
+  } else if (HD_GK === 'wood') { // floorboards: planks of slightly different stain, grain, butt joints, nails
+    const rows = 8, h = N / rows; for (let r = 0; r < rows; r++) { const cuts = [R() * N, R() * N].sort((a, b) => a - b), seg = [[cuts[0], cuts[1]], [cuts[1], cuts[0] + N]];
+      for (const [x0, x1] of seg) { const k = .86 + R() * .3; wrap((ox) => { g.fillStyle = rgb(k); g.fillRect(x0 + ox, r * h, x1 - x0, h); }); for (let j = 0; j < 9; j++) { const y = r * h + 2 + R() * (h - 4), ph = R() * 6.28, am = .6 + R() * 1.6; g.strokeStyle = R() < .5 ? 'rgba(60,34,12,.2)' : 'rgba(255,236,200,.13)'; g.lineWidth = .7 + R(); wrap((ox) => { g.beginPath(); for (let x = x0; x <= x1; x += 4) g.lineTo(x + ox, y + am * Math.sin(x / 19 + ph)); g.stroke(); }); }
+        wrap((ox) => { g.fillStyle = 'rgba(40,22,8,.6)'; g.fillRect(x0 + ox - .8, r * h, 1.6, h); g.fillStyle = 'rgba(30,16,6,.7)'; for (const dx of [5, -5]) for (const dy of [.28, .72]) { g.beginPath(); g.arc(x0 + ox + dx, r * h + h * dy, 1.1, 0, 7); g.fill(); } }); }
+      g.fillStyle = 'rgba(36,20,8,.62)'; g.fillRect(0, r * h - .9, N, 1.8); g.fillStyle = 'rgba(255,240,210,.16)'; g.fillRect(0, r * h + 1.2, N, 1); }
+  } else if (HD_GK === 'metal') { // lab floor: dark steel plates, seams and bolts, tread studs, scuffs
+    g.fillStyle = '#2b303b'; g.fillRect(0, 0, N, N); const q = N / 2; for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const k = R(); g.fillStyle = `rgba(${k < .5 ? '255,255,255' : '0,0,0'},${.03 + R() * .05})`; g.fillRect(i * q, j * q, q, q);
+        for (let a = 0; a < 6; a++) for (let b = 0; b < 6; b++) { const x = i * q + 14 + a * (q - 28) / 5, y = j * q + 14 + b * (q - 28) / 5; g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x + .8, y + 1, 3.4, 1.5, (a + b) % 2 ? .78 : -.78, 0, 7); g.fill(); g.fillStyle = 'rgba(150,165,190,.4)'; g.beginPath(); g.ellipse(x, y, 3.2, 1.3, (a + b) % 2 ? .78 : -.78, 0, 7); g.fill(); }
+        g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 2; g.strokeRect(i * q + 1, j * q + 1, q - 2, q - 2); g.strokeStyle = 'rgba(160,175,200,.22)'; g.lineWidth = 1; g.strokeRect(i * q + 3, j * q + 3, q - 6, q - 6);
+        for (const [dx, dy] of [[7, 7], [q - 7, 7], [7, q - 7], [q - 7, q - 7]]) { g.fillStyle = 'rgba(0,0,0,.5)'; g.beginPath(); g.arc(i * q + dx + .6, j * q + dy + .8, 2.4, 0, 7); g.fill(); g.fillStyle = 'rgba(175,188,210,.75)'; g.beginPath(); g.arc(i * q + dx, j * q + dy, 2, 0, 7); g.fill(); } }
+    g.lineCap = 'round'; for (let k = 0; k < 40; k++) { const x = R() * N, y = R() * N, a = R() * 6.28, L = 6 + R() * 26; g.strokeStyle = R() < .6 ? 'rgba(190,200,220,.13)' : 'rgba(0,0,0,.2)'; g.lineWidth = .6 + R(); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke(); }
+  } else if (HD_GK === 'plain') { // the map's own floor colour, mottled and gritty so it isn't flat
+    g.fillStyle = rgb(1); g.fillRect(0, 0, N, N); blots(30, 18, 50, rgb(1.14, .28), rgb(.8, .26)); grit(2200, rgb(.62, .3), rgb(1.3, .3));
+  } else if (HD_GK === 'sand') {
     g.fillStyle = '#d6955a'; g.fillRect(0, 0, N, N);
     for (let k = 0; k < 30; k++) { const x = R() * N, y = R() * N, r = 20 + R() * 50; wrap((ox, oy) => { const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r); gr.addColorStop(0, R() < .5 ? 'rgba(240,180,120,.25)' : 'rgba(170,95,50,.2)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2); }); }
     for (let k = 0; k < 9; k++) for (const [col, dy] of [['rgba(255,225,180,.35)', 0], ['rgba(140,70,35,.28)', 3]]) { g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); for (let x = 0; x <= N; x += 4) g.lineTo(x, (k * N / 9 + 6 * Math.sin(x / N * 6.283 * 2 + k) + dy + N) % N); g.stroke(); }
     for (let k = 0; k < 2500; k++) { g.fillStyle = R() < .5 ? 'rgba(120,55,25,.35)' : 'rgba(255,230,190,.4)'; g.fillRect(R() * N, R() * N, 1, 1); }
-  } else if (MAP === 'sky') return null;
+  } else if (!HD_GK) return null;
   else {
     g.fillStyle = '#4c8f2f'; g.fillRect(0, 0, N, N);
     for (let k = 0; k < 26; k++) { const x = R() * N, y = R() * N, r = 18 + R() * 46; wrap((ox, oy) => { const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r); gr.addColorStop(0, R() < .5 ? 'rgba(120,170,60,.3)' : 'rgba(30,70,20,.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2); }); }
@@ -12599,8 +12777,17 @@ function hdGroundTex() {
 // (lush dark grass, sun-dried yellow patches, worn dirt paths between the forts, the middle and the portals; on the
 // desert: wind-blown pale sand, darker red grit and rocky patches). The grass blades use the same map: they grow
 // thinner on the paths and take the colour of the patch they're in.
-const HD_GROUND_SEGS = (() => { if (MAP !== 'classic') return []; const c = { x: 0, z: 0 }; return [[FORT.blue, c], [FORT.red, c], [PORTAL_SPOTS[0], c], [PORTAL_SPOTS[1], c], [HUBS[0], FORT.blue], [HUBS[1], FORT.red]]; })();
+const HD_GROUND_SEGS = (() => { if (MAP !== 'classic' || NEO_PLAZA) return []; const c = { x: 0, z: 0 }; return [[FORT.blue, c], [FORT.red, c], [PORTAL_SPOTS[0], c], [PORTAL_SPOTS[1], c], [HUBS[0], FORT.blue], [HUBS[1], FORT.red]]; })();
 const HD_GROUND_U = { gSeg: { value: Array.from({ length: 6 }, (_, i) => { const s = HD_GROUND_SEGS[i]; return s ? new THREE.Vector4(s[0].x, s[0].z, s[1].x, s[1].z) : new THREE.Vector4(); }) }, gSegN: { value: HD_GROUND_SEGS.length }, gHalf: { value: new THREE.Vector2(MX, MZ) } };
+// the new look's lawn is not flat: it rises and dips a hand's breadth (drawing only; under the forts and the middle it is level)
+const NEO_DISP_GLSL = NEO_PLAZA ? `
+float ndH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float ndN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(ndH(i), ndH(i + vec2(1, 0)), f.x), mix(ndH(i + vec2(0, 1)), ndH(i + vec2(1, 1)), f.x), f.y); }
+float neoDisp(vec2 w) { vec2 qb = abs(w - vec2(${FORT.blue.x.toFixed(1)}, ${FORT.blue.z.toFixed(1)})) - vec2(22., 19.), qr = abs(w - vec2(${FORT.red.x.toFixed(1)}, ${FORT.red.z.toFixed(1)})) - vec2(22., 19.);
+  float df = min(max(qb.x, qb.y), max(qr.x, qr.y)), de = min(${MX.toFixed(1)} - abs(w.x), ${MZ.toFixed(1)} - abs(w.y));
+  float k = smoothstep(0., 7., df) * smoothstep(10., 15., length(w)) * smoothstep(.5, 4., de);
+  return ((ndN(w * .07) - .5) * .42 + (ndN(w * .23 + 5.) - .5) * .14) * k; }
+` : 'float neoDisp(vec2 w) { return 0.; }\n';
 const HD_GROUND_GLSL = `
 uniform vec4 gSeg[6]; uniform int gSegN; uniform vec2 gHalf;
 float gH2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -12611,39 +12798,41 @@ float gPath(vec2 w) { vec2 q = w + (vec2(gN2(w * .06), gN2(w * .06 + 9.0)) - .5)
   return 1.0 - smoothstep(.5, 1.3 + .7 * gN2(w * 1.3), d); }
 vec3 gTint(vec2 w) {
   float big = gF2(w * .035), dry = smoothstep(.56, .74, gF2(w * .022 + 17.0)), fine = gN2(w * .7);
-  ${DESERT ? `vec3 t = mix(vec3(.84, .8, .76), vec3(1.1, 1.04, .96), big); t = mix(t, vec3(1.16, 1.08, .98), dry * .7);
+  ${HD_GK === 'sand' ? `vec3 t = mix(vec3(.84, .8, .76), vec3(1.1, 1.04, .96), big); t = mix(t, vec3(1.16, 1.08, .98), dry * .7);
   float rock = smoothstep(.66, .8, gF2(w * .05 + 41.0)); t = mix(t, vec3(.62, .42, .34), rock * .75); t *= .92 + .16 * fine;`
+  : HD_GK !== 'grass' && HD_GK !== 'moss' ? `vec3 t = mix(vec3(.84, .85, .88), vec3(1.07, 1.06, 1.04), big); t = mix(t, t * vec3(.86, .88, .93), dry * .6); t *= .93 + .14 * fine; /* (big soft patches of light and shade; worn, duller areas) */`
   : `vec3 t = mix(vec3(.74, .86, .7), vec3(1.06, 1.06, .98), big); t = mix(t, vec3(1.3, 1.16, .66), dry * .75);
   float clover = smoothstep(.7, .85, gF2(w * .09 + 5.0)); t = mix(t, vec3(.7, .95, .66), clover * .5); t *= .9 + .2 * fine;`}
   return t; }
 `;
 if (HD) {
   // ---- light from the sky itself: a blurred picture of the sky (with the sun in it) that every material reflects ----
-  { const es = new THREE.Scene(), sd = sun.position.clone().normalize();
+  if (!NEO) { const es = new THREE.Scene(), sd = sun.position.clone().normalize(); // (the new look skips this: it is the dearest thing on a phone by far, and its blocks mirror the sky with a line of maths instead, see 12d_neo)
     const sm = new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, uniforms: { zen: { value: skyU.zen.value.clone() }, hor: { value: skyU.hor.value.clone() }, low: { value: (skyU.low ? skyU.low.value : skyU.hor.value).clone().multiplyScalar(.45) }, sd: { value: sd } },
       vertexShader: 'varying vec3 vD; void main() { vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
       fragmentShader: 'uniform vec3 zen, hor, low, sd; varying vec3 vD; void main() { float y = vD.y; vec3 c = y > 0.0 ? mix(hor, zen, pow(y, .6)) : mix(hor, low, pow(-y, .4)); c += vec3(1.0, .95, .85) * (pow(max(dot(vD, sd), 0.0), 64.0) * 6.0 + pow(max(dot(vD, sd), 0.0), 6.0) * .5); gl_FragColor = vec4(c, 1.0); }' });
     es.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), sm));
     const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(es, 0, .1, 50).texture; pm.dispose(); scene.environmentIntensity = .5; }
-  if (hemi) { hemi.intensity *= .45; LIGHT0.hemi = hemi.intensity; } // (the sky light now comes from the environment)
+  if (hemi) { hemi.intensity *= NEO ? .9 : .45; LIGHT0.hemi = hemi.intensity; } // (the sky light now comes from the environment)
   sun.intensity *= 1.2; LIGHT0.sun = sun.intensity;
   if (!matchMedia('(pointer: coarse)').matches) { sun.shadow.mapSize.set(2048, 2048); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
   sun.shadow.radius = 3;
   // ---- weathered blocks ----
-  plainIM.material = hdWear(new LiteMat({ roughness: .85 }), 'block');
-  for (const o of scene.children) if (o.isInstancedMesh && o !== plainIM && o.geometry === cubeGeo && o.material && o.material.isMeshStandardMaterial) hdWear(o.material, 'block');
-  { const rh = refreshHeld; refreshHeld = function (r) { rh(r); const m = r.model.heldPlainMat; if (m) hdWear(m, 'block'); }; }
+  if (NEO) plainIM.material = new LiteMat({ roughness: .25, metalness: .8 }); // (the new look paints its blocks itself: candy and chrome, no wear)
+  else { plainIM.material = hdWear(new LiteMat({ roughness: .85 }), 'block');
+    for (const o of scene.children) if (o.isInstancedMesh && o !== plainIM && o.geometry === cubeGeo && o.material && o.material.isMeshStandardMaterial) hdWear(o.material, 'block');
+    const rh = refreshHeld; refreshHeld = function (r) { rh(r); const m = r.model.heldPlainMat; if (m) hdWear(m, 'block'); }; }
   // ---- painted-metal robots ----
   const hdRobot = g => g.traverse(o => { if (!o.isMesh || !o.material || Array.isArray(o.material) || !o.material.isMeshStandardMaterial || o.material.userData.hdw) return; const m = o.material;
     if (m.emissiveIntensity > 1 || m.map || m.userData.mummy) return; // (eyes and the striped ball stay as they are)
     m.metalness = Math.max(m.metalness, .35); m.roughness = Math.min(m.roughness, .42); hdWear(m, 'robot'); });
-  for (const r of robots) hdRobot(r.model.g);
-  { const rm = robotModel; robotModel = function (...a) { const M = rm(...a); try { hdRobot(M.g); } catch (e) {} return M; }; }
+  if (!NEO) { for (const r of robots) hdRobot(r.model.g); // (the new look leaves the robots exactly as they are made)
+    const rm = robotModel; robotModel = function (...a) { const M = rm(...a); try { hdRobot(M.g); } catch (e) {} return M; }; }
   // ---- the ground ----
   { const gm = GROUND_MESH ? GROUND_MESH.material : (() => { const sl = scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6); return sl && sl.material[2]; })();
-    const T_ = hdGroundTex(); if (gm && gm.map && T_) { const o = gm.map; T_.nt.repeat.copy(o.repeat); o.image = T_.t.image; o.magFilter = THREE.LinearFilter; o.minFilter = THREE.LinearMipmapLinearFilter; o.needsUpdate = true; /* (the same texture object gets the new picture, so the Look lab's 'Game' ground stays HD) */ gm.normalMap = T_.nt; gm.normalScale = new THREE.Vector2(.8, .8); gm.roughness = .95; gm.needsUpdate = true; } }
+    const T_ = hdGroundTex(gm && gm.map && gm.map.image); if (gm && gm.map && T_) { const o = gm.map; T_.nt.repeat.copy(o.repeat); o.image = T_.t.image; o.magFilter = THREE.LinearFilter; o.minFilter = THREE.LinearMipmapLinearFilter; o.needsUpdate = true; /* (the same texture object gets the new picture, so the Look lab's 'Game' ground stays HD) */ gm.normalMap = T_.nt; gm.normalScale = new THREE.Vector2(.8, .8); gm.roughness = .95; gm.needsUpdate = true; } }
   { const gm = GROUND_MESH ? GROUND_MESH.material : (() => { const sl = scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6); return sl && sl.material[2]; })();
-    if (gm && MAP !== 'sky') { const prev = gm.onBeforeCompile; gm.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd); Object.assign(sh.uniforms, HD_GROUND_U);
+    if (gm && HD_GK) { const prev = gm.onBeforeCompile; gm.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd); Object.assign(sh.uniforms, HD_GROUND_U);
         sh.fragmentShader = HD_GROUND_GLSL + sh.fragmentShader.replace('#include <map_fragment>', `
   #ifdef USE_MAP
     vec2 gw = vec2(vMapUv.x * 2.0 - gHalf.x, gHalf.y - vMapUv.y * 2.0);
@@ -12656,7 +12845,7 @@ if (HD) {
       const key = gm.customProgramCacheKey ? gm.customProgramCacheKey() : ''; gm.customProgramCacheKey = () => key + 'hdground'; gm.needsUpdate = true; } }
   // ---- grass blades (the island only): a patch round the camera that wraps as you move ----
   if (MAP === 'classic') {
-    const touch = matchMedia('(pointer: coarse)').matches, N = touch ? 7000 : 15000, T = 28;
+    const touch = matchMedia('(pointer: coarse)').matches, N = NEO_PLAZA ? (touch ? 9000 : 22000) : touch ? 7000 : 15000, T = 28;
     const base = new THREE.BufferGeometry(); // one blade: a thin tapering strip, 3 segments high
     base.setAttribute('position', new THREE.Float32BufferAttribute([-.5, 0, 0, .5, 0, 0, -.4, .33, 0, .4, .33, 0, -.25, .66, 0, .25, .66, 0, 0, 1, 0], 3));
     base.setIndex([0, 1, 2, 2, 1, 3, 2, 3, 4, 4, 3, 5, 4, 5, 6]);
@@ -12667,22 +12856,28 @@ if (HD) {
     const U = { uCam: { value: V() }, uP: { value: V(0, -99, 0) }, uT: { value: 0 }, cellTex: { value: cellTex }, uMap: { value: new THREE.Vector2(GW, GD) } };
     const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .8, side: THREE.DoubleSide });
     mat.onBeforeCompile = sh => { Object.assign(sh.uniforms, U);
-      Object.assign(sh.uniforms, HD_GROUND_U); sh.vertexShader = `attribute vec3 aOff; uniform vec3 uCam, uP; uniform float uT; uniform sampler2D cellTex; uniform vec2 uMap; varying vec3 vGc;\n` + HD_GROUND_GLSL + sh.vertexShader
+      Object.assign(sh.uniforms, HD_GROUND_U); sh.vertexShader = `attribute vec3 aOff; uniform vec3 uCam, uP; uniform float uT; uniform sampler2D cellTex; uniform vec2 uMap; varying vec3 vGc;\n` + HD_GROUND_GLSL + NEO_DISP_GLSL + sh.vertexShader
         .replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);')
         .replace('#include <begin_vertex>', `
   vec2 wp = aOff.xy + ${T.toFixed(1)} * floor((uCam.xz - aOff.xy) / ${T.toFixed(1)} + .5);
   float dc = length(wp - uCam.xz), fade = 1.0 - smoothstep(${(T * .3).toFixed(1)}, ${(T * .48).toFixed(1)}, dc);
   vec2 cuv = vec2((wp.x + uMap.x * .5) / uMap.x, 1.0 - (wp.y + uMap.y * .5) / uMap.y);
   vec4 cc = texture(cellTex, cuv); float inside = step(0.0, cuv.x) * step(cuv.x, 1.0) * step(0.0, cuv.y) * step(cuv.y, 1.0) * step(.5, cc.a);
-  float gp = gPath(wp); float h = (.2 + .24 * aOff.z) * fade * inside * (1.0 - .85 * gp) * (.75 + .5 * gN2(wp * .2)), a = aOff.z * 40.0, y = position.y;
+  float gp = gPath(wp);
+  ${NEO_PLAZA ? (() => { const sd = (a, b) => `gSegD(wp, vec2(${a.x.toFixed(2)}, ${a.z.toFixed(2)}), vec2(${b.x.toFixed(2)}, ${b.z.toFixed(2)}))`, O = { x: 0, z: 0 }, box = F => `max(abs(wp.x - ${F.x.toFixed(2)}) - 23.0, abs(wp.y - ${F.z.toFixed(2)}) - 20.0)`;
+    return `{ float d = min(min(${sd(FORT.blue, O)}, ${sd(FORT.red, O)}), min(min(${sd(O, PORTAL_SPOTS[0])}, ${sd(O, PORTAL_SPOTS[1])}), min(${sd(O, HUBS[0])}, ${sd(O, HUBS[1])}))) - 1.8;
+      d = min(d, min(${box(FORT.blue)}, ${box(FORT.red)}) + gN2(wp * .13) * 1.6); d = min(d, length(wp) - 10.0); /* (no grass on the paths, the forecourts, the middle) */
+      gp = max(gp, 1.0 - smoothstep(-.3, .6, d)); }`; })() : ''}
+  float h = (${NEO_PLAZA ? '.32 + .42' : '.2 + .24'} * aOff.z) * fade * inside * (1.0 - ${NEO_PLAZA ? '1.0' : '.85'} * gp) * (.75 + .5 * gN2(wp * .2)), a = aOff.z * 40.0, y = position.y;
   vec2 dir = vec2(cos(a), sin(a)); vec3 transformed = vec3(wp.x + dir.x * position.x * .07, y * h, wp.y + dir.y * position.x * .07);
   vec2 bend = vec2(.6, .3) * (.5 + .5 * sin(uT * 1.6 + wp.x * .31 + wp.y * .23)) * .12 + .03 * vec2(sin(uT * 3.1 + aOff.z * 20.0), cos(uT * 2.7 + aOff.z * 13.0));
   vec2 dv = wp - uP.xz; float dl = length(dv); if (dl < .9 && abs(uP.y) < 2.0) bend += dv / max(dl, .01) * (.9 - dl) * .45;
-  transformed.xz += bend * y * y * h * 3.0; transformed.y -= length(bend) * y * y * h * .6;
-  vGc = mix(vec3(.12, .26, .06), vec3(.36, .6, .16) * (.8 + .4 * fract(aOff.z * 7.3)), y) * mix(vec3(1.0), cc.rgb, .85) * gTint(wp);`);
+  transformed.xz += bend * y * y * h * 3.0; transformed.y -= length(bend) * y * y * h * .6; transformed.y += neoDisp(wp) - .02;
+  vGc = mix(vec3(.12, .26, .06), vec3(.36, .6, .16) * (.8 + .4 * fract(aOff.z * 7.3)), y) * mix(vec3(1.0), cc.rgb, .85) * gTint(wp);${NEO_PLAZA ? `
+  vGc = mix(vec3(.03, .14, .01), vec3(.2, .5, .05) * (.75 + .5 * fract(aOff.z * 7.3)), y); { float fk = fract(aOff.z * 97.3); if (fk > .94) vGc = mix(vGc, fk > .985 ? vec3(.4, .5, 1.) : fk > .965 ? vec3(1.) : vec3(1., .82, .1), smoothstep(.75, .95, y)); } /* (a flower on a few) */` : ''}`);
       sh.fragmentShader = 'varying vec3 vGc;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n  diffuseColor.rgb *= vGc;');
     };
-    mat.customProgramCacheKey = () => 'hdgrass';
+    mat.customProgramCacheKey = () => 'hdgrass'; mat.userData.neoC = 1; // (no sky shine on grass)
     const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; m.receiveShadow = true; scene.add(m); HDW.grass = m; HDW.grassN = N;
     m.onBeforeRender = () => { U.uCam.value.copy(camera.position); U.uT.value = now() / 1000; if (P && P.body) { const c = P.body.translation(); U.uP.value.set(c.x, c.y - 1, c.z); } };
   }
@@ -12732,6 +12927,778 @@ if (HD && DESERT) { const st0 = sideTint; sideTint = function (cx, cz) { return 
     row.innerHTML = `<b>Mummy robots</b><span class="src">in the red desert, every robot is wrapped up in old bandages, loose ends flapping (changes after a reload)</span><div class="chips"><span class="chip${S.mummy ? ' on' : ''}"><button class="cu" data-m="1">On</button></span><span class="chip${S.mummy ? '' : ' on'}"><button class="cu" data-m="0">Off</button></span></div>`;
     row.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { S.mummy = b.dataset.m === '1'; saveS(); toast('MUMMY ROBOTS ' + (S.mummy ? 'ON' : 'OFF') + ' (AFTER A RELOAD)'); lookLabRows(); });
     box.insertBefore(row, box.firstChild); }; }
+
+// ============================================================
+// THE NEW LOOK (what "Day" is since Nov 2026): a retro-future world in CANDY-APPLE PAINT AND CHROME under a sunset.
+// Not a set of pictures laid over the old world: the blocks, the light, the sky and (map by map) the ground and the
+// scenery are made again from nothing.
+//
+// BLOCKS. Still boxes to the game, but each is now a real shape of its own (THE KIT, below): candy paint over metal
+// flake under a clear coat, chrome, cream enamel, black glass, steel, and lights.
+//
+// SHINE. Nothing here looks up a picture of the sky (far too dear on a phone). Every shiny thing mirrors a sky worked
+// out by a few lines of maths: the colour overhead, the bright band at the horizon, the dark ground, the sun, and one
+// soft light overhead so that every block wears a white glint, like paint under show lights.
+//
+// THE PLAZA (the classic map, the first one rebuilt, further down): a polished floor that truly mirrors the world, a
+// painted sunset sky, a low golden sun, and a skyline of rockets, saucer towers, domes and ringed globes.
+// The other world styles in the Look lab (night, jelly, circuit, toon, the old HD, clay) are untouched.
+// ============================================================
+let NEOX = null; // (what the new look shares with the maps built for it: 12e_neon.js)
+if (NEO) {
+const NEO_TOUCH = matchMedia('(pointer: coarse)').matches;
+const neoRng = s => () => (s = s * 16807 % 2147483647) / 2147483647;
+// ---- what every shiny thing mirrors ----
+const NEOU = { neoT: { value: 0 }, neoZen: { value: skyU.zen.value.clone() }, neoHor: { value: skyU.hor.value.clone() }, neoGnd: { value: new THREE.Color('#5b5650') }, neoSunD: { value: SUN_DIR.clone() }, neoSunC: { value: new THREE.Color('#fff0d6') } };
+{ const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam, rt) => { if (prev) prev(r, s, cam, rt); NEOU.neoT.value = now() / 1000 % 1000; }; }
+const NEO_ENV = `
+uniform float neoT; uniform vec3 neoZen; uniform vec3 neoHor; uniform vec3 neoGnd; uniform vec3 neoSunD; uniform vec3 neoSunC;
+vec3 neoEnv(vec3 R, float rough) { float w = .03 + rough * .6, h = R.y; /* (rough: how blurred the mirror is) */
+  vec3 sky = mix(neoHor, neoZen, smoothstep(0., .7, h)), gnd = mix(neoHor * .6, neoGnd, smoothstep(0., -.3 - rough, h));
+  vec3 e = mix(gnd, sky, smoothstep(-w, w, h));
+  float sd = max(dot(R, neoSunD), 0.);
+  e += neoSunC * (pow(sd, mix(700., 30., rough)) * mix(10., 1., rough) + pow(sd, 8.) * .3);
+  e += vec3(1., .96, .92) * pow(max(dot(R, vec3(.35, .87, .35)), 0.), mix(90., 14., rough)) * mix(1.1, .25, rough); /* the soft light overhead */
+  return e; }
+`;
+const NEO_REFL = `{ vec3 nV = normalize(vViewPosition); float nfr = pow(1. - max(dot(normal, nV), 0.), 5.); vec3 nR = inverseTransformDirection(reflect(-nV, normal), viewMatrix);
+    vec3 nF0 = mix(vec3(.04), diffuseColor.rgb, metalnessFactor);
+    outgoingLight += neoEnv(nR, roughnessFactor) * (nF0 + (1. - nF0) * nfr) * (1. - .7 * roughnessFactor); }`;
+// any ordinary material can be given the shine (scenery, the special blocks, the flags)
+function neoShine(m) { if (!m || !m.isMeshStandardMaterial || m.userData.neoC) return m; m.userData.neoC = 1; const prev = m.onBeforeCompile, key = m.customProgramCacheKey ? m.customProgramCacheKey() : '';
+  m.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd); Object.assign(sh.uniforms, NEOU); sh.fragmentShader = NEO_ENV + sh.fragmentShader.replace('#include <opaque_fragment>', NEO_REFL + '\n  #include <opaque_fragment>'); };
+  m.customProgramCacheKey = () => key + '|neoShine'; m.needsUpdate = true; return m; }
+// ============================================================
+// THE KIT: every plain block is a real shape now, not a cube with paint on it. To the game each is still a box (it
+// stacks, it is picked up and thrown exactly as before); what you SEE is one of the models below (their names are in
+// 02g_neon.js), chosen when the block is made and kept wherever it goes. Forts are built from the shiny ones with scrap
+// mixed in, whatever fits: a wall with a wedge or a television in it, or a gap you can see through, has character.
+// Each model is ONE piece of geometry whose parts know what they are made of:
+//   0 the block's own paint · 1 chrome · 2 black glass · 3 a neon light · 4 its second paint (cream, mostly) ·
+//   5 brushed steel · 6 gold · 7 its dark paint · 8 a second neon · 9 a television screen
+// How they are drawn: the game still keeps every plain block in one list (plainIM); that list is no longer drawn.
+// Whenever it changes, each block's place and colour are copied into the crowd for its model (one crowd per model, so
+// a couple of thousand blocks are still only a few dozen draws).
+// A long block stretches only its middle: whatever is near its faces (corners, rims, end caps) keeps its size.
+// ============================================================
+const KIT = (() => { const T = NEO_TOUCH, PI = Math.PI, A = 0, CH = 1, GL = 2, NE = 3, B = 4, ST = 5, GO = 6, C = 7, N2 = 8, SC = 9;
+  const fin = (g, p) => { if (g.index) g = g.toNonIndexed(); for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); g.setAttribute('aPart', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(p), 1)); return g; };
+  const at = (g, x, y, z) => x || y || z ? g.translate(x, y, z) : g;
+  const box = (w, h, d, p, x = 0, y = 0, z = 0) => at(fin(new THREE.BoxGeometry(w, h, d), p), x, y, z);
+  const rbox = (w, h, d, r, p, x = 0, y = 0, z = 0, s = 1) => at(fin(new RoundedBoxGeometry(w, h, d, s, r), p), x, y, z);
+  const cyl = (r, h, n, p, x = 0, y = 0, z = 0, ax, o = {}) => { const g = fin(new THREE.CylinderGeometry(o.rt ?? r, r, h, T ? Math.max(5, Math.round(n * .7)) : n, 1, !!o.open), p); if (o.ry) g.rotateY(o.ry); if (ax === 'x') g.rotateZ(PI / 2); else if (ax === 'z') g.rotateX(PI / 2); return at(g, x, y, z); };
+  const fru = (rb, rt, h, n, p, y = 0, ry = PI / 4) => at(fin(toCreasedNormals(new THREE.CylinderGeometry(rt, rb, h, n).rotateY(ry), .35), p), 0, y, 0); // (flat-sided: a pyramid, a taper)
+  const sph = (r, p, x = 0, y = 0, z = 0, w = 10, h = 7) => at(fin(new THREE.SphereGeometry(r, T ? Math.max(6, w - 3) : w, T ? Math.max(4, h - 2) : h), p), x, y, z);
+  const ico = (r, p, x = 0, y = 0, z = 0) => at(fin(new THREE.IcosahedronGeometry(r, 0), p), x, y, z);
+  const tor = (R, r, p, x = 0, y = 0, z = 0, ax, arc = PI * 2) => { const g = fin(new THREE.TorusGeometry(R, r, 4, Math.max(4, Math.round((T ? 9 : 14) * arc / (PI * 2))), arc), p); if (ax === 'y') g.rotateX(PI / 2); else if (ax === 'x') g.rotateY(PI / 2); return at(g, x, y, z); };
+  const lathe = (pts, n, p, cr = .9, ry = 0) => { const g = new THREE.LatheGeometry(pts.map(q => new THREE.Vector2(Math.max(q[0], .0005), q[1])), T ? Math.max(6, Math.round(n * .75)) : n); if (ry) g.rotateY(ry); return fin(toCreasedNormals(g, cr), p); };
+  // a flat outline with rounded corners, pushed right through the block (front to back), its front and back edges rounded off
+  const rpoly = (pts, r) => { const s = new THREE.Shape(), n = pts.length; for (let i = 0; i < n; i++) { const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n], a0 = [p0[0] - p1[0], p0[1] - p1[1]], a2 = [p2[0] - p1[0], p2[1] - p1[1]], l0 = Math.hypot(a0[0], a0[1]), l2 = Math.hypot(a2[0], a2[1]), q = Math.min(r, l0 / 2, l2 / 2);
+      const a = [p1[0] + a0[0] / l0 * q, p1[1] + a0[1] / l0 * q], b = [p1[0] + a2[0] / l2 * q, p1[1] + a2[1] / l2 * q]; if (i) s.lineTo(a[0], a[1]); else s.moveTo(a[0], a[1]); s.quadraticCurveTo(p1[0], p1[1], b[0], b[1]); } s.closePath(); return s; };
+  const ext = (shape, depth, p, o = {}) => { const b = o.b ?? .055, g = new THREE.ExtrudeGeometry(shape, { depth: depth - 2 * b, bevelEnabled: b > 0, bevelThickness: b, bevelSize: b, bevelOffset: -b, bevelSegments: o.bs ?? (T ? 1 : 2), curveSegments: o.cs ?? (T ? 2 : 3) }); g.translate(0, 0, -(depth - 2 * b) / 2);
+    const c = toCreasedNormals(g, o.cr ?? .95), P = c.attributes.position, N = c.attributes.normal, zc = depth / 2; // (round the bends smoothly; the flat front and back stay truly flat)
+    for (let i = 0; i < P.count; i += 3) if (Math.abs(Math.abs(P.getZ(i)) - zc) < 1e-4 && Math.abs(Math.abs(P.getZ(i + 1)) - zc) < 1e-4 && Math.abs(Math.abs(P.getZ(i + 2)) - zc) < 1e-4) for (let k = 0; k < 3; k++) N.setXYZ(i + k, 0, 0, Math.sign(P.getZ(i)));
+    return fin(c, p); };
+  const four = f => [0, 1, 2, 3].flatMap(i => [].concat(f()).flat(4).map(g => g.rotateY(i * PI / 2))); // (the same thing on all four sides)
+  const two = f => [0, 1].flatMap(i => [].concat(f()).flat(4).map(g => g.rotateY(i * PI))); // (front and back)
+  const tube = (pts, r, p, closed) => { const out = [], n = pts.length; for (let i = 0; i < (closed ? n : n - 1); i++) { const a = pts[i], b = pts[(i + 1) % n], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy), g = fin(new THREE.CylinderGeometry(r, r, L + r * 1.2, 5), p); g.rotateZ(Math.atan2(dy, dx) - PI / 2); out.push(g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0)); } return out; }; // (a neon tube bent along a line, in the block's front plane)
+  const mk = (...gs) => { const g = mergeGeometries(gs.flat(4)); g.computeBoundingSphere(); return g; };
+  const D = (...gs) => T ? [] : gs; // (fine detail a phone does without)
+  const body = (p = A, r = .13, w = .98) => rbox(w, w, w, r, p, 0, 0, 0, T ? 1 : 2);
+  const star = (R, r, n = 5) => { const q = []; for (let i = 0; i < n * 2; i++) { const a = i / (n * 2) * PI * 2 + PI / 2, k = i % 2 ? r : R; q.push([Math.cos(a) * k, Math.sin(a) * k]); } return q; };
+  const signBase = () => [rbox(.92, .28, .5, .06, C, 0, -.35, 0), cyl(.025, .2, 5, CH, -.26, -.12, 0), cyl(.025, .2, 5, CH, .26, -.12, 0)];
+  const M = {
+    // ---- the shiny blocks ----
+    pillow: () => mk(body(A, .15), D(four(() => box(.08, .08, .02, CH, .3, .3, .487)))),                               // a soft cube, a plate let into each side, a gold stud
+    halves: () => mk(rbox(.47, .98, .98, .11, A, -.255, 0, 0), rbox(.47, .98, .98, .11, B, .255, 0, 0), box(.07, .9, .9, NE)),                                                                          // two halves, two paints, a seam of light between
+    diag: () => mk(ext(rpoly([[-.49, -.49], [.43, -.49], [-.49, .43]], .09), .98, A), ext(rpoly([[.49, .49], [-.43, .49], [.49, -.43]], .09), .98, B), box(1.25, .05, .9, GO).rotateZ(-PI / 4)),            // split corner to corner, a gold strip in the join
+    band: () => mk(body(A, .13), rbox(1, .27, 1, .04, B), box(1.006, .04, 1.006, CH, 0, .16, 0), box(1.006, .04, 1.006, CH, 0, -.16, 0)),                                                                // a belt between two chrome rails
+    hexa: () => mk(ext(rpoly([[.49, 0], [.26, .49], [-.26, .49], [-.49, 0], [-.26, -.49], [.26, -.49]], .06), .98, A), two(() => [cyl(.3, .03, 6, GO, 0, 0, .482, 'z', { ry: PI / 6 }), cyl(.11, .03, 6, NE, 0, 0, .492, 'z', { ry: PI / 6 })])), // six-sided, a gold plate and a light front and back
+    wedge: () => mk(ext(rpoly([[-.49, -.49], [.49, -.49], [.49, -.3], [-.22, .49], [-.49, .49]], .07), .98, A), box(.78, .03, .62, B).rotateZ(-.838).translate(.155, .115, 0), box(.05, .04, .88, NE, -.36, .492, 0), box(.03, .12, .9, CH, .492, -.4, 0)), // a ramp: a plate on the slope, a light along the ridge, a chrome toe
+    arch: () => { const s = new THREE.Shape(); s.moveTo(-.49, -.49); s.lineTo(-.3, -.49); s.absarc(0, -.49, .3, PI, 0, true); s.lineTo(.49, -.49); s.lineTo(.49, .42); s.quadraticCurveTo(.49, .49, .42, .49); s.lineTo(-.42, .49); s.quadraticCurveTo(-.49, .49, -.49, .42); s.closePath();
+      return mk(ext(s, .98, A, { cs: T ? 5 : 8 }), two(() => [box(.44, .06, .03, NE, 0, .22, .49), D(tor(.3, .03, CH, 0, -.49, .47, 'z', PI))])); },                                                // a tunnel underneath, a light over each mouth
+    halfpipe: () => { const s = new THREE.Shape(); s.moveTo(-.49, -.49); s.lineTo(-.27, -.49); s.lineTo(-.27, 0); s.absarc(0, 0, .27, PI, 0, true); s.lineTo(.27, -.49); s.lineTo(.49, -.49); s.lineTo(.49, 0); s.absarc(0, 0, .49, 0, PI, false); s.closePath();
+      return mk(ext(s, .98, B, { cs: T ? 5 : 8, b: .04 }), box(.24, .1, 1, A, .38, -.445, 0), box(.24, .1, 1, A, -.38, -.445, 0), box(.07, .02, .74, NE, 0, .492, 0)); },                              // a round arch on two feet
+    cframe: () => { const s = rpoly([[-.49, -.49], [.49, -.49], [.49, .49], [-.49, .49]], .08), h = new THREE.Path(); h.moveTo(-.25, -.25); h.lineTo(-.25, .25); h.lineTo(.25, .25); h.lineTo(.25, -.25); h.closePath(); s.holes.push(h);
+      return mk(ext(s, .98, B, { cs: 2 }), box(.5, .5, .05, GL), box(.3, .07, .5, NE, 0, -.14, 0), box(.07, .22, .5, CH, 0, .08, 0)); },                                                               // a frame you can see into, a light inside
+    ringp: () => mk(body(A, .13), four(() => [box(.62, .62, .02, NE, 0, 0, .484), box(.5, .5, .03, GL, 0, 0, .487)])),                                                                                  // a window with a ring of light round it on every side
+    octp: () => mk(body(A, .13), four(() => [cyl(.31, .02, 8, NE, 0, 0, .484, 'z', { ry: PI / 8 }), cyl(.25, .03, 8, B, 0, 0, .487, 'z', { ry: PI / 8 })])),                                             // an eight-sided plate ringed with light on every side
+    starb: () => { const st = new THREE.Shape(star(.25, .11).map(q => new THREE.Vector2(q[0], q[1]))); return mk(body(B, .13), four(() => [box(.62, .62, .02, A, 0, 0, .484), fin(new THREE.ExtrudeGeometry(st, { depth: .03, bevelEnabled: false }), GO).translate(0, 0, .48)])); }, // a gold star on every side
+    trap: () => mk(box(.98, .09, .98, CH, 0, -.445, 0), fru(.672, .42, .86, 4, A, .03), box(.5, .03, .5, B, 0, .475, 0), D(four(() => box(.3, .05, .02, NE, 0, -.25, .452).rotateX(-.283)))),               // narrower at the top, on a chrome foot
+    facet: () => { const g = new RoundedBoxGeometry(.98, .98, .98, 1, .27).toNonIndexed(), P = g.attributes.position, N = g.attributes.normal, pa = new Float32Array(P.count), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+      for (let i = 0; i < P.count; i += 3) { a.fromBufferAttribute(P, i); b.fromBufferAttribute(P, i + 1); c.fromBufferAttribute(P, i + 2); const n = b.sub(a).cross(c.sub(a)).normalize(), k = (Math.abs(n.x) > .3) + (Math.abs(n.y) > .3) + (Math.abs(n.z) > .3); for (let q = 0; q < 3; q++) { N.setXYZ(i + q, n.x, n.y, n.z); pa[i + q] = k === 1 ? A : k === 2 ? C : GO; } }
+      for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); g.setAttribute('aPart', new THREE.BufferAttribute(pa, 1)); return mk(g, D(four(() => cyl(.1, .02, 4, NE, 0, 0, .492, 'z')))); },   // cut like a gem: gold corners, dark edges
+    hole: () => { const s = rpoly([[-.49, -.49], [.49, -.49], [.49, .49], [-.49, .49]], .1); s.holes.push(new THREE.Path().absarc(0, 0, .27, 0, PI * 2, true)); return mk(ext(s, .98, A, { cs: T ? 3 : 5 }), ico(.13, NE), D(two(() => tor(.27, .03, CH, 0, 0, .475, 'z')))); }, // a round hole right through, a light floating in it
+    cyl: () => mk(lathe([[0, -.49], [.44, -.49], [.49, -.44], [.49, .44], [.44, .49], [0, .49]], 14, A), cyl(.497, .1, 14, NE, 0, 0, 0, 0, { open: 1 }), cyl(.5, .05, 14, CH, 0, .33, 0, 0, { open: 1 }), cyl(.5, .05, 14, CH, 0, -.33, 0, 0, { open: 1 })), // a drum with a band of light
+    cross: () => mk(ext(rpoly([[.18, -.49], [.18, -.18], [.49, -.18], [.49, .18], [.18, .18], [.18, .49], [-.18, .49], [-.18, .18], [-.49, .18], [-.49, -.18], [-.18, -.18], [-.18, -.49]], .05), .98, A, { cs: 1, bs: 1 }), two(() => [box(.3, .3, .03, B, 0, 0, .482), cyl(.08, .03, 6, NE, 0, 0, .492, 'z')])), // a plus
+    steps: () => mk(ext(rpoly([[-.49, -.49], [.49, -.49], [.49, -.16], [.16, -.16], [.16, .16], [-.16, .16], [-.16, .49], [-.49, .49]], .04), .98, A, { cs: 1, bs: 1 }), [[.47, -.16], [.14, .16], [-.18, .49]].map(([x, y]) => box(.05, .04, .9, CH, x, y - .005, 0)), box(.03, .2, .7, NE, -.492, .28, 0)), // three stairs, chrome on each nose
+    ell: () => mk(ext(rpoly([[-.49, -.49], [.49, -.49], [.49, 0], [0, 0], [0, .49], [-.49, .49]], .07), .98, A), two(() => box(.34, .34, .03, B, -.245, .2, .482)), box(.4, .03, .7, NE, .245, .005, 0)),      // an L
+    pyra: () => mk(rbox(.98, .16, .98, .05, C, 0, -.41, 0), fru(.6, .17, .62, 4, A, -.02), fru(.17, .001, .2, 4, GO, .39), D(four(() => box(.34, .04, .02, NE, 0, -.2, .372).rotateX(-.61)))),                // a pyramid with a gold tip
+    dome: () => mk(rbox(.98, .3, .98, .08, C, 0, -.34, 0), cyl(.44, .09, 14, CH, 0, -.15, 0), fin(new THREE.SphereGeometry(.41, T ? 9 : 14, T ? 3 : 5, 0, PI * 2, 0, PI / 2), A).translate(0, -.11, 0), cyl(.445, .035, 14, NE, 0, -.1, 0, 0, { open: 1 }), ico(.07, NE, 0, .32, 0)), // a dome with a ring of light
+    fins: () => mk(rbox(.98, .5, .98, .09, A, 0, -.24, 0), box(.9, .04, .9, CH, 0, .03, 0), [-.33, -.11, .11, .33].map(z => box(.86, .42, .07, B, 0, .26, z))),                                          // cooling fins on a chrome plate
+    cage: () => mk([-1, 1].flatMap(a => [-1, 1].flatMap(b => [box(.98, .08, .08, CH, 0, a * .45, b * .45), box(.08, .82, .08, CH, a * .45, 0, b * .45), box(.08, .08, .82, CH, a * .45, b * .45, 0)])), rbox(.8, .8, .8, .08, A), four(() => box(.5, .07, .02, NE, 0, 0, .405))), // a core in a chrome frame
+    lamp: () => mk(rbox(.72, .34, .72, .07, C, 0, -.32, 0), cyl(.06, .3, 6, CH, 0, -.03, 0), cyl(.13, .05, 8, CH, 0, .03, 0), sph(.27, NE, 0, .22, 0)),                                                  // a globe lamp
+    signStar: () => mk(signBase(), tube(star(.33, .14).map(q => [q[0], q[1] + .14]), .028, NE, true)),                                                                                               // three neon signs standing on a base: a star,
+    signArrow: () => mk(signBase(), tube([[-.36, .12], [.2, .12]], .03, NE), tube([[.02, .34], [.36, .12], [.02, -.1]], .03, N2), D(tube([[-.36, .3], [-.14, .3]], .02, N2), tube([[-.36, -.06], [-.14, -.06]], .02, N2))), // an arrow,
+    signBolt: () => mk(signBase(), tube([[.12, .47], [-.2, .16], [.06, .16], [-.14, -.18]], .032, NE), D(tube([[.3, .4], [.3, .2]], .02, N2), tube([[-.32, .0], [-.32, -.16]], .02, N2))),                    // a bolt of lightning
+    neonbox: () => mk(rbox(.9, .9, .9, .05, GL), [-1, 1].flatMap(a => [-1, 1].flatMap(b => [box(.96, .05, .05, NE, 0, a * .455, b * .455), box(.05, .86, .05, NE, a * .455, 0, b * .455), box(.05, .05, .86, NE, a * .455, b * .455, 0)])), four(() => cyl(.15, .02, 4, N2, 0, 0, .46, 'z'))), // black glass edged in neon
+    octa: () => mk(lathe([[0, -.49], [.47, -.49], [.53, -.43], [.53, .43], [.47, .49], [0, .49]], 8, A, .3, PI / 8), four(() => box(.2, .5, .02, NE, 0, 0, .492)), cyl(.3, .02, 8, CH, 0, .492, 0)),              // eight-sided, a slit of light in four of them
+    cup: () => mk(lathe([[0, -.49], [.3, -.49], [.34, -.32], [.3, -.12], [.49, .38], [.49, .49], [0, .49]], 12, A), cyl(.497, .06, 12, CH, 0, .43, 0, 0, { open: 1 }), cyl(.335, .05, 12, NE, 0, -.22, 0, 0, { open: 1 })), // wide at the top: what a flag stands on
+    // ---- scrap ----
+    crate: () => mk(rbox(.96, .96, .96, .05, ST), four(() => [box(1.16, .07, .025, CH, 0, 0, .482).rotateZ(PI / 4), box(1.16, .07, .025, CH, 0, 0, .482).rotateZ(-PI / 4)]), D(four(() => box(.14, .14, .03, A, 0, 0, .487)))), // a braced steel crate
+    pipe: () => mk(cyl(.42, 1, 12, ST, 0, 0, 0, 'x', { open: 1 }), cyl(.49, .08, 12, CH, .45, 0, 0, 'x'), cyl(.49, .08, 12, CH, -.45, 0, 0, 'x'), cyl(.33, .02, 10, GL, .495, 0, 0, 'x'), cyl(.33, .02, 10, GL, -.495, 0, 0, 'x'), cyl(.43, .08, 12, NE, 0, 0, 0, 'x', { open: 1 })), // a length of pipe
+    cog: () => mk(cyl(.37, .98, 10, ST, 0, 0, 0, 'z'), [0, 1, 2, 3, 4, 5, 6, 7].map(i => box(.2, .17, .98, ST, .4, 0, 0).rotateZ(i * PI / 4)), cyl(.2, 1, 8, CH, 0, 0, 0, 'z'), cyl(.09, 1.01, 6, GL, 0, 0, 0, 'z')),   // a cog
+    battery: () => mk(cyl(.42, .62, 12, GL, 0, -.14, 0), cyl(.425, .22, 12, GO, 0, .28, 0), cyl(.14, .1, 8, CH, 0, .44, 0), cyl(.44, .07, 12, CH, 0, -.455, 0), cyl(.427, .06, 12, NE, 0, -.2, 0, 0, { open: 1 })),      // a battery with a gold top
+    plates: () => mk(rbox(.98, .4, .98, .06, ST, 0, .29, 0), rbox(.98, .4, .98, .06, ST, 0, -.29, 0), box(.8, .2, .8, GL), [-1, 1].flatMap(a => [-1, 1].map(c => cyl(.05, 1, 5, CH, a * .39, 0, c * .39, 0, { open: 1 }))), box(.5, .04, .02, NE, 0, 0, .405), box(.5, .04, .02, NE, 0, 0, -.405)), // two steel plates bolted together
+    girder: () => mk(ext(rpoly([[-.49, -.49], [.49, -.49], [.49, -.32], [.1, -.32], [.1, .32], [.49, .32], [.49, .49], [-.49, .49], [-.49, .32], [-.1, .32], [-.1, -.32], [-.49, -.32]], .03), .98, ST, { cs: 1, bs: 1, b: .03 }), box(.02, .1, .86, NE, .11, 0, 0), box(.02, .1, .86, NE, -.11, 0, 0)).rotateY(PI / 2), // a girder
+    tv: () => mk(rbox(.96, .9, .9, .1, A, 0, -.04, 0), box(.84, .66, .03, GL, 0, 0, .45), box(.58, .5, .02, SC, -.1, .01, .47), cyl(.055, .05, 6, CH, .31, .16, .47, 'z'), cyl(.055, .05, 6, CH, .31, -.02, .47, 'z'), box(.1, .12, .02, NE, .31, -.2, .47), box(.16, .05, .6, GL, -.28, -.475, 0), box(.16, .05, .6, GL, .28, -.475, 0)), // a television
+    speaker: () => mk(rbox(.96, .96, .9, .07, C), tor(.25, .04, CH, 0, -.12, .45, 'z'), cyl(.23, .07, 12, GL, 0, -.12, .43, 'z', { rt: .09 }), ico(.07, CH, 0, -.12, .44), cyl(.09, .04, 8, CH, 0, .29, .455, 'z'), box(.46, .03, .02, NE, 0, .435, .455)), // a loudspeaker
+    barrel: () => mk(lathe([[0, -.49], [.4, -.49], [.46, -.3], [.49, 0], [.46, .3], [.4, .49], [0, .49]], 12, A), cyl(.475, .06, 12, CH, 0, .3, 0, 0, { open: 1, rt: .462 }), cyl(.462, .06, 12, CH, 0, -.3, 0, 0, { open: 1, rt: .475 }), cyl(.493, .12, 12, GO, 0, 0, 0, 0, { open: 1 })), // a drum of something
+    capsule: () => mk(lathe([[0, -.49], [.3, -.49], [.36, -.43], [.36, .2], [.28, .36], [.12, .42], [.12, .49], [0, .49]], 10, A), cyl(.15, .09, 6, GO, 0, .45, 0), cyl(.367, .05, 10, CH, 0, -.2, 0, 0, { open: 1 }), cyl(.367, .07, 10, NE, 0, .05, 0, 0, { open: 1 })), // a gas bottle
+    // ---- long ones that stretch well ----
+    beam: () => mk(body(A, .12), T ? [box(.1, 1, 1, CH, .41, 0, 0), box(.1, 1, 1, CH, -.41, 0, 0)] : [rbox(.12, 1, 1, .05, CH, .41, 0, 0), rbox(.12, 1, 1, .05, CH, -.41, 0, 0)], box(.5, .03, .6, B, 0, .482, 0), box(.5, .03, .6, B, 0, -.482, 0), two(() => box(.5, .6, .03, B, 0, 0, .482))), // a beam with chrome ends
+    slab: () => mk(body(A, .1), box(.7, .03, .7, B, 0, .482, 0), [-1, 1].flatMap(a => [-1, 1].map(c => cyl(.05, .04, 6, CH, a * .39, .485, c * .39)))),                                                 // a plate
+    // ---- what trees are made of, on the maps that still have trees ----
+    pillar: () => mk(cyl(.3, 1, 10, B), cyl(.31, .06, 10, CH, 0, .3, 0, 0, { open: 1 }), cyl(.31, .06, 10, CH, 0, -.3, 0, 0, { open: 1 })),
+    bush: () => mk(rbox(1, 1, 1, .3, A, 0, 0, 0, 2)),
+  };
+  const G = [], SLICE = new Uint8Array(64); for (const n in KM) { G[KM[n]] = M[n](); G[KM[n]].name = n; } // (in the order of the names)
+  for (const n of ['pillow', 'band', 'beam', 'slab', 'plates', 'crate', 'halves', 'ringp', 'fins', 'cage', 'bush', 'neonbox', 'girder']) SLICE[KM[n]] = 1; // these stretch from the middle; the round ones just scale
+  const turned = new Map(), geoOf = (m, t) => { if (!t) return G[m]; const k = m * 4 + t; if (!turned.has(k)) turned.set(k, G[m].clone().rotateY(t * PI / 2)); return turned.get(k); }; // (a model turned a quarter, a half, three quarters round: for a block that is not one of a crowd)
+  return { G, SLICE, geoOf }; })();
+// which model a block gets when nobody chose one for it (cat: 0 loose blocks · 1 fort · 2 trunk · 3 tree top · 4 props)
+function kitPick(e) { const cat = tpCatOf(e), d = e.dims, h = k => { const v = Math.sin(e.id * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); }, from = (L, k) => { let t = 0; for (const q of L) t += q[1]; let v = h(k) * t; for (const q of L) if ((v -= q[1]) < 0) return q[0]; return L[0][0]; };
+  if (cat === 2) return [KM.pillar, 0]; if (cat === 3) return [KM.bush, Math.floor(h(3) * 4)];
+  if (cat === 1) return [KM[d.x > 1.3 || d.z > 1.3 ? 'beam' : 'pillow'], d.z > 1.3 * d.x ? 1 : 0];
+  if (NEO_PLAZA && cat !== 1) { const flat = d.y < .8 * Math.min(d.x, d.z), tall = d.y > 1.3 * Math.max(d.x, d.z), long = Math.max(d.x, d.z) > 1.3 * Math.min(d.x, d.z);
+    return [KM[flat ? 'slab' : tall ? 'cyl' : long ? 'pillow' : from([['pillow', 4], ['facet', 2], ['halves', 2], ['cyl', 2], ['octa', 1], ['diag', 1]], 2)], Math.floor(h(3) * 4)]; }
+  const uni = Math.abs(d.x - d.y) < .02 && Math.abs(d.y - d.z) < .02, flat = d.y < .8 * Math.min(d.x, d.z), longX = d.x > 1.3 * d.z, longZ = d.z > 1.3 * d.x, scrap = cat !== 1 ? h(1) < .82 : h(1) < .16;
+  if (flat) return [KM[h(2) < .6 ? 'slab' : 'plates'], Math.floor(h(3) * 4)];
+  if (longX || longZ) return [KM[from(scrap ? KM_LONG_SCRAP : KM_LONG, 2)], (longZ ? 1 : 0) + (h(3) < .5 ? 2 : 0)];
+  if (!uni) return [KM[from(scrap ? [['plates', 3], ['battery', 3], ['capsule', 3], ['barrel', 2]] : [['pillow', 4], ['band', 4], ['cyl', 2], ['octa', 2]], 2)], Math.floor(h(3) * 4)]; // (a tall one)
+  return [KM[from(scrap ? KM_SCRAP : KM_SHINY, 2)], Math.floor(h(3) * 4)]; }
+// ---- the paint: what each part of a model is made of ----
+const KIT_PARTS = `  { int ip = int(vNeoPart + .5), cat = int(vKit.y + .5); float s = vKit.x, s2 = fract(s * 7.31), s3 = fract(s * 13.7);
+    vec3 P = diffuseColor.rgb, CRM = vec3(.9, .84, .7), GLD = vec3(1., .6, .1);
+    vec3 cA = P, cB = CRM, cC = P * .14 + .003; float kA = 1., kB = 0., kC = 1.; /* a paint and its kind: 0 enamel · 1 candy over metal flake · 2 bare coloured metal */
+    bool cool = P.b > P.r; vec3 neon = P / max(max(P.r, max(P.g, P.b)), .001), neon2 = cool ? vec3(.8, .25, 1.) : vec3(1., .82, .2);
+    int vr = int(vKit.w + .5);
+    float wn = kN3(vNeoP * 3.1 + s * 17.), wn2 = kN3(vNeoP * 11. + s * 5.);
+    bool stoneCat = cat == 1;
+    #ifdef KIT_RUIN
+      stoneCat = cat != 2 && cat != 3; /* (the ruined field: the loose blocks and the old structures are the same weathered stone) */
+    #endif
+    if (stoneCat) { /* a fort block: old weathered stone, faintly washed with its team's colour; lighter and darker stones mixed in.
+                       The builder can ask for one of the newer, shiny blocks instead: candy paint (4) or tarnished bronze (3) */
+      vec3 tn = mix(vec3(1.), P / max(max(P.r, max(P.g, P.b)), .001), .32), ST0 = vec3(.66, .61, .52) * (.86 + .3 * s2);
+      cA = ST0 * tn * (.8 + .32 * wn) * (.9 + .16 * wn2); kA = 6.; cB = vec3(.86, .78, .6) * (.85 + .25 * wn); kB = 6.; cC = ST0 * .55 * tn; kC = 6.;
+      if (vr == 1) { cA = cB; cB = ST0 * tn; } else if (vr == 2) { cA = cC * (.8 + .4 * wn); } else if (vr == 3) { cA = vec3(.55, .36, .16) * (.7 + .5 * wn); kA = 2.; } else if (vr == 4) { cA = P; kA = 1.; cB = CRM; kB = 0.; } }
+    else if (cat == 3) { cA = sqrt(P) * vec3(.3, .75, .35);
+      #ifdef KIT_RUIN
+        cA = mix(vec3(.08, .24, .04), vec3(.22, .46, .08), wn) * (.8 + .35 * wn2); kA = 6.; cB = cA * 1.2; kB = 6.; cC = cA * .7; kC = 6.;
+      #endif
+    }
+    else if (cat == 2) { cA = CRM; kA = 0.;
+      #ifdef KIT_RUIN
+        cA = vec3(.3, .21, .13) * (.7 + .45 * kN3(vec3(vNeoP.x * 20., vNeoP.y * 2., vNeoP.z * 20.))); kA = 6.; cB = cA; kB = 6.; cC = cA * .7; kC = 6.;
+      #endif
+    }
+    else { /* loose blocks and scrap belong to nobody: the enamel of old kitchens (cream, avocado, mustard, brown, charcoal), lit amber, white or mint */
+      cA = s2 < .24 ? CRM : s2 < .44 ? vec3(.2, .27, .035) : s2 < .64 ? vec3(.66, .36, .02) : s2 < .82 ? vec3(.12, .045, .02) : vec3(.035, .04, .05); kA = 0.;
+      cB = s2 < .24 ? vec3(.66, .36, .02) : CRM; cC = vec3(.03, .035, .045); kC = 0.;
+      neon = s3 < .4 ? vec3(1., .62, .15) : s3 < .7 ? vec3(1., .93, .8) : vec3(.3, 1., .7); neon2 = vec3(1., .3, .55); }
+    vec3 col = cA, glw = vec3(0.); float kd = kA;
+    float flick = .9 + .1 * sin(neoT * 2.6 + s * 50.); neoTube = vec3(0.);
+    if (ip == 1) { col = vec3(.92, .93, .95); kd = 3.; }
+    else if (ip == 2) { col = vec3(.02, .024, .03); kd = 4.; }
+    else if ((ip == 3 || ip == 8) && (stoneCat || cat == 2) && vr != 4) { col = cC * .5; kd = 6.; }
+    else if (ip == 1 && cat == 2 && cA.r < .5) { col = cC; kd = 6.; }
+    else if (ip == 3 || ip == 8) { vec3 nc = ip == 3 ? neon : neon2; col = vec3(.02); kd = 4.; neoTube = nc * flick; } /* a neon tube: white-hot in the middle, its colour at the edge (lit below, once the surface's facing is known) */
+    else if (ip == 4) { col = cB; kd = kB; }
+    else if (ip == 5) { float g = .5 + .5 * sin(vNeoP.x * 9. + sin(vNeoP.y * 7. + s * 20.) * 2. + vNeoP.z * 8.); col = vec3(.5, .54, .6) * (.72 + .28 * g) * (.85 + .3 * s2); kd = 5.; }
+    else if (ip == 6) { col = GLD; kd = 2.; }
+    else if (ip == 7) { col = cC; kd = kC; }
+    else if (ip == 9) { col = vec3(.015); kd = 4.; vec2 q = vNeoP.xy; /* a television: colour bars, or snow */
+      float bi = clamp(floor((q.x + .39) / .58 * 7.), 0., 6.), v = 7. - bi; vec3 bars = vec3(floor(mod(v, 4.) / 2.), floor(v / 4.), mod(v, 2.));
+      float snow = fract(sin(dot(floor(q * 46.) + floor(neoT * 20.) * 7.3, vec2(12.9898, 78.233))) * 43758.5453);
+      vec3 pic = s3 > .66 ? vec3(snow) * .8 : bars * .85 + .05; pic *= .78 + .22 * sin(q.y * 150.); pic += .2 * smoothstep(.08, 0., abs(fract(q.y * 1.1 - neoT * .22 + s) - .5));
+      glw = pic * (1.15 - 1.6 * dot(q + vec2(.1, -.01), q + vec2(.1, -.01))); }
+    if (stoneCat && kd > 2.5 && kd < 3.5) { col = vec3(.62, .6, .55) * (.75 + .3 * wn); kd = 2.; } /* (on the old forts, chrome has gone dull) */
+    /* weather: rain streaks down the faces, and moss: thick on the tops, creeping down the sides, a little on the newer blocks too */
+    if (stoneCat) { float stk = kN3(vec3(vNeoP.x * 14., vNeoP.y * 1.3 + s * 9., vNeoP.z * 14.)); col *= 1. - .22 * smoothstep(.55, .9, stk) * (kd > 5.5 ? 1. : .4);
+      float ms = smoothstep(.5, .78, vNeoN.y * .5 + wn * .55 + kN3(vNeoP * 7. + 3.) * .25 - (kd > 5.5 ? 0. : .22) - .05 * float(vr == 4));
+      col = mix(col, mix(vec3(.14, .38, .03), vec3(.36, .6, .08), wn2) * (.8 + .3 * wn), ms); if (ms > .5) kd = 6.; }
+    float met = kd < .5 ? 0. : kd < 1.5 ? .88 : kd < 2.5 ? 1. : kd < 3.5 ? 1. : kd < 4.5 ? 0. : kd < 5.5 ? .95 : 0.;
+    float rgh = kd < .5 ? .17 : kd < 1.5 ? .2 : kd < 2.5 ? (cat == 1 ? .45 : .24) : kd < 3.5 ? .06 : kd < 4.5 ? .07 : kd < 5.5 ? .34 : .88;
+    float flk = kd < .5 ? 0. : kd < 1.5 ? 1. : kd < 2.5 ? .35 : kd < 4.5 ? 0. : kd < 5.5 ? .25 : 0.;
+    diffuseColor.rgb = col; neoMet = met; neoRgh = rgh; neoGlow = glw; neoFlk = flk; }`;
+const NEO_REFL_BLOCK = `{ vec3 nV = normalize(vViewPosition); float nfr = pow(1. - max(dot(normal, nV), 0.), 5.); vec3 nR = inverseTransformDirection(reflect(-nV, normal), viewMatrix);
+    vec3 nF0 = mix(vec3(.04), diffuseColor.rgb, metalnessFactor);
+    outgoingLight += neoEnv(nR, roughnessFactor) * (nF0 + (1. - nF0) * nfr * .5) * (1. - .7 * roughnessFactor);
+    outgoingLight += neoEnv(nR, .03) * (.02 + .22 * nfr) * neoFlk; /* the clear coat over the candy paint */
+    vec3 fc = floor(vNeoP * 150.); float fh = fract(sin(dot(fc, vec3(12.9898, 78.233, 37.719))) * 43758.5453); vec3 fd = normalize(nR + (vec3(fract(fh * 13.1), fract(fh * 57.3), fract(fh * 91.7)) - .5) * .7);
+    float fs = pow(max(dot(fd, neoSunD), 0.), 36.) + .6 * pow(max(dot(fd, vec3(.35, .87, .35)), 0.), 36.);
+    outgoingLight += (neoSunC * .35 + diffuseColor.rgb * 1.2) * fs * step(.6, fh) * neoFlk * clamp(1.5 - fwidth(vNeoP.x + vNeoP.y + vNeoP.z) * 100., 0., 1.); /* metal flake: tiny glints round the highlights */ }`;
+// (solo: the same thing on a single block that is not one of a crowd, like the one on a robot's head)
+function kitPatch(mat, solo) { if (mat.userData.neoC) return mat; mat.userData.neoC = 1; const su = solo ? { kitU: { value: new THREE.Vector4(0, 0, 0, 0) }, kitDimsU: { value: new THREE.Vector3(1, 1, 1) } } : null; if (su) mat.userData.neoU = su;
+  mat.onBeforeCompile = sh => { Object.assign(sh.uniforms, NEOU, su || {});
+    sh.vertexShader = 'attribute float aPart; ' + (solo ? 'uniform vec4 kitU; uniform vec3 kitDimsU;' : 'attribute vec4 aKit;') + ' varying vec3 vNeoP; varying vec4 vKit; varying float vNeoPart; varying vec3 vNeoN;\n' + sh.vertexShader
+      .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+  ${solo ? 'vec3 neoS = kitDimsU; vec4 kitV = kitU;' : `#ifdef USE_INSTANCING
+    vec3 neoS = max(vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz)), vec3(1e-4));
+  #else
+    vec3 neoS = vec3(1.);
+  #endif
+  vec4 kitV = aKit;`}
+  bool neoSl = kitV.z > .5 && abs(neoS.x - neoS.y) + abs(neoS.y - neoS.z) > .04 && all(greaterThan(neoS, vec3(.45)));
+  if (neoSl) objectNormal *= neoS; /* (see below: the shape near the faces is kept, so the light has to be told) */`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+  { vec3 tp = position * neoS; /* a long block stretches only its middle: what is near a face keeps its size */
+    if (neoSl) { vec3 nh = .5 * neoS, ab = abs(position); tp = mix(position * (nh - .2) / .3, sign(position) * (nh - .5 + ab), step(.3, ab)); }
+    transformed = tp / neoS; vNeoP = position; }
+  vKit = kitV; vNeoPart = aPart; vNeoN = normal;`);
+    sh.fragmentShader = (NEO_PLAZA ? '#define KIT_RUIN\n' : '') + 'varying vec3 vNeoP; varying vec4 vKit; varying float vNeoPart; varying vec3 vNeoN;\nfloat kH3(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }\nfloat kN3(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(mix(kH3(i), kH3(i + vec3(1, 0, 0)), f.x), mix(kH3(i + vec3(0, 1, 0)), kH3(i + vec3(1, 1, 0)), f.x), f.y), mix(mix(kH3(i + vec3(0, 0, 1)), kH3(i + vec3(1, 0, 1)), f.x), mix(kH3(i + vec3(0, 1, 1)), kH3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }\nfloat neoMet, neoRgh, neoFlk; vec3 neoGlow, neoTube;\n' + NEO_ENV + sh.fragmentShader
+      .replace('#include <color_fragment>', '#include <color_fragment>\n' + KIT_PARTS)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = neoRgh;')
+      .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n  metalnessFactor = neoMet;')
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += neoGlow + mix(neoTube * 1.7, neoTube + vec3(2.1) * step(.001, dot(neoTube, vec3(1.))), pow(max(dot(normal, normalize(vViewPosition)), 0.), 2.5));')
+      .replace('#include <opaque_fragment>', NEO_REFL_BLOCK + '\n  #include <opaque_fragment>'); };
+  mat.customProgramCacheKey = () => solo ? 'kitSolo' : 'kitNEO'; mat.needsUpdate = true; return mat; }
+// ---- the crowds: one per model ----
+const kitModel = new Uint8Array(PLAIN_CAP), kitTurn = new Uint8Array(PLAIN_CAP), kitSeed = new Float32Array(PLAIN_CAP), kitCat = new Uint8Array(PLAIN_CAP), kitVar = new Uint8Array(PLAIN_CAP), kitMat = kitPatch(new THREE.MeshStandardMaterial({ roughness: .25, metalness: .8 }));
+const kitSet = e => { if (e.inst < 0) return; const [m, t] = e.neoM !== undefined ? [e.neoM, e.neoT >= 0 ? e.neoT : Math.floor(Math.random() * 4)] : kitPick(e); kitModel[e.inst] = m; kitTurn[e.inst] = t; kitSeed[e.inst] = Math.random(); kitCat[e.inst] = tpCatOf(e); kitVar[e.inst] = e.neoV || 0; kitDirty = true; };
+let kitDirty = true, kitVM = -1, kitVC = -1;
+for (const e of blocks) kitSet(e);
+{ const nb0 = newBlock; newBlock = function (kind, pos, o) { const e = nb0.call(this, kind, pos, o); if (e) kitSet(e); return e; }; }
+const kitNew = (geo, cap) => { const im = new THREE.InstancedMesh(geo, kitMat, cap); im.geometry.setAttribute('aKit', new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4)); im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
+  im.count = 0; im.castShadow = im.receiveShadow = true; im.frustumCulled = false; im.userData.ids = new Int32Array(cap).fill(-1); scene.add(im); return im; };
+const kitCrowd = KIT.G.map(geo => kitNew(geo.clone(), 48));
+plainIM.visible = false; // (the game's own list of plain blocks is kept up to date as ever, just not drawn)
+const kitM = new Float32Array(16);
+function kitSync() { const mv = plainIM.instanceMatrix.version, cv = plainIM.instanceColor ? plainIM.instanceColor.version : 0; if (!kitDirty && mv === kitVM && cv === kitVC) return; kitDirty = false; kitVM = mv; kitVC = cv;
+  const n = plainIM.count, src = plainIM.instanceMatrix.array, sc = plainIM.instanceColor ? plainIM.instanceColor.array : null, N = kitCrowd.length, cnt = new Uint16Array(N), at = new Uint16Array(N), chM = new Uint8Array(N), chA = new Uint8Array(N);
+  for (let i = 0; i < n; i++) if (src[i * 16 + 15] !== 0 && (src[i * 16] || src[i * 16 + 1] || src[i * 16 + 2])) cnt[kitModel[i]]++; // (a block that is hidden just now has a nothing-sized place: it is skipped)
+  for (let k = 0; k < N; k++) if (cnt[k] > kitCrowd[k].instanceMatrix.count) { const old = kitCrowd[k]; scene.remove(old); kitCrowd[k] = kitNew(old.geometry, Math.ceil(cnt[k] * 1.5) + 16); old.dispose(); chM[k] = chA[k] = 1; }
+  for (let i = 0; i < n; i++) { const o = i * 16; if (src[o + 15] === 0 || !(src[o] || src[o + 1] || src[o + 2])) continue; const k = kitModel[i], im = kitCrowd[k], j = at[k]++, d = im.instanceMatrix.array, p = j * 16, t = kitTurn[i], sd = kitSeed[i];
+    for (let q = 0; q < 16; q++) kitM[q] = src[o + q];
+    if (t) for (let q = 0; q < 3; q++) { const x = src[o + q], z = src[o + 8 + q]; kitM[q] = t === 1 ? -z : t === 2 ? -x : z; kitM[8 + q] = t === 1 ? x : t === 2 ? -z : -x; } // (the model sits a quarter, a half or three quarters of a turn round inside its box)
+    if (kitCat[i] === 1) { const a = (sd * 97 % 1 - .5) * .05, ca = Math.cos(a), sa = Math.sin(a), sh = (sd * 57 % 1 - .5) * .06; kitM[13] += (sd * 31 % 1 - .5) * .03; // a fort block is never laid quite true: a hair askew, a hair in or out
+      for (let q = 0; q < 3; q++) { const x = kitM[q], z = kitM[8 + q], L = Math.hypot(src[o + 8], src[o + 9], src[o + 10]) || 1; kitM[q] = x * ca - z * sa; kitM[8 + q] = x * sa + z * ca; kitM[12 + q] += src[o + 8 + q] / L * sh; } }
+    for (let q = 0; q < 16; q++) if (d[p + q] !== kitM[q]) { d[p + q] = kitM[q]; chM[k] = 1; }
+    if (im.userData.ids[j] !== i) { im.userData.ids[j] = i; chA[k] = 1; const a = im.geometry.attributes.aKit.array; a[j * 4] = sd; a[j * 4 + 1] = kitCat[i]; a[j * 4 + 2] = KIT.SLICE[k]; a[j * 4 + 3] = kitVar[i]; }
+    if (sc) { const c = im.instanceColor.array; if (c[j * 3] !== sc[i * 3] || c[j * 3 + 1] !== sc[i * 3 + 1] || c[j * 3 + 2] !== sc[i * 3 + 2]) { c[j * 3] = sc[i * 3]; c[j * 3 + 1] = sc[i * 3 + 1]; c[j * 3 + 2] = sc[i * 3 + 2]; chA[k] = 1; } } }
+  for (let k = 0; k < N; k++) { const im = kitCrowd[k]; if (im.count !== at[k]) { im.count = at[k]; chM[k] = 1; } if (chM[k]) im.instanceMatrix.needsUpdate = true; if (chA[k]) { im.instanceColor.needsUpdate = true; im.geometry.attributes.aKit.needsUpdate = true; } } }
+{ const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam, rt) => { if (prev) prev(r, s, cam, rt); kitSync(); }; }
+// the block on a robot's head is the very block that was picked up: the same model, the same paint, the same way round
+{ const rh = refreshHeld; refreshHeld = function (r) { rh(r); const e = r.stack[0], M = r.model, m = M && M.heldPlainMat; if (!m) return; if (!m.userData.neoU) { m.roughness = .25; m.metalness = .8; kitPatch(m, true); }
+    if (e && e.inst >= 0 && M.held.material === m) { const u = m.userData.neoU, k = kitModel[e.inst]; u.kitU.value.set(kitSeed[e.inst], kitCat[e.inst], KIT.SLICE[k], kitVar[e.inst]); u.kitDimsU.value.copy(e.dims); M.held.geometry = KIT.geoOf(k, kitTurn[e.inst]); }
+    else if (M.held.geometry.attributes.aPart) M.held.geometry = cubeGeo; }; }
+// ============================================================
+// THE SPECIAL BLOCKS AND THE FLAGS in the new look. Still glass you can see into (the gunpowder, the sloshing water, the
+// arrow that points at an enemy, the web are all still inside), but each kind now has an armoured frame of its own,
+// a window, and an emblem that glows:
+//   bomb: gunmetal with hazard stripes and a red-hot ring · freeze: frosted ice with a snowflake · homing: dark tech
+//   with corner brackets and a target · warp: a pink portal swirl · sticky: grenade green with warning chevrons
+// FLAGS are "puzzle glass": dark glass in the flag's own colour holding half of a glowing shape cut by a line no jigsaw
+// has (a bolt, a wave, steps, a chevron). The other half is in the flag of the same number on the other team (your
+// twin's), and the missing half shows as a faint dotted outline. Four shapes, four pairs.
+// ============================================================
+const nkT = (draw, size = 256) => { const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'); g.scale(size, size); g.lineCap = g.lineJoin = 'round'; draw(g); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+const nkFrame = (g, c1, c2, w = .14, r = .1) => { const gr = g.createLinearGradient(0, 0, 1, 1); gr.addColorStop(0, c1); gr.addColorStop(1, c2); g.fillStyle = gr; g.beginPath(); g.roundRect(0, 0, 1, 1, r * .6); g.roundRect(w, w, 1 - 2 * w, 1 - 2 * w, r); g.fill('evenodd');
+  g.lineWidth = .012; g.strokeStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.moveTo(.05, .02); g.lineTo(.95, .02); g.moveTo(.02, .05); g.lineTo(.02, .95); g.stroke(); g.strokeStyle = 'rgba(0,0,0,.5)'; g.beginPath(); g.moveTo(.05, .98); g.lineTo(.95, .98); g.moveTo(.98, .05); g.lineTo(.98, .95); g.stroke();
+  g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = .014; g.beginPath(); g.roundRect(w, w, 1 - 2 * w, 1 - 2 * w, r); g.stroke(); };
+const nkIcon = (g, k, ink, sc = .62) => { g.save(); g.translate(.5, .5); g.scale(sc / 128, sc / 128); g.translate(-64, -64); g.fillStyle = g.strokeStyle = ink; g.lineWidth = 8; ICON[k](g); g.restore(); };
+const nkBrackets = (g, col, m = .2, l = .13, w = .028) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); for (const [x, y, dx, dy] of [[m, m, 1, 1], [1 - m, m, -1, 1], [m, 1 - m, 1, -1], [1 - m, 1 - m, -1, -1]]) { g.moveTo(x + dx * l, y); g.lineTo(x, y); g.lineTo(x, y + dy * l); } g.stroke(); };
+const NEO_KIND = {
+  bomb: { ei: 1.1, map: g => { g.fillStyle = 'rgba(46,10,6,.5)'; g.fillRect(0, 0, 1, 1); nkFrame(g, '#444852', '#15161a');
+      for (const y of [.025, .885]) { g.save(); g.beginPath(); g.rect(.16, y, .68, .09); g.clip(); g.fillStyle = '#ffc928'; g.fillRect(0, y, 1, .09); g.fillStyle = '#17181c'; for (let i = -1; i < 9; i++) { g.beginPath(); g.moveTo(.16 + i * .1, y + .09); g.lineTo(.21 + i * .1, y + .09); g.lineTo(.26 + i * .1, y); g.lineTo(.21 + i * .1, y); g.fill(); } g.restore(); }
+      g.strokeStyle = '#ff5a26'; g.lineWidth = .05; g.beginPath(); g.arc(.5, .5, .245, 0, 7); g.stroke(); g.strokeStyle = '#ffd9a0'; g.lineWidth = .014; g.beginPath(); g.arc(.5, .5, .245, 0, 7); g.stroke(); nkIcon(g, 'bomb', '#f6f6f6', .42); },
+    glow: g => { g.shadowColor = '#ff5a1e'; g.shadowBlur = 22; g.strokeStyle = '#ff5a26'; g.lineWidth = .05; g.beginPath(); g.arc(.5, .5, .245, 0, 7); g.stroke(); g.shadowBlur = 0; g.fillStyle = '#ff3b1e'; for (const [x, y] of [[.07, .07], [.93, .07], [.07, .93], [.93, .93]]) { g.beginPath(); g.arc(x, y, .022, 0, 7); g.fill(); } } },
+  freeze: { ei: .9, map: g => { g.fillStyle = 'rgba(196,236,255,.3)'; g.fillRect(0, 0, 1, 1); nkFrame(g, '#ffffff', '#8fc8ec'); const R = neoRng(77); g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = .008; for (let i = 0; i < 9; i++) { g.beginPath(); g.moveTo(R(), R()); g.lineTo(R(), R()); g.stroke(); }
+      g.fillStyle = 'rgba(255,255,255,.8)'; for (let i = 0; i < 40; i++) { const a = R() * 6.28, d = .44 + R() * .2; g.beginPath(); g.arc(.5 + Math.cos(a) * d * .9, .5 + Math.sin(a) * d * .9, .004 + R() * .01, 0, 7); g.fill(); } nkIcon(g, 'freeze', '#1f7fc4', .66); nkIcon(g, 'freeze', '#ffffff', .6); },
+    glow: g => { g.shadowColor = '#7fd8ff'; g.shadowBlur = 16; nkIcon(g, 'freeze', '#9fe2ff', .6); g.shadowBlur = 0; g.strokeStyle = 'rgba(150,220,255,.5)'; g.lineWidth = .02; g.beginPath(); g.roundRect(.14, .14, .72, .72, .1); g.stroke(); } },
+  homing: { ei: 1.1, map: g => { g.fillStyle = 'rgba(110,50,220,.34)'; g.fillRect(0, 0, 1, 1); nkFrame(g, '#343a55', '#10121c'); nkBrackets(g, '#2fe6ff'); nkIcon(g, 'homing', '#ffffff', .56); g.fillStyle = '#ff9a2a'; g.beginPath(); g.arc(.5, .5, .04, 0, 7); g.fill(); },
+    glow: g => { g.shadowColor = '#2fe6ff'; g.shadowBlur = 14; nkBrackets(g, '#2fe6ff'); g.shadowColor = '#c08bff'; nkIcon(g, 'homing', '#c9a6ff', .56); g.shadowBlur = 0; g.fillStyle = '#ffb04a'; g.beginPath(); g.arc(.5, .5, .04, 0, 7); g.fill(); } },
+  warp: { ei: 1, map: g => { g.fillStyle = 'rgba(255,90,214,.4)'; g.fillRect(0, 0, 1, 1); nkFrame(g, '#ff7ae0', '#6a0f9a'); nkIcon(g, 'warp', '#ffffff', .6); }, glow: g => { g.shadowColor = '#ff7ae0'; g.shadowBlur = 16; nkIcon(g, 'warp', '#ff9ae8', .6); } },
+  sticky: { ei: .8, map: g => { g.fillStyle = 'rgba(110,190,50,.45)'; g.fillRect(0, 0, 1, 1); nkFrame(g, '#a6e85a', '#2a6410'); g.fillStyle = 'rgba(20,40,8,.75)'; for (const x of [.3, .5, .7]) for (const [y, d] of [[.045, 1], [.955, -1]]) { g.beginPath(); g.moveTo(x - .05, y - d * .03); g.lineTo(x, y + d * .03); g.lineTo(x + .05, y - d * .03); g.lineTo(x + .05, y - d * .005); g.lineTo(x, y + d * .055); g.lineTo(x - .05, y - d * .005); g.fill(); } nkIcon(g, 'sticky', '#16260a', .6); },
+    glow: g => { g.shadowColor = '#c8ff5a'; g.shadowBlur = 14; g.strokeStyle = '#c8ff5a'; g.lineWidth = .02; g.beginPath(); g.roundRect(.14, .14, .72, .72, .1); g.stroke(); } },
+};
+for (const k in NEO_KIND) { const m = kindMat[k], D = NEO_KIND[k]; if (!m) continue; m.map = nkT(D.map); m.emissiveMap = nkT(D.glow); m.emissive.set(0xffffff); KIND_EI[k] = m.emissiveIntensity = D.ei; if (k === 'bomb') BOMB_E0.set(0xffffff); m.needsUpdate = true; }
+// the four cuts (each runs from the top of the shape to the bottom): x across at height t
+const NEO_CUT = [t => .5 + (t < .34 ? -.11 : t < .4 ? -.11 + (t - .34) / .06 * .22 : t < .62 ? .11 : t < .68 ? .11 - (t - .62) / .06 * .22 : -.11) * 1, /* a bolt */ t => .5 + .13 * Math.sin(t * Math.PI * 2), /* a wave */
+  t => .5 + (t < .33 ? -.13 : t < .66 ? 0 : .13), /* steps */ t => .5 + .16 - Math.abs(t - .5) * .64 /* a chevron */];
+function neoFlagArt(col) { const C = new THREE.Color(col), hex = C.getHex(); let team = 'blue', idx = 0; for (const tm of ['blue', 'red']) TEAMS[tm].cols.forEach((c, i) => { if (new THREE.Color(c).getHex() === hex) { team = tm; idx = i; } });
+  const left = team === 'blue', cut = NEO_CUT[idx], dk = '#' + C.clone().multiplyScalar(.2).getHexString(), md = '#' + C.clone().multiplyScalar(.5).getHexString(), lt = '#' + C.clone().lerp(new THREE.Color(0xffffff), .55).getHexString(), y0 = .2, y1 = .8, x0 = .2, x1 = .8;
+  const half = (g, mine) => { const L = mine ? left : !left; g.beginPath(); if (L) { g.moveTo(x0 + .06, y0); for (let i = 0; i <= 40; i++) g.lineTo(cut(i / 40), y0 + (y1 - y0) * i / 40); g.lineTo(x0 + .06, y1); g.quadraticCurveTo(x0, y1, x0, y1 - .06); g.lineTo(x0, y0 + .06); g.quadraticCurveTo(x0, y0, x0 + .06, y0); }
+    else { g.moveTo(x1 - .06, y0); for (let i = 0; i <= 40; i++) g.lineTo(cut(i / 40), y0 + (y1 - y0) * i / 40); g.lineTo(x1 - .06, y1); g.quadraticCurveTo(x1, y1, x1, y1 - .06); g.lineTo(x1, y0 + .06); g.quadraticCurveTo(x1, y0, x1 - .06, y0); } g.closePath(); };
+  const traces = (g, colr) => { const R = neoRng(31 + idx * 7); g.strokeStyle = g.fillStyle = colr; g.lineWidth = .012; for (let i = 0; i < 5; i++) { const y = .27 + i * .115, xa = left ? .24 : .76, d = left ? 1 : -1, l = .08 + R() * .1; g.beginPath(); g.moveTo(xa, y); g.lineTo(xa + d * l, y); g.lineTo(xa + d * (l + .04), y + (R() < .5 ? .04 : -.04)); g.stroke(); g.beginPath(); g.arc(xa, y, .013, 0, 7); g.fill(); } };
+  const map = nkT(g => { const gr = g.createLinearGradient(0, 0, 1, 1); gr.addColorStop(0, md); gr.addColorStop(1, dk); g.fillStyle = gr; g.fillRect(0, 0, 1, 1); nkFrame(g, lt, md, .09, .1);
+    g.setLineDash([.03, .035]); g.strokeStyle = 'rgba(255,255,255,.45)'; g.lineWidth = .012; half(g, false); g.stroke(); g.setLineDash([]); /* the missing half */
+    g.save(); g.shadowColor = lt; g.shadowBlur = 14; g.fillStyle = lt; half(g, true); g.fill(); g.restore(); g.save(); half(g, true); g.clip(); traces(g, md); g.restore(); g.strokeStyle = '#ffffff'; g.lineWidth = .016; half(g, true); g.stroke();
+    const sh = g.createLinearGradient(0, 0, 0, .5); sh.addColorStop(0, 'rgba(255,255,255,.22)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = sh; g.beginPath(); g.ellipse(.4, .1, .42, .2, -.1, 0, 7); g.fill(); });
+  const glow = nkT(g => { g.fillStyle = '#000'; g.fillRect(0, 0, 1, 1); g.shadowColor = '#fff'; g.shadowBlur = 18; g.fillStyle = '#ffffff'; half(g, true); g.fill(); g.shadowBlur = 0; g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = .02; g.beginPath(); g.roundRect(.09, .09, .82, .82, .1); g.stroke(); });
+  return { map, glow }; }
+const neoFlags = () => { for (const k in flagMats) { const m = flagMats[k]; if (m.userData.neo) continue; const a = neoFlagArt(k); m.map = a.map; m.emissiveMap = a.glow; m.userData.neo = true; neoShine(m); m.needsUpdate = true; } };
+neoFlags(); { const prev = scene.onBeforeRender; scene.onBeforeRender = (r, sc, cam) => { if (prev) prev(r, sc, cam); neoFlags(); }; } // (a flag colour that first turns up later gets its art then)
+// ============================================================
+// EFFECTS in the new look. A blast used to be one glowing ball. Now it is a white-hot flash, the fireball, a shock ring
+// racing out along the ground, sparks, and smoke (or cold mist, for the icy ones) that rolls up and thins out. Every
+// one is a little different: how many puffs, which way they drift, how fast the ring runs.
+// ============================================================
+{ const NFX = [], ringGeo = new THREE.RingGeometry(.86, 1, 56).rotateX(-Math.PI / 2), fb = fxBurst, uf = updateFx, C2 = new THREE.Color();
+  // a puff: a soft round cloud, lumpy at the edges (a few of them, each turned its own way, make a billow)
+  const puffTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), R = neoRng(9); for (let i = 0; i < 9; i++) { const a = R() * 6.28, d = i ? 12 + R() * 22 : 0, x = 64 + Math.cos(a) * d, y = 64 + Math.sin(a) * d, r = i ? 20 + R() * 16 : 44, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,.5)'); gr.addColorStop(.6, 'rgba(255,255,255,.2)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); } return new THREE.CanvasTexture(c); })();
+  const puff = (color, o) => { const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, color, transparent: true, opacity: 0, depthWrite: false, rotation: rr(0, 6.28) })); m.position.copy(o.pos); m.scale.setScalar(.01); m.renderOrder = 2; scene.add(m); NFX.push({ m, t: -(o.delay || 0), ...o }); };
+  const add = (geo, color, o) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: o.op ?? 1, depthWrite: false, blending: o.smoke ? THREE.NormalBlending : THREE.AdditiveBlending, side: THREE.DoubleSide, fog: !!o.smoke })); m.position.copy(o.pos); m.scale.setScalar(.01); m.renderOrder = 2; scene.add(m); NFX.push({ m, t: -(o.delay || 0), ...o }); return m; };
+  // the big see-through blast ball becomes a clean shell of light: bright round its rim, clear in the middle (so you can
+  // still see who is inside it), instead of a lumpy ball whose facets showed
+  const rim = m => { m.onBeforeCompile = sh => { sh.vertexShader = 'varying float vRim;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vRim = 1. - abs(dot(normalize(normalMatrix * normal), normalize(-mvPosition.xyz)));');
+      sh.fragmentShader = 'varying float vRim;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n  diffuseColor.a *= .1 + .9 * pow(vRim, 2.4);'); }; m.customProgramCacheKey = () => 'neoRim'; };
+  fxBurst = function (pos, color, radius, life = .45) { const n0 = fxList.length; fb(pos, color, radius, life); if (radius > 2.2) for (let i = n0; i < fxList.length; i++) { const f = fxList[i]; if (f.kind === 'burst' && f.m) { f.m.geometry = sphereGeo; rim(f.m.material); } }
+    if (!S.aoe && radius > 2.2) return; const c = C2.set(color), warm = c.r >= c.b, big = radius > 2.2, gy = Math.max(.06, pos.y - Math.min(radius * .5, 1.2));
+    add(sphereGeo, 0xffffff, { pos: pos.clone(), life: big ? .2 : .13, r0: radius * .25, r1: radius * (big ? .8 : .6), op: .95, kind: 'flash' });
+    add(ringGeo, c.clone().lerp(new THREE.Color(0xffffff), .45), { pos: V(pos.x, gy, pos.z), life: (big ? .55 : .35) * rr(.85, 1.2), r0: radius * .3, r1: radius * (big ? rr(1.7, 2.3) : 1.5), op: .85, kind: 'ring' });
+    if (!big) return;
+    const sc = warm ? new THREE.Color(0x4a4850).lerp(c, .12) : new THREE.Color(0xf2fbff).lerp(c, .2); // (grey smoke with a hint of the blast's colour; a cold blast leaves white mist)
+    for (let i = 0, n = 5 + Math.floor(Math.random() * 4); i < n; i++) { const d = V(rr(-1, 1), rr(.1, .9), rr(-1, 1)).normalize(); puff(sc, { pos: pos.clone().addScaledVector(d, radius * rr(.15, .5)), life: rr(1.0, 1.8), delay: rr(.06, .24), r0: radius * rr(.5, .8), r1: radius * rr(1.2, 1.9), op: warm ? rr(.4, .6) : rr(.3, .45), kind: 'smoke', v: V(d.x * rr(.4, 1.2), rr(.9, 2.2), d.z * rr(.4, 1.2)), spin: rr(-.5, .5) }); }
+    for (let i = 0; i < 12; i++) emit(pos.clone(), i % 2 ? 0xffffff : warm ? 0xffd27a : 0xcfefff, V(rr(-1, 1), rr(.3, 1.3), rr(-1, 1)).normalize().multiplyScalar(rr(radius * 3.5, radius * 7)), rr(.07, .15), rr(.35, .7), 20); };
+  updateFx = function (dt) { uf(dt); for (let i = NFX.length - 1; i >= 0; i--) { const f = NFX[i]; f.t += dt; if (f.t < 0) continue; const k = Math.min(1, f.t / f.life), e = 1 - (1 - k) * (1 - k);
+      f.m.scale.setScalar(f.r0 + (f.r1 - f.r0) * e); f.m.material.opacity = f.op * (f.kind === 'smoke' ? Math.min(1, k * 6) * (1 - k) * (1 - k) * 1.6 : 1 - k); if (f.v) { f.m.position.addScaledVector(f.v, dt); f.v.multiplyScalar(1 - 1.2 * dt); f.m.material.rotation += dt * f.spin; }
+      if (k >= 1) { scene.remove(f.m); f.m.material.dispose(); NFX.splice(i, 1); } } }; }
+// ============================================================
+// THE CLASSIC FIELD in the new look: old ruins in a beautiful lush meadow under a soft afternoon sky.
+//  - the sky: pale blue, long soft clouds lit gold and lavender by a low sun; rolling green hills all round, far off
+//  - the field: long grass (the blades sway round you), wild flowers, big lusher and drier patches, the ground rising
+//    and dipping a little; worn dirt tracks where everyone walks (from each fort to the middle, to the portals, to the
+//    power stations); round each fort, trodden earth with the old broken paving still showing through
+// ============================================================
+if (NEO_PLAZA) {
+  const R = neoRng(4242), rq = (a, b) => a + R() * (b - a);
+  // ---- the light: late afternoon ----
+  { const dir = V(-30, 22, 26); SUN_OFF.copy(dir); dir.normalize(); SUN_AX.x.set(0, 1, 0).cross(dir).normalize(); SUN_AX.y.copy(dir).cross(SUN_AX.x); SUN_DIR.copy(dir); skyU.sun.value.copy(dir); }
+  sun.color.set('#fff0d8'); sun.intensity = 3.7; if (hemi) { hemi.color.set('#d8e6ff'); hemi.groundColor.set('#9ab060'); hemi.intensity = 1.25; } renderer.toneMappingExposure = 1.12;
+  const FOGN = 90, FOGF = 380; scene.fog.color.set('#bcdcf6'); scene.fog.near = FOGN; scene.fog.far = FOGF; Object.assign(LIGHT0, { hemi: hemi ? hemi.intensity : 1, sun: sun.intensity, fog: scene.fog.color.clone() });
+  const sunVis = V(SUN_DIR.x, 0, SUN_DIR.z).normalize().multiplyScalar(Math.cos(.3)).setY(Math.sin(.3));
+  NEOU.neoZen.value.set('#2f72e0'); NEOU.neoHor.value.set('#d6ecfc'); NEOU.neoGnd.value.set('#4a7a2a'); NEOU.neoSunD.value.copy(sunVis); NEOU.neoSunC.value.set('#fff0d4');
+  // ---- the sky, painted once ----
+  const skyTex = (() => { const W = NEO_TOUCH ? 1024 : 2048, H = W / 2, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), yOf = el => H * (.5 - el / 180), sunU = ((Math.atan2(sunVis.z, -sunVis.x) / (Math.PI * 2)) % 1 + 1) % 1, sx = sunU * W, sy = yOf(17);
+    // a deep clear blue overhead, paling to a bright haze at the horizon
+    const gr = g.createLinearGradient(0, 0, 0, H); for (const [el, col] of [[90, '#0f4fc8'], [60, '#1f66da'], [38, '#3a86ea'], [20, '#6aaaf4'], [9, '#a6d0fa'], [3, '#d6ecfc'], [0, '#eef6fb'], [-3, '#b8d4a0'], [-90, '#5e8a40']]) gr.addColorStop(.5 - el / 180, col); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    for (const ox of [-W, 0, W]) { const rg = g.createRadialGradient(sx + ox, sy, 0, sx + ox, sy, W * .2); rg.addColorStop(0, 'rgba(255,252,236,1)'); rg.addColorStop(.06, 'rgba(255,246,214,.75)'); rg.addColorStop(.3, 'rgba(255,240,210,.22)'); rg.addColorStop(1, 'rgba(255,240,210,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H); }
+    // wisps of cirrus high up
+    for (let i = 0; i < 14; i++) { const x0 = R() * W, y0 = yOf(rq(40, 70)), len = W * rq(.05, .12); for (const ox of [-W, 0, W]) { g.save(); g.translate(x0 + ox, y0); g.rotate(rq(-.15, .15)); for (let k = 0; k < 10; k++) { const rx = len * rq(.2, .5), ry = H * .004; const rg = g.createRadialGradient(0, 0, 0, 0, 0, rx); rg.addColorStop(0, 'rgba(255,255,255,.35)'); rg.addColorStop(1, 'rgba(255,255,255,0)'); g.save(); g.translate(rq(-len / 2, len / 2), rq(-ry * 3, ry * 3)); g.scale(1, ry / rx); g.fillStyle = rg; g.fillRect(-rx, -rx, rx * 2, rx * 2); g.restore(); } g.restore(); } }
+    // big fair-weather clouds: piled-up puffs on a flat base, bright white where the sun catches them, soft blue-grey underneath
+    const cumulus = (u, el, size) => { const cx = u * W, base = yOf(el), sq = .55 + .45 * Math.min(1, el / 30), puffs = [];
+      const n = 10 + Math.floor(size / W * 300); for (let i = 0; i < n; i++) { const t = (i / (n - 1)) * 2 - 1, hgt = Math.cos(t * Math.PI / 2) ** .7; const r = size * (.12 + .16 * hgt) * rq(.7, 1.15); puffs.push([cx + t * size * .55 + rq(-.05, .05) * size, base - r * sq * .6 - hgt * size * .22 * sq * rq(.6, 1.1), r]); }
+      const lit = Math.max(0, Math.cos((u - sunU) * Math.PI * 2)); // (the side towards the sun is brighter)
+      for (const ox of [-W, 0, W]) { for (const [x, y, r] of puffs) { g.save(); g.translate(x + ox, y + r * .18 * sq); g.scale(1, sq); g.fillStyle = 'rgba(150,172,210,.95)'; g.beginPath(); g.arc(0, 0, r, 0, 7); g.fill(); g.restore(); } // (the shade)
+        for (const [x, y, r] of puffs) { g.save(); g.translate(x + ox + (sunU > u ? 1 : -1) * r * .08, y - r * .12 * sq); g.scale(1, sq); const rg = g.createRadialGradient(-r * .2, -r * .3, r * .1, 0, 0, r * .92); rg.addColorStop(0, `rgba(255,255,255,1)`); rg.addColorStop(.7, `rgba(${246 - 10 * (1 - lit) | 0},${248 - 6 * (1 - lit) | 0},255,.97)`); rg.addColorStop(1, 'rgba(230,238,252,0)'); g.fillStyle = rg; g.beginPath(); g.arc(0, 0, r * .92, 0, 7); g.fill(); g.restore(); }
+        g.fillStyle = 'rgba(160,180,215,.5)'; g.fillRect(cx + ox - size * .58, base - 1, size * 1.16, Math.max(1.5, size * .012)); } }; // (a flat, darker base)
+    for (let i = 0; i < 9; i++) cumulus(R(), rq(20, 34), W * rq(.04, .06));
+    for (let i = 0; i < 14; i++) cumulus(R(), rq(9, 19), W * rq(.035, .055));
+    for (let i = 0; i < 22; i++) cumulus(R(), rq(2.5, 8), W * rq(.02, .04));
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(372, 48, 24), new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: false })); dome.renderOrder = -10; dome.frustumCulled = false; scene.add(dome); skyDome.visible = false;
+  { const mtn = scene.children.find(o => o.renderOrder === -5 && o.frustumCulled === false); if (mtn) mtn.visible = false; }
+  scene.traverse(o => { if (o.isInstancedMesh && o.material && o.material.emissive) { const h = o.material.emissive.getHex(); if (h === 0xdbe8fa || h === 0xc8dcf5) o.visible = false; } }); // (no sea of cloud under the field: it is on the ground now, hills all round)
+  { const ad = applyDark; applyDark = function (b) { ad(b); const k = Math.min(1, Math.max(0, b)); dome.material.color.setScalar(1 - .93 * k); if (!(b > 0)) { scene.fog.near = FOGN; scene.fog.far = FOGF; } }; }
+  // ---- the hills all round: three rings, each further and bluer, their tops rolling ----
+  { const hill = (a, k) => { const s = Math.sin; return (s(a * 3 + k) * .5 + s(a * 7 + k * 2.3) * .3 + s(a * 13 + k * 5.1) * .15 + 1) * .5; };
+    for (let k = 0; k < 3; k++) { const n = 160, pos = [], col = [], idx = [], r0 = 210 + k * 60, top = [8, 16, 28][k], c0 = new THREE.Color(['#4a8a2c', '#6a9e58', '#8eb4c8'][k]), c1 = new THREE.Color(['#78b83e', '#8cbc6c', '#a8c8d8'][k]);
+      for (let i = 0; i <= n; i++) { const a = i / n * Math.PI * 2, r = r0 + hill(a, k + 3) * 25, h = 4 + top * hill(a, k) ** 1.6, x = Math.cos(a) * r * 1.2, z = Math.sin(a) * r;
+        pos.push(x, -25, z, x * 1.04, h, z * 1.04); col.push(...c0.toArray(), ...c1.clone().lerp(c0, .3 * hill(a * 2, k)).toArray()); if (i < n) { const b = i * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); } }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setIndex(idx); geo.computeVertexNormals(); { const N = geo.attributes.normal; for (let i = 0; i < N.array.length; i++) N.array[i] *= -1; }
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })); m.frustumCulled = false; scene.add(m); } }
+  // ---- the field ----
+  sideTint = () => [255, 255, 255]; for (let i = 0; i < cellData.length; i += 4) if (cellData[i + 3] > 0) cellData[i] = cellData[i + 1] = cellData[i + 2] = 255; cellTex.needsUpdate = true;
+  const slab = scene.children.find(o => o.userData.deck) || scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6), gm = slab && Array.isArray(slab.material) ? slab.material[2] : null;
+  const seg = (a, b) => new THREE.Vector4(a.x, a.z, b.x, b.z), O = { x: 0, z: 0 }, PS = PORTAL_SPOTS, HB = HUBS;
+  const FU = { neoFB: { value: new THREE.Vector4(FORT.blue.x, FORT.blue.z, FORT.red.x, FORT.red.z) }, neoSeg: { value: [seg(FORT.blue, O), seg(FORT.red, O), seg(O, PS[0] || O), seg(O, PS[1] || O), seg(O, HB[0] || O), seg(O, HB[1] || O)] } };
+  if (slab) { slab.geometry.dispose(); slab.geometry = new THREE.BoxGeometry(MX * 2, 6, MZ * 2, MX, 1, MZ); } // (finely divided on top, so the field can rise and dip)
+  if (gm) { gm.userData.neoC = 1; const prev = gm.onBeforeCompile, key = gm.customProgramCacheKey ? gm.customProgramCacheKey() : '';
+    gm.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd); Object.assign(sh.uniforms, NEOU, FU);
+      sh.vertexShader = 'varying vec3 vNeoW;\n' + NEO_DISP_GLSL + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  if (normal.y > .5) { vec2 w0 = (modelMatrix * vec4(position, 1.)).xz; transformed.y += neoDisp(w0); }').replace('#include <project_vertex>', '#include <project_vertex>\n  vNeoW = (modelMatrix * vec4(transformed, 1.)).xyz;');
+      sh.fragmentShader = `varying vec3 vNeoW; uniform vec4 neoSeg[6]; uniform vec4 neoFB; float neoRgh, neoHg;
+float neoH(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
+float neoN(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3. - 2. * f); return mix(mix(neoH(i), neoH(i + vec2(1, 0)), f.x), mix(neoH(i + vec2(0, 1)), neoH(i + vec2(1, 1)), f.x), f.y); }
+float neoSegD(vec2 p, vec4 s) { vec2 ab = s.zw - s.xy; float t = clamp(dot(p - s.xy, ab) / max(dot(ab, ab), 1e-4), 0., 1.); return length(p - s.xy - ab * t); }
+` + sh.fragmentShader
+        .replace('#include <map_fragment>', `#include <map_fragment>
+  { vec2 p = vNeoW.xz; float aw = max(fwidth(p.x), fwidth(p.y)) + .0005, near = clamp(1. - aw * 8., 0., 1.);
+    float n1 = neoN(p * .045), n2 = neoN(p * .13 + 7.), n3 = neoN(p * .6 + 3.), n4 = neoN(p * 2.3 + 1.);
+    /* the meadow: deep green, lusher and paler in big patches, sun-dried in a few, never flat */
+    vec3 col = mix(vec3(.08, .34, .03), vec3(.26, .6, .07), n1); col = mix(col, vec3(.5, .6, .1), smoothstep(.62, .88, n2) * .5); col *= .82 + .3 * n3 * n4 + .1 * n4;
+    vec2 fc = floor(p * 3.); float fh = neoH(fc), fd = length(fract(p * 3.) - .5 - (vec2(neoH(fc + 7.), neoH(fc + 3.)) - .5) * .5); /* wild flowers: yellow, white, here and there a blue one */
+    float fl = (1. - smoothstep(.07, .11, fd)) * step(.9 - .07 * smoothstep(.4, .8, n2), fh) * near; col = mix(col, fh > .985 ? vec3(.35, .45, .95) : fh > .95 ? vec3(.95, .95, .9) : vec3(1., .8, .12), fl);
+    float rgh = .9; neoHg = (n2 * .12 + n3 * .07 + n4 * .025);
+    /* tracks: worn dirt where everyone walks, wobbling, grass creeping back in down the middle */
+    vec2 q = p + (vec2(neoN(p * .08), neoN(p * .08 + 9.)) - .5) * 5.; float d = 99.; for (int i = 0; i < 6; i++) { if (length(neoSeg[i].zw - neoSeg[i].xy) < 1.) continue; d = min(d, neoSegD(q, neoSeg[i])); }
+    float tr = 1. - smoothstep(.9, 1.9 + .7 * n3, d), mid = 1. - smoothstep(.15, .45, d), dirt = tr * (1. - mid * .7 * n4);
+    vec3 earth = mix(vec3(.44, .28, .14), vec3(.62, .45, .26), n2) * (.85 + .25 * n4); col = mix(col, earth, dirt); neoHg = mix(neoHg, n4 * .05 - .06 + n3 * .04, tr);
+    /* round each fort: trodden earth, the old broken paving still showing through */
+    vec2 fq = abs(p - neoFB.xy) - vec2(21., 18.); float fdb = length(max(fq, 0.)) + min(max(fq.x, fq.y), 0.); fq = abs(p - neoFB.zw) - vec2(21., 18.); float fdr = length(max(fq, 0.)) + min(max(fq.x, fq.y), 0.);
+    float fo = 1. - smoothstep(-1., 3. + 2. * n2, min(fdb, fdr) + (n3 - .5) * 3.);
+    vec2 sp = p * .55, si = floor(sp); float f1 = 9., f2 = 9.; vec2 cid = si; for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) { vec2 c = si + vec2(i, j), o = c + vec2(neoH(c), neoH(c + 4.3)) * .9; float dd = length(sp - o); if (dd < f1) { f2 = f1; f1 = dd; cid = c; } else if (dd < f2) f2 = dd; }
+    float sh = neoH(cid + 1.7), gap = f2 - f1;
+    float flag = step(.45, sh) * smoothstep(.06, .14, gap) * step(.5, n2 + sh * .35); /* (old flagstones, all shapes, most of them gone) */
+    vec3 stone = mix(vec3(.6, .57, .5), vec3(.78, .74, .64), sh) * (.85 + .2 * n4); stone = mix(stone, vec3(.3, .5, .1), smoothstep(.55, .8, n3) * .5); /* (moss on them) */
+    col = mix(col, mix(earth * .95, stone, flag), fo); neoHg = mix(neoHg, flag * .05 + n4 * .02, fo);
+    /* worn earth in the middle and round the portals and power stations */
+    float wr = 1. - smoothstep(6., 10. + 2. * n2, length(p) + (n3 - .5) * 3.); for (int i = 2; i < 6; i++) wr = max(wr, 1. - smoothstep(3.5, 6. + 1.5 * n2, length(p - neoSeg[i].zw) + (n3 - .5) * 2.));
+    col = mix(col, mix(earth, stone, step(.7, sh) * smoothstep(.06, .14, gap) * .8), wr * (1. - fo)); neoHg = mix(neoHg, n4 * .03, wr * (1. - fo));
+    diffuseColor.rgb = col; neoRgh = rgh; }`)
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = neoRgh;')
+        .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n  metalnessFactor = 0.;')
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+  { vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); float hx = dFdx(neoHg), hy = dFdy(neoHg); vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
+    normal = normalize(abs(det) * normal - sign(det) * (hx * r1 + hy * r2) * 2.); }`); };
+    gm.customProgramCacheKey = () => key + '|neoMeadow'; gm.needsUpdate = true; }
+  { const rob = new Set(robots.map(r => r.model.g)); for (const o of scene.children) { if (rob.has(o) || o === dome) continue; o.traverse(q => { for (const m of [].concat(q.material || [])) if (m && m.isMeshStandardMaterial && !m.isMeshPhysicalMaterial && !m.userData.neoC && !m.vertexColors) neoShine(m); }); } }
+}
+for (const k in kindMat) neoShine(kindMat[k]);
+window.__neo = { NEOU, neoShine };
+NEOX = { NEOU, NEO_ENV, neoShine, neoRng, TOUCH: NEO_TOUCH, kitPatch, KIT, kitSet };
+}
+
+// ============================================================
+// NEON CITY (the new look's own map): everything you see that is not a block, a robot or an animal.
+//   - dusk over a city of chrome towers: a striped retro sun on the skyline, a ringed planet, stars coming out
+//   - the deck: black glass tiles over a grid of neon, the forts on pads of their own candy colour, glowing lanes,
+//     rings round every spot that does something (power stations, warp gates, launch pads, the robot animals' pens);
+//     it mirrors the whole world (on a phone that is struggling, only the sky)
+//   - under the deck, far below, a grid of light running to the horizon
+//   - warp gates (chrome rings on pylons, a swirl of light), launch pads, gateways, beacons over the power stations,
+//     a hologram over the middle, neon signs on poles round the edge
+// What is solid is exactly what was solid before (the gateway posts and beam, the warp gate pylons): the game plays the same.
+// ============================================================
+if (NEO && NEON && NEOX) {
+  const { NEOU, NEO_ENV, neoShine, neoRng, TOUCH } = NEOX, R = neoRng(9001), rq = (a, b) => a + R() * (b - a), PI = Math.PI;
+  const GLOW = (c, k = 1) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), toneMapped: false, fog: false });
+  const std = (c, met, rgh, o = {}) => neoShine(new THREE.MeshStandardMaterial({ color: c, metalness: met, roughness: rgh, ...o }));
+  const MAT = { chrome: std('#e8ecf4', 1, .08), dark: std('#140c24', .85, .22), steel: std('#7a8090', .9, .3), pink: std('#e0157a', .85, .2), cyan: std('#0aa8c8', .85, .2), cream: std('#f2e6cc', 0, .25), gold: std('#ffaa22', 1, .2) };
+  const NE = { pink: GLOW('#ff3da8', 2.2), cyan: GLOW('#29e8ff', 2.2), violet: GLOW('#b45cff', 2.2), amber: GLOW('#ffb020', 2.2), mint: GLOW('#40ffb0', 2.2), white: GLOW('#fff4ea', 1.6), blue: GLOW('#3a7cff', 2.4), red: GLOW('#ff3a2a', 2.4) };
+  // ---- the light: dusk ----
+  const sunAz = -2.2, sunEl = .2, sunVis = V(Math.cos(sunAz) * Math.cos(sunEl), Math.sin(sunEl), Math.sin(sunAz) * Math.cos(sunEl)); // (where the sun is seen: on the skyline)
+  { const dir = V(sunVis.x, .42, sunVis.z).normalize(); SUN_OFF.copy(dir).multiplyScalar(48); SUN_AX.x.set(0, 1, 0).cross(dir).normalize(); SUN_AX.y.copy(dir).cross(SUN_AX.x); SUN_DIR.copy(dir); skyU.sun.value.copy(dir); }
+  sun.color.set('#ffb498'); sun.intensity = 2.9; if (hemi) { hemi.color.set('#d4b0ff'); hemi.groundColor.set('#ff5aa0'); hemi.intensity = .95; }
+  const FOGN = 110, FOGF = 380; scene.fog.color.set('#4a1a66'); scene.fog.near = FOGN; scene.fog.far = FOGF; Object.assign(LIGHT0, { hemi: hemi ? hemi.intensity : 1, sun: sun.intensity, fog: scene.fog.color.clone() });
+  NEOU.neoZen.value.set('#2a1a78'); NEOU.neoHor.value.set('#ff6a8a'); NEOU.neoGnd.value.set('#1a0c30'); NEOU.neoSunD.value.copy(sunVis); NEOU.neoSunC.value.set('#ffc896');
+  // ---- the sky, painted once ----
+  const skyTex = (() => { const W = TOUCH ? 1024 : 2048, H = W / 2, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), yOf = el => H * (.5 - el / 180), uOf = az => (((Math.atan2(Math.sin(az), -Math.cos(az)) / (PI * 2)) % 1) + 1) % 1;
+    const sx = uOf(sunAz) * W, sy = yOf(6), sr = W * .05;
+    const gr = g.createLinearGradient(0, 0, 0, H); for (const [el, col] of [[90, '#07041c'], [60, '#140a3e'], [38, '#2e1266'], [24, '#5a1a86'], [14, '#a3268e'], [7, '#ee3f86'], [2.5, '#ff7a6a'], [0, '#ffb070'], [-1, '#3a1450'], [-90, '#0a0418']]) gr.addColorStop(.5 - el / 180, col); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 900; i++) { const el = 14 + R() * 76; g.fillStyle = `rgba(255,240,255,${(.2 + R() * .7) * Math.min(1, (el - 14) / 22)})`; const q = R() < .1 ? 2 : 1; g.fillRect(R() * W, yOf(el), q, q); } // stars coming out
+    for (const ox of [-W, 0, W]) { const rg = g.createRadialGradient(sx + ox, sy, 0, sx + ox, sy, W * .28); rg.addColorStop(0, 'rgba(255,120,150,.55)'); rg.addColorStop(.4, 'rgba(220,60,140,.2)'); rg.addColorStop(1, 'rgba(160,40,140,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H); }
+    // the retro sun: yellow at the top, hot pink at the bottom, cut into stripes that get wider towards the horizon
+    for (const ox of [-W, 0, W]) { g.save(); g.beginPath(); g.arc(sx + ox, sy, sr, 0, PI * 2); g.clip(); const sg = g.createLinearGradient(0, sy - sr, 0, sy + sr); sg.addColorStop(0, '#fff27a'); sg.addColorStop(.45, '#ffaa4a'); sg.addColorStop(1, '#ff2a8a'); g.fillStyle = sg; g.fillRect(sx + ox - sr, sy - sr, sr * 2, sr * 2);
+      g.globalCompositeOperation = 'destination-out'; for (let k = 0; k < 7; k++) { const t = k / 7, y = sy - sr * .1 + t * sr * 1.1, h = sr * (.03 + t * .1); g.fillRect(sx + ox - sr, y, sr * 2, h); } g.restore(); }
+    // wireframe mountains on the horizon, in neon
+    const ridge = (amp, ph, col, lw) => { g.strokeStyle = col; g.lineWidth = lw; g.beginPath(); for (let x = 0; x <= W; x += W / 256) { const u = x / W, h = amp * (.5 + .5 * Math.sin(u * 37 + ph)) * (.4 + .6 * Math.abs(Math.sin(u * 11 + ph * 2))) * (1 - Math.exp(-((((u - sx / W + 1.5) % 1 - .5) / .06) ** 2)) * .9); if (x) g.lineTo(x, yOf(0) - h); else g.moveTo(x, yOf(0) - h); } g.stroke(); };
+    g.save(); g.shadowColor = '#ff3da8'; g.shadowBlur = W * .004; ridge(H * .035, 1, 'rgba(255,90,190,.85)', W * .0012); g.shadowColor = '#29e8ff'; ridge(H * .022, 4, 'rgba(80,220,255,.7)', W * .001); g.restore();
+    // a ringed planet and a moon, high up
+    { const px = ((uOf(sunAz) + .37) % 1) * W, py = yOf(36), pr = W * .03; g.save(); g.translate(px, py); g.rotate(-.3); g.scale(1, .22); g.strokeStyle = 'rgba(120,230,255,.55)'; g.lineWidth = pr * .35; g.beginPath(); g.arc(0, 0, pr * 1.9, PI, PI * 2); g.stroke(); g.restore();
+      const pg = g.createRadialGradient(px - pr * .4, py - pr * .3, pr * .1, px, py, pr); pg.addColorStop(0, '#ffd0f0'); pg.addColorStop(.6, '#b050d0'); pg.addColorStop(1, '#3a1470'); g.fillStyle = pg; g.beginPath(); g.arc(px, py, pr, 0, 7); g.fill();
+      g.save(); g.translate(px, py); g.rotate(-.3); g.scale(1, .22); g.strokeStyle = 'rgba(120,230,255,.75)'; g.lineWidth = pr * .35; g.beginPath(); g.arc(0, 0, pr * 1.9, 0, PI); g.stroke(); g.restore();
+      const mx = ((uOf(sunAz) + .7) % 1) * W, my = yOf(58), mr = W * .008; g.fillStyle = '#f4e8ff'; g.beginPath(); g.arc(mx, my, mr, 0, 7); g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(372, 48, 24), new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: false })); dome.renderOrder = -10; dome.frustumCulled = false; scene.add(dome); skyDome.visible = false;
+  { const ad = applyDark; applyDark = function (b) { ad(b); const k = Math.min(1, Math.max(0, b)); dome.material.color.setScalar(1 - .9 * k); if (!(b > 0)) { scene.fog.near = FOGN; scene.fog.far = FOGF; } }; } // (a blackout dims the sky too)
+  // ---- far below: a grid of light running to the horizon ----
+  const gridU = { t: { value: 0 } };
+  { const m = new THREE.ShaderMaterial({ uniforms: gridU, transparent: true, depthWrite: false, fog: false,
+      vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+      fragmentShader: `uniform float t; varying vec3 vW;
+        float ln(float v, float w) { float d = abs(fract(v) - .5), f = fwidth(v); return 1. - smoothstep(w - f, w + f, .5 - d); }
+        void main() { vec2 p = vW.xz / 8.; p.y += t * .15; float g = max(ln(p.x, .03), ln(p.y, .03)); float r = length(vW.xz); float fade = exp(-r / 260.) * smoothstep(60., 110., r * 1.2);
+          vec3 c = mix(vec3(1., .2, .7), vec3(.15, .8, 1.), smoothstep(-200., 200., vW.x + vW.z)); gl_FragColor = vec4(c * 1.6, g * fade * .9); }` });
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-PI / 2), m); pl.position.y = -26; pl.renderOrder = -4; pl.frustumCulled = false; scene.add(pl); }
+  // ---- the deck's sides: dark chrome; its edge: a neon strip ----
+  for (const o of scene.children) { if (o.userData.deckSide) o.material = std('#1c1236', .9, .25); if (o.userData.deckEdge) { o.material = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff3da8').multiplyScalar(2), toneMapped: false }); o.position.y = .005; } }
+  // ---- the deck ----
+  sideTint = () => [255, 255, 255]; for (let i = 0; i < cellData.length; i += 4) if (cellData[i + 3] > 0) cellData[i] = cellData[i + 1] = cellData[i + 2] = 255; cellTex.needsUpdate = true;
+  const slab = scene.children.find(o => o.userData.deck), gm = slab && Array.isArray(slab.material) ? slab.material[2] : null;
+  const RT = new THREE.WebGLRenderTarget(8, 8, { type: renderer.extensions.has('EXT_color_buffer_half_float') || renderer.extensions.has('EXT_color_buffer_float') ? THREE.HalfFloatType : THREE.UnsignedByteType });
+  const door = t => V(FORT[t].x - Math.sign(FORT[t].x) * (FORT_RX + 1), 0, FORT[t].z), v4 = (a, b) => new THREE.Vector4(a.x, a.z, b.x, b.z), O = V();
+  // the rings on the floor: x, z, radius, kind (0 power station · 1 warp gate · 2 launch pad · 3 pen · 4 the middle)
+  const RINGS = [...HUBS.map(h => [h.x, h.z, 5.4, 0]), ...PORTAL_SPOTS.map(p => [p.x, p.z, 4.2, 1]), ...TRAMP_SPOTS.map(p => [p.x, p.z, 2.6, 2]), ...(NM.pastures || []).map(p => [p.x, p.z, 8.6, 3]), [0, 0, 11, 4]].map(a => new THREE.Vector4(...a));
+  while (RINGS.length < 10) RINGS.push(new THREE.Vector4(9999, 9999, 0, 0));
+  const FU = { neoRT: { value: RT.texture }, neoRM: { value: new THREE.Matrix4() }, neoRon: { value: 0 }, neoFB: { value: new THREE.Vector4(FORT.blue.x, FORT.blue.z, FORT.red.x, FORT.red.z) }, neoFH: { value: new THREE.Vector2(FORT_RX + 4, FORT_RZ + 4) },
+    neoLane: { value: [v4(door('blue'), O), v4(door('red'), O)] }, neoRings: { value: RINGS } };
+  if (gm) { gm.userData.neoC = 1; const prev = gm.onBeforeCompile, key = gm.customProgramCacheKey ? gm.customProgramCacheKey() : '';
+    gm.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd); Object.assign(sh.uniforms, NEOU, FU);
+      sh.vertexShader = 'varying vec3 vNeoW;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vNeoW = (modelMatrix * vec4(transformed, 1.)).xyz;');
+      sh.fragmentShader = `varying vec3 vNeoW; uniform sampler2D neoRT; uniform mat4 neoRM; uniform float neoRon; uniform vec4 neoFB; uniform vec2 neoFH; uniform vec4 neoLane[2]; uniform vec4 neoRings[10]; float neoMet, neoRgh, neoMir, neoTh; vec3 neoFG;
+float neoSegD(vec2 p, vec4 s, out float t) { vec2 ab = s.zw - s.xy; t = clamp(dot(p - s.xy, ab) / max(dot(ab, ab), 1e-4), 0., 1.); return length(p - s.xy - ab * t); }
+float neoBox(vec2 p, vec2 c, vec2 h, float r) { vec2 q = abs(p - c) - h + r; return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - r; }
+` + NEO_ENV + sh.fragmentShader
+        .replace('#include <map_fragment>', `#include <map_fragment>
+  { vec2 p = vNeoW.xz; float aw = max(fwidth(p.x), fwidth(p.y)) + .0005, far = clamp(1. - aw * 6., 0., 1.);
+    #define NL(dd, hw) (1. - smoothstep((hw) - aw, (hw) + aw, abs(dd)))
+    #define ND(rr, r0) (1. - smoothstep((r0) - aw, (r0) + aw, rr))
+    vec3 PINK = vec3(1., .24, .66), CYAN = vec3(.16, .9, 1.), VIOL = vec3(.7, .36, 1.), AMB = vec3(1., .69, .13), MINT = vec3(.25, 1., .69), BLU = vec3(.2, .48, 1.), RED = vec3(1., .22, .16);
+    /* black glass tiles two blocks across, each a hair different, a fine joint between */
+    vec2 tc = p * .5, ti = floor(tc), tf = fract(tc); float th = fract(sin(dot(ti, vec2(127.1, 311.7))) * 43758.5453); neoTh = th;
+    float joint = 1. - smoothstep(.02 - aw, .02 + aw, min(min(tf.x, 1. - tf.x), min(tf.y, 1. - tf.y)) * 2.);
+    vec3 col = vec3(.035, .022, .07) * (.8 + .4 * th), glow = vec3(0.); float met = .2, rgh = .06 + .05 * th, mir = .42;
+    /* the grid of light under the glass: a faint line every four blocks, a brighter one every sixteen */
+    vec2 g4 = abs(fract(p / 4. + .5) - .5) * 4., g16 = abs(fract(p / 16. + .5) - .5) * 16.;
+    float l4 = max(NL(g4.x, .045), NL(g4.y, .045)), l16 = max(NL(g16.x, .07), NL(g16.y, .07));
+    vec3 gc = mix(VIOL, CYAN, .5 + .5 * sin((p.x + p.y) * .02)); glow += gc * (l4 * .22 + l16 * .75) * far;
+    /* each fort stands on a pad of its own team's candy colour, edged in its neon */
+    for (int k = 0; k < 2; k++) { vec2 fc = k == 0 ? neoFB.xy : neoFB.zw; vec3 tcol = k == 0 ? vec3(.012, .04, .2) : vec3(.2, .012, .03), tn = k == 0 ? BLU : RED; float d = neoBox(p, fc, neoFH, 4.);
+      float inn = ND(d, 0.); col = mix(col, tcol * (.75 + .5 * th), inn); glow *= 1. - inn * .7; glow += tn * (NL(d + .35, .12) * 1.6 + NL(d + 1.1, .05) * .7);
+      for (int i = 0; i < 6; i++) { float s = float(i); glow += tn * NL(d - 1.2 - s * 1.4, .08) * (1. - s / 6.) * .45 * far; } } /* (and ripples of light going out from it) */
+    /* a lane from each fort's front door to the middle: a lighter strip with a dashed line of light down it */
+    for (int k = 0; k < 2; k++) { float t; float d = neoSegD(p, neoLane[k], t), L = length(neoLane[k].zw - neoLane[k].xy); float on = ND(d, 2.2) * step(.04, t) * step(t, .86);
+      col = mix(col, vec3(.07, .045, .13), on); glow += (k == 0 ? BLU : RED) * NL(d - 2.2, .06) * step(.04, t) * step(t, .86) * .9;
+      glow += mix(PINK, AMB, .3) * NL(d, .1) * step(.55, fract(t * L * .25 - neoT * .5)) * step(.04, t) * step(t, .86) * 1.2; }
+    /* a ring round every spot that does something */
+    for (int i = 0; i < 10; i++) { vec4 R4 = neoRings[i]; if (R4.z <= 0.) continue; float r = length(p - R4.xy), kd = R4.w; vec3 rc = kd < .5 ? AMB : kd < 1.5 ? VIOL : kd < 2.5 ? PINK : kd < 3.5 ? MINT : CYAN;
+      float in_ = ND(r, R4.z); col = mix(col, vec3(.02, .015, .04), in_); glow *= 1. - in_ * .8; mir = mix(mir, .55, in_);
+      glow += rc * (NL(r - R4.z, .14) * 1.8 + NL(r - R4.z + .6, .04) * .8);
+      if (kd < .5) { float a = atan(p.y - R4.y, p.x - R4.x); glow += rc * NL((fract(a / 6.2831853 * 6.) - .5) * r * 1.047, .06) * step(1.4, r) * in_ * .7; } /* (spokes: a power station) */
+      if (kd > 3.5) { float a = atan(p.y, p.x); for (int j = 1; j < 4; j++) glow += mix(CYAN, PINK, float(j) / 3.) * NL(r - float(j) * 2.6, .05) * .9; /* (the middle: rings, and a star) */
+        float st = cos(floor(.5 + a / 1.2566) * 1.2566 - a) * r; glow += AMB * NL(st - 1.6 - .9 * abs(sin((a + .628) * 2.5)), .07) * ND(r, 3.2); } }
+    col *= 1. - .6 * joint; mir *= 1. - .7 * joint;
+    diffuseColor.rgb = col; neoMet = met; neoRgh = rgh; neoMir = mir; neoFG = glow; }`)
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = neoRgh;')
+        .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n  metalnessFactor = neoMet;')
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += neoFG;')
+        .replace('#include <opaque_fragment>', `{ vec3 nV = normalize(vViewPosition); float nfr = pow(1. - max(dot(normal, nV), 0.), 5.); vec3 nR = inverseTransformDirection(reflect(-nV, normal), viewMatrix), rc_;
+    if (neoRon > .5) { vec4 ruv = neoRM * vec4(vNeoW, 1.); rc_ = texture2D(neoRT, ruv.xy / ruv.w + (neoTh - .5) * .002).rgb; } else rc_ = neoEnv(nR, .08); /* the world in the floor (or, on a slow phone, just the sky) */
+    outgoingLight = mix(outgoingLight, rc_ + neoFG, clamp(neoMir + (1. - neoMir) * nfr, 0., .92)); }
+  #include <opaque_fragment>`); };
+    gm.customProgramCacheKey = () => key + '|neonDeck'; gm.needsUpdate = true; }
+  // ---- warp gates: a chrome ring on two pylons, a ring of neon inside, a swirl of light in the middle ----
+  const swirlU = { t: { value: 0 }, dim: { value: 0 } };
+  const swirlM = new THREE.ShaderMaterial({ uniforms: swirlU, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+    fragmentShader: `uniform float t, dim; varying vec2 vUv; void main() { vec2 q = vUv - .5; float r = length(q) * 2., a = atan(q.y, q.x);
+      float sw = .5 + .5 * sin(a * 3. + r * 9. - t * 4.), sw2 = .5 + .5 * sin(-a * 5. + r * 14. - t * 6.5);
+      vec3 c = mix(vec3(.55, .2, 1.), vec3(1., .3, .75), sw) + vec3(.6, .9, 1.) * pow(sw2, 6.) * .8 + vec3(1.) * pow(1. - r, 4.) * 1.2;
+      float al = smoothstep(1., .9, r) * (.55 + .45 * sw) * (1. - dim * .75); gl_FragColor = vec4(c * al, al); }` });
+  for (const Q of PORTALS) { Q.ring.visible = false; Q.disc.visible = false; const g = Q.g;
+    const add = (geo, m, x = 0, y = 0, z = 0) => { const q = new THREE.Mesh(geo, m); q.position.set(x, y, z); q.castShadow = m !== swirlM && !m.isMeshBasicMaterial; g.add(q); return q; };
+    add(new THREE.TorusGeometry(2.15, .22, 12, 48), MAT.chrome); add(new THREE.TorusGeometry(1.98, .055, 6, 48), NE.violet); add(new THREE.TorusGeometry(2.36, .04, 6, 48), NE.pink);
+    add(new THREE.CircleGeometry(1.7, 48), swirlM).renderOrder = 2;
+    for (const s of [-1, 1]) { add(new RoundedBoxGeometry(.6, 4.1, .8, 2, .12), MAT.dark, s * 2.65, -.02, 0); add(new THREE.BoxGeometry(.08, 3.6, .84), NE.violet, s * 2.65, 0, 0); add(new RoundedBoxGeometry(1, .3, 1.2, 2, .1), MAT.chrome, s * 2.65, -1.95, 0); add(new THREE.SphereGeometry(.22, 12, 8), NE.pink, s * 2.65, 2.2, 0); }
+    for (const s of [-1, 1]) { const w = Q.pos.clone().addScaledVector(Q.t, s * 2.65), c = world.createCollider(RAPIER.ColliderDesc.cuboid(.3, 2.05, .4).setTranslation(w.x, w.y - .02, w.z).setRotation(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), g.rotation.y)).setFriction(.8));
+      byCollider.set(c.handle, { type: 'static' }); staticBoxes.push({ x0: w.x - .5, y0: 0, z0: w.z - .5, x1: w.x + .5, y1: 4.2, z1: w.z + .5 }); } }
+  // ---- launch pads: a chrome rim lit from inside, a target of light that pulls inwards ----
+  const padU = { t: { value: 0 } }, padM = new THREE.ShaderMaterial({ uniforms: padU, fog: false,
+    vertexShader: 'varying vec2 vP; void main() { vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+    fragmentShader: `uniform float t; varying vec2 vP; void main() { float r = length(vP) / 1.42, f = fwidth(r);
+      float ring = 1. - smoothstep(.08 - f, .08 + f, abs(fract(r * 3. + t * .9) - .5)), dot_ = 1. - smoothstep(.16 - f, .16 + f, r);
+      vec3 c = vec3(.03, .015, .05) + vec3(1., .24, .66) * ring * (1. - r * .6) * 1.6 + vec3(1., .8, .3) * dot_ * 2.; gl_FragColor = vec4(c, 1.); }` });
+  for (const Pd of PADS) { Pd.g.children[0].visible = false; Pd.rim.geometry = new THREE.TorusGeometry(1.52, .2, 10, 40).rotateX(PI / 2); Pd.rim.scale.set(1, .8, 1); Pd.rim.position.y = 0;
+    Pd.rim.material = new THREE.MeshStandardMaterial({ color: '#e8ecf4', metalness: 1, roughness: .1, emissive: 0x000000 }); neoShine(Pd.rim.material); Pd.mat.material = padM;
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(2.05, 2.15, .08, 6), MAT.dark); base.position.y = .03; base.receiveShadow = true; Pd.g.add(base);
+    for (let k = 0; k < 6; k++) { const a = k / 6 * PI * 2 + PI / 6, l = new THREE.Mesh(new THREE.BoxGeometry(.12, .05, .5), NE.pink); l.position.set(Math.cos(a) * 1.85, .08, Math.sin(a) * 1.85); l.rotation.y = -a; Pd.g.add(l); } }
+  // ---- speed strips in neon ----
+  frameMat.color.set('#20142e'); frameMat.emissive.set('#29e8ff'); frameMat.emissiveIntensity = 1.4;
+  // ---- the gateways (where you bring the other team's flags home): two pylons, a beam, the team's neon ----
+  for (const t of ['blue', 'red']) { const Gt = GATES[t], tn = NE[t], y0 = Gt.y || 0;
+    for (const s of [-1, 1]) { const p = new THREE.Mesh(new RoundedBoxGeometry(1, 3, 1, 2, .12), MAT.chrome); p.position.set(Gt.x, y0 + 1.5, Gt.z + s * 2); p.castShadow = true; scene.add(p);
+      const l = new THREE.Mesh(new THREE.BoxGeometry(1.04, 2.4, .1), tn); l.position.set(Gt.x, y0 + 1.5, Gt.z + s * 1.5); scene.add(l); }
+    const b = new THREE.Mesh(new RoundedBoxGeometry(1.1, 1, 5.2, 2, .14), MAT.dark); b.position.set(Gt.x, y0 + 3.5, Gt.z); b.castShadow = true; scene.add(b);
+    const bl = new THREE.Mesh(new THREE.BoxGeometry(1.14, .12, 4.4), tn); bl.position.set(Gt.x, y0 + 3.2, Gt.z); scene.add(bl); }
+  // ---- beacons over the power stations, a hologram over the middle ----
+  const spin = [];
+  for (const h of HUBS) { const g = new THREE.Group(); g.position.set(h.x, 8, h.z); scene.add(g);
+    const hx = new THREE.Mesh(new THREE.TorusGeometry(2.2, .07, 4, 6), NE.amber); hx.rotation.x = PI / 2; g.add(hx); const hx2 = new THREE.Mesh(new THREE.TorusGeometry(1.4, .05, 4, 6), NE.amber); hx2.rotation.x = PI / 2; hx2.position.y = .7; g.add(hx2);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 5, 8, 24, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffb020').multiplyScalar(.35), transparent: true, opacity: .25, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); beam.position.y = -4; g.add(beam);
+    spin.push([g, .4]); }
+  { const g = new THREE.Group(); g.position.set(0, 10, 0); scene.add(g);
+    for (let k = 0; k < 3; k++) { const o = new THREE.Mesh(new THREE.TorusGeometry(3.2, .06, 6, 64), [NE.cyan, NE.pink, NE.violet][k]); o.scale.set(1, .36, 1); o.rotation.set(PI / 2, 0, k * PI / 3); g.add(o); }
+    g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(.75, 1), NE.white)); spin.push([g, .25]); }
+  // ---- the robot animals' pens: chrome bollards with lights, gaps to walk through ----
+  for (const p of NM.pastures || []) for (let k = 0; k < 14; k++) { if (k % 7 === 0) continue; const a = k / 14 * PI * 2, x = p.x + Math.cos(a) * 8.6, z = p.z + Math.sin(a) * 8.6;
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(.2, .24, .9, 10), MAT.chrome); b.position.set(x, .45, z); b.castShadow = true; scene.add(b); const l = new THREE.Mesh(new THREE.SphereGeometry(.16, 10, 8), NE.mint); l.position.set(x, .98, z); scene.add(l);
+    const c = world.createCollider(RAPIER.ColliderDesc.cuboid(.2, .45, .2).setTranslation(x, .45, z)); byCollider.set(c.handle, { type: 'static' }); }
+  // ---- neon signs on poles round the edge, facing in ----
+  const signTex = (draw, w = 512, h = 256) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.lineCap = g.lineJoin = 'round'; draw(g, w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+  const tube = (g, col, path, lw) => { g.save(); g.shadowColor = col; g.strokeStyle = col; for (const [b, w, a] of [[28, lw * 2.4, .35], [12, lw * 1.5, .7], [0, lw, 1]]) { g.shadowBlur = b; g.lineWidth = w; g.globalAlpha = a; path(); g.stroke(); } g.shadowBlur = 0; g.globalAlpha = 1; g.strokeStyle = '#fff'; g.lineWidth = lw * .4; path(); g.stroke(); g.restore(); };
+  const word = (txt, col, font) => (g, w, h) => { g.font = font || `italic 900 ${h * .5}px "Arial Black", Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; tube(g, col, () => { g.beginPath(); g.strokeText(txt, w / 2, h / 2); }, h * .028); };
+  const SIGNS = [word('NYMBO', '#ff3da8'), word('NEON CITY', '#29e8ff', 'italic 900 100px "Arial Black", Arial, sans-serif'), word('OPEN 24 HRS', '#ffb020', '900 80px "Arial Black", Arial, sans-serif'), word('ATOMIC', '#b45cff'),
+    (g, w, h) => tube(g, '#ffe14a', () => { g.beginPath(); for (let i = 0; i < 10; i++) { const a = i / 10 * PI * 2 - PI / 2, r = i % 2 ? h * .16 : h * .38; g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r); } g.closePath(); }, h * .03),
+    word('PLAY!', '#40ffb0'), word('ROBO DINER', '#ff6a3a', 'italic 900 90px "Arial Black", Arial, sans-serif'), (g, w, h) => { tube(g, '#29e8ff', () => { g.beginPath(); g.moveTo(w * .2, h * .5); g.lineTo(w * .7, h * .5); }, h * .04); tube(g, '#ff3da8', () => { g.beginPath(); g.moveTo(w * .58, h * .25); g.lineTo(w * .8, h * .5); g.lineTo(w * .58, h * .75); }, h * .04); }];
+  const flick = [];
+  { const n = 12; for (let i = 0; i < n; i++) { const a = (i + .5) / n * PI * 2, ca = Math.cos(a), sa = Math.sin(a), k = Math.pow(Math.pow(Math.abs(ca) / MX, 4) + Math.pow(Math.abs(sa) / MZ, 4), -.25), d = k + 7, x = ca * d, z = sa * d, h = rq(9, 15);
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = Math.atan2(-x, -z); scene.add(g); const w = rq(8, 11);
+      for (const s of [-1, 1]) { const pole = new THREE.Mesh(new THREE.CylinderGeometry(.18, .22, h + 30, 8), MAT.steel); pole.position.set(s * w * .3, h / 2 - 15, -.3); g.add(pole); }
+      const back = new THREE.Mesh(new RoundedBoxGeometry(w + .6, w / 2 + .6, .3, 2, .12), MAT.dark); back.position.set(0, h + w / 4, -.35); g.add(back);
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(w, w / 2), new THREE.MeshBasicMaterial({ map: signTex(SIGNS[i % SIGNS.length]), transparent: true, toneMapped: false, fog: false, depthWrite: false })); face.position.set(0, h + w / 4, -.18); g.add(face);
+      if (i % 3 === 1) flick.push(face.material); } }
+  // ---- the city round about: chrome towers with lit windows, neon round their tops, a saucer here and there ----
+  const winTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 64, 128);
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 8; x++) if (R() < .45) { g.fillStyle = ['#ffcf8a', '#9fe8ff', '#ff9ad8', '#fff2d0'][Math.floor(R() * 4)]; g.globalAlpha = .4 + R() * .6; g.fillRect(x * 8 + 2, y * 4 + 1, 4, 2); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const towerM = neoShine(new THREE.MeshStandardMaterial({ color: '#1a1230', metalness: .9, roughness: .25, emissive: '#ffffff', emissiveMap: winTex, emissiveIntensity: 1.3 }));
+  const DEC = {}, put = (m, geo, x, y, z, sx = 1, sy = sx, sz = sx, ry = 0) => { const q = geo.clone(); if (q.attributes.uv && m === 'tower') { const uv = q.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(1, Math.round(sx / 2)), uv.getY(i) * sy / 16); } q.scale(sx, sy, sz); if (ry) q.rotateY(ry); q.translate(x, y, z); (DEC[m] || (DEC[m] = [])).push(q); };
+  const GB = new THREE.BoxGeometry(1, 1, 1), GC = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true), GT = new THREE.TorusGeometry(1, .03, 4, 32).rotateX(PI / 2), GS = new THREE.SphereGeometry(1, 14, 8), GD = new THREE.SphereGeometry(1, 16, 6, 0, PI * 2, 0, PI / 2);
+  const saucer = new THREE.LatheGeometry([[0, .5], [1, .42], [2.2, .12], [2.5, 0], [2, -.2], [.8, -.4], [0, -.45]].map(q => new THREE.Vector2(q[0], q[1])), 20);
+  const neonOf = () => ['pink', 'cyan', 'violet', 'amber'][Math.floor(R() * 4)];
+  for (let ring = 0; ring < 3; ring++) { const n = [22, 26, 30][ring]; for (let i = 0; i < n; i++) { const a = (i + R() * .8) / n * PI * 2, ca = Math.cos(a), sa = Math.sin(a), d = [118, 165, 225][ring] + rq(-12, 12), x = ca * d * 1.15, z = sa * d * .95;
+      const h = rq(18, 45) * (1 + ring * .45), w = rq(6, 11) * (1 + ring * .25), ne = neonOf(), round = R() < .4, y0 = -60;
+      if (round) { put('tower', GC, x, y0 + (h - y0) / 2, z, w / 2, h - y0, w / 2); put('dark', new THREE.CircleGeometry(1, 16).rotateX(-PI / 2), x, h, z, w / 2); put(ne, GT, x, h, z, w / 2 + .1, 6, w / 2 + .1); put(ne, GT, x, h - 3, z, w / 2 + .1, 6, w / 2 + .1); }
+      else { put('tower', GB, x, y0 + (h - y0) / 2, z, w, h - y0, w, a); for (const dy of [-.1, -3]) put(ne, GB, x, h + dy, z, w + .2, .22, w + .2, a); }
+      if (R() < .35) { const s = w * .4; put('chrome', saucer, x, h + 3, z, s, s, s); put(ne, GS, x, h + 3 - .1 * s, z, s * 1.9, .05 * s, s * 1.9); put('chrome', GC, x, h + 1.5, z, .6, 3, .6); }
+      else if (R() < .5) { put('chrome', GC, x, h + 4, z, .25, 8, .25); put(ne, GS, x, h + 8.2, z, .5); }
+      else if (R() < .4) put('chrome', GD, x, h, z, w * .45, w * .3, w * .45); } }
+  const DM = { tower: towerM, chrome: MAT.chrome, dark: MAT.dark, ...NE };
+  for (const k in DEC) { const m = new THREE.Mesh(mergeGeometries(DEC[k].map(g => g.index ? g.toNonIndexed() : g).map(g => { for (const a of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(a)) g.deleteAttribute(a); if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); return g; })), DM[k]); m.matrixAutoUpdate = false; m.frustumCulled = false; scene.add(m); }
+  // flying cars along the skyline
+  const cars = []; for (let i = 0; i < 6; i++) { const g = new THREE.Group(), c = neonOf(); const b = new THREE.Mesh(new RoundedBoxGeometry(3, .8, 1.4, 2, .3), MAT.chrome); g.add(b); const l = new THREE.Mesh(new THREE.BoxGeometry(3.05, .12, 1.45), NE[c]); l.position.y = -.25; g.add(l); const t2 = new THREE.Mesh(new THREE.SphereGeometry(.2, 8, 6), NE.red); t2.position.x = -1.55; g.add(t2);
+    scene.add(g); cars.push({ g, r: rq(120, 200), h: rq(20, 45), w: rq(.04, .09) * (R() < .5 ? -1 : 1), a: R() * PI * 2 }); }
+  // (everything else already standing gets the shine)
+  { const rob = new Set(robots.map(r => r.model.g)); for (const o of scene.children) { if (rob.has(o) || o === dome) continue; o.traverse(q => { for (const m of [].concat(q.material || [])) if (m && m.isMeshStandardMaterial && !m.userData.neoC && !m.isMeshPhysicalMaterial) neoShine(m); }); } }
+  // ---- every frame ----
+  let inRefl = false; const vcam = new THREE.PerspectiveCamera(), cp = V(), cq = new THREE.Quaternion(), fw = V(), up = V(), tg = V(), plane = new THREE.Plane(), clip = new THREE.Vector4(), qv = new THREE.Vector4(), sz = new THREE.Vector2(), BIAS = new THREE.Matrix4().set(.5, 0, 0, .5, 0, .5, 0, .5, 0, 0, .5, .5, 0, 0, 0, 1);
+  { const prevB = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam, rt) => { if (prevB) prevB(r, s, cam, rt); if (inRefl) return; const t = now() / 1000;
+      gridU.t.value = t; swirlU.t.value = t; swirlU.dim.value = portalCool > 0 ? 1 : 0; padU.t.value = t;
+      for (const [g, w] of spin) g.rotation.y = t * w; for (const m of flick) m.opacity = Math.sin(t * 13) + Math.sin(t * 7.3) > 1.6 ? .35 : 1;
+      for (const c of cars) { const a = c.a + t * c.w; c.g.position.set(Math.cos(a) * c.r * 1.15, c.h + Math.sin(t * .6 + c.a) * 1.5, Math.sin(a) * c.r * .95); c.g.rotation.y = -a + (c.w > 0 ? 0 : PI); }
+      cam.getWorldPosition(cp); if (rt || !gm || !slab || window.NEO_NOREFL || perf.level >= 2 || !cam.isPerspectiveCamera || cp.y < .3) { FU.neoRon.value = 0; return; }
+      renderer.getDrawingBufferSize(sz); const w = Math.max(64, Math.round(sz.x * .5)), h = Math.max(64, Math.round(sz.y * .5)); if (RT.width !== w || RT.height !== h) RT.setSize(w, h);
+      cam.getWorldQuaternion(cq); fw.set(0, 0, -1).applyQuaternion(cq); up.set(0, 1, 0).applyQuaternion(cq);
+      vcam.position.set(cp.x, -cp.y, cp.z); vcam.up.set(up.x, -up.y, up.z); tg.set(cp.x + fw.x, -(cp.y + fw.y), cp.z + fw.z); vcam.lookAt(tg); vcam.updateMatrixWorld(); vcam.projectionMatrix.copy(cam.projectionMatrix);
+      FU.neoRM.value.copy(BIAS).multiply(vcam.projectionMatrix).multiply(vcam.matrixWorldInverse);
+      plane.normal.set(0, 1, 0); plane.constant = 0; plane.applyMatrix4(vcam.matrixWorldInverse); clip.set(plane.normal.x, plane.normal.y, plane.normal.z, plane.constant); const pm = vcam.projectionMatrix.elements;
+      qv.set((Math.sign(clip.x) + pm[8]) / pm[0], (Math.sign(clip.y) + pm[9]) / pm[5], -1, (1 + pm[10]) / pm[14]); clip.multiplyScalar(2 / clip.dot(qv)); pm[2] = clip.x; pm[6] = clip.y; pm[10] = clip.z + 1 - .003; pm[14] = clip.w;
+      const pRT = renderer.getRenderTarget(), pAU = renderer.shadowMap.autoUpdate; inRefl = true; slab.visible = false; renderer.shadowMap.autoUpdate = false; FU.neoRon.value = 0;
+      renderer.setRenderTarget(RT); renderer.clear(); renderer.render(scene, vcam); renderer.setRenderTarget(pRT); renderer.shadowMap.autoUpdate = pAU; slab.visible = true; inRefl = false; FU.neoRon.value = 1; }; }
+}
+
+// ============================================================
+// ROBOT ANIMALS (the new look, from Ali's sheet): the cows and sheep in the pastures are little robots now. Rounded
+// shells in their own colours, a black glass visor with two glowing eyes that blink, chrome joints. They behave exactly
+// as before (graze, wander home, kick when carried, get angry): only how they look has changed.
+//   cow: white shell with black patches, a pink muzzle, little horns, ears, a tufted tail
+//   sheep: a cloud of cream wool on a dark robot body, its face a dark helmet with the visor
+// Each is drawn the way the game expects an animal to be: one mesh (its material can glow red when it is angry), four
+// legs that swing from the hip, and the angry face, shown when it breaks loose.
+// ============================================================
+if (NEO && NEOX && !VOLC && !DESERT && !ICEMAP) {
+  const { neoShine, neoRng } = NEOX, PI = Math.PI, G0 = -.69, B0 = G0 - .23; // (G0: where the ground is, under the animal's middle)
+  const vc = (g, c) => { if (g.index) g = g.toNonIndexed(); for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); const col = new THREE.Color(c), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) col.toArray(a, i * 3); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
+  const rb = (w, h, d, r, c, x, y, z) => vc(new RoundedBoxGeometry(w, h, d, 3, r), c).translate(x, y + B0, z);
+  const sp = (r, c, x, y, z, sx = 1, sy = 1, sz = 1) => vc(new THREE.SphereGeometry(r, 14, 10), c).scale(sx, sy, sz).translate(x, y + B0, z);
+  const cy = (r, h, c, x, y, z, ax) => { const g = vc(new THREE.CylinderGeometry(r, r, h, 12), c); if (ax === 'x') g.rotateZ(PI / 2); if (ax === 'z') g.rotateX(PI / 2); return g.translate(x, y + B0, z); };
+  const shellM = () => neoShine(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .32, metalness: .15 }));
+  const chromeM = neoShine(new THREE.MeshStandardMaterial({ color: '#dfe4ec', metalness: 1, roughness: .12 }));
+  const glassM = neoShine(new THREE.MeshStandardMaterial({ color: '#05070c', metalness: .2, roughness: .06 }));
+  const eyeM = new THREE.MeshBasicMaterial({ color: new THREE.Color('#5ad8ff').multiplyScalar(1.8), toneMapped: false });
+  const angryM = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff3a2a').multiplyScalar(1.8), toneMapped: false });
+  const eyeG = new RoundedBoxGeometry(.13, .1, .03, 2, .04), browG = new THREE.BoxGeometry(.17, .04, .03);
+  const W = '#f4f3ee', K = '#1d1e24', PINK = '#f2a2b0', CREAM = '#efe6d2', HORN = '#e8dcb8', WOOL = '#f3eee2', DARK = '#2c2e36';
+  // a face: the visor (black glass), two glowing eyes that blink, and the angry face (red, slanted) that shows when it breaks loose
+  function face(g, x, y, z, w, h) { const vis = new THREE.Mesh(new RoundedBoxGeometry(w, h, .07, 3, .05), glassM); vis.position.set(x, y + B0, z); g.add(vis);
+    const eyes = new THREE.Group(); eyes.position.set(x, y + B0, z + .04); g.add(eyes); for (const s of [-1, 1]) { const e = new THREE.Mesh(eyeG, eyeM); e.position.x = s * w * .24; eyes.add(e); }
+    const f = new THREE.Group(); f.position.copy(eyes.position); f.position.z += .005; for (const s of [-1, 1]) { const b = new THREE.Mesh(browG, angryM); b.position.set(s * w * .24, .02, .01); b.rotation.z = s * .5; f.add(b); } f.visible = false; g.add(f);
+    let blink = 1 + Math.random() * 3; eyes.onBeforeRender = () => { const t = now() / 1000; eyes.visible = !f.visible; eyes.scale.y = (t + blink) % 4 < .12 ? .15 : 1; }; vis.onBeforeRender = () => { eyes.visible = !f.visible; };
+    return f; }
+  function robotLegs(g, mat, pts, c, hoofC, len = .36) { const geo = mergeGeometries([vc(new RoundedBoxGeometry(.26, len - .06, .26, 2, .08), c).translate(0, -(len - .06) / 2, 0), vc(new RoundedBoxGeometry(.3, .1, .3, 2, .04), hoofC).translate(0, -len + .03, 0)]);
+    return pts.map(([x, z]) => { const l = new THREE.Mesh(geo, mat); l.position.set(x, len + G0, z); l.castShadow = true; const j = new THREE.Mesh(new THREE.SphereGeometry(.12, 10, 8), chromeM); l.add(j); g.add(l); return l; }); }
+  function robotCow() { const P = [];
+    P.push(rb(1.0, .74, 1.42, .24, W, 0, .98, -.22)); // the shell
+    for (const [x, y, z, w, h, d] of [[-.5, .98, -.4, .03, .44, .56], [-.5, 1.06, .2, .03, .3, .3], [.5, 1.0, -.1, .03, .5, .62], [.08, 1.355, -.5, .5, .03, .46], [-.18, 1.355, .1, .3, .03, .26]]) P.push(rb(w + .02, h, d, .015, K, x * 1.005, y, z)); // its patches
+    P.push(rb(.72, .58, .6, .2, W, 0, 1.28, .74), rb(.74, .2, .5, .08, K, 0, 1.52, .7), rb(.5, .22, .16, .07, PINK, 0, 1.06, 1.06)); // head, the black top of it, the muzzle
+    P.push(rb(.07, .05, .02, .02, '#7a4a52', -.12, 1.08, 1.15), rb(.07, .05, .02, .02, '#7a4a52', .12, 1.08, 1.15));
+    for (const s of [-1, 1]) { P.push(rb(.24, .12, .16, .05, K, s * .44, 1.42, .72)); P.push(vc(new THREE.ConeGeometry(.05, .18, 8), HORN).translate(s * .22, 1.66 + B0, .7)); }
+    P.push(cy(.035, .42, K, 0, .86, -.95)); P.push(sp(.08, K, 0, .64, -.95)); // (the tail, a tuft at the end)
+    const g = new THREE.Mesh(mergeGeometries(P), shellM()); g.castShadow = true;
+    const nk = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, .14, 14), chromeM); nk.rotation.x = PI / 2; nk.position.set(0, 1.2 + B0, .44); g.add(nk); // the neck joint
+    g.userData.face = face(g, 0, 1.3, 1.045, .6, .26);
+    g.userData.legs = robotLegs(g, g.material, [[-.32, -.66], [.32, -.66], [-.32, .3], [.32, .3]], W, K); return g; }
+  function robotSheep() { const P = [];
+    P.push(rb(.86, .62, 1.1, .22, DARK, 0, .92, -.2)); // the body under the wool
+    const R = neoRng(7); for (let i = 0; i < 34; i++) { const a = R() * PI * 2, b = R() * PI * .62, r = .15 + R() * .07; P.push(sp(r, WOOL, Math.cos(a) * Math.sin(b) * .44, 1.02 + Math.cos(b) * .3, -.22 + Math.sin(a) * Math.sin(b) * .58)); } // the wool: a cloud of puffs
+    P.push(rb(.56, .5, .5, .18, DARK, 0, 1.2, .55)); P.push(sp(.15, WOOL, 0, 1.47, .5), sp(.12, WOOL, -.12, 1.43, .44), sp(.12, WOOL, .12, 1.43, .44)); // the head, a tuft of wool on top
+    for (const s of [-1, 1]) P.push(rb(.26, .1, .14, .05, DARK, s * .36, 1.25, .5).rotateZ(0));
+    const g = new THREE.Mesh(mergeGeometries(P), shellM()); g.material.roughness = .75; g.castShadow = true; // (wool is soft, not shiny)
+    const nk = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, .12, 14), chromeM); nk.rotation.x = PI / 2; nk.position.set(0, 1.12 + B0, .3); g.add(nk);
+    g.userData.face = face(g, 0, 1.2, .81, .46, .22);
+    g.userData.legs = robotLegs(g, g.material, [[-.27, -.52], [.27, -.52], [-.27, .14], [.27, .14]], DARK, '#111216'); return g; }
+  const mk = makeAnimal; makeAnimal = function (kind) { if (kind !== 'cow' && kind !== 'sheep') return mk(kind); const g = kind === 'cow' ? robotCow() : robotSheep(); g.userData.kind = kind; scene.add(g); return g; };
+  for (const e of blocks) if (e.kind === 'animal' && e.mesh && (e.animal === 'cow' || e.animal === 'sheep')) { const old = e.mesh, n = makeAnimal(e.animal); n.position.copy(old.position); n.quaternion.copy(old.quaternion); n.visible = old.visible; scene.remove(old); e.mesh = n; }
+}
+
+// ============================================================
+// THE RUINED FIELD (the classic map in the new look): the old stone things that are not blocks.
+//  - one weathered stone for all of them: worn, streaked by rain, moss thick on whatever faces the sky
+//  - the centre pole: the same pole, its blocks old stone now, the bands tarnished bronze, the plinth's paint faded
+//  - the portals: a ruined stone archway, one side of the arch broken away, a shimmer of light in it
+//  - the gateways (where flags are brought home): a little stone archway in the team's faded colour
+//  - the trampolines: an old round well-head of stone with a glowing rune set in it
+//  - out in the field: ruins built of real blocks (you can knock them down and throw them): archways on columns, a
+//    broken wall with a window, a lone column with its drums lying in the grass
+// ============================================================
+if (NEO && MAP === 'classic' && NEOX) {
+  const { neoRng } = NEOX, R = neoRng(777), rq = (a, b) => a + R() * (b - a), PI = Math.PI;
+  const RN = `float rH3(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+float rN3(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(mix(rH3(i), rH3(i + vec3(1, 0, 0)), f.x), mix(rH3(i + vec3(0, 1, 0)), rH3(i + vec3(1, 1, 0)), f.x), f.y), mix(mix(rH3(i + vec3(0, 0, 1)), rH3(i + vec3(1, 0, 1)), f.x), mix(rH3(i + vec3(0, 1, 1)), rH3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
+`;
+  const cache = new Map();
+  // weathered stone (moss: how much moss grows on it)
+  function stoneM(c = '#8f8b80', moss = 1) { const k = c + moss; if (cache.has(k)) return cache.get(k); const m = new THREE.MeshStandardMaterial({ color: c, roughness: .9, metalness: 0 });
+    m.onBeforeCompile = sh => { sh.vertexShader = 'varying vec3 vRW; varying vec3 vRN;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vRW = (modelMatrix * vec4(transformed, 1.)).xyz; vRN = normalize(mat3(modelMatrix) * objectNormal);');
+      sh.fragmentShader = 'varying vec3 vRW; varying vec3 vRN;\n' + RN + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+  { vec3 w = vRW; float a = rN3(w * 1.9), b = rN3(w * 7.3 + 4.), st = rN3(vec3(w.x * 9., w.y * .8, w.z * 9.));
+    diffuseColor.rgb *= (.76 + .34 * a) * (.9 + .16 * b) * (1. - .2 * smoothstep(.6, .9, st));
+    float ms = smoothstep(.52, .8, vRN.y * .5 + a * .55 + rN3(w * 4.3) * .25) * ${moss.toFixed(2)};
+    diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(.14, .38, .03), vec3(.36, .6, .08), b), ms); }`); };
+    m.customProgramCacheKey = () => 'ruinStone' + moss; cache.set(k, m); return m; }
+  const bronze = new THREE.MeshStandardMaterial({ color: '#7a5a34', metalness: .8, roughness: .5 });
+  const add = (parent, geo, m, x, y, z, ry = 0, rz = 0) => { const q = new THREE.Mesh(geo, m); q.position.set(x, y, z); q.rotation.set(0, ry, rz); q.castShadow = q.receiveShadow = true; parent.add(q); return q; };
+  const RB = (w, h, d, r = .1) => new RoundedBoxGeometry(w, h, d, 2, r);
+  // ---- the centre pole: old stone ----
+  if (MONUMENT.g) MONUMENT.g.traverse(o => { if (!o.isMesh || !o.material || o.material.isMeshBasicMaterial) return; const m = o.material, c = m.color ? m.color.getHex() : 0;
+    if (m.emissive && m.emissive.getHex() === 0x5fe6ff) return; // (the lantern keeps its glow)
+    if (c === 0xe0b23a || c === 0xd9a930) o.material = bronze; else if (c === 0x2f8dff) o.material = stoneM('#6a7c9a', .8); else if (c === 0xff4d40) o.material = stoneM('#9a6a62', .8); else if (c === 0x24262c) return; else o.material = stoneM(c === 0xf3efe6 ? '#c4bdad' : '#a8a396', .35); });
+  // ---- the portals: a ruined archway with a shimmer of light ----
+  const shimU = { t: { value: 0 }, dim: { value: 0 } }, shimM = new THREE.ShaderMaterial({ uniforms: shimU, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+    fragmentShader: `uniform float t, dim; varying vec2 vUv; void main() { vec2 q = vUv - .5; q.y *= .82; float r = length(q) * 2., a = atan(q.y, q.x);
+      float sw = .5 + .5 * sin(a * 3. + r * 8. - t * 2.5), sw2 = .5 + .5 * sin(-a * 4. + r * 13. - t * 4.);
+      vec3 c = mix(vec3(.25, .7, 1.), vec3(.6, .4, 1.), sw) + vec3(.8, 1., .9) * pow(sw2, 6.) * .5 + vec3(1.) * pow(max(1. - r, 0.), 3.) * .7;
+      float al = smoothstep(1., .82, r) * (.35 + .35 * sw) * (1. - dim * .7); gl_FragColor = vec4(c * al, al); }` });
+  for (const Q of PORTALS) { Q.ring.visible = false; Q.disc.visible = false; const g = Q.g, y0 = -2.05; // (g sits at the middle of the doorway, 2.05 up)
+    const sm = stoneM('#aaa497', .55);
+    for (const s of [-1, 1]) { let y = y0; const broken = s > 0;
+      add(g, RB(1.3, .5, 1.3, .08), sm, s * 2.45, y + .25, 0, R() * .2); y += .5;
+      for (let k = 0; k < (broken ? 4 : 6); k++) { const h = rq(.6, .8); add(g, RB(.95, h, .95, .1), sm, s * 2.45 + rq(-.04, .04), y + h / 2, rq(-.04, .04), rq(-.15, .15)); y += h; } }
+    // the arch over the top: stones round a half circle, the right-hand third of it fallen
+    const n = 9; for (let k = 0; k < n; k++) { const a = PI - (k + .5) / n * PI; if (a < .6) continue; const x = Math.cos(a) * 2.45, y = 1.2 + Math.sin(a) * 1.65;
+      add(g, RB(.9, .95, 1, .1), sm, x, y, 0, 0, a - PI / 2 + rq(-.06, .06)); }
+    add(g, RB(.9, .8, .9, .1), sm, 3.3, y0 + .3, 1.2, .5, .3); add(g, RB(.8, .7, .8, .1), sm, 2.6, y0 + .3, -1.4, 1.1, .1); // (the fallen stones)
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.6), shimM); m.position.y = .15; m.renderOrder = 2; g.add(m); }
+  // ---- the gateways: a little archway in the team's faded colour ----
+  for (const t of ['blue', 'red']) { const Gt = GATES[t], y0 = Gt.y || 0, sm = stoneM(t === 'blue' ? '#7d8aa6' : '#a68078', .7), g = new THREE.Group(); g.position.set(Gt.x, y0, Gt.z); scene.add(g);
+    for (const s of [-1, 1]) for (let k = 0; k < 3; k++) add(g, RB(1, 1, 1, .1), sm, rq(-.03, .03), k + .5, s * 2, rq(-.1, .1));
+    for (let k = -2; k <= 2; k++) add(g, RB(1, 1, 1, .1), sm, 0, 3.5, k, rq(-.06, .06)); add(g, RB(1.1, .3, 5.4, .08), bronze, 0, 4.15, 0); }
+  // ---- the trampolines: an old round well-head, a rune glowing in its middle ----
+  const runeT = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); g.fillStyle = '#1a1c18'; g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = '#7fe8ff'; g.shadowColor = '#7fe8ff'; g.shadowBlur = 14; g.lineWidth = 9; g.beginPath(); g.arc(128, 128, 96, 0, 7); g.stroke(); g.lineWidth = 7;
+    g.beginPath(); g.moveTo(128, 60); g.lineTo(128, 196); g.moveTo(84, 110); g.lineTo(128, 64); g.lineTo(172, 110); g.moveTo(92, 160); g.lineTo(128, 124); g.lineTo(164, 160); g.stroke(); // (an arrow pointing up, twice)
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const runeM = new THREE.MeshStandardMaterial({ map: runeT, emissiveMap: runeT, emissive: '#ffffff', emissiveIntensity: 1.2, roughness: .6 });
+  for (const Pd of PADS) { Pd.g.children[0].visible = false; Pd.mat.material = runeM; Pd.rim.geometry = new THREE.TorusGeometry(1.55, .3, 8, 24).rotateX(PI / 2); Pd.rim.material = stoneM('#8d877a', 1).clone(); Pd.rim.material.emissive = new THREE.Color(0); Pd.rim.scale.set(1, .7, 1); Pd.rim.position.y = 0; }
+  // ---- ruins out in the field, built of real blocks ----
+  const DES = {
+    arch: [[-1.5, 0, 0, 'cyl'], [-1.5, 1, 0, 'cyl'], [-1.5, 2, 0, 'octa'], [1.5, 0, 0, 'cyl'], [1.5, 1, 0, 'cyl'], [1.5, 2, 0, 'octa'], [-1.5, 3, 0, 'pillow'], [-.5, 3, 0, 'facet'], [.5, 3, 0, 'pillow'], [1.5, 3, 0, 'halves'], [-.5, 4, 0, 'trap']],
+    archBroken: [[-1.5, 0, 0, 'cyl'], [-1.5, 1, 0, 'cyl'], [-1.5, 2, 0, 'octa'], [1.5, 0, 0, 'cyl'], [-1.5, 3, 0, 'pillow'], [-.5, 3, 0, 'facet'], [2.6, 0, .9, 'cyl'], [.6, 0, 1.6, 'pillow'], [3.4, 0, -.6, 'octa']],
+    wall: [[-1.5, 0, 0, 'band'], [-.5, 0, 0, 'band'], [.5, 0, 0, 'band'], [1.5, 0, 0, 'band'], [-1.5, 1, 0, 'pillow'], [-.5, 1, 0, 'cframe'], [.5, 1, 0, 'diag'], [1.5, 1, 0, 'pillow'], [-1.5, 2, 0, 'halves'], [-.5, 2, 0, 'pillow'], [.5, 2, 0, 'facet'], [-1.5, 3, 0, 'trap'], [1.2, 0, 1.4, 'pillow']],
+    column: [[0, 0, 0, 'octa'], [0, 1, 0, 'cyl'], [0, 2, 0, 'cyl'], [0, 3, 0, 'cyl'], [0, 4, 0, 'dome'], [1.6, 0, .4, 'cyl'], [2.5, 0, -.5, 'cyl']],
+  };
+  const spots = []; const okAt = (x, z) => clearAt(x, z, 3) && Math.hypot(x, z) > 14 && !staticBoxes.some(b => x > b.x0 - 4 && x < b.x1 + 4 && z > b.z0 - 4 && z < b.z1 + 4) && !blocks.some(e => !e.dead && e.spawnPos && Math.hypot(e.spawnPos.x - x, e.spawnPos.z - z) < 5) && !spots.some(q => Math.hypot(q[0] - x, q[1] - z) < 12);
+  for (let k = 0; k < 400 && spots.length < 8; k++) { const x = rq(-MX + 8, MX - 8), z = rq(-MZ + 8, MZ - 8); if (okAt(x, z) && okAt(-x, -z)) { spots.push([x, z]); spots.push([-x, -z]); } }
+  const kinds = ['arch', 'wall', 'column', 'archBroken'];
+  spots.forEach(([x, z], i) => { const D = DES[kinds[Math.floor(i / 2) % kinds.length]], a = R() * PI * 2, c = Math.cos(a), s = Math.sin(a), side = i % 2; // (the two of a pair: the same ruin, turned differently, its stones differently weathered)
+    for (const [u, y, v, m] of (side ? D : D)) { const e = newBlock('prop', V(x + u * c - v * s, y + .5, z + u * s + v * c), { color: new THREE.Color('#c2c5cc').offsetHSL(0, 0, rr(-.05, .05)), anchored: true, rot: new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), -a) });
+      e.neoM = KM[m]; e.neoT = Math.floor(R() * 4); if (NEOX.kitSet) NEOX.kitSet(e); } });
+  ANCH.dirty = true;
+  // ---- every frame ----
+  { const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam, rt) => { if (prev) prev(r, s, cam, rt); shimU.t.value = now() / 1000; shimU.dim.value = portalCool > 0 ? 1 : 0; }; }
+}
 
 // test hooks for the newer bits (headless checks only)
 Object.assign(window.__nymbo, { nbrPose, nbrAntPose, nbrAntRest, nbrHeld, startReplay: () => startReplay(), drawReplay: () => drawReplay(), onPlayerKO: (...a) => onPlayerKO(...a), nymMeshModel, NBR_SWAPU, NBR_HD, NBR_TS, grabBlock: (...a) => grabBlock(...a), freezeRobot: (...a) => freezeRobot(...a), ragdoll: (...a) => ragdoll(...a), get blocks() { return blocks; }, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
