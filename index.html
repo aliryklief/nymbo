@@ -625,11 +625,10 @@ const NM = (() => { const sm = s => s * s * (3 - 2 * s), mir = L => [...L, ...L.
         k = Math.min(k, flatNear(x, z, [...HUBS, ...PORTAL_SPOTS, { x: 0, z: 0, r: 9 }], 5, 5)); return 2.4 * n * k * shapeFade(x, z); },
       top: ['#6a4a2a', '#644628', '#70502e', '#684a2a'], side: ['#6a4a2a', '#5a3e22', '#4e351d', '#6a6a5a', '#5e5e50', '#55574a'],
       tint(x, z, j) { const v = 220 + (j - .5) * 50 | 0; return [v, v - 6, v - 20]; } },
-    train: { mx: 92, mz: 30, frx: 14, frz: 8, fort: { blue: { x: -66, z: -15 }, red: { x: 66, z: 15 } }, portals: [{ x: -30, z: -19 }, { x: 30, z: 19 }], hubs: [{ x: 3.4, z: -15 }, { x: -3.4, z: 15 }],
-      tramps: [{ x: -46, z: -8.5 }, { x: 46, z: 8.5 }, { x: 14, z: -8.5 }, { x: -14, z: 8.5 }], strips: [{ x: -52, z: -20, dx: 1, dz: 0, team: 'blue' }, { x: 52, z: 20, dx: -1, dz: 0, team: 'red' }], noMonument: true, noPasture: true, fog: [110, 320], shaped: true,
-      pits: [[-17, -5, -20, -10], [27, 39, -20, -10], [5, 17, 10, 20], [-39, -27, 10, 20]], pastures: [{ x: 33, z: -15 }, { x: -33, z: 15 }], bridges: [-33, -11, 11, 33],
-      inShape(x, z, m) { const az = Math.abs(z); if (az < 6 + m || az > 24 - m || Math.abs(x) > 88 - m) return false; const cx = ((x % 22) + 22) % 22; if (Math.abs(x) < 52 && (cx < .8 + m || cx > 21.2 - m)) return false;
-        for (const [a, b, c, d] of this.pits) if (x > a - m && x < b + m && z > c - m && z < d + m) return false; return true; },
+    train: { mx: 92, mz: 24, frx: 14, frz: 8, edgeSlow: false, fort: { blue: { x: -68, z: -10.5 }, red: { x: 68, z: 10.5 } }, portals: [{ x: -40, z: -10 }, { x: 40, z: 10 }], noPortals: true, hubs: [{ x: 70, z: -10.5 }, { x: -70, z: 10.5 }],
+      tramps: [], strips: [], noPasture: true, noMonument: true, fog: [110, 320], shaped: true,
+      // each train: a fixed carriage at each end (the forts ride on those) and five carriages in the middle that swing out on their own track (09uf)
+      inShape(x, z, m) { const az = Math.abs(z), ax = Math.abs(x); return az >= 1.5 + m && az <= 19.5 - m && ax >= 52 + m && ax <= 88 - m; },
       top: ['#5a5e6a', '#565a66', '#5e626e', '#585c68'], side: ['#c8ccd8', '#3a6ad8', '#2a5ab8', '#f0f0f4', '#3a3e4a', '#2a2e3a'],
       tint(x, z, j) { const v = 230 + (j - .5) * 16 | 0; return z < 0 ? [v - 40, v - 20, 255] : [255, v - 30, v - 40]; } },
     paint: { mx: 70, mz: 54, fort: { blue: { x: -48, z: 14 }, red: { x: 48, z: -14 } }, shape: { n: 1.6, h: [[5, .08, 0], [3, .03, .5]] },
@@ -954,7 +953,7 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
       const tx = side.clone(); tx.repeat.set(L, 1); tx.needsUpdate = true; const w = new THREE.Mesh(new THREE.PlaneGeometry(L, 6), new LiteMat({ map: tx, roughness: 1 })); w.position.set(sx * MX, -3, cz); w.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; scene.add(w); }
   }
 }
-const onIsland = (x, z) => PLAT ? !!platUnder(x, z) : Math.abs(x) <= MX && Math.abs(z) <= MZ && (!SHAPED || inShape(x, z)); // (portal platforms: over a platform)
+const onIsland = (x, z) => { if (NM && NM.wrapX) x = ((x + MX) % (MX * 2) + MX * 2) % (MX * 2) - MX; if (NM && NM.onIsland) return NM.onIsland(x, z); return PLAT ? !!platUnder(x, z) : Math.abs(x) <= MX && Math.abs(z) <= MZ && (!SHAPED || inShape(x, z)); }; // (portal platforms: over a platform)
 
 // ---- fixed scenery: unit cells for drawing, boxes for colliders ----
 const staticCells = [];   // [x,y,z,color]
@@ -4792,7 +4791,7 @@ function updatePlayerControl(dt) {
   if (NET && NET.client) { const bk = clamp((stopHeld - REVERSE_AFTER) / .35, 0, 1); NET.move(stopped ? -bk : 1); return; } // the host moves your robot
   const p = rPos(P), f = fwdOf(P.yaw);
   const back = clamp((stopHeld - REVERSE_AFTER) / .35, 0, 1); // 0 = stopped, 1 = full reverse
-  const nearEdge = back > 0 ? !onIsland(p.x - f.x * 3, p.z - f.z * 3) && onIsland(p.x, p.z) : !onIsland(p.x + f.x * 3, p.z + f.z * 3) && onIsland(p.x, p.z);
+  const nearEdge = NM && NM.edgeSlow === false ? false : back > 0 ? !onIsland(p.x - f.x * 3, p.z - f.z * 3) && onIsland(p.x, p.z) : !onIsland(p.x + f.x * 3, p.z + f.z * 3) && onIsland(p.x, p.z);
   $('edge').classList.toggle('on', nearEdge && !PLAT); // (portal platforms: no warning glow — the edges are the game there)
   if (P.stack.length === 0) {
     // auto-scoop at zero ammo: loose grey/rubble blocks only, never a piece of your own fort (that would break it)
@@ -10750,21 +10749,21 @@ if (MAP === 'grass') {
 
 // ============================================================
 // TRAIN RACE: the whole match is on the roofs of two trains racing side by side through the countryside. Blue's
-// base rides at the back of one train, red's at the front of the other. Jump the gaps between carriages, run the
-// plank bridges between the trains.
+// base rides at the back of one train, red's at the front of the other. The two trains are on separate tracks:
+// their middle carriages swing apart and back together, so the gap between them keeps changing. Jump it when it's
+// narrow; when it's wide, take one of the two linked trampolines (they throw you straight onto their partner).
 //  - TUNNELS: the horn blows, and a low tunnel sweeps along the carriages. Anyone up on the roof gets knocked flat:
 //    jump down into an open wagon until it's passed!
-//  - COWS ride in a cattle wagon on each train
 //  - PIGEONS sit on the roofs. They swoop down on loose blocks and drop them off the side of the train
 // ============================================================
-const TN = { sp: 42, scen: [], tun: null, tunX: 999, nextT: 35, horn: false, pigeons: [], wheels: [] };
+const TN = { sp: 42, scen: [], tun: null, tunX: 999, nextT: 35, horn: false, pigeons: [], wheels: [], trains: [], pads: [] };
 if (MAP === 'train') {
   for (const o of scene.children) if (o.isInstancedMesh && !o.instanceColor && o !== plainIM && o.material && o.material.color && o.material.color.getHSL({}).l > .8) o.visible = false; // (no clouds down on the fields)
   // ---- the countryside rushing past underneath ----
   { const g = canvasTex(64, 64, g => { g.fillStyle = '#6ab83a'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#5aa832'; for (let k = 0; k < 40; k++) g.fillRect((k * 29) % 64, (k * 17) % 64, 6, 3); g.fillStyle = '#8acb4a'; for (let k = 0; k < 20; k++) g.fillRect((k * 13) % 64, (k * 41) % 64, 3, 3); }, 40, 40);
     TN.groundTex = g; const gm = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: g })); gm.position.y = -11; gm.receiveShadow = true; scene.add(gm);
     const bal = canvasTex(64, 16, g => { g.fillStyle = '#8a8478'; g.fillRect(0, 0, 64, 16); g.fillStyle = '#5a3a22'; for (let k = 0; k < 4; k++) g.fillRect(k * 16 + 2, 0, 6, 16); g.fillStyle = '#c8ccd4'; g.fillRect(0, 3, 64, 2); g.fillRect(0, 11, 64, 2); }, 100, 1);
-    TN.balTex = bal; for (const z of [-15, 15]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1600, 8).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: bal })); m.position.set(0, -10.9, z); scene.add(m); } }
+    TN.balTex = bal; for (const z of [-10.5, 10.5]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1600, 8).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: bal })); m.position.set(0, -10.9, z); scene.add(m); } }
   // things going past: trees, telegraph poles, little houses, cows in fields
   { const trunk = nmMat('#7a5232'), leaf = nmMat('#3a9a3a'), wall = nmMat('#f4ead8'), roof = nmMat('#c84a2a'), pole = nmMat('#5a4030');
     const mk = (kind) => { const g = new THREE.Group();
@@ -10773,43 +10772,84 @@ if (MAP === 'train') {
       else { const w = new THREE.Mesh(new THREE.BoxGeometry(8, 5, 7), wall); w.position.y = 2.5; g.add(w); const r = new THREE.Mesh(new THREE.ConeGeometry(6.4, 3.4, 4), roof); r.position.y = 6.7; r.rotation.y = Math.PI / 4; g.add(r); }
       g.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(g); return g; };
     for (let i = 0; i < 70; i++) { const kind = i % 7 === 0 ? 2 : i % 3 === 0 ? 1 : 0, side = i % 2 ? 1 : -1, z = side * (kind === 1 ? 34 : rr(40, 160)); const g = mk(kind); g.position.set(rr(-300, 300), -11, z); TN.scen.push(g); } }
-  // ---- the trains: carriage sides with windows, wheels, couplings, the engines up front ----
+  // ---- the trains ----
+  // the middle five carriages of each train are one moving body each (they swing out on their own track); the end
+  // carriages (the forts, the hubs) are part of the fixed ground
+  const CARS = [[-51.2, -32.8], [-31.2, -12.8], [-10, 10], [12.8, 31.2], [32.8, 51.2]], ZIN = 1.5, ZOUT = 19.5, ROOF = nmMat('#5a5e6a', { r: .6, m: .3 }), FLOOR = nmMat('#7a5a3a', { r: .9 });
   const blueP = nmMat('#2a6ad8', { r: .4, m: .2 }), redP = nmMat('#d83a2a', { r: .4, m: .2 }), win = nmMat('#bfe4ff', { e: '#6ab0ff', ei: .2, r: .1 }), dark = nmMat('#2a2e38', { r: .5, m: .4 }), steel = nmMat('#9aa2b0', { m: .7, r: .3 });
-  for (const [zc, P_, team] of [[-15, blueP, 'blue'], [15, redP, 'red']]) {
-    // a coloured band along each side, windows, wheels
-    for (const sz of [-1, 1]) { const zz = zc + sz * 9.05; nmBox(0, -1.8, zz, 176, 1.6, .2, P_, { col: false });
-      for (let x = -84; x <= 84; x += 3.2) if (Math.abs(((x % 22) + 22) % 22 - 11) < 9.5 || Math.abs(x) > 52) nmBox(x, -3.6, zz + sz * .02, 1.8, 1.4, .2, win, { col: false }); }
-    for (let x = -82; x <= 82; x += 11) for (const sz of [-1, 1]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, .6, 16), dark); w.rotation.x = Math.PI / 2; w.position.set(x, -9.6, zc + sz * 7); scene.add(w); TN.wheels.push(w); }
-    nmBox(0, -8, zc, 176, 2, 14, dark, { col: false });
-    // the engine at the front
-    const ex = 96; nmBox(ex - 4, -3, zc, 8, 6, 16, P_); nmBox(ex + 2, -4.5, zc, 6, 6, 14, P_, { geo: new RoundedBoxGeometry(6, 6, 14, 3, 2.4) }); nmBox(ex - 4, 1.2, zc, 7, 2.4, 13, dark);
-    for (const sz of [-1, 1]) nmBox(ex - 4, .8, zc + sz * 6.6, 5, 1.4, .2, win, { col: false }); const st = nmBox(ex + 1, 1.4, zc, 1, 1, 1, dark, { geo: new THREE.CylinderGeometry(.9, 1.1, 3, 12) }); TN['stack' + team] = st.position.clone();
+  for (const team of ['blue', 'red']) { const s = team === 'blue' ? -1 : 1, zc = s * (ZIN + ZOUT) / 2, W = ZOUT - ZIN, P_ = team === 'blue' ? blueP : redP;
+    const T = { team, s, zc, off: 0, prev: 0, ph: team === 'blue' ? 0 : 2.1, per: team === 'blue' ? 34 : 27, pits: [] };
+    T.body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0, 0)); T.g = new THREE.Group(); scene.add(T.g);
+    const col = (x, y, z, w, h, d) => { const c = world.createCollider(RAPIER.ColliderDesc.cuboid(w / 2, h / 2, d / 2).setTranslation(x, y, z).setFriction(.9), T.body); byCollider.set(c.handle, { type: 'static' }); };
+    const vis = (x, y, z, w, h, d, m, geo) => { const o = new THREE.Mesh(geo || new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; T.g.add(o); return o; };
+    CARS.forEach(([a, b], i) => { const L = b - a, cx = (a + b) / 2, pit = (team === 'blue' ? i === 1 || i === 3 : i === 1 || i === 3);
+      if (pit) { const px0 = cx - 6, px1 = cx + 6, pz0 = zc - 5, pz1 = zc + 5; T.pits.push([px0, px1, pz0, pz1]);
+        for (const [x0, x1, z0, z1] of [[a, px0, zc - W / 2, zc + W / 2], [px1, b, zc - W / 2, zc + W / 2], [px0, px1, zc - W / 2, pz0], [px0, px1, pz1, zc + W / 2]]) { col((x0 + x1) / 2, -1.2, (z0 + z1) / 2, x1 - x0, 2.4, z1 - z0); vis((x0 + x1) / 2, -.5, (z0 + z1) / 2, x1 - x0, 1, z1 - z0, ROOF); }
+        col(cx, -2.65, zc, 12, .5, 10); vis(cx, -2.65, zc, 12, .5, 10, FLOOR); for (const [x, z, w, d] of [[cx, pz0, 12, .3], [cx, pz1, 12, .3], [px0, zc, .3, 10], [px1, zc, .3, 10]]) vis(x, -1.7, z, w, 1.6, d, dark); }
+      else { col(cx, -1.2, zc, L, 2.4, W); vis(cx, -.5, zc, L, 1, W, ROOF); }
+      // the carriage body under the roof: team colour, a row of windows each side, wheels
+      vis(cx, -5.85, zc, L - .4, 5.5, W - .6, P_); for (const sz of [-1, 1]) vis(cx, -2, zc + sz * (W / 2 - .35), L - .4, 2, .2, P_); for (const sx of [-1, 1]) vis(cx + sx * (L / 2 - .3), -2, zc, .2, 2, W - .6, P_); for (const sz of [-1, 1]) { vis(cx, -1.6, zc + sz * (W / 2 - .1), L, .9, .3, steel); for (let x = a + 2; x < b - 1; x += 3.2) vis(x, -3.6, zc + sz * (W / 2 - .28), 1.8, 1.4, .1, win); }
+      for (const x of [a + 3, b - 3]) for (const sz of [-1, 1]) { const w = vis(x, -9.4, zc + sz * 6, 1, 1, 1, dark, new THREE.CylinderGeometry(1.3, 1.3, .6, 16)); w.rotation.x = Math.PI / 2; TN.wheels.push(w); }
+      for (const sz of [-1, 1]) vis(cx, -.02, zc + sz * (W / 2 - .2), L, .06, .4, new THREE.MeshBasicMaterial({ color: 0xffd400, transparent: true, opacity: .5 })); });
+    TN.trains.push(T); }
+  // the fixed end carriages: bodies, windows and wheels underneath; the engines out front
+  for (const team of ['blue', 'red']) { const s = team === 'blue' ? -1 : 1, zc = s * (ZIN + ZOUT) / 2, W = ZOUT - ZIN, P_ = team === 'blue' ? blueP : redP;
+    for (const sx of [-1, 1]) { const cx = sx * 70; nmBox(cx, -4.8, zc, 35.6, 7.6, W - .6, P_, { col: false }); for (const sz of [-1, 1]) { nmBox(cx, -1.6, zc + sz * (W / 2 - .1), 36, .9, .3, steel, { col: false }); for (let x = cx - 16; x < cx + 17; x += 3.2) nmBox(x, -3.6, zc + sz * (W / 2 - .28), 1.8, 1.4, .1, win, { col: false }); }
+      for (const x of [cx - 14, cx + 14]) for (const sz of [-1, 1]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, .6, 16), dark); w.rotation.x = Math.PI / 2; w.position.set(x, -9.4, zc + sz * 6); scene.add(w); TN.wheels.push(w); } }
+    const ex = 96; nmBox(ex - 4, -3, zc, 8, 6, W - 2, P_); nmBox(ex + 2, -4.5, zc, 6, 6, W - 4, P_, { geo: new RoundedBoxGeometry(6, 6, W - 4, 3, 2.4) }); nmBox(ex - 4, 1.2, zc, 7, 2.4, W - 5, dark);
+    const st = nmBox(ex + 1, 1.4, zc, 1, 1, 1, dark, { geo: new THREE.CylinderGeometry(.9, 1.1, 3, 12) }); TN['stack' + team] = st.position.clone();
     const lamp = new THREE.Mesh(new THREE.CircleGeometry(.9, 16), nmGlow('#fff4c8', 2)); lamp.position.set(ex + 5.05, -3, zc); lamp.rotation.y = Math.PI / 2; scene.add(lamp); }
-  // plank bridges between the two trains
-  const plank = nmMat('#a8784a', { r: .8 }); for (const x of NM.bridges) { nmBox(x, -.25, 0, 3, .5, 12.4, plank); for (const sz of [-1, 1]) nmBox(x + sz * 1.6, .45, 0, .2, .9, 12, steel, { col: false }); }
-  // the open wagons: a floor down inside each one (a safe place when a tunnel comes)
-  for (const [a, b, c, d] of NM.pits) { nmBox((a + b) / 2, -2.65, (c + d) / 2, b - a, .5, d - c, nmMat('#7a5a3a', { r: .9 })); }
+  // where's train roof? (the fixed ends, or the moving middle wherever it's swung to right now)
+  const trainAt = (x, z) => { for (const T of TN.trains) { const z0 = T.zc - (ZOUT - ZIN) / 2 + T.off, z1 = T.zc + (ZOUT - ZIN) / 2 + T.off; if (z < z0 || z > z1) continue;
+      for (const [a, b] of CARS) if (x >= a && x <= b) { for (const [p0, p1, q0, q1] of T.pits) if (x > p0 && x < p1 && z > q0 + T.off && z < q1 + T.off) return null; return T; } } return null; };
+  TN.trainAt = trainAt; NM.onIsland = (x, z) => inShape(x, z) || !!trainAt(x, z);
+  // ---- the linked trampolines: one on each train, each throws you onto its partner ----
+  for (const x of [-42, 42]) { const pair = []; for (const T of TN.trains) { trampoline(x, T.zc - T.s * 6); const Pd = PADS.pop(); staticBoxes.pop(); Pd.g.removeFromParent(); T.g.add(Pd.g); Pd.g.position.y = .08; const o = { T, x, z: T.zc - T.s * 6, Pd }; pair.push(o); TN.pads.push(o); }
+    pair[0].to = pair[1]; pair[1].to = pair[0]; }
+  for (const o of TN.pads) { const ring = new THREE.Mesh(new THREE.TorusGeometry(2.1, .12, 6, 32), nmGlow(o.T.team === 'blue' ? '#5ab4ff' : '#ff6a4a', 2)); ring.rotation.x = Math.PI / 2; ring.position.set(o.x, .2, o.z); o.T.g.add(ring); o.ring = ring; o.base = ring.material.color.clone(); }
   // ammo on the roofs (anything knocked off the train comes back here)
-  for (let i = 0, n = 0; i < 400 && n < 44; i++) { const x = rr(-80, 80), z = (rnd() < .5 ? -1 : 1) * rr(8, 22); if (!inShape(x, z, 1.2) || !clearAt(x, z, 1) || Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 1 && Math.abs(z - F.z) < FORT_RZ + 1)) continue; newBlock('stone', V(x, .6, z), { dims: ammoDims() }); n++; }
+  for (let i = 0, n = 0; i < 600 && n < 40; i++) { const x = rr(-86, 86), z = (rnd() < .5 ? -1 : 1) * rr(3, 18); if (!NM.onIsland(x, z) || !clearAt(x, z, 1) || Object.values(FORT).some(F => Math.abs(x - F.x) < FORT_RX + 1 && Math.abs(z - F.z) < FORT_RZ + 1) || TN.pads.some(o => Math.hypot(x - o.x, z - o.z) < 3)) continue; newBlock('stone', V(x, .6, z), { dims: ammoDims() }); n++; }
   // ---- the tunnel ----
   { const g = new THREE.Group(), stone = nmMat('#7a6a5a', { r: .9 }), arch = nmMat('#5a4a3a', { r: .9 });
     const bodyL = 60; const top = new THREE.Mesh(new THREE.BoxGeometry(bodyL, 8, 70), stone); top.position.set(bodyL / 2, 6.2, 0); g.add(top);
     for (const sz of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(bodyL, 20, 6), stone); w.position.set(bodyL / 2, -4, sz * 32); g.add(w); }
     const face = new THREE.Mesh(new THREE.BoxGeometry(2, 10, 72), arch); face.position.set(0, 6.5, 0); g.add(face); const hill = new THREE.Mesh(new THREE.SphereGeometry(40, 20, 12, 0, 6.3, 0, Math.PI / 2), nmMat('#5aa83a')); hill.scale.set(.9, .5, 1.1); hill.position.set(bodyL / 2, 9, 0); g.add(hill);
     g.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.visible = false; scene.add(g); TN.tun = g; TN.tunL = bodyL; }
-  // ---- pigeons ----
+  // ---- pigeons (they sit on the end carriages) ----
   const pigMesh = () => { const g = new THREE.Group(), gr = nmMat('#8a8e9a', { r: .6 }), nk = nmMat('#5a8a7a', { r: .4 });
     const b = new THREE.Mesh(new RoundedBoxGeometry(.7, .6, 1, 2, .25), gr); b.position.y = .45; g.add(b); const h = new THREE.Mesh(new RoundedBoxGeometry(.4, .4, .4, 2, .15), nk); h.position.set(0, .85, .45); g.add(h);
     const bk = new THREE.Mesh(new THREE.ConeGeometry(.07, .2, 4), nmMat('#e8a83a')); bk.rotation.x = Math.PI / 2; bk.position.set(0, .82, .72); g.add(bk);
     for (const s of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(.12, .4, .7), gr); w.position.set(s * .4, .5, -.05); g.add(w); g.userData['w' + s] = w; const e = new THREE.Mesh(new THREE.SphereGeometry(.05, 6, 4), nmMat('#ff6a2a')); e.position.set(s * .18, .92, .6); g.add(e); }
     const load = new THREE.Mesh(new RoundedBoxGeometry(1, 1, 1, 2, .1), nmMat('#ccc')); load.position.y = -.3; load.scale.setScalar(.8); load.visible = false; g.add(load); g.userData.load = load; scene.add(g); return g; };
-  for (const [x, z] of [[-40, -20], [-10, -8], [20, -21], [40, 20], [10, 8], [-20, 21]]) TN.pigeons.push({ hx: x, hz: z, x, y: 0, z, yaw: 0, st: 'sit', t: rr(3, 8), target: null, got: null, m: pigMesh() });
+  for (const [x, z] of [[-86, -4], [-54, -18], [60, -3], [86, -17]]) for (const g of [1, -1]) TN.pigeons.push({ hx: x * g, hz: z * g, x: x * g, y: 0, z: z * g, yaw: 0, st: 'sit', t: rr(3, 8), target: null, got: null, m: pigMesh() });
+  // ---- the moving carriages: place them each physics step, and carry along whatever's standing on them ----
+  const sm = u => u * u * (3 - 2 * u), offAt = (T, t) => 3 * sm(clamp(.5 + .9 * Math.sin((t / T.per + T.ph) * Math.PI * 2), 0, 1)); // (0 = right next to each other, 3 = swung right out)
+  let simT = 0; const ws0 = world.step.bind(world);
+  world.step = function (...a) {
+    if (typeof RW_LOCK === 'undefined' || !RW_LOCK) simT += world.timestep;
+    for (const T of TN.trains) { T.prev = T.off; T.off = T.s * offAt(T, simT); T.body.setNextKinematicTranslation({ x: 0, y: 0, z: T.off }); }
+    ws0(...a);
+    for (const T of TN.trains) { const dz = T.off - T.prev; if (!dz) continue; const z0 = T.zc - (ZOUT - ZIN) / 2 + T.off - .4, z1 = T.zc + (ZOUT - ZIN) / 2 + T.off + .4;
+      for (const r of robots) { if (!r.body || (r.state !== 'play' && r.state !== 'rag') || r.vineArc) continue; const p = r.body.translation(); if (Math.abs(p.x) > 51.6 || p.z < z0 || p.z > z1 || p.y < -3.4 || p.y > 2.6) continue; r.body.setTranslation({ x: p.x, y: p.y, z: p.z + dz }, true); }
+      for (const e of blocks) { if (e.dead || !e.body || e.holder || e.kind === 'animal') continue; const t = e.body.translation(); if (Math.abs(t.x) > 51.6 || t.z < z0 || t.z > z1 || t.y < -3 || t.y > 4) continue;
+        if (e.anchored || e.body.isSleeping()) { e.body.setTranslation({ x: t.x, y: t.y, z: t.z + dz }, false); if (e.anchored) e.drawn = false; continue; }
+        const lv = e.body.linvel(), vz = dz / world.timestep; if (Math.abs(lv.z - vz) < 2.5 && Math.abs(lv.y) < 2) e.body.setLinvel({ x: lv.x, y: lv.y, z: vz }, true); } } };
   NMX.upd.push(dt => {
+    for (const T of TN.trains) T.g.position.z = T.off;
     // the world rushes past
     TN.groundTex.offset.x += TN.sp * dt / 40; TN.balTex.offset.x += TN.sp * dt / 16;
     for (const g of TN.scen) { g.position.x -= TN.sp * dt; if (g.position.x < -320) g.position.x += 640; }
     for (const w of TN.wheels) w.rotation.y -= TN.sp * dt / 1.3;
     if (Math.random() < dt * 6) for (const t of ['blue', 'red']) { const p = TN['stack' + t]; if (p) fxDebris(V(p.x, p.y + 1.6, p.z), 0xe8e8e8, 2, 2); }
+    for (const r of robots) { const A = r.vineArc; if (!A) continue; if (r.state !== 'play' || !r.body) { r.vineArc = null; continue; } A.t += dt; const k = Math.min(1, A.t / A.T), hs = k * k * (3 - 2 * k); // (the flight itself: a fixed arc)
+      r.body.setTranslation({ x: A.from.x + (A.to.x - A.from.x) * hs, y: A.from.y + (A.to.y - A.from.y) * k + 6 * Math.sin(k * Math.PI), z: A.from.z + (A.to.z - A.from.z) * hs }, true); r.body.setLinvel({ x: 0, y: k < 1 ? 0 : -2, z: 0 }, true); r.pt = null; r.grounded = false;
+      if (k >= 1) { r.vineArc = null; r.jumps = 0; } }
+    // the linked trampolines: land on one and it throws you onto its partner (wherever that train has swung to)
+    for (const o of TN.pads) { const px = o.x, pz = o.z + o.T.off; o.ring.material.color.copy(o.base).multiplyScalar(.8 + .3 * Math.sin(NMX.t * 5));
+      for (const r of robots) { if (r.state !== 'play' || !r.body || r.vineArc || (r.padLock || 0) > now()) continue; const q = rPos(r), lv = r.body.linvel(); if (Math.hypot(q.x - px, q.z - pz) > 1.7 || q.y > 1.6 || lv.y > 2) continue;
+        const to = o.to, tz = to.z + to.T.s * offAt(to.T, simT + 1.4); r.vineArc = { from: q.clone(), to: V(to.x + rr(-1.5, 1.5) + (to.x > 0 ? -4 : 4), 1.1, tz + to.T.s * 2.5), t: 0, T: 1.4 }; r.padLock = now() + 2600;
+        r.jumps = 0; r.grounded = false; r.padT = 2.9; r.model.sq = -.35; r.model.sqv = 7; o.Pd.sqv = -9; sfx('pad', V(px, .5, pz)); fxBurst(V(px, .6, pz), 0x7ae8ff, 1.6, .3); } }
+    for (const o of TN.pads) { o.Pd.sqv += (-o.Pd.sq * 120 - o.Pd.sqv * 9) * dt; o.Pd.sq += o.Pd.sqv * dt; o.Pd.top.position.y = Math.min(0, o.Pd.sq * .1); }
     // tunnels: a horn, then one sweeps along the carriages from the front to the back
     if (match.state === 'play') TN.nextT -= dt;
     if (TN.nextT <= 3.5 && !TN.horn && TN.tunX > 500) { TN.horn = true; bigToast('TUNNEL! GET DOWN IN A WAGON!', 'red'); sfx('whistle', V(60, 0, 0)); }
@@ -10822,28 +10862,30 @@ if (MAP === 'train') {
     for (const Pg of TN.pigeons) { Pg.t -= dt; const U = Pg.m.userData;
       if (Pg.st === 'sit') { Pg.x = Pg.hx; Pg.z = Pg.hz; Pg.y = 0; if (Pg.t <= 0 && match.state === 'play') { Pg.t = rr(4, 9); let best = null, bd = 18; for (const e of blocks) { if (e.kind !== 'stone' || e.dead || e.holder || !e.body || e.anchored || e.live) continue; const t = e.body.translation(); if (t.y < -1) continue; const d = Math.hypot(t.x - Pg.x, t.z - Pg.z); if (d < bd) { bd = d; best = e; } } if (best) { Pg.st = 'go'; Pg.target = best; } } }
       else if (Pg.st === 'go') { const e = Pg.target; if (!e || e.dead || e.holder || !e.body) { Pg.st = 'back'; continue; } const t = e.body.translation(), dx = t.x - Pg.x, dy = t.y + .6 - Pg.y, dz = t.z - Pg.z, d = Math.hypot(dx, dy, dz), k = Math.min(1, 10 * dt / d);
-        Pg.x += dx * k; Pg.y += dy * k + (d > 3 ? 4 * dt : 0); Pg.z += dz * k; Pg.yaw = Math.atan2(dx, dz); if (d < 1) { Pg.got = { kind: e.kind, color: e.color.clone(), dims: e.dims.clone() }; destroyBlock(e); U.load.material.color.copy(Pg.got.color); U.load.visible = true; Pg.st = 'carry'; Pg.dz = Math.sign(Pg.z) * 32; } }
+        Pg.x += dx * k; Pg.y += dy * k + (d > 3 ? 4 * dt : 0); Pg.z += dz * k; Pg.yaw = Math.atan2(dx, dz); if (d < 1) { Pg.got = { kind: e.kind, color: e.color.clone(), dims: e.dims.clone() }; destroyBlock(e); U.load.material.color.copy(Pg.got.color); U.load.visible = true; Pg.st = 'carry'; Pg.dz = Math.sign(Pg.z) * 30; } }
       else if (Pg.st === 'carry') { const dz = Pg.dz - Pg.z; Pg.z += Math.sign(dz) * Math.min(Math.abs(dz), 9 * dt); Pg.y = Math.min(6, Pg.y + 3 * dt); Pg.yaw = Math.sign(dz) > 0 ? 0 : Math.PI;
         const e = nmHitBy(V(Pg.x, Pg.y, Pg.z), 1.4); if (e || Math.abs(dz) < .5) { const g = Pg.got; Pg.got = null; U.load.visible = false; newBlock(g.kind, V(Pg.x, Pg.y - .8, Pg.z), { color: '#' + g.color.getHexString(), dims: g.dims }); if (e) koPop(V(Pg.x, Pg.y, Pg.z), 'COO!', '#fff'); Pg.st = 'back'; } }
       else { const dx = Pg.hx - Pg.x, dy = 0 - Pg.y, dz = Pg.hz - Pg.z, d = Math.hypot(dx, dy, dz); if (d < .3) { Pg.st = 'sit'; Pg.t = rr(4, 9); } else { const k = Math.min(1, 9 * dt / d); Pg.x += dx * k; Pg.y += dy * k; Pg.z += dz * k; Pg.yaw = Math.atan2(dx, dz); } }
       Pg.m.position.set(Pg.x, Pg.y, Pg.z); Pg.m.rotation.y = Pg.yaw; const fl = Pg.st === 'sit' ? 0 : Math.sin(NMX.t * 26) * .9; U['w-1'].rotation.z = -fl; U.w1.rotation.z = fl; }
   });
-}
-// bots: cross to the other train by a plank bridge, and hop the gaps between carriages
-if (MAP === 'train') {
+  // ---- bots: cross to the other train by a linked trampoline (or jump it when the gap's narrow); hop the carriage gaps; duck into a wagon for tunnels ----
   const side = z => z < 0 ? -1 : 1;
-  const trainWay = (p, g) => { const ps = Math.abs(p.z) < 6.2 ? 0 : side(p.z), gs = side(g.z); if (ps === gs) return null;
-    let bx = NM.bridges[0], bd = 1e9; for (const x of NM.bridges) { const d = Math.abs(p.x - x) + Math.abs(g.x - x); if (d < bd) { bd = d; bx = x; } }
-    if (ps === 0) return V(bx, p.y, gs * 9.5); if (Math.abs(p.x - bx) > .9 || Math.abs(p.z) > 8.2) return V(bx, p.y, ps * 7.6); return V(bx, p.y, gs * 9.5); };
   { const uaT = updateAI; updateAI = function (r, dt) {
-      if (!canMove(r) || !r.ai.goal) return uaT(r, dt);
-      const p = rPos(r); let w = trainWay(p, r.ai.goal);
-      if ((TN.horn || TN.tunX < 500) && Math.abs(p.x) < 58 && (TN.tunX > 500 || p.x > TN.tunX - 12)) { let best = null, bd = 1e9; for (const [a, b, c, d] of NM.pits) { const cx = (a + b) / 2, cz = (c + d) / 2, dd = Math.hypot(cx - p.x, cz - p.z); if (side(cz) === side(p.z) && dd < bd) { bd = dd; best = V(cx, p.y, cz); } } if (best && p.y > -1.2) w = best; }
+      if (!canMove(r) || !r.ai.goal || r.vineArc) return uaT(r, dt);
+      const p = rPos(r), g = r.ai.goal; let w = null;
+      if (side(p.z) !== side(g.z) && Math.abs(p.z) > 1) { const mine = TN.trains.find(T => T.s === side(p.z)), other = TN.trains.find(T => T !== mine), gap = Math.abs(mine.off) + Math.abs(other.off) + 3;
+        if (false) { w = V(p.x + Math.sign(g.x - p.x) * 2, p.y, side(g.z) * 6); if (Math.abs(p.z) < 4.5 && r.grounded && r.jumps === 0) r.jumpReq = true; }
+        else { let best = null, bd = 1e9; for (const o of TN.pads) { if (o.T !== mine) continue; const d = Math.abs(p.x - o.x) + Math.abs(g.x - o.x); if (d < bd) { bd = d; best = o; } } if (best) w = V(best.x, p.y, best.z + mine.off); } }
+      if ((TN.horn || TN.tunX < 500) && Math.abs(p.x) < 58 && (TN.tunX > 500 || p.x > TN.tunX - 12)) { let best = null, bd = 1e9; for (const T of TN.trains) for (const [a, b, c, d] of T.pits) { const cx = (a + b) / 2, cz = (c + d) / 2 + T.off, dd = Math.hypot(cx - p.x, cz - p.z); if (side(cz) === side(p.z) && dd < bd) { bd = dd; best = V(cx, p.y, cz); } } if (best && p.y > -1.2) w = best; }
       if (w) { r.ai.via = w; uaT(r, dt); r.ai.via = null; } else uaT(r, dt);
       if (p.y < -1.2 && r.grounded && !TN.horn && TN.tunX > 500 && Math.random() < dt * 3) r.jumpReq = true; // (climb back out of a wagon)
-      if (r.grounded && r.wantSpeed > .5 && r.want.lengthSq() > .1) { const d = r.want.clone().normalize(); const a = V(p.x + d.x * 1.3, 0, p.z + d.z * 1.3), b = V(p.x + d.x * 3.2, 0, p.z + d.z * 3.2);
-        if (!inShape(a.x, a.z, 0) && inShape(b.x, b.z, 0) && Math.abs(a.z) > 6.4) r.jumpReq = true; } }; }
+      if (r.grounded && r.wantSpeed > .5 && r.want.lengthSq() > .1 && p.y > -1) { const d = r.want.clone().normalize(), a = V(p.x + d.x * 1.3, 0, p.z + d.z * 1.3), b = V(p.x + d.x * 3.2, 0, p.z + d.z * 3.2);
+        if (!NM.onIsland(a.x, a.z) && NM.onIsland(b.x, b.z)) r.jumpReq = true; } }; }
 }
+// bots only go for ammo on the train they're on
+if (MAP === 'train') { const pa = pickAmmo; pickAmmo = function (r, p, ...a) { const s = p.z < 0 ? -1 : 1, hid = [];
+    for (const e of blocks) { if (e.dead || !e.body) continue; const t = e.body.translation(); if ((t.z < 0 ? -1 : 1) !== s) { e.dead = true; hid.push(e); } }
+    try { return pa(r, p, ...a); } finally { for (const e of hid) e.dead = false; } }; }
 
 // ============================================================
 // PAINT WARS: a bright white arena. PAINT BLOCKS (white with splats) turn up at six paint taps. Carry one and you
@@ -12405,7 +12447,7 @@ if (HD && DESERT) { const st0 = sideTint; sideTint = function (cx, cz) { return 
     box.insertBefore(row, box.firstChild); }; }
 
 // test hooks for the newer bits (headless checks only)
-Object.assign(window.__nymbo, { startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
+Object.assign(window.__nymbo, { TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
 
 document.getElementById('loading').hidden = true;
 </script>
