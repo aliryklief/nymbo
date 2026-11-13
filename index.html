@@ -4047,7 +4047,7 @@ document.querySelectorAll('[data-bot]').forEach(b => { b.classList.toggle('on', 
 // The arm as he modelled it (raised) is used when it points up; a mirror image of it (armpit and shoulder swapped)
 // when it points down, so it looks just as clean both ways. Team colour is painted on by the graphics card.
 const nbrArr = (b64, T) => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new T(u.buffer); };
-const NBR_S = .37 / NBR.ballR, NBR_HANG = .2, NBR_SINK = .06; let NBR_EAR = null, NBR_EARIN = null, NBR_EARM = null;
+const NBR_S = .37 / NBR.ballR, NBR_HANG = .2, NBR_SINK = .06; let NBR_TOP = null, NBR_TOPM = null, NBR_EAR = null, NBR_EARIN = null, NBR_EARM = null;
 const NBR_PARTS = (() => {
   const P = nbrArr(NBR.P, Float32Array), N = nbrArr(NBR.N, Float32Array), U = nbrArr(NBR.U, Float32Array), J = nbrArr(NBR.J, Uint8Array), W = nbrArr(NBR.W, Float32Array), I = nbrArr(NBR.I, Uint16Array);
   const armOf = v => { for (let k = 0; k < 3; k++) if (W[v * 4 + k] > .5 && J[v * 4 + k] > 0) return J[v * 4 + k]; return 0; }, inBody = v => J[v * 4 + 3] === 1;
@@ -4068,24 +4068,54 @@ const NBR_PARTS = (() => {
 // textures straight from his file (no pixel reading on the phone: the colour swap happens in the shader)
 const nbrTexOf = (() => { const T = {}; return k => { if (T[k]) return T[k]; const t = new THREE.Texture(), im = new Image(); t.flipY = false; if (k === 'neutral') t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; im.onload = () => { t.image = im; t.needsUpdate = true; }; im.src = NBR.tex[k]; return T[k] = t; }; })();
 const NBR_MAT = {};
-function nbrMat(col) { if (NBR_MAT[col]) return NBR_MAT[col];
+function nbrMat(col, body) { const key = col + (body ? 'b' : ''); if (NBR_MAT[key]) return NBR_MAT[key];
   const M = new THREE.MeshStandardMaterial({ color: 0xffffff, map: nbrTexOf('neutral'), normalMap: nbrTexOf('normal'), roughnessMap: nbrTexOf('mr'), metalness: 0, roughness: 1 });
   const team = { value: new THREE.Color(col) }, mask = { value: nbrTexOf('mask') };
-  M.onBeforeCompile = sh => { sh.uniforms.nbTeam = team; sh.uniforms.nbMask = mask; sh.fragmentShader = 'uniform vec3 nbTeam; uniform sampler2D nbMask;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n { float k = texture2D(nbMask, vMapUv).r; diffuseColor.rgb = mix(diffuseColor.rgb, nbTeam * (.35 + .9 * diffuseColor.r), k); }'); };
-  M.customProgramCacheKey = () => 'nymbot'; return NBR_MAT[col] = M; }
+  // (body only: the eyes painted on his visor are wiped off, because real eyes that change go on top; the face painted on
+  //  the back of his head is wiped off too, back to plain white, and a flat colour circle goes there instead)
+  const FACE = body ? `if (vNbP.y > .245 && abs(vNbP.x) < .16) {
+      if (vNbP.z > .06 && abs(vNbP.x) < .125 && vNbP.y > .262 && vNbP.y < .368) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.012), smoothstep(.0, .12, k + max(0., diffuseColor.b - .1)));
+      else if (vNbP.z < -.06) { float dk = 1. - smoothstep(.25, .6, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.9), max(dk, k)); } }` : '';
+  M.onBeforeCompile = sh => { sh.uniforms.nbTeam = team; sh.uniforms.nbMask = mask;
+    if (body) sh.vertexShader = 'varying vec3 vNbP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vNbP = position;');
+    sh.fragmentShader = (body ? 'varying vec3 vNbP;\n' : '') + 'uniform vec3 nbTeam; uniform sampler2D nbMask;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n { float k = texture2D(nbMask, vMapUv).r; diffuseColor.rgb = mix(diffuseColor.rgb, nbTeam * (.35 + .9 * diffuseColor.r), k); ' + FACE + ' }');
+    if (body) sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n if (vNbP.y > .245 && abs(vNbP.x) < .16 && vNbP.z < -.06) roughnessFactor = .45;').replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n if (vNbP.y > .245 && abs(vNbP.x) < .16 && vNbP.z < -.06) normal = nonPerturbedNormal;'); };
+  M.customProgramCacheKey = () => 'nymbot' + (body ? 'b' : ''); return NBR_MAT[key] = M; }
+// the face: real eyes that sit on his visor (and change: happy or angry, focused while carrying, X X when bonked, a blink
+// now and then), plus a flat colour circle on the back of his head. Each piece is laid right onto his surface.
+let NBR_FACE = null;
+function nbrFace() { if (NBR_FACE) return NBR_FACE;
+  const hit = new THREE.Mesh(NBR_PARTS.body, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })), rc = new THREE.Raycaster(), o = new THREE.Vector3(), d = new THREE.Vector3();
+  hit.updateMatrixWorld(true);
+  const onto = (x, y, sz) => { o.set(x, y, sz * 1); d.set(0, 0, -sz); rc.set(o, d); const h = rc.intersectObject(hit)[0]; return h ? { p: h.point.clone(), n: h.face.normal.clone() } : { p: new THREE.Vector3(x, y, sz * .19), n: new THREE.Vector3(0, 0, sz) }; };
+  // back circle: a disc bent to follow the back of his head
+  const disc = new THREE.RingGeometry(0, .082, 64, 16), pa = disc.attributes.position; disc.rotateY(Math.PI);
+  for (let i = 0; i < pa.count; i++) { const q = onto(pa.getX(i), .315 + pa.getY(i), -1); pa.setXYZ(i, q.p.x, q.p.y, q.p.z - .004); }
+  disc.computeVertexNormals();
+  return NBR_FACE = { disc, onto }; }
+function nbrEyes(rig, happy, ec, eyesN, eyesF, eyesX) { const F = nbrFace(), eye = new THREE.MeshBasicMaterial({ color: new THREE.Color(ec).multiplyScalar(1.6), toneMapped: false });
+  const put = (geo, x, y, grp, rz = 0) => { const q = F.onto(x, y, 1), m = new THREE.Mesh(geo, eye); m.position.copy(q.p).addScaledVector(q.n, .005); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), q.n); m.rotateZ(rz); grp.add(m); };
+  const G = NBR_EYEG || (NBR_EYEG = { arc: new THREE.TorusGeometry(.024, .0065, 8, 24, Math.PI), bar: new RoundedBoxGeometry(.062, .015, .006, 2, .005), flat: new RoundedBoxGeometry(.054, .011, .006, 2, .004), x: new RoundedBoxGeometry(.046, .01, .006, 2, .004) });
+  for (const s of [-1, 1]) {
+    if (happy) put(G.arc, s * .052, .304, eyesN); else put(G.bar, s * .052, .318, eyesN, s * .42); // (angry: \ / , the inner ends low)
+    put(G.flat, s * .05, .312, eyesF, s * (happy ? -.12 : .42));
+    for (const a of [-1, 1]) put(G.x, s * .05, .314, eyesX, a * .78); }
+  rig.add(eyesN, eyesF, eyesX); eyesF.visible = eyesX.visible = false; }
+let NBR_EYEG = null;
 function nymMeshModel(color, happy) {
   const g = new THREE.Group(), hex = '#' + new THREE.Color(color).getHexString(), skin = nbrMat(hex), spare = new LiteMat({ color }), mats = [spare, spare, spare, skin]; // (the game's look tricks repaint mats[0..2]: they get a spare, his paint stays)
   const ball = new THREE.Group(); ball.position.y = -.58; g.add(ball); { const wh = new THREE.MeshStandardMaterial({ color: 0xf6f7fa, roughness: .3 }), pt = new THREE.MeshStandardMaterial({ color, roughness: .35 }); for (const [geo, mm] of [[NB.ball, wh], [NB.band, pt], [NB.badge, pt], [NB.badgeIn, pt]]) ball.add(new THREE.Mesh(geo, mm)); }
   const hub = new THREE.Group(); hub.position.y = -.58; g.add(hub); const torso = new THREE.Group(); g.add(torso);
-  const rig = new THREE.Group(); rig.scale.setScalar(NBR_S); rig.position.y = -.58 - NBR.ballC * NBR_S; torso.add(rig); rig.add(new THREE.Mesh(NBR_PARTS.body, skin));
+  const rig = new THREE.Group(); rig.scale.setScalar(NBR_S); rig.position.y = -.58 - NBR.ballC * NBR_S; torso.add(rig); rig.add(new THREE.Mesh(NBR_PARTS.body, nbrMat(hex, true))); rig.add(new THREE.Mesh(nbrFace().disc, new THREE.MeshStandardMaterial({ color, roughness: .35 })));
   // ears: a metal cylinder with the team colour inside
   { const metal = NBR_EARM || (NBR_EARM = new THREE.MeshStandardMaterial({ color: 0xc8ccd4, metalness: .6, roughness: .3 })), inner = new THREE.MeshStandardMaterial({ color, roughness: .35 });
     for (const sx of [-1, 1]) { const c = new THREE.Mesh(NBR_EAR || (NBR_EAR = new THREE.CylinderGeometry(.056, .056, .03, 32).rotateZ(Math.PI / 2)), metal); c.position.set(sx * .2, .321, 0); rig.add(c);
       const d = new THREE.Mesh(NBR_EARIN || (NBR_EARIN = new THREE.CylinderGeometry(.04, .04, .032, 32).rotateZ(Math.PI / 2)), inner); d.position.set(sx * .2015, .321, 0); rig.add(d); } }
   const arms = NBR_PARTS.arms.map(A => { const p = new THREE.Group(); p.position.copy(A.sh).multiplyScalar(NBR_S).add(rig.position); torso.add(p);
     const holder = new THREE.Group(); holder.scale.setScalar(NBR_S); holder.quaternion.setFromUnitVectors(A.down, new THREE.Vector3(Math.sign(A.side) * Math.sin(.12), -Math.cos(.12), 0)); p.add(holder); // (the game's rest pose: hanging down)
-    const dn = new THREE.Mesh(A.gDown, skin), upm = new THREE.Mesh(A.gUp, skin); dn.position.copy(A.down).multiplyScalar(-NBR_SINK); /* (the hanging arm tucks its top into the shoulder, so the shoulder stays round) */ upm.quaternion.setFromUnitVectors(A.up, A.down); holder.add(dn, upm); p.userData.nb = { dn, upm, A }; return p; });
-  const head = new THREE.Group(); torso.add(head); const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); head.add(eyesN, eyesF, eyesX);
+    const dn = new THREE.Mesh(A.gDown, skin), upm = new THREE.Mesh(A.gUp, skin); dn.position.copy(A.down).multiplyScalar(-NBR_SINK); /* (the hanging arm tucks its top into the shoulder, so the shoulder stays round) */ upm.quaternion.setFromUnitVectors(A.up, A.down); const top = new THREE.Mesh(NBR_TOP || (NBR_TOP = new THREE.SphereGeometry(.088, 32, 20)), NBR_TOPM || (NBR_TOPM = new THREE.MeshStandardMaterial({ color: 0xf0f1f4, roughness: .35 }))); top.position.copy(A.down).multiplyScalar(-NBR_SINK + .03); dn.add(top); top.position.sub(dn.position); /* (the rounded top of the hanging arm: his shoulder) */
+    holder.add(dn, upm); p.userData.nb = { dn, upm, A }; return p; });
+  const head = new THREE.Group(); torso.add(head); const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); nbrEyes(rig, happy, happy ? 0x2a8cff : 0xff2a1a, eyesN, eyesF, eyesX);
   const held = new THREE.Mesh(cubeGeo, new LiteMat({ roughness: .7 })); held.position.y = NBR.top * NBR_S + rig.position.y + .55; held.visible = false; g.add(held);
   g.traverse(o => { if (o.isMesh) o.castShadow = false; });
   const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 })); blob.renderOrder = 1; scene.add(blob);
@@ -4097,7 +4127,7 @@ function nymMeshModel(color, happy) {
 const nbrV = new THREE.Vector3();
 function nbrPose(m) { for (const a of m.arms) { const U = a.userData.nb; nbrV.set(0, -1, 0).applyEuler(a.rotation); const up = nbrV.y > 0; U.upm.visible = up; U.dn.visible = !up; } }
 if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMeshModel(color, happy); };
-  const sRB = syncRobot; syncRobot = function (r, ...a) { const out = sRB(r, ...a); if (r.model && r.model.rigged) { const A = r.model.arms; if (r.carryUp > 0 || (r.stack.length && r.state === 'play')) A[0].rotation.x = A[1].rotation.x; nbrPose(r.model); } return out; }; } // (he holds and throws with both arms)
+  const sRB = syncRobot; syncRobot = function (r, ...a) { const out = sRB(r, ...a); if (r.model && r.model.rigged) { const A = r.model.arms, M = r.model; M.blink = (M.blink ?? Math.random() * 4) - clamp(lastDt || 1 / 60, 0, .1); if (M.blink < -.12) M.blink = 2.5 + Math.random() * 3.5; { const sy = M.blink < 0 ? .2 : 1; for (const c of M.eyesN.children) c.scale.y = sy; for (const c of M.eyesF.children) c.scale.y = sy; } /* (a blink now and then) */ if (r.carryUp > 0 || (r.stack.length && r.state === 'play')) A[0].rotation.x = A[1].rotation.x; nbrPose(r.model); } return out; }; } // (he holds and throws with both arms)
 
 // ============================================================
 // RULES: thrown blocks hitting robots, bombs, freeze, homing, flags and scoring
