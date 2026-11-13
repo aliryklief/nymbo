@@ -4134,6 +4134,37 @@ function nbrAntLight(r) { const N = r.model.ant; if (!N) return; const f = r.sta
   if (N.lit === key) { if (key) N.glow.scale.setScalar(.045 + .008 * Math.sin(performance.now() / 160)); return; } N.lit = key;
   if (!key) { N.tipM.color.set(0xdfe3ea); N.tipM.emissive.set(0); N.tipM.emissiveIntensity = 0; N.glow.visible = false; return; }
   const c = new THREE.Color(key === 'twin' ? 0xffffff : key); N.tipM.color.copy(c); N.tipM.emissive.copy(c); N.tipM.emissiveIntensity = 3; N.glow.material.color.copy(c); N.glow.visible = true; }
+// reload: after a throw the next block is zapped into place by the antenna: a crackling bolt from the tip to his head,
+// and the block flickers in from nothing with a flash
+const NBR_ZAPM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), _zA = new THREE.Vector3(), _zB = new THREE.Vector3();
+function nbrZap(r, dt) { const M = r.model, N = M.ant; if (!N) return;
+  if (r.heldHideT) M.zapPend = true;
+  if (M.zapPend && M.held.visible && !r.heldHideT) { M.zapPend = false; M.zapT = .32; const c = new THREE.Color(M.mats[0].color || 0xffffff).lerp(new THREE.Color(0xffffff), .45); if (!M.zapBolt) { M.zapBolt = new THREE.Mesh(new THREE.BufferGeometry(), NBR_ZAPM.clone()); M.zapBolt.frustumCulled = false; M.zapBolt.renderOrder = 3; scene.add(M.zapBolt);
+      M.zapFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: nbrGlowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); M.zapFlash.renderOrder = 3; scene.add(M.zapFlash); }
+    M.zapBolt.material.color.copy(c).multiplyScalar(2); M.zapFlash.material.color.copy(c); sfx('reload', rPos(r)); }
+  if (!(M.zapT > 0)) { if (M.zapBolt) M.zapBolt.visible = M.zapFlash.visible = false; return; }
+  M.zapT -= dt; const t = 1 - Math.max(0, M.zapT) / .32, on = M.zapT > 0 && r.state === 'play';
+  M.zapBolt.visible = M.zapFlash.visible = on; if (!on) { M.held.scale.setScalar(1); return; }
+  // the block: grows in with a little overshoot, flickering at first
+  const e = t < .7 ? (t / .7) * 1.12 : 1.12 - .12 * (t - .7) / .3; M.held.scale.setScalar(Math.max(.05, e)); M.held.visible = t > .25 || Math.random() > .4;
+  // the bolt: a jagged little lightning strip from the antenna tip down to the block, re-drawn every frame
+  N.tip.getWorldPosition(_zA); M.held.getWorldPosition(_zB); nbrBolt(M.zapBolt, _zA, _zB, .05); M.zapBolt.geometry.attributes.position.needsUpdate = true; M.zapBolt.material.opacity = 1 - t * .6;
+  M.zapFlash.position.copy(_zB); M.zapFlash.scale.setScalar(1.2 * (1 - t) + .25); M.zapFlash.material.opacity = 1 - t; }
+// picking up works the other way round: the block on the ground is zapped up into his antenna (a bolt from the block to
+// the tip while it shrinks away into it), then it's zapped back out onto his head like a reload
+const NBR_SUCK = [];
+if (BOT_KIND === 'ball') { const gB = grabBlock; grabBlock = function (r, e) { const from = e && e.body && !e.dead ? (() => { const t = e.body.translation(); return new THREE.Vector3(t.x, t.y, t.z); })() : null, ok = gB(r, e);
+    if (ok && from && r.model && r.model.ant && e.kind !== 'flag' && e.kind !== 'animal') { const g = new THREE.Mesh(cubeGeo, r.model.held.material); g.position.copy(from); scene.add(g); const b = new THREE.Mesh(new THREE.BufferGeometry(), NBR_ZAPM.clone()); b.frustumCulled = false; b.renderOrder = 3; scene.add(b);
+      b.material.color.set(0xbfe6ff).multiplyScalar(2); NBR_SUCK.push({ r, g, b, from, t: 0 }); r.heldHideT = now() + 280; r.model.held.visible = false; sfx('reload', from); }
+    return ok; }; }
+function nbrSuck(dt) { for (let i = NBR_SUCK.length - 1; i >= 0; i--) { const S = NBR_SUCK[i]; S.t += dt / .26; const done = S.t >= 1 || !S.r.model.ant;
+    if (done) { scene.remove(S.g, S.b); S.b.geometry.dispose(); NBR_SUCK.splice(i, 1); continue; }
+    S.r.model.ant.tip.getWorldPosition(_zA); const k = S.t * S.t; S.g.position.copy(S.from).lerp(_zA, k); S.g.scale.setScalar(Math.max(.05, 1 - k)); S.g.rotation.y += dt * 12;
+    nbrBolt(S.b, S.g.position, _zA, .05); S.b.material.opacity = 1 - S.t * .5; } }
+function nbrBolt(mesh, A, B, w) { const pos = [], seg = 7, cam = camera.position, pts = []; for (let i = 0; i <= seg; i++) { const p = A.clone().lerp(B, i / seg); if (i && i < seg) p.add(new THREE.Vector3(rr(-1, 1), rr(-.6, .6), rr(-1, 1)).multiplyScalar(.13)); pts.push(p); }
+  for (let i = 0; i < seg; i++) { const a = pts[i], b = pts[i + 1], d = b.clone().sub(a), side = d.cross(cam.clone().sub(a)).normalize().multiplyScalar(w);
+    pos.push(a.x - side.x, a.y - side.y, a.z - side.z, a.x + side.x, a.y + side.y, a.z + side.z, b.x + side.x, b.y + side.y, b.z + side.z, a.x - side.x, a.y - side.y, a.z - side.z, b.x + side.x, b.y + side.y, b.z + side.z, b.x - side.x, b.y - side.y, b.z - side.z); }
+  mesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); }
 let NBR_ARMW = null; const NBR_ARML = .04; const NBR_ARMG = (() => { const R1 = .06, R2 = .078, L = .28, pts = [];
   for (let i = 0; i <= 12; i++) { const a = Math.PI / 2 * i / 12; pts.push(new THREE.Vector2(R2 * Math.sin(a), -L - R2 * Math.cos(a))); }
   for (let i = 1; i < 10; i++) { const t = i / 10, e = t * t * (3 - 2 * t); pts.push(new THREE.Vector2(R2 + (R1 - R2) * e, -L * (1 - t))); }
@@ -4188,7 +4219,7 @@ function nymMeshModel(color, happy) {
     sock.add(new THREE.Mesh(NBR_ANTG.ring, metal), new THREE.Mesh(NBR_ANTG.dome, new THREE.MeshStandardMaterial({ color, roughness: .35 })));
     const piv = new THREE.Group(); sock.add(piv); const stalk = new THREE.Mesh(NBR_ANTG.stalk, metal); piv.add(stalk); const tipM = new THREE.MeshStandardMaterial({ color: 0xdfe3ea, roughness: .25 }), tip = new THREE.Mesh(NBR_ANTG.tip, tipM); tip.position.y = NBR_ANTG.len; piv.add(tip);
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: nbrGlowTex(), color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, sizeAttenuation: false })); glow.scale.setScalar(.045); /* (the same size on screen near or far: you can spot a flag carrier from across the map) */ glow.visible = false; tip.add(glow);
-    ant = { piv, tipM, glow, lit: null, o: new THREE.Vector2(), v: new THREE.Vector2(), last: null, lv: new THREE.Vector3() }; }
+    ant = { piv, tip, tipM, glow, lit: null, o: new THREE.Vector2(), v: new THREE.Vector2(), last: null, lv: new THREE.Vector3() }; }
   g.traverse(o => { if (o.isMesh) o.castShadow = false; });
   const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 })); blob.renderOrder = 1; scene.add(blob);
   const ice = new THREE.Mesh(new RoundedBoxGeometry(1.45, 2.4, 1.35, 2, .14), iceOverlayMat); ice.visible = false; g.add(ice);
@@ -4204,7 +4235,7 @@ if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMesh
       const tx = thr || flag ? -1.57 : block ? -2.95 : 0, tz = block && !thr ? .2 : .03; /* (all in one plane: arms go up over his head through the front, and a throw brings them straight forward and down) */ M.armX = (M.armX || 0) + (tx - (M.armX || 0)) * k; M.armZ = (M.armZ ?? .12) + (tz - (M.armZ ?? .12)) * k;
       A.forEach((a, i) => a.rotation.set(M.armX, 0, (i ? 1 : -1) * M.armZ));
       if (flag) { M.held.position.copy(M.heldFront); M.held.scale.setScalar(.72); } else { M.held.position.copy(M.heldTop); M.held.scale.setScalar(1); }
-      nbrAntLight(r);
+      nbrAntLight(r); nbrZap(r, dt); if (r === robots[0]) nbrSuck(dt);
       // the antenna: a spring that lags behind when he speeds up, turns or stops, and wobbles back
       const N = M.ant; if (N) { const p = M.g.position; if (N.last) { const vx = (p.x - N.last.x) / dt, vz = (p.z - N.last.z) / dt, ax = (vx - N.lv.x) / dt, az = (vz - N.lv.z) / dt, ry = M.g.rotation.y, c = Math.cos(ry), sn = Math.sin(ry), lx = ax * c - az * sn, lz = ax * sn + az * c; N.lv.set(vx, 0, vz);
           const fx = clamp(lx, -45, 45) * .9, fz = clamp(lz, -45, 45) * .9; N.v.x += (-90 * N.o.x - 3.2 * N.v.x - fx) * dt; N.v.y += (-90 * N.o.y - 3.2 * N.v.y - fz) * dt; N.o.x += N.v.x * dt; N.o.y += N.v.y * dt; N.o.clampScalar(-.7, .7);
@@ -12729,7 +12760,7 @@ if (HD && DESERT) { const st0 = sideTint; sideTint = function (cx, cz) { return 
     box.insertBefore(row, box.firstChild); }; }
 
 // test hooks for the newer bits (headless checks only)
-Object.assign(window.__nymbo, { nbrPose, nymMeshModel, NBR_PARTS, nbrMat, NBR_SWAPU, NBD, nbBuild, nymModel, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
+Object.assign(window.__nymbo, { nbrPose, nymMeshModel, NBR_PARTS, nbrMat, NBR_SWAPU, grabBlock: (...a) => grabBlock(...a), get blocks() { return blocks; }, NBD, nbBuild, nymModel, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
 
 document.getElementById('loading').hidden = true;
 </script>
