@@ -4173,6 +4173,7 @@ function nymMeshModel(color, happy) {
     holder.add(dn, upm); p.userData.nb = { dn, upm, A }; return p; });
   const head = new THREE.Group(); up.add(head); const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); const scr = nbrEyes(rig, happy, happy ? 0x3aa2ff : 0xff3322, eyesN, eyesF, eyesX);
   const held = new THREE.Mesh(cubeGeo, new LiteMat({ roughness: .7 })); held.position.y = NBR.top * NBR_S + rig.position.y + .55; held.visible = false; g.add(held);
+  if (NBR_B2) { const sh = arms[0].position, shY = up.position.y + up.scale.y * sh.y; held.position.set(0, shY - .02, .6); held.scale.setScalar(.72); } // (held out in front, between his hands)
   g.traverse(o => { if (o.isMesh) o.castShadow = false; });
   const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 })); blob.renderOrder = 1; scene.add(blob);
   const ice = new THREE.Mesh(new RoundedBoxGeometry(1.45, 2.4, 1.35, 2, .14), iceOverlayMat); ice.visible = false; g.add(ice);
@@ -4183,7 +4184,7 @@ function nymMeshModel(color, happy) {
 const nbrV = new THREE.Vector3();
 function nbrPose(m) { for (const a of m.arms) { const U = a.userData.nb; nbrV.set(0, -1, 0).applyEuler(a.rotation); const up = nbrV.y > 0; U.upm.visible = up; U.dn.visible = !up; } }
 if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMeshModel(color, happy); };
-  const sRB = syncRobot; syncRobot = function (r, ...a) { const out = sRB(r, ...a); if (r.model && r.model.rigged) { const A = r.model.arms, M = r.model; M.scr.visible = !M.seeThru; M.ball.position.y -= NBR_BDROP; M.hub.position.y = M.ball.position.y; /* (the smaller ball still sits on the ground) */ if (r.carryUp > 0 || (r.stack.length && r.state === 'play')) A[0].rotation.x = A[1].rotation.x; nbrPose(r.model); } return out; }; } // (he holds and throws with both arms)
+  const sRB = syncRobot; syncRobot = function (r, ...a) { const out = sRB(r, ...a); if (r.model && r.model.rigged) { const A = r.model.arms, M = r.model; M.scr.visible = !M.seeThru; M.ball.position.y -= NBR_BDROP; M.hub.position.y = M.ball.position.y; /* (the smaller ball still sits on the ground) */ if (NBR_B2) { /* (just two moves: holding something, both arms swing forward to hold it out in front; empty-handed, they hang at his sides) */ const carry = (r.stack.length > 0 && r.state === 'play') || r.carryUp > 0, dt = clamp(lastDt || 1 / 60, 1 / 240, 1 / 30); M.armX = (M.armX || 0) + ((carry ? -1.57 : 0) - (M.armX || 0)) * Math.min(1, dt * 14); A.forEach((a, i) => { a.rotation.set(M.armX, 0, (i ? 1 : -1) * .03); }); } else if (r.carryUp > 0 || (r.stack.length && r.state === 'play')) A[0].rotation.x = A[1].rotation.x; nbrPose(r.model); } return out; }; } // (he holds and throws with both arms)
 
 // ============================================================
 // RULES: thrown blocks hitting robots, bombs, freeze, homing, flags and scoring
