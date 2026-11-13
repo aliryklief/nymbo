@@ -4191,16 +4191,14 @@ function nbrBurst(r, dt) { const M = r.model, N = M.ant; if (!N) return; const n
   N.tip.getWorldPosition(_zA); for (const b of M.burst) { _zB.copy(_zA).addScaledVector(b.userData.d, .4 + .6 * Math.min(1, t * 3)); nbrBolt(b, _zA, _zB, .045); b.material.opacity = 1 - t; }
   M.burstF.position.copy(_zA); M.burstF.scale.setScalar(3.2 * (1 - t) + .4); M.burstF.material.opacity = 1 - t; }
 let NBR_ARMW = null; const NBR_ARML = .04; const NBR_ARMG = (() => { const R1 = .06, R2 = .078, L = .28, pts = [];
-  // (no perfect shapes: the ends are flattened, squarish domes, not half-balls, and the arm is a little oval across)
-  const sq = (c, e) => Math.sign(c) * Math.pow(Math.abs(c), e);
-  for (let i = 0; i <= 12; i++) { const a = Math.PI / 2 * i / 12; pts.push(new THREE.Vector2(R2 * sq(Math.sin(a), .8), -L - .8 * R2 * sq(Math.cos(a), .8))); }
+  for (let i = 0; i <= 12; i++) { const a = Math.PI / 2 * i / 12; pts.push(new THREE.Vector2(R2 * Math.sin(a), -L - R2 * Math.cos(a))); }
   for (let i = 1; i < 10; i++) { const t = i / 10, e = t * t * (3 - 2 * t); pts.push(new THREE.Vector2(R2 + (R1 - R2) * e, -L * (1 - t))); }
-  for (let i = 0; i <= 14; i++) { const a = Math.PI / 2 * i / 14; pts.push(new THREE.Vector2(R1 * sq(Math.cos(a), .75), .72 * R1 * sq(Math.sin(a), .75))); }
+  for (let i = 0; i <= 14; i++) { const a = Math.PI / 2 * i / 14; pts.push(new THREE.Vector2(R1 * Math.cos(a), R1 * Math.sin(a))); }
   pts[pts.length - 1].x = 0; pts[0].x = 0;
   const rAt = y => { const t = Math.min(1, Math.max(0, 1 + y / L)), e = t * t * (3 - 2 * t); return R2 + (R1 - R2) * e; };
   // lean: the bottom sits out where it always did, the top tucks in toward the body
   const lean = (g, sd) => { const pa = g.attributes.position; for (let i = 0; i < pa.count; i++) { const y = pa.getY(i), t = Math.min(1, Math.max(0, -y / (L + R2))); pa.setX(i, pa.getX(i) + sd * NBR_ARML * t); } g.computeVertexNormals(); return g; };
-  const ys = -.235, rr = rAt(ys) + .0025, mk = sd => { const arm = lean(new THREE.LatheGeometry(pts, 48).scale(1, 1, .86), sd), st = new THREE.CylinderGeometry(rr, rr, .013, 48, 1, true).scale(1, 1, .86); st.translate(0, ys, 0); lean(st, sd); return { arm, stripe: st }; };
+  const ys = -.235, rr = rAt(ys) + .0025, mk = sd => { const arm = lean(new THREE.LatheGeometry(pts, 48), sd), st = new THREE.CylinderGeometry(rr, rr, .013, 48, 1, true); st.translate(0, ys, 0); lean(st, sd); return { arm, stripe: st }; };
   return { [-1]: mk(-1), [1]: mk(1) }; })();
 function nbrEyes(rig, happy, ec, eyesN, eyesF, eyesX) { const F = nbrFace();
   if (!NBR_SCRG) { const gx = 28, gy = 12, x0 = NBR_B2 ? -.15 : -.131, x1 = -x0, y0 = NBR_B2 ? .25 : .257, y1 = NBR_B2 ? .395 : .373, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, pos = [], uv = [], idx = [];
