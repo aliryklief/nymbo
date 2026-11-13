@@ -4079,7 +4079,7 @@ function nbrMat(col, body) { const key = col + (body ? 'b' : ''); if (NBR_MAT[ke
   // (body only: the eyes painted on his visor are wiped off, because real eyes that change go on top; the face painted on
   //  the back of his head is wiped off too, back to plain white, and a flat colour circle goes there instead)
   // (Meshy body: his whole head is one clean white shell: no mottled patches, nothing painted on the back; only the visor stays black)
-  const FACE = body && NBR_B2 ? `if (vNbP.y > .214 && abs(vNbP.x) < .19) { vec2 vq = abs(vec2(vNbP.x / .158, (vNbP.y - .3225) / .081)); float vd = pow(pow(vq.x, 2.5) + pow(vq.y, 2.5), 1. / 2.5) - 1.; diffuseColor.rgb = (vNbP.z > 0. && vd < 0.) ? vec3(.012) : (nbSwap > .5 ? nbTeam * .93 : vec3(.93)); } else if (abs(vNbP.x) > .17 && vNbP.y > -.02 && vNbP.y < .2) { float dk = 1. - smoothstep(.25, .6, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.93), dk); }` : body ? `if (vNbP.y > .245 && abs(vNbP.x) < .16) {
+  const FACE = body && NBR_B2 ? `if (vNbP.y > .214 && abs(vNbP.x) < .19) { vec2 vq = abs(vec2(vNbP.x, vNbP.y - .3225)) - vec2(.158 - .064, .081 - .064); float vd = length(max(vq, 0.)) - .064; diffuseColor.rgb = (vNbP.z > 0. && vd < 0.) ? vec3(.012) : (nbSwap > .5 ? nbTeam * .93 : vec3(.93)); } else if (abs(vNbP.x) > .17 && vNbP.y > -.02 && vNbP.y < .2) { float dk = 1. - smoothstep(.25, .6, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.93), dk); }` : body ? `if (vNbP.y > .245 && abs(vNbP.x) < .16) {
       if (vNbP.z > .06 && abs(vNbP.x) < .125 && vNbP.y > .262 && vNbP.y < .368) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.012), smoothstep(.0, .12, k + max(0., diffuseColor.b - .1)));
       else if (vNbP.z < -.06) { float dk = 1. - smoothstep(.25, .6, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.9), max(dk, k)); } }` : '';
   M.onBeforeCompile = sh => { sh.uniforms.nbTeam = team; sh.uniforms.nbMask = mask; sh.uniforms.nbSwap = NBR_SWAPU;
@@ -4105,7 +4105,7 @@ const NBR_SCR = {}, NBR_FW = 256, NBR_FH = 114;
 function nbrScreenTex(col, happy) { const key = col + happy; if (NBR_SCR[key]) return NBR_SCR[key];
   const c = document.createElement('canvas'); c.width = NBR_FW * 4; c.height = NBR_FH * 2; const g = c.getContext('2d'), W = NBR_FW, H = NBR_FH;
   const frame = (k, draw) => { const ox = (k % 4) * W, oy = Math.floor(k / 4) * H; g.save(); g.translate(ox, oy);
-    g.beginPath(); for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a), x = W / 2 + (W / 2 - 1) * Math.sign(c) * Math.pow(Math.abs(c), 2 / 2.5), y = H / 2 + (H / 2 - 1) * Math.sign(sn) * Math.pow(Math.abs(sn), 2 / 2.5); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.closePath(); /* (a squircle: rounded all round, no straight lines) */ g.clip();
+    g.beginPath(); g.roundRect(1, 1, W - 2, H - 2, (H / 2 - 1) * .79); /* (a rounded rectangle: big soft corners, flat top and bottom) */ g.clip();
     const bg = g.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, W * .6); bg.addColorStop(0, '#0c1424'); bg.addColorStop(1, '#020309'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
     g.fillStyle = 'rgba(255,255,255,.035)'; for (let y = 0; y < H; y += 4) g.fillRect(0, y, W, 1.5); // (screen lines)
     g.strokeStyle = g.fillStyle = col; g.shadowColor = col; g.shadowBlur = 14; g.lineCap = 'round'; g.lineJoin = 'round'; draw(g, W, H);
@@ -4114,15 +4114,15 @@ function nbrScreenTex(col, happy) { const key = col + happy; if (NBR_SCR[key]) r
   // the same eyes as the classic robots: happy arcs for the good guys, angry slanted bars for the baddies
   // small eyes (like his Meshy picture): happy little arcs for the good guys; for the baddies, curved tapering slashes,
   // fat in the middle and pointed at the ends, tilted so the inner ends sit low
-  const ex = happy ? [W * .28, W * .72] : [W * .33, W * .67], ey = H * (happy ? .5 : .47), bar = (x, y, w, h, rot) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, h * .45); g.fill(); g.restore(); };
+  const ex = happy ? [W * .28, W * .72] : [W * .3, W * .7], ey = H * (happy ? .5 : .47), bar = (x, y, w, h, rot) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, h * .45); g.fill(); g.restore(); };
   const happyE = (r, th) => () => { g.lineWidth = th; for (const x of ex) { g.beginPath(); g.arc(x, ey + r * .5, r, Math.PI, Math.PI * 2); g.stroke(); } };
   const slash = (x, y, len, th, rot, bow) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); const L = len / 2; g.moveTo(-L, 0); g.quadraticCurveTo(0, bow - th, L, 0); g.quadraticCurveTo(0, bow + th, -L, 0); g.fill(); g.restore(); };
-  const angryE = (len, th, rot) => () => ex.forEach((x, i) => slash(x, ey, len, th, (i ? -1 : 1) * rot, 5));
+  const angryE = (len, th, rot) => () => { g.lineWidth = th; ex.forEach((x, i) => { const s = i ? -1 : 1, L = len / 2, d = len * .3; g.beginPath(); g.moveTo(x - s * L, ey - d); g.quadraticCurveTo(x - s * L * .1, ey + d * .9, x + s * L, ey + d * .75); g.stroke(); }); };
   const shut = (w, h, rot = 0) => () => ex.forEach((x, i) => bar(x, ey + 3, w, h, (i ? -1 : 1) * rot));
   const dizzy = (rot, sp) => () => { ex.forEach((x, i) => { for (const a of [-1, 1]) bar(x, ey, 40, 9, a * .78 + (i ? -1 : 1) * rot); });
   };
   if (happy) { frame(0, happyE(20, 8.5)); frame(1, shut(40, 6)); frame(2, () => ex.forEach((x, i) => bar(x, ey, 44, 8, (i ? 1 : -1) * .15))); frame(3, shut(40, 6)); }
-  else { frame(0, angryE(78, 12, .515)); frame(1, shut(44, 6, .3)); frame(2, angryE(72, 9, .515)); frame(3, shut(40, 6, .3)); }
+  else { frame(0, angryE(52, 8, 0)); frame(1, shut(44, 6, .3)); frame(2, angryE(50, 6, 0)); frame(3, shut(40, 6, .3)); }
   frame(4, dizzy(.12, 0)); frame(5, dizzy(-.12, 2.1)); frame(6, dizzy(.04, 4.2)); frame(7, () => {});
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return NBR_SCR[key] = t; }
 let NBR_SCRG = null;
