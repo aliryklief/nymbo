@@ -4126,6 +4126,7 @@ let NBR_SCRG = null;
 // the arm: one smooth rounded piece (round on top, so it's his shoulder too), with a colour stripe
 // the arm: one smooth piece, narrower at the shoulder and wider at the hand (like a mitten), its top leaning in against
 // the body so the shoulder is covered; a colour stripe round it
+let NBR_ANTG = { ring: new THREE.TorusGeometry(.017, .0055, 12, 32).rotateX(Math.PI / 2), dome: new THREE.SphereGeometry(.017, 24, 12).scale(1, .35, 1), stalk: new THREE.CylinderGeometry(.0045, .006, .125, 12).translate(0, .0625, 0), tip: new THREE.SphereGeometry(.016, 20, 14), len: .127 };
 let NBR_ARMW = null; const NBR_ARML = .04; const NBR_ARMG = (() => { const R1 = .06, R2 = .078, L = .28, pts = [];
   for (let i = 0; i <= 12; i++) { const a = Math.PI / 2 * i / 12; pts.push(new THREE.Vector2(R2 * Math.sin(a), -L - R2 * Math.cos(a))); }
   for (let i = 1; i < 10; i++) { const t = i / 10, e = t * t * (3 - 2 * t); pts.push(new THREE.Vector2(R2 + (R1 - R2) * e, -L * (1 - t))); }
@@ -4173,18 +4174,33 @@ function nymMeshModel(color, happy) {
     holder.add(dn, upm); p.userData.nb = { dn, upm, A }; return p; });
   const head = new THREE.Group(); up.add(head); const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); const scr = nbrEyes(rig, happy, happy ? 0x3aa2ff : 0xff3322, eyesN, eyesF, eyesX);
   const held = new THREE.Mesh(cubeGeo, new LiteMat({ roughness: .7 })); held.position.y = NBR.top * NBR_S + rig.position.y + .55; held.visible = false; g.add(held);
-  if (NBR_B2) { const sh = arms[0].position, shY = up.position.y + up.scale.y * sh.y; held.position.set(0, shY - .02, .6); held.scale.setScalar(.72); } // (held out in front, between his hands)
+  const heldTop = held.position.clone(), heldFront = new THREE.Vector3(); if (NBR_B2) { const sh = arms[0].position; heldFront.set(0, up.position.y + up.scale.y * sh.y - .02, .6); } // (blocks ride on his head; a flag is held out in front, between his hands)
+  // the antenna: a little silver socket set into the back of his head, up near the top, a thin springy stalk and a small glowing tip
+  let ant = null; if (NBR_B2) { const metal = NBR_EARM, dir = new THREE.Vector3(0, .82, -.57).normalize(), base = new THREE.Vector3(0, .321, 0).add(new THREE.Vector3(0, .181 * dir.y, .2 * dir.z)), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    const sock = new THREE.Group(); sock.position.copy(base); sock.quaternion.copy(q); rig.add(sock);
+    sock.add(new THREE.Mesh(NBR_ANTG.ring, metal), new THREE.Mesh(NBR_ANTG.dome, new THREE.MeshStandardMaterial({ color, roughness: .35 })));
+    const piv = new THREE.Group(); sock.add(piv); const stalk = new THREE.Mesh(NBR_ANTG.stalk, metal); piv.add(stalk); const tip = new THREE.Mesh(NBR_ANTG.tip, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .6, roughness: .3 })); tip.position.y = NBR_ANTG.len; piv.add(tip);
+    ant = { piv, o: new THREE.Vector2(), v: new THREE.Vector2(), last: null, lv: new THREE.Vector3() }; }
   g.traverse(o => { if (o.isMesh) o.castShadow = false; });
   const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 })); blob.renderOrder = 1; scene.add(blob);
   const ice = new THREE.Mesh(new RoundedBoxGeometry(1.45, 2.4, 1.35, 2, .14), iceOverlayMat); ice.visible = false; g.add(ice);
   scene.add(g);
-  return { blob, g, torso, ball, hub, arms, legs: [], head, kind: 'ball', sq: 0, sqv: 0, pr: 0, prv: 0, held, heldPlainMat: held.material, eyesN, eyesF, eyesX, scr, ice, mats, step: 0, nym: true, rigged: true };
+  return { blob, g, torso, ball, hub, arms, legs: [], head, kind: 'ball', sq: 0, sqv: 0, pr: 0, prv: 0, held, heldPlainMat: held.material, eyesN, eyesF, eyesX, scr, ice, mats, step: 0, nym: true, rigged: true, heldTop, heldFront, ant };
 }
 // every frame: pick the raised look or the hanging look for each arm, whichever way it points
 const nbrV = new THREE.Vector3();
 function nbrPose(m) { for (const a of m.arms) { const U = a.userData.nb; nbrV.set(0, -1, 0).applyEuler(a.rotation); const up = nbrV.y > 0; U.upm.visible = up; U.dn.visible = !up; } }
 if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMeshModel(color, happy); };
-  const sRB = syncRobot; syncRobot = function (r, ...a) { const out = sRB(r, ...a); if (r.model && r.model.rigged) { const A = r.model.arms, M = r.model; M.scr.visible = !M.seeThru; M.ball.position.y -= NBR_BDROP; M.hub.position.y = M.ball.position.y; /* (the smaller ball still sits on the ground) */ if (NBR_B2) { /* (just two moves: holding something, both arms swing forward to hold it out in front; empty-handed, they hang at his sides) */ const carry = (r.stack.length > 0 && r.state === 'play') || r.carryUp > 0, dt = clamp(lastDt || 1 / 60, 1 / 240, 1 / 30); M.armX = (M.armX || 0) + ((carry ? -1.57 : 0) - (M.armX || 0)) * Math.min(1, dt * 14); A.forEach((a, i) => { a.rotation.set(M.armX, 0, (i ? 1 : -1) * .03); }); } else if (r.carryUp > 0 || (r.stack.length && r.state === 'play')) A[0].rotation.x = A[1].rotation.x; nbrPose(r.model); } return out; }; } // (he holds and throws with both arms)
+  const sRB = syncRobot; syncRobot = function (r, ...a) { const out = sRB(r, ...a); if (r.model && r.model.rigged) { const A = r.model.arms, M = r.model; M.scr.visible = !M.seeThru; M.ball.position.y -= NBR_BDROP; M.hub.position.y = M.ball.position.y; /* (the smaller ball still sits on the ground) */ if (NBR_B2) { /* (blocks: held up on his head as always; a flag: held out in front with both arms; a throw: both arms swing forward) */
+      const play = r.state === 'play', flag = play && r.stack[0] && r.stack[0].kind === 'flag', block = play && r.stack.length > 0 && !flag, thr = r.carryUp > 0, dt = clamp(lastDt || 1 / 60, 1 / 240, 1 / 30), k = Math.min(1, dt * (thr ? 22 : 12));
+      const tx = thr || flag ? -1.57 : 0, tz = block && !thr ? 2.7 : .03; M.armX = (M.armX || 0) + (tx - (M.armX || 0)) * k; M.armZ = (M.armZ ?? .12) + (tz - (M.armZ ?? .12)) * k;
+      A.forEach((a, i) => a.rotation.set(M.armX, 0, (i ? 1 : -1) * M.armZ));
+      if (flag) { M.held.position.copy(M.heldFront); M.held.scale.setScalar(.72); } else { M.held.position.copy(M.heldTop); M.held.scale.setScalar(1); }
+      // the antenna: a spring that lags behind when he speeds up, turns or stops, and wobbles back
+      const N = M.ant; if (N) { const p = M.g.position; if (N.last) { const vx = (p.x - N.last.x) / dt, vz = (p.z - N.last.z) / dt, ax = (vx - N.lv.x) / dt, az = (vz - N.lv.z) / dt, ry = M.g.rotation.y, c = Math.cos(ry), sn = Math.sin(ry), lx = ax * c - az * sn, lz = ax * sn + az * c; N.lv.set(vx, 0, vz);
+          const fx = clamp(lx, -45, 45) * .9, fz = clamp(lz, -45, 45) * .9; N.v.x += (-90 * N.o.x - 3.2 * N.v.x - fx) * dt; N.v.y += (-90 * N.o.y - 3.2 * N.v.y - fz) * dt; N.o.x += N.v.x * dt; N.o.y += N.v.y * dt; N.o.clampScalar(-.7, .7);
+          N.piv.rotation.set(N.o.y, 0, -N.o.x); } else N.last = new THREE.Vector3(); N.last.copy(p); }
+    } else if (r.carryUp > 0 || (r.stack.length && r.state === 'play')) A[0].rotation.x = A[1].rotation.x; nbrPose(r.model); } return out; }; } // (he holds and throws with both arms)
 
 // ============================================================
 // RULES: thrown blocks hitting robots, bombs, freeze, homing, flags and scoring
