@@ -636,10 +636,11 @@ const NM = (() => { const sm = s => s * s * (3 - 2 * s), mir = L => [...L, ...L.
       portals: [{ x: -26, z: -38 }, { x: 26, z: 38 }], hubs: [{ x: 8, z: 27 }, { x: -8, z: -27 }], tramps: [{ x: -22, z: -12 }, { x: 22, z: 12 }], strips: [], noPasture: true, fog: [80, 220],
       top: ['#f4f2f8', '#eceaf2', '#f8f6fb', '#f0eef5'], side: ['#f4f2f8', '#d8d4e4', '#c4bed8', '#b0a8c8', '#9c94b8', '#8880a8'],
       tint(x, z, j) { const v = 248 + (j - .5) * 12 | 0; return [v, v, v]; } },
-    cylinder: { mx: 92, mz: 44, fort: { blue: { x: -68, z: 0 }, red: { x: 68, z: 0 } }, portals: [{ x: -30, z: -24 }, { x: 30, z: 24 }], hubs: [{ x: 0, z: 20 }, { x: 0, z: -20 }], tramps: [{ x: -44, z: 10 }, { x: 44, z: -10 }],
-      strips: [{ x: -22, z: -8, dx: 1, dz: 0, team: 'blue' }, { x: 22, z: 8, dx: -1, dz: 0, team: 'red' }], noMountains: true, fog: [140, 420],
-      th(x, z) { const a = Math.max(0, Math.abs(z) - 16); return a <= 0 ? 0 : 30 - Math.sqrt(Math.max(0, 900 - a * a)); },
-      tint(x, z, j) { const v = 225 + (j - .5) * 40 | 0, a = Math.abs(z); if (a > 30) return [v - 30, v - 10, v - 40]; return [255, 255, 255]; } },
+    cylinder: { mx: 132, mz: 40, wrapX: true, shaped: true, fort: { blue: { x: -66, z: 0 }, red: { x: 66, z: 0 } }, hubs: [{ x: 0, z: 16 }, { x: 0, z: -16 }], tramps: [{ x: -30, z: 12 }, { x: 30, z: -12 }], portals: [{ x: -110, z: -24 }, { x: 110, z: 24 }], noPortals: true,
+      strips: [{ x: -38, z: -8, dx: 1, dz: 0, team: 'blue' }, { x: 38, z: 8, dx: -1, dz: 0, team: 'red' }], pastures: [{ x: -110, z: 18 }, { x: 110, z: -18 }], noMountains: true, fog: [170, 460], camY: 30,
+      inShape: (x, z, m) => Math.abs(z) <= 40 - m,
+      top: ['#5cb43a', '#63bb3f', '#58ae38', '#60b83c'], side: ['#5cb43a', '#8a5a32', '#7a4e2a', '#9aa4b4', '#8a94a4', '#7a8494'],
+      tint(x, z, j) { const v = 235 + (j - .5) * 30 | 0; return [v, v, v]; } },
   }; return D[MAP] || null; })();
 const DESERT = MAP === 'desert'; // THE DESERT (Mars-like planet, Earth animals): dunes, pyramids, an oasis, sandstorms, mirages, heat haze (09m_desert.js)
    // map scale
@@ -930,7 +931,7 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
   const em = new THREE.MeshBasicMaterial({ color: 0xffd400, transparent: true, opacity: .5 });
   if (SHAPED) { // the island's sides and the yellow edge line, following its outline square by square
     const inv = new THREE.MeshBasicMaterial({ visible: false }); slab.material = [inv, inv, mTop, mTop, inv, inv];
-    const sideG = [], lineG = [], out = (cx, cz) => cx < 0 || cz < 0 || cx >= GW || cz >= GD || SEA.has(cx + ',' + cz);
+    const sideG = [], lineG = [], out = (cx, cz) => (!(NM && NM.wrapX) && (cx < 0 || cx >= GW)) || cz < 0 || cz >= GD || SEA.has(cx + ',' + cz);
     for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { if (out(cx, cz)) continue; const x = cx - MX, z = cz - MZ;
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { if (!out(cx + dx, cz + dz)) continue;
         const ex = x + .5 + dx * .5, ez = z + .5 + dz * .5, ry = dx ? (dx > 0 ? Math.PI / 2 : -Math.PI / 2) : (dz > 0 ? 0 : Math.PI);
@@ -10917,46 +10918,68 @@ if (MAP === 'paint') {
 }
 
 // ============================================================
-// THE CYLINDER: a giant open-ended tube floating in the sky, like a space station. You play along its bottom; its
-// sides curve up round you like a half-pipe (skate up them!) and right over your head, upside down, there's more land:
-// fields, trees and little houses hanging from the ceiling. Long window strips let the sunlight in. At both open ends
-// you can see the sky.
-//  - two giant SWING BALLS roll back and forth across the half-pipe like pendulums, bowling over anyone in the way
+// THE CYLINDER: the whole map is the inside wall of a giant open-ended tube floating in the sky. Walk in any direction
+// and you can go all the way round; the world turns with you, so wherever you are, you're standing upright at the
+// bottom and the rest of the tube curves up round you and over your head. The two bases are on opposite sides:
+// look up and the other team's fort is hanging right above you. At both open ends: sky.
+//  - two giant ROLLING BALLS trundle round and round the tube, bowling over anyone in their lane
+//
+// How it works: underneath, the game is played on a flat strip whose two ends join up (walk off one end, come back on
+// at the other). Only the drawing is bent: every point is wrapped round the tube, measured from where you are.
 // ============================================================
-const CY = { balls: [], R: 46, Y: 30 };
+const CY = { balls: [], U: { value: new THREE.Vector3(0, 42, 264) } };
 if (MAP === 'cylinder') {
-  const R = CY.R, Y = CY.Y, L = 92;
-  // the ceiling: the top half of the tube, seen from inside
-  { const tex = canvasTex(64, 64, g => { g.fillStyle = '#5cb43a'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#63bb3f'; g.fillRect(0, 0, 32, 32); g.fillRect(32, 32, 32, 32); g.fillStyle = 'rgba(0,0,0,.06)'; g.fillRect(0, 62, 64, 2); g.fillRect(62, 0, 2, 64); }, L, 60);
-    const geo = new THREE.CylinderGeometry(R, R, L * 2, 64, 1, true, Math.PI / 2 + .02, Math.PI - .04); geo.rotateZ(Math.PI / 2); // (axis along x; this half arches over the top)
-    const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex, side: THREE.BackSide })); m.position.y = Y; m.receiveShadow = true; scene.add(m);
-    const out = new THREE.Mesh(geo.clone(), new THREE.MeshLambertMaterial({ color: 0x9aa4b4, side: THREE.FrontSide })); out.scale.setScalar(1.01); out.position.y = Y; scene.add(out);
-    // window strips of sky along the ceiling, and rims round the two open ends
-    for (const a of [.55, 1.57, 2.59]) { const w = new THREE.Mesh(new THREE.PlaneGeometry(L * 2, 6), nmGlow('#bfe4ff', 1.15)); const z = Math.cos(a) * (R - .2), y = Y + Math.sin(a) * (R - .2); w.position.set(0, y, z); w.lookAt(0, Y, 0); scene.add(w); }
-    for (const sx of [-1, 1]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(R + .6, 1.4, 10, 64, Math.PI), nmMat('#c8d0e0', { m: .8, r: .25 })); rim.rotation.y = Math.PI / 2; rim.position.set(sx * L, Y, 0); scene.add(rim);
-      const lights = new THREE.Mesh(new THREE.TorusGeometry(R + .6, .25, 6, 64, Math.PI), nmGlow('#7ae8ff', 2)); lights.rotation.y = Math.PI / 2; lights.position.set(sx * (L + 1.3), Y, 0); scene.add(lights); } }
-  // upside-down things hanging from the ceiling: trees, houses, a little lake
-  { const leaf = nmMat('#3aa83a'), trunk = nmMat('#8a5a32'), wall = nmMat('#f4ead8'), roof = nmMat('#c84a2a'), lake = nmMat('#3a8ad8', { r: .1 });
-    const place = (g, x, a) => { const n = V(0, Math.sin(a), Math.cos(a)); g.position.set(x, Y + n.y * R, n.z * R); g.quaternion.setFromUnitVectors(V(0, 1, 0), n.clone().negate()); scene.add(g); };
-    for (let i = 0; i < 46; i++) { const x = rr(-L + 6, L - 6), a = rr(.25, Math.PI - .25); if ([.55, 1.57, 2.59].some(w => Math.abs(a - w) < .1)) continue; const g = new THREE.Group();
-      if (i % 6 === 0) { const w = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 5), wall); w.position.y = 2; g.add(w); const r = new THREE.Mesh(new THREE.ConeGeometry(5, 3, 4), roof); r.position.y = 5.5; r.rotation.y = Math.PI / 4; g.add(r); }
-      else { const t = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 1), trunk); t.position.y = 2; g.add(t); const l = new THREE.Mesh(new RoundedBoxGeometry(4, 3.4, 4, 2, .8), leaf); l.position.y = 5.2; g.add(l); }
-      place(g, x, a); }
-    const lk = new THREE.Group(); const disc = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, .3, 32), lake); lk.add(disc); place(lk, 20, 1.2); const lk2 = lk.clone(); place(lk2, -20, Math.PI - 1.2); }
-  // swing balls: they roll back and forth across the half-pipe all by themselves
+  const PER = MX * 2, RAD = PER / (Math.PI * 2); CY.U.value.set(0, RAD, PER);
+  for (const o of scene.children) if (o.isInstancedMesh && !o.instanceColor && o !== plainIM && o.material && o.material.color && o.material.color.getHSL({}).l > .8) o.visible = false; // (no clouds)
+  // ---- bending: every material draws its points wrapped round the tube ----
+  const GL_BEND = `uniform vec3 bendU;
+    float bendTh(vec3 p) { return (mod(p.x - bendU.x + bendU.z * .5, bendU.z) - bendU.z * .5) / bendU.y; }
+    bool bendOk(vec3 p) { return abs(p.z) < 160.0 && p.y > -70.0 && p.y < 120.0; }
+    vec3 bendP(vec3 p) { if (!bendOk(p)) return p; float th = bendTh(p), rho = bendU.y - p.y; return vec3(bendU.x + rho * sin(th), bendU.y - rho * cos(th), p.z); }
+    vec3 bendN(vec3 n, vec3 p) { if (!bendOk(p)) return n; float th = bendTh(p), c = cos(th), s = sin(th); return vec3(n.x * c - n.y * s, n.x * s + n.y * c, n.z); }\n`;
+  const INST = '#ifdef USE_INSTANCING\n bwp = instanceMatrix * bwp;\n#endif\n';
+  const patch = function (sh) { if (sh.uniforms.bendU || !sh.vertexShader.includes('#include <project_vertex>')) return;
+    sh.uniforms.bendU = CY.U; let v = GL_BEND + sh.vertexShader;
+    v = v.replace('#include <project_vertex>', `vec4 bwp = vec4(transformed, 1.0);\n${INST} bwp = modelMatrix * bwp; vec3 bflat = bwp.xyz; bwp.xyz = bendP(bwp.xyz);\n vec4 mvPosition = viewMatrix * bwp; gl_Position = projectionMatrix * mvPosition;`);
+    if (v.includes('#include <defaultnormal_vertex>')) v = v.replace('#include <defaultnormal_vertex>', `#include <defaultnormal_vertex>\n { vec4 bp0 = vec4(position, 1.0);\n#ifdef USE_INSTANCING\n bp0 = instanceMatrix * bp0;\n#endif\n bp0 = modelMatrix * bp0; vec3 wn = inverseTransformDirection(transformedNormal, viewMatrix); wn = bendN(wn, bp0.xyz); transformedNormal = normalize((viewMatrix * vec4(wn, 0.0)).xyz); }`);
+    sh.vertexShader = v; };
+  // the sky stays put
+  scene.traverse(o => { if (!o.isMesh || !o.geometry) return; o.geometry.computeBoundingSphere?.(); if (o.geometry.boundingSphere && o.geometry.boundingSphere.radius * Math.max(o.scale.x, o.scale.y, o.scale.z) > 300) for (const m of [].concat(o.material)) { m.onBeforeCompile = function () { /* no bend */ }; m.needsUpdate = true; } });
+  THREE.Material.prototype.onBeforeCompile = patch;
+  { const seen = new Set(); scene.traverse(o => { for (const m of [].concat(o.material || [])) { if (seen.has(m) || !Object.prototype.hasOwnProperty.call(m, 'onBeforeCompile') || String(m.onBeforeCompile).includes('no bend')) continue; seen.add(m);
+      const prev = m.onBeforeCompile, key = m.customProgramCacheKey.bind(m); m.onBeforeCompile = function (sh, rd) { prev.call(m, sh, rd); patch(sh); }; m.customProgramCacheKey = () => 'cyl' + key(); m.needsUpdate = true; } }); }
+  // the island's flat ground slab needs lots of little steps along its length so it can curve
+  scene.traverse(o => { if (o.isMesh && o.geometry && o.geometry.type === 'BoxGeometry' && Math.abs(o.geometry.parameters.width - PER) < .01 && o.geometry.parameters.height === 6) o.geometry = new THREE.BoxGeometry(PER, 6, MZ * 2, PER, 1, 8); });
+  // shadows don't bend, so this map does without them; more light from all round instead
+  scene.traverse(o => { if (o.isDirectionalLight) { o.castShadow = false; o.intensity *= .55; } if (o.isHemisphereLight) o.intensity *= 1.5; });
+  // labels and pop-ups on screen: bend their spot too
+  { const pj = THREE.Vector3.prototype.project; THREE.Vector3.prototype.project = function (cam) { const u = CY.U.value; if (Math.abs(this.z) < 160 && this.y > -70 && this.y < 120) { const d = ((this.x - u.x + u.z * 1.5) % u.z) - u.z * .5, th = d / u.y, rho = u.y - this.y; this.set(u.x + rho * Math.sin(th), u.y - rho * Math.cos(th), this.z); } return pj.call(this, cam); }; }
+  // ---- the rims at the two open ends (long thin strips that curl into rings) ----
+  for (const sz of [-1, 1]) { const rim = new THREE.Mesh(new THREE.BoxGeometry(PER, 1.4, 1.4, PER, 1, 1), nmMat('#c8d0e0', { m: .7, r: .3 })); rim.position.set(0, .2, sz * (MZ + .7)); scene.add(rim);
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(PER, .3, .3, PER, 1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color('#7ae8ff').multiplyScalar(2.2), toneMapped: false })); glow.position.set(0, .95, sz * (MZ + .7)); scene.add(glow);
+    const outer = new THREE.Mesh(new THREE.BoxGeometry(PER, 1, 2.2, PER, 1, 1), nmMat('#9aa4b4', { m: .6, r: .35 })); outer.position.set(0, -6.5, sz * (MZ - .4)); scene.add(outer); }
+  // trees and little houses round the far side of the tube
+  { const leaf = nmMat('#3aa83a'), trunk = nmMat('#8a5a32'), wall = nmMat('#f4ead8'), roof = nmMat('#c84a2a');
+    for (const [x, z, h] of [[-104, -28, 1], [-96, 30, 0], [-118, 6, 1], [104, 28, 1], [96, -30, 0], [118, -6, 1], [-124, -14, 1], [124, 14, 1], [-20, -32, 1], [20, 32, 1]]) {
+      if (h) { nmBox(x, 2, z, 1, 4, 1, trunk); nmBox(x, 5.2, z, 4, 3.4, 4, leaf, { geo: new RoundedBoxGeometry(4, 3.4, 4, 2, .8) }); } else { nmBox(x, 2, z, 7, 4, 6, wall); const r = new THREE.Mesh(new THREE.ConeGeometry(5.6, 3, 4), roof); r.position.set(x, 5.5, z); r.rotation.y = Math.PI / 4; scene.add(r); } } }
+  // ---- rolling balls ----
   const ballM = nmMat('#ff7a2a', { r: .35 }), strM = nmMat('#ffffff', { r: .4 });
-  for (const x of [-34, 34]) { const b = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(x, 12, 26).setLinearDamping(.02).setAngularDamping(.05).setCcdEnabled(true));
-    const c = world.createCollider(RAPIER.ColliderDesc.ball(2.6).setRestitution(.2).setFriction(.6).setDensity(2.5), b); byCollider.set(c.handle, { type: 'static' });
-    const g = new THREE.Group(), s = new THREE.Mesh(new THREE.SphereGeometry(2.6, 28, 20), ballM); s.castShadow = true; g.add(s); for (let k = 0; k < 3; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(2.62, .18, 8, 40), strM); t.rotation.set(k * 1.05, k * .7, 0); g.add(t); } scene.add(g);
-    CY.balls.push({ b, g, x0: x, cool: 0 }); }
+  for (const [x, z, v] of [[-40, 26, 7.5], [40, -26, -7.5]]) { const b = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(x, 3, z).setCcdEnabled(true).lockRotations());
+    const c = world.createCollider(RAPIER.ColliderDesc.ball(2.6).setRestitution(.1).setFriction(.2).setDensity(3), b); byCollider.set(c.handle, { type: 'static' });
+    const g = new THREE.Group(), s = new THREE.Mesh(new THREE.SphereGeometry(2.6, 28, 20), ballM); g.add(s); for (let k = 0; k < 3; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(2.62, .18, 8, 40), strM); t.rotation.set(k * 1.05, k * .7, 0); g.add(t); } scene.add(g);
+    CY.balls.push({ b, g, z, v, spin: 0, cool: 0 }); }
+  // ---- every frame: wrap anything that rolls off one end back on at the other; turn the world round you ----
+  let cullT = 0;
   NMX.upd.push(dt => {
-    for (const B of CY.balls) { const t = B.b.translation(), lv = B.b.linvel(), q = B.b.rotation(); B.g.position.set(t.x, t.y, t.z); B.g.quaternion.set(q.x, q.y, q.z, q.w);
-      if (t.y < -20 || Math.abs(t.x) > L) { B.b.setTranslation({ x: B.x0, y: 14, z: 28 }, true); B.b.setLinvel({ x: 0, y: 0, z: 0 }, true); continue; }
-      // keep it swinging: a nudge along the way it's rolling while it's down in the bottom; and back towards its lane
-      if (Math.abs(t.z) < 14 && Math.abs(lv.z) > .5) B.b.applyImpulse({ x: 0, y: 0, z: Math.sign(lv.z) * 9 * B.b.mass() * dt }, true);
-      if (Math.abs(lv.z) < .5 && Math.abs(t.z) < 2) B.b.applyImpulse({ x: 0, y: 0, z: 20 * B.b.mass() * dt }, true);
-      B.b.applyImpulse({ x: (B.x0 - t.x) * .8 * B.b.mass() * dt, y: 0, z: 0 }, true);
-      B.cool -= dt; if (B.cool <= 0 && Math.hypot(lv.x, lv.y, lv.z) > 3 && match.state === 'play') for (const r of robots) { if (r.state !== 'play' || !r.body) continue; const p = rPos(r); if (Math.hypot(p.x - t.x, p.y - t.y, p.z - t.z) < 3.4) { if (nmBonk(r, V(t.x, t.y, t.z), 'BOWLED!', '#ff9a4a', 1)) { B.cool = .8; } } } }
+    const half = MX;
+    world.forEachRigidBody(b => { if (!b.isDynamic()) return; const t = b.translation(); if (t.x > half) b.setTranslation({ x: t.x - PER, y: t.y, z: t.z }, true); else if (t.x < -half) b.setTranslation({ x: t.x + PER, y: t.y, z: t.z }, true); else return;
+      if (P && P.body === b) { const s = t.x > half ? -PER : PER; camera.position.x += s; camLook.x += s; } });
+    const pp = P && P.body && P.state === 'play' ? rPos(P) : null, f = pp && Math.abs(pp.x - camera.position.x) < 30 ? pp.x : camera.position.x; CY.U.value.x = f;
+    for (const B of CY.balls) { const t = B.b.translation(), lv = B.b.linvel(); B.b.setLinvel({ x: B.v, y: lv.y, z: (B.z - t.z) * 2 }, true); B.spin += B.v * dt / 2.6; B.g.position.set(t.x, t.y, t.z); B.g.rotation.set(0, 0, -B.spin);
+      if (t.y < -20) { B.b.setTranslation({ x: 0, y: 4, z: B.z }, true); continue; }
+      B.cool -= dt; if (B.cool <= 0 && match.state === 'play') for (const r of robots) { if (r.state !== 'play' || !r.body) continue; const p = rPos(r); if (Math.hypot(p.x - t.x, p.y - t.y, p.z - t.z) < 3.5) { if (nmBonk(r, V(t.x, t.y, t.z), 'BOWLED!', '#ff9a4a', 1)) B.cool = .6; } } }
+    // nothing can be skipped for being "off screen": everything's somewhere round the tube
+    if ((cullT -= dt) <= 0) { cullT = .5; scene.traverse(o => { o.frustumCulled = false; }); }
   });
 }
 
