@@ -503,7 +503,7 @@ await RAPIER.init();
 // anything is built. jelly: glossy, toon: flat anime bands; the rest stay on the cheap Lambert.
 const WORLD = (() => { try { return JSON.parse(localStorage.getItem('nymbo-match') || '{}').world || 'day'; } catch (e) { return 'day'; } })();
 const TOON_GRAD = (() => { const d = new Uint8Array([70, 70, 70, 255, 160, 160, 160, 255, 255, 255, 255, 255]); const t = new THREE.DataTexture(d, 3, 1); t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true; return t; })();
-const NEO = WORLD === 'day'; // THE NEW LOOK (Nov 2026) is what "Day" is now: real materials lit by the sky (as in the HD world), bevelled glossy blocks with a skin for each map's world, lightly weathered so no two are the same (12d_neo.js)
+const NEO = WORLD === 'day'; // THE NEW LOOK (Nov 2026) is what "Day" is now: a retro-future world in candy-apple paint and chrome under a sunset sky (12d_neo.js). Real materials, as in the HD world; every block mirrors the sky
 const HD = WORLD === 'hd' || NEO; // HD WORLD: real (PBR) materials everywhere, worn and weathered surfaces, round edges, grass blades (12c_hd)
 const LiteBase = HD ? THREE.MeshStandardMaterial : WORLD === 'jelly' ? THREE.MeshPhongMaterial : WORLD === 'toon' ? THREE.MeshToonMaterial : THREE.MeshLambertMaterial;
 class LiteMat extends LiteBase {
@@ -776,9 +776,9 @@ const eventQueue = new RAPIER.EventQueue(true);
 const byCollider = new Map();      // collider handle -> { type:'block'|'robot'|'static'|'animal', ref }
 
 // shared geometry
-// The new look's block shape: rounded edges, and each corner knows which of the six faces it belongs to (so a skin can be
-// laid on each face in whole tiles, however long the block is).
-const cubeGeo = NEO ? (() => { const g = new RoundedBoxGeometry(1, 1, 1, 1, .1), n = g.attributes.position.count, f = new Float32Array(n); for (let i = 0; i < n; i++) f[i] = Math.floor(i / (n / 6)); g.setAttribute('aFace', new THREE.BufferAttribute(f, 1)); return g; })() : HD ? new RoundedBoxGeometry(1, 1, 1, 2, .1) : WORLD === 'jelly' ? new RoundedBoxGeometry(1, 1, 1, 2, .3) : WORLD === 'clay' ? new RoundedBoxGeometry(1, 1, 1, 2, .2) : WORLD === 'circuit' ? new RoundedBoxGeometry(1, 1, 1, 1, .03) : new RoundedBoxGeometry(1, 1, 1, 1, .07); /* (world styles: squishy jelly, soft clay, sharp chips) */ // // 1 segment: 108 triangles a block instead of 300 (≈1,960 blocks on screen), same soft edges
+// The new look's block shape: generously rounded edges (so they catch the light), and each corner knows which of the six
+// faces it belongs to.
+const cubeGeo = NEO ? (() => { const g = new RoundedBoxGeometry(1, 1, 1, matchMedia('(pointer: coarse)').matches ? 1 : 2, .13), n = g.attributes.position.count, f = new Float32Array(n); for (let i = 0; i < n; i++) f[i] = Math.floor(i / (n / 6)); g.setAttribute('aFace', new THREE.BufferAttribute(f, 1)); return g; })() : HD ? new RoundedBoxGeometry(1, 1, 1, 2, .1) : WORLD === 'jelly' ? new RoundedBoxGeometry(1, 1, 1, 2, .3) : WORLD === 'clay' ? new RoundedBoxGeometry(1, 1, 1, 2, .2) : WORLD === 'circuit' ? new RoundedBoxGeometry(1, 1, 1, 1, .03) : new RoundedBoxGeometry(1, 1, 1, 1, .07); /* (world styles: squishy jelly, soft clay, sharp chips) */ // // 1 segment: 108 triangles a block instead of 300 (≈1,960 blocks on screen), same soft edges
 const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
 // ============================================================
@@ -12526,7 +12526,8 @@ setInterval(() => { if (!odenOn() || match.state !== 'play' || !P || P.state !==
 // ============================================================
 const HDW = { grass: null, haze: null };
 // what the ground is made of. The old HD world knew grass and sand; the new look gives every map its own surface.
-const HD_GK = NEO ? ({ classic: 'grass', daynight: 'grass', grass: 'grass', train: 'grass', cylinder: 'grass', cube: 'grass', jungle: 'moss', desert: 'sand', ice: 'snow', volcano: 'rock', toy: 'wood', lab: 'metal', sky: null }[MAP] ?? (MAP in { sky: 1 } ? null : 'plain')) : DESERT ? 'sand' : MAP === 'sky' ? null : 'grass';
+const NEO_PLAZA = NEO && MAP === 'classic'; // (the classic map, rebuilt as a polished plaza: 12d_neo.js lays its floor)
+const HD_GK = NEO_PLAZA ? null : NEO ? ({ classic: 'grass', daynight: 'grass', grass: 'grass', train: 'grass', cylinder: 'grass', cube: 'grass', jungle: 'moss', desert: 'sand', ice: 'snow', volcano: 'rock', toy: 'wood', lab: 'metal', sky: null }[MAP] ?? (MAP in { sky: 1 } ? null : 'plain')) : DESERT ? 'sand' : MAP === 'sky' ? null : 'grass';
 const HD_NOISE = `
 float hdH(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float hdN(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
@@ -12679,10 +12680,10 @@ if (HD) {
   if (!matchMedia('(pointer: coarse)').matches) { sun.shadow.mapSize.set(2048, 2048); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
   sun.shadow.radius = 3;
   // ---- weathered blocks ----
-  const hdBlockKind = NEO ? 'neo' : 'block';
-  plainIM.material = hdWear(new LiteMat({ roughness: NEO ? .6 : .85 }), hdBlockKind);
-  for (const o of scene.children) if (o.isInstancedMesh && o !== plainIM && o.geometry === cubeGeo && o.material && o.material.isMeshStandardMaterial) hdWear(o.material, hdBlockKind);
-  { const rh = refreshHeld; refreshHeld = function (r) { rh(r); const m = r.model.heldPlainMat; if (m) hdWear(m, hdBlockKind); }; }
+  if (NEO) plainIM.material = new LiteMat({ roughness: .25, metalness: .8 }); // (the new look paints its blocks itself: candy and chrome, no wear)
+  else { plainIM.material = hdWear(new LiteMat({ roughness: .85 }), 'block');
+    for (const o of scene.children) if (o.isInstancedMesh && o !== plainIM && o.geometry === cubeGeo && o.material && o.material.isMeshStandardMaterial) hdWear(o.material, 'block');
+    const rh = refreshHeld; refreshHeld = function (r) { rh(r); const m = r.model.heldPlainMat; if (m) hdWear(m, 'block'); }; }
   // ---- painted-metal robots ----
   const hdRobot = g => g.traverse(o => { if (!o.isMesh || !o.material || Array.isArray(o.material) || !o.material.isMeshStandardMaterial || o.material.userData.hdw) return; const m = o.material;
     if (m.emissiveIntensity > 1 || m.map || m.userData.mummy) return; // (eyes and the striped ball stay as they are)
@@ -12705,7 +12706,7 @@ if (HD) {
   #endif`); };
       const key = gm.customProgramCacheKey ? gm.customProgramCacheKey() : ''; gm.customProgramCacheKey = () => key + 'hdground'; gm.needsUpdate = true; } }
   // ---- grass blades (the island only): a patch round the camera that wraps as you move ----
-  if (MAP === 'classic') {
+  if (MAP === 'classic' && !NEO_PLAZA) {
     const touch = matchMedia('(pointer: coarse)').matches, N = touch ? 7000 : 15000, T = 28;
     const base = new THREE.BufferGeometry(); // one blade: a thin tapering strip, 3 segments high
     base.setAttribute('position', new THREE.Float32BufferAttribute([-.5, 0, 0, .5, 0, 0, -.4, .33, 0, .4, .33, 0, -.25, .66, 0, .25, .66, 0, 0, 1, 0], 3));
@@ -12784,144 +12785,89 @@ if (HD && DESERT) { const st0 = sideTint; sideTint = function (cx, cz) { return 
     box.insertBefore(row, box.firstChild); }; }
 
 // ============================================================
-// THE NEW LOOK (what "Day" is since Nov 2026). Everything is still built from blocks, but the blocks are no longer plain
-// cubes: bevelled edges that stay the same size on a block of any length, a glossy finish that reflects the sky and
-// catches the sun, and a SKIN for the world each map is set in (ice, lava, desert, portal, train, cloud, beach, space,
-// forest, city, neon, future, toy; the classic island wears the Nymbo panel look).
+// THE NEW LOOK (what "Day" is since Nov 2026): a retro-future world in CANDY-APPLE PAINT AND CHROME under a sunset.
+// Not a set of pictures laid over the old world: the blocks, the light, the sky and (map by map) the ground and the
+// scenery are made again from nothing.
 //
-// How a skin works: a skin is a little stack of square tiles painted in code when the game loads (no downloads). Each
-// tile carries four things: light and dark (grooves, plates, bolts), where the second colour goes (a stripe, a panel),
-// where it glows (cracks, windows, neon), and how shiny it is. A block keeps its own colour (so forts still read as
-// blue or red) and the tile is laid on every face in whole tiles: a block three long shows three tiles. Each block is
-// given one of its kind's tiles at random when it is made and keeps it wherever it is thrown.
-// All plain blocks are still drawn in one go (one instanced mesh), so this costs about the same as before.
-// It runs on the HD world's pipeline (12c_hd.js): real materials lit by a picture of the sky, a worn ground with paths,
-// grass blades, glassy water; the blocks' wear there is turned right down (glossy panels, lightly used).
+// BLOCKS. Still boxes to the game (they stack, they are picked up and thrown exactly as before), but each one is now a
+// piece of show-car bodywork: deep candy paint over metal flake under a clear coat, generous round edges that catch
+// the light, chrome corner caps. Their parts are worked out by maths at every dot on the screen (as the robot's paint
+// is), so every line is razor clean at any distance and on a block of any length. Each block is given one of six
+// makes at random and keeps it wherever it is thrown: solid candy · two-tone with a cream belt and chrome pinstripes ·
+// an inset panel in a chrome frame · a strip light · chrome along every edge · portholes with a glowing core.
+// Loose blocks and stonework are pearl enamel with chrome; tree trunks are cream pillars with a chrome ring; tree tops
+// are candy green.
+//
+// SHINE. Nothing here looks up a picture of the sky (far too dear on a phone). Every shiny thing mirrors a sky worked
+// out by a few lines of maths: the colour overhead, the bright band at the horizon, the dark ground, the sun, and one
+// soft light overhead so that every block wears a white glint, like paint under show lights.
+//
+// THE PLAZA (the classic map, the first one rebuilt, further down): a polished floor that truly mirrors the world, a
+// painted sunset sky, a low golden sun, and a skyline of rockets, saucer towers, domes and ringed globes.
 // The other world styles in the Look lab (night, jelly, circuit, toon, the old HD, clay) are untouched.
 // ============================================================
 if (NEO) {
-const NEO_T = matchMedia('(pointer: coarse)').matches ? 256 : 512; // (tile size: smaller on phones)
+const NEO_TOUCH = matchMedia('(pointer: coarse)').matches;
 const neoRng = s => () => (s = s * 16807 % 2147483647) / 2147483647;
-// ---- painting tools. S: light and dark (mid grey = leave alone), A: second colour, G: glow, L: shine. All in 0..1 ----
-const nk = (g, a) => { g.fillStyle = g.strokeStyle = `rgba(0,0,0,${a})`; }, nw = (g, a) => { g.fillStyle = g.strokeStyle = `rgba(255,255,255,${a})`; };
-const nRR = (g, x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
-const nGroove = (S, path, w = .018, a = .5) => { nk(S, a); S.lineWidth = w; path(S); S.stroke(); S.save(); S.translate(w * .6, w * .6); nw(S, a * .45); S.lineWidth = w * .45; path(S); S.stroke(); S.restore(); }; // a cut line: dark, with a thin light lip
-const nPlate = (S, x, y, w, h, r, a = .2) => { S.save(); nRR(S, x, y, w, h, r); S.clip(); const gr = S.createLinearGradient(x, y, x + w * .9, y + h); gr.addColorStop(0, `rgba(255,255,255,${a})`); gr.addColorStop(.45, 'rgba(255,255,255,0)'); gr.addColorStop(.55, 'rgba(0,0,0,0)'); gr.addColorStop(1, `rgba(0,0,0,${a})`); S.fillStyle = gr; S.fillRect(x, y, w, h); S.restore();
-  S.lineWidth = .012; nw(S, Math.min(1, a * 1.5)); S.beginPath(); S.moveTo(x + r, y + .007); S.lineTo(x + w - r, y + .007); S.moveTo(x + .007, y + r); S.lineTo(x + .007, y + h - r); S.stroke();
-  nk(S, Math.min(1, a * 1.7)); S.beginPath(); S.moveTo(x + r, y + h - .007); S.lineTo(x + w - r, y + h - .007); S.moveTo(x + w - .007, y + r); S.lineTo(x + w - .007, y + h - r); S.stroke(); }; // a plate standing proud: lit top-left, shaded bottom-right
-const nDots = (g, R, n, r0, r1, a0, a1, white) => { for (let i = 0; i < n; i++) { (white ? nw : nk)(g, a0 + R() * (a1 - a0)); g.beginPath(); g.arc(R(), R(), r0 + R() * (r1 - r0), 0, 7); g.fill(); } };
-const nBolt = (P, x, y, r = .022) => { const S = P.S; nk(S, .5); S.beginPath(); S.arc(x + .005, y + .006, r, 0, 7); S.fill(); S.fillStyle = '#b4b4b4'; S.beginPath(); S.arc(x, y, r * .85, 0, 7); S.fill(); nw(S, .75); S.beginPath(); S.arc(x - r * .25, y - r * .28, r * .32, 0, 7); S.fill(); P.L.fillStyle = '#fff'; P.L.beginPath(); P.L.arc(x, y, r, 0, 7); P.L.fill(); };
-const nFrame = (P, m = .06, r = .08, a = .5) => nGroove(P.S, g => nRR(g, m, m, 1 - 2 * m, 1 - 2 * m, r), .018, a);
-const nGlow = (P, path, w = .03, a = 1) => { const G = P.G; G.save(); G.shadowColor = '#fff'; G.shadowBlur = NEO_T * w * 1.6; nw(G, a * .55); G.lineWidth = w * 1.5; path(G); G.stroke(); G.restore(); nw(G, a); G.lineWidth = w * .55; path(G); G.stroke(); }; // a glowing line: a soft halo with a bright core
-// wobbly lines that run right across the tile and meet themselves at the edges (so cracks carry on from tile to tile)
-const nCracks = (R, nx, ny, wob = .07) => { const lines = [], mk = (k, n, vert) => { const base = (k + .5) / n, pts = []; let o0 = (R() - .5) * wob * 2; for (let i = 0; i <= 8; i++) { const t = i / 8, o = i === 0 || i === 8 ? o0 : (R() - .5) * wob * 2.4; pts.push(vert ? [base + o, t] : [t, base + o]); } lines.push(pts); };
-  for (let k = 0; k < nx; k++) mk(k, nx, true); for (let k = 0; k < ny; k++) mk(k, ny, false); return g => { g.beginPath(); for (const pts of lines) pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); }; };
-const nBricks = (P, rows, per, a = .5, tone = .09) => { const S = P.S, h = 1 / rows; for (let r = 0; r < rows; r++) { const off = r % 2 ? .5 / per : 0; for (let c = -1; c <= per; c++) { const x = c / per + off; (P.R() < .5 ? nw : nk)(S, P.R() * tone); S.fillRect(x, r * h, 1 / per, h); } }
-  nGroove(S, g => { g.beginPath(); for (let r = 0; r <= rows; r++) { g.moveTo(0, r * h); g.lineTo(1, r * h); } for (let r = 0; r < rows; r++) { const off = r % 2 ? .5 / per : 0; for (let c = 0; c <= per; c++) { const x = c / per + off; if (x > 1.001) continue; g.moveTo(x, r * h); g.lineTo(x, (r + 1) * h); } } }, .02, a); };
-const nShine = (P, v) => { P.L.fillStyle = `rgb(${v},${v},${v})`; P.L.fillRect(0, 0, 1, 1); };
-// one tile: four little paintings folded into one picture (red: light/dark, green: second colour, blue: glow, alpha: shine)
-function neoLayer(seed, fn) { const T = NEO_T, mk = bg => { const c = document.createElement('canvas'); c.width = c.height = T; const g = c.getContext('2d', { willReadFrequently: true }); g.fillStyle = bg; g.fillRect(0, 0, T, T); g.scale(T, T); g.lineCap = g.lineJoin = 'round'; return g; };
-  const P = { S: mk('#808080'), A: mk('#000'), G: mk('#000'), L: mk('#808080'), R: neoRng(seed) }; fn(P);
-  const out = new Uint8Array(T * T * 4), d = [P.S, P.A, P.G, P.L].map(g => g.getImageData(0, 0, T, T).data); for (let i = 0; i < T * T * 4; i += 4) { out[i] = d[0][i]; out[i + 1] = d[1][i]; out[i + 2] = d[2][i]; out[i + 3] = d[3][i]; } return out; }
-// ---- the tiles every world can use ----
-const NT = {
-  panel: P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); nFrame(P); for (const [x, y] of [[.15, .15], [.85, .15], [.15, .85], [.85, .85]]) nBolt(P, x, y, .02); },
-  band: P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); P.A.fillStyle = '#fff'; P.A.fillRect(0, .34, 1, .32); P.L.fillStyle = '#e0e0e0'; P.L.fillRect(0, .34, 1, .32); nGroove(P.S, g => { g.beginPath(); g.moveTo(0, .34); g.lineTo(1, .34); g.moveTo(0, .66); g.lineTo(1, .66); }, .016, .45); nFrame(P, .05, .07, .3); },
-  slash: P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); P.A.fillStyle = '#fff'; P.A.beginPath(); P.A.moveTo(0, 0); P.A.lineTo(.74, 0); P.A.lineTo(0, .74); P.A.fill(); P.A.beginPath(); P.A.moveTo(1, 1); P.A.lineTo(1, .9); P.A.lineTo(.9, 1); P.A.fill();
-    nGroove(P.S, g => { g.beginPath(); g.moveTo(.74, 0); g.lineTo(0, .74); }, .02, .5); nFrame(P, .05, .07, .3); nBolt(P, .84, .84, .024); },
-  port: P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); nFrame(P, .05, .07, .35); nk(P.S, .42); nRR(P.S, .26, .26, .48, .48, .1); P.S.fill(); nGroove(P.S, g => nRR(g, .26, .26, .48, .48, .1), .02, .55); nGlow(P, g => nRR(g, .33, .33, .34, .34, .07), .028); P.L.fillStyle = '#fff'; nRR(P.L, .26, .26, .48, .48, .1); P.L.fill(); },
-  plain: P => { nPlate(P.S, 0, 0, 1, 1, .06, .14); nFrame(P, .07, .09, .32); },
-  cross: P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); nGroove(P.S, g => { g.beginPath(); g.moveTo(.5, .08); g.lineTo(.5, .92); g.moveTo(.08, .5); g.lineTo(.92, .5); }, .016, .38); nFrame(P, .06, .08, .35); },
-  bark: P => { const S = P.S; for (let i = 0; i < 9; i++) { const x = (i + .5) / 9 + (P.R() - .5) * .05; nGroove(S, g => { g.beginPath(); g.moveTo(x, 0); for (let k = 1; k <= 6; k++) g.lineTo(x + (k === 6 ? 0 : (P.R() - .5) * .045), k / 6); }, .014 + P.R() * .014, .35 + P.R() * .3); }
-    for (let i = 0; i < 5; i++) { nk(S, .3); S.beginPath(); S.ellipse(P.R(), P.R(), .018, .045, 0, 0, 7); S.fill(); } nShine(P, 60); },
-  leaves: P => { const S = P.S; for (let i = 0; i < 46; i++) { const x = P.R(), y = P.R(), r = .07 + P.R() * .07, a = P.R() * 6.28; for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) { S.save(); S.translate(x + dx, y + dy); S.rotate(a); (i % 2 ? nw : nk)(S, .1 + P.R() * .12); S.beginPath(); S.ellipse(0, 0, r, r * .55, 0, 0, 7); S.fill(); nk(S, .16); S.lineWidth = .006; S.beginPath(); S.moveTo(-r, 0); S.lineTo(r, 0); S.stroke(); S.restore(); } } nShine(P, 90); },
-};
-// ---- each world's own tiles and finish ----
-// acc: the second colour · tint: [colour, how much] pulled into the block's own colour (stone/fort) · glow: what glows ·
-// own: glow in the block's own colour instead · gs: how strong the glow is · gloss: how shiny [stone, fort, trunk, leaves, prop]
-const NEO_SKINS = {
-  nymbo: { acc: '#f2f4f8', glow: '#7fe9ff', own: 0, gs: 1.1, gloss: [.75, 1, .2, .3, .6], fort: [NT.panel, NT.band, NT.slash, NT.port], stone: [NT.plain, NT.cross] },
-  toy: { acc: '#ffffff', glow: '#ffe27a', own: 0, gs: .8, gloss: [1.1, 1.2, .5, .5, .8], stone: [NT.plain],
-    fort: [P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); for (const [x, y] of [[.28, .28], [.72, .28], [.28, .72], [.72, .72]]) { nk(P.S, .13); P.S.beginPath(); P.S.arc(x + .012, y + .016, .125, 0, 7); P.S.fill(); nw(P.S, .1); P.S.beginPath(); P.S.arc(x, y, .12, 0, 7); P.S.fill(); nPlate(P.S, x - .12, y - .12, .24, .24, .12, .22); } }, NT.band, NT.plain] },
-  ice: { acc: '#ffffff', tint: { stone: ['#bfe9ff', .55], fort: ['#cfefff', .4], prop: ['#d6f1ff', .5] }, glow: '#8fdcff', own: 0, gs: .55, gloss: [1.5, 1.5, .4, .6, 1.3],
-    fort: [0, 1, 2].map(k => P => { const S = P.S; for (let i = 0; i < 16; i++) { (P.R() < .5 ? nw : nk)(S, .05 + P.R() * .13); S.beginPath(); S.moveTo(P.R(), P.R()); for (let j = 0; j < 3; j++) S.lineTo(P.R() * 1.2 - .1, P.R() * 1.2 - .1); S.fill(); }
-      const c = nCracks(P.R, 2 + k % 2, 2, .11); nw(S, .55); S.lineWidth = .008; c(S); S.stroke(); nw(S, .16); S.lineWidth = .03; c(S); S.stroke();
-      const gr = P.G.createRadialGradient(.5, .5, .05, .5, .5, .62); gr.addColorStop(0, 'rgba(255,255,255,.75)'); gr.addColorStop(1, 'rgba(255,255,255,.1)'); P.G.fillStyle = gr; P.G.fillRect(0, 0, 1, 1);
-      const fr = S.createRadialGradient(.5, .5, .36, .5, .5, .74); fr.addColorStop(0, 'rgba(255,255,255,0)'); fr.addColorStop(1, 'rgba(255,255,255,.5)'); S.fillStyle = fr; S.fillRect(0, 0, 1, 1); nDots(S, P.R, 60, .003, .008, .2, .6, true); nShine(P, 230); }) },
-  lava: { acc: '#3a3d46', tint: { stone: ['#2b2a2e', .78], fort: ['#33282a', .5], prop: ['#2a292d', .75] }, glow: '#ff7a1a', own: 0, gs: 1.9, gloss: [.5, .55, .2, .3, .5],
-    fort: [0, 1, 2, 3].map(k => P => { const S = P.S; nDots(S, P.R, 34, .03, .1, .04, .16); nDots(S, P.R, 20, .02, .06, .03, .1, true); const c = nCracks(P.R, k > 2 ? 2 : 1, k > 1 ? 2 : k > 0 ? 1 : 0, .13);
-      nk(S, .5); S.lineWidth = k < 2 ? .03 : .05; c(S); S.stroke(); nShine(P, 70); if (k < 2) { if (k) nGlow(P, c, .012, .5); return; } /* (most are cooled, cracked basalt; a few still glow in the cracks; the odd one is red-hot) */
-      nGlow(P, c, .03, 1); nw(S, .3); S.lineWidth = .012; c(S); S.stroke(); P.L.strokeStyle = '#fff'; P.L.lineWidth = .03; c(P.L); P.L.stroke(); }) },
-  desert: { acc: '#f6e2b0', tint: { stone: ['#e2bf85', .6], prop: ['#dcb679', .6] }, glow: '#ffd27a', own: 0, gs: .5, gloss: [.25, .3, .2, .3, .25],
-    fort: [P => { nBricks(P, 2, 2, .5, .1); nDots(P.S, P.R, 90, .003, .009, .05, .2); nShine(P, 60); }, P => { nBricks(P, 3, 2, .45, .1); nDots(P.S, P.R, 90, .003, .009, .05, .2); nShine(P, 60); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .05, .14); nFrame(P, .08, .04, .4); nGroove(P.S, g => { g.beginPath(); g.arc(.5, .5, .15, 0, 7); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.moveTo(.5 + Math.cos(a) * .2, .5 + Math.sin(a) * .2); g.lineTo(.5 + Math.cos(a) * .29, .5 + Math.sin(a) * .29); } }, .022, .5); nDots(P.S, P.R, 70, .003, .009, .05, .2); nShine(P, 60); }],
-    stone: [P => { nPlate(P.S, 0, 0, 1, 1, .05, .14); nGroove(P.S, nCracks(P.R, 1, 1, .12), .012, .3); nDots(P.S, P.R, 90, .003, .009, .05, .2); nShine(P, 55); }] },
-  portal: { acc: '#1a1030', tint: { stone: ['#2a1d4a', .6], fort: ['#20163a', .35], prop: ['#2a1d4a', .6] }, glow: '#c86bff', own: 1, gs: 2, gloss: [1.2, 1.3, .3, .4, 1.1],
-    fort: [NT.plain, P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); nFrame(P, .05, .07, .4); nGlow(P, g => nRR(g, .11, .11, .78, .78, .07), .012, .7); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); nFrame(P, .05, .07, .4); P.A.fillStyle = '#fff'; P.A.beginPath(); P.A.arc(.5, .5, .27, 0, 7); P.A.fill(); nGlow(P, g => { g.beginPath(); g.arc(.5, .5, .3, 0, 7); }, .04); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); P.A.fillStyle = '#fff'; nRR(P.A, .22, .22, .56, .56, .1); P.A.fill(); nGlow(P, g => nRR(g, .2, .2, .6, .6, .12), .035); nFrame(P, .05, .07, .4); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); nFrame(P, .05, .07, .4); nGlow(P, g => { g.beginPath(); g.moveTo(.12, .5); g.lineTo(.5, .12); g.lineTo(.88, .5); g.lineTo(.5, .88); g.closePath(); }, .03); }],
-    stone: [P => { nPlate(P.S, 0, 0, 1, 1, .06, .14); nFrame(P, .07, .09, .35); nGlow(P, g => { g.beginPath(); g.arc(.5, .5, .1, 0, 7); }, .025, .8); }] },
-  train: { acc: '#ffcf3a', tint: { stone: ['#8a929c', .5], prop: ['#7d8590', .5] }, glow: '#ffd98a', own: 0, gs: 1.5, gloss: [1, 1.1, .2, .3, .9],
-    fort: [P => { nPlate(P.S, 0, 0, 1, 1, .05, .13); nFrame(P, .09, .05, .45); for (let i = 0; i < 6; i++) { const t = .1 + i * .16; nBolt(P, t, .045, .016); nBolt(P, t, .955, .016); nBolt(P, .045, t, .016); nBolt(P, .955, t, .016); } },
-      P => { nPlate(P.S, 0, 0, 1, 1, .05, .13); P.A.save(); P.A.beginPath(); P.A.rect(0, .36, 1, .28); P.A.clip(); P.A.fillStyle = '#fff'; for (let i = -1; i < 6; i++) { P.A.beginPath(); P.A.moveTo(i * .25, .64); P.A.lineTo(i * .25 + .125, .64); P.A.lineTo(i * .25 + .405, .36); P.A.lineTo(i * .25 + .28, .36); P.A.fill(); } P.A.restore(); nk(P.S, .5); P.S.fillRect(0, .36, 1, .28);
-        nGroove(P.S, g => { g.beginPath(); g.moveTo(0, .36); g.lineTo(1, .36); g.moveTo(0, .64); g.lineTo(1, .64); }, .016, .5); for (const y of [.14, .86]) for (const x of [.14, .5, .86]) nBolt(P, x, y, .018); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .05, .13); nk(P.S, .5); nRR(P.S, .2, .22, .6, .44, .07); P.S.fill(); P.G.fillStyle = '#fff'; nRR(P.G, .24, .26, .52, .36, .05); P.G.fill(); nGroove(P.S, g => nRR(g, .2, .22, .6, .44, .07), .024, .6); for (const x of [.1, .9]) for (const y of [.1, .9]) nBolt(P, x, y, .018); nGroove(P.S, g => { g.beginPath(); g.moveTo(.2, .8); g.lineTo(.8, .8); }, .014, .4); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .05, .13); nFrame(P, .08, .05, .4); for (let i = 0; i < 5; i++) nGroove(P.S, g => { g.beginPath(); g.moveTo(.22, .26 + i * .12); g.lineTo(.78, .26 + i * .12); }, .03, .55); }],
-    stone: [P => { nPlate(P.S, 0, 0, 1, 1, .05, .14); nFrame(P, .08, .05, .4); for (const x of [.14, .86]) for (const y of [.14, .86]) nBolt(P, x, y, .02); }] },
-  cloud: { acc: '#ffffff', tint: { stone: ['#ffffff', .6], fort: ['#ffffff', .38], prop: ['#f4fbff', .6] }, glow: '#bfe9ff', own: 1, gs: .35, gloss: [.5, .6, .3, .4, .5],
-    fort: [0, 1, 2].map(k => P => { const S = P.S; for (let i = 0; i < 9; i++) { const x = P.R(), y = P.R(), r = .16 + P.R() * .14; for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) { const gr = S.createRadialGradient(x + dx - r * .25, y + dy - r * .3, r * .05, x + dx, y + dy, r); gr.addColorStop(0, 'rgba(255,255,255,.3)'); gr.addColorStop(.75, 'rgba(255,255,255,.05)'); gr.addColorStop(1, 'rgba(0,0,0,.1)'); S.fillStyle = gr; S.beginPath(); S.arc(x + dx, y + dy, r, 0, 7); S.fill(); } }
-      const gr = P.G.createLinearGradient(0, 0, 0, 1); gr.addColorStop(0, 'rgba(255,255,255,.1)'); gr.addColorStop(1, 'rgba(255,255,255,.7)'); P.G.fillStyle = gr; P.G.fillRect(0, 0, 1, 1); nShine(P, 120); }) },
-  beach: { acc: '#2fd3c8', tint: { stone: ['#f1dcae', .6], prop: ['#ecd3a0', .6] }, glow: '#7ff0e6', own: 0, gs: .4, gloss: [.3, .5, .2, .4, .3],
-    fort: [P => { nPlate(P.S, 0, 0, 1, 1, .06, .13); nDots(P.S, P.R, 130, .003, .009, .04, .18); nFrame(P, .07, .09, .22); nShine(P, 70); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); nDots(P.S, P.R, 110, .003, .008, .04, .16); P.A.fillStyle = '#fff'; P.A.beginPath(); P.A.moveTo(0, .58); for (let i = 0; i <= 20; i++) P.A.lineTo(i / 20, .58 + Math.sin(i / 20 * Math.PI * 4) * .06); P.A.lineTo(1, 1); P.A.lineTo(0, 1); P.A.fill(); P.L.fillStyle = '#f0f0f0'; P.L.fillRect(0, .55, 1, .45);
-        nw(P.S, .5); P.S.lineWidth = .02; P.S.beginPath(); for (let i = 0; i <= 20; i++) { const x = i / 20, y = .58 + Math.sin(x * Math.PI * 4) * .06; i ? P.S.lineTo(x, y) : P.S.moveTo(x, y); } P.S.stroke(); },
-      P => { for (let i = 0; i < 4; i++) { (i % 2 ? nw : nk)(P.S, .05 + P.R() * .06); P.S.fillRect(i / 4, 0, .25, 1); } nGroove(P.S, g => { g.beginPath(); for (let i = 0; i <= 4; i++) { g.moveTo(i / 4, 0); g.lineTo(i / 4, 1); } }, .018, .45); for (let i = 0; i < 4; i++) { nBolt(P, i / 4 + .125, .1, .014); nBolt(P, i / 4 + .125, .9, .014); } nShine(P, 70); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); nDots(P.S, P.R, 110, .003, .008, .04, .16); P.A.fillStyle = '#fff'; for (let i = 0; i < 7; i++) { P.A.beginPath(); P.A.arc(.12 + P.R() * .76, .12 + P.R() * .76, .035 + P.R() * .04, 0, 7); P.A.fill(); } nFrame(P, .06, .08, .28); }],
-    stone: [P => { nPlate(P.S, 0, 0, 1, 1, .06, .14); nDots(P.S, P.R, 130, .003, .009, .04, .18); nShine(P, 55); }] },
-  space: { acc: '#8a7bff', tint: { stone: ['#55535f', .7], fort: ['#4a4860', .32], prop: ['#4d4b58', .7] }, glow: '#a98bff', own: 0, gs: 1.6, gloss: [.45, .6, .2, .3, .45],
-    fort: [0, 1, 2].map(k => P => { const S = P.S; nDots(S, P.R, 50, .004, .012, .05, .2); for (let i = 0; i < 6; i++) { const x = .12 + P.R() * .76, y = .12 + P.R() * .76, r = .04 + P.R() * .085; const gr = S.createRadialGradient(x + r * .25, y + r * .3, r * .1, x, y, r); gr.addColorStop(0, 'rgba(0,0,0,.1)'); gr.addColorStop(1, 'rgba(0,0,0,.5)'); S.fillStyle = gr; S.beginPath(); S.arc(x, y, r, 0, 7); S.fill();
-        nw(S, .45); S.lineWidth = .012; S.beginPath(); S.arc(x, y, r, .6, 2.9); S.stroke(); nk(S, .4); S.beginPath(); S.arc(x, y, r, 3.7, 6.0); S.stroke(); }
-      if (k) for (let i = 0; i < 3; i++) { const x = .15 + P.R() * .7, y = .15 + P.R() * .7, r = .03 + P.R() * .03; nGlow(P, g => { g.beginPath(); g.moveTo(x, y - r * 1.5); g.lineTo(x + r, y); g.lineTo(x, y + r * 1.5); g.lineTo(x - r, y); g.closePath(); }, .016); P.G.fillStyle = 'rgba(255,255,255,.7)'; P.G.fill(); } nShine(P, 75); }) },
-  forest: { acc: '#5fae3a', tint: { stone: ['#8e9486', .45], prop: ['#8a8f80', .45] }, glow: '#c9ff8a', own: 0, gs: .3, gloss: [.25, .3, .15, .3, .25],
-    fort: [0, 1].map(k => P => { nBricks(P, 2 + k, 2, .5, .1); nDots(P.S, P.R, 80, .004, .01, .04, .16); const A = P.A; A.fillStyle = '#fff'; for (let i = 0; i < 26; i++) { A.globalAlpha = .55 + P.R() * .45; A.beginPath(); A.arc(P.R(), P.R() * P.R() * .5, .03 + P.R() * .06, 0, 7); A.fill(); } A.globalAlpha = 1; for (let i = 0; i < 5; i++) { const x = P.R(); A.lineWidth = .014; A.strokeStyle = '#fff'; A.beginPath(); A.moveTo(x, 0); A.bezierCurveTo(x + .06, .2, x - .06, .4, x + (P.R() - .5) * .1, .45 + P.R() * .35); A.stroke(); } nShine(P, 55); }) },
-  city: { acc: '#dfe6f2', tint: { stone: ['#9aa3b2', .55], prop: ['#8f98a8', .55] }, glow: '#ffe2a0', own: 0, gs: 1.5, gloss: [.6, .9, .2, .3, .6],
-    fort: [NT.panel, P => { nPlate(P.S, 0, 0, 1, 1, .05, .12); nk(P.S, .45); for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { nRR(P.S, .12 + i * .42, .12 + j * .42, .34, .34, .03); P.S.fill(); if (P.R() < .7) { P.G.fillStyle = `rgba(255,255,255,${.6 + P.R() * .4})`; nRR(P.G, .14 + i * .42, .14 + j * .42, .3, .3, .02); P.G.fill(); } }
-        nGroove(P.S, g => { g.beginPath(); g.moveTo(.5, .1); g.lineTo(.5, .9); g.moveTo(.1, .5); g.lineTo(.9, .5); }, .02, .4); P.L.fillStyle = '#fff'; P.L.fillRect(.1, .1, .8, .8); }, NT.band,
-      P => { nPlate(P.S, 0, 0, 1, 1, .05, .12); nFrame(P, .06, .05, .35); nk(P.S, .4); P.S.fillRect(.14, .4, .72, .2); P.G.fillStyle = '#fff'; P.G.fillRect(.17, .44, .66, .12); P.L.fillStyle = '#fff'; P.L.fillRect(.14, .4, .72, .2); }], stone: [NT.plain, NT.cross] },
-  neon: { acc: '#0c0e16', tint: { stone: ['#14161f', .82], fort: ['#10121a', .7], prop: ['#14161f', .8], trunk: ['#181a24', .7] }, glow: '#3affd0', own: 1, gs: 2.2, gloss: [1.3, 1.4, .8, .5, 1.2],
-    fort: [P => { nPlate(P.S, 0, 0, 1, 1, .06, .1); nFrame(P, .05, .07, .3); nGlow(P, g => nRR(g, .07, .07, .86, .86, .08), .008, .5); }, P => { nPlate(P.S, 0, 0, 1, 1, .06, .1); nGlow(P, g => nRR(g, .07, .07, .86, .86, .08), .03); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .06, .1); nGlow(P, g => { g.beginPath(); g.moveTo(0, .3); g.lineTo(.3, .3); g.lineTo(.42, .42); g.lineTo(1, .42); g.moveTo(0, .7); g.lineTo(.55, .7); g.lineTo(.67, .58); g.lineTo(1, .58); }, .022); for (const [x, y] of [[.3, .3], [.55, .7]]) { P.G.fillStyle = '#fff'; P.G.beginPath(); P.G.arc(x, y, .03, 0, 7); P.G.fill(); } nFrame(P, .05, .07, .3); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .06, .1); nFrame(P, .05, .07, .3); nGlow(P, g => { g.beginPath(); g.moveTo(.1, .5); g.lineTo(.9, .5); }, .05); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .06, .1); nFrame(P, .05, .07, .3); nGlow(P, g => nRR(g, .3, .3, .4, .4, .06), .028); }],
-    stone: [P => { nPlate(P.S, 0, 0, 1, 1, .06, .12); nFrame(P, .06, .08, .35); nGlow(P, g => nRR(g, .08, .08, .84, .84, .09), .007, .45); }] },
-  future: { acc: '#ffffff', tint: { stone: ['#eef2f8', .7], fort: ['#f2f5fa', .42], prop: ['#e6ebf3', .7] }, glow: '#59c8ff', own: 1, gs: 1.6, gloss: [1.2, 1.3, .4, .5, 1.1],
-    fort: [NT.plain, P => { nPlate(P.S, 0, 0, 1, 1, .06, .1); nFrame(P, .05, .07, .25); nGlow(P, g => { g.beginPath(); g.arc(.5, .5, .2, 0, 7); }, .03); nGroove(P.S, g => { g.beginPath(); g.arc(.5, .5, .29, 0, 7); }, .014, .35); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .06, .1); P.A.fillStyle = '#fff'; P.A.fillRect(0, 0, 1, .3); nGlow(P, g => { g.beginPath(); g.moveTo(0, .34); g.lineTo(1, .34); }, .028); nGroove(P.S, g => { g.beginPath(); g.moveTo(.2, .66); g.lineTo(.8, .66); }, .014, .3); },
-      P => { nPlate(P.S, 0, 0, 1, 1, .06, .1); nFrame(P, .05, .07, .25); P.A.fillStyle = '#fff'; P.A.beginPath(); P.A.moveTo(0, 0); P.A.lineTo(.36, 0); P.A.lineTo(0, .36); P.A.fill(); P.A.beginPath(); P.A.moveTo(1, 1); P.A.lineTo(.64, 1); P.A.lineTo(1, .64); P.A.fill(); nGlow(P, g => { g.beginPath(); g.moveTo(.36, 0); g.lineTo(0, .36); g.moveTo(.64, 1); g.lineTo(1, .64); }, .02); }],
-    stone: [NT.plain] },
-};
-// which world each map is set in
-const NEO_OF = { classic: 'nymbo', sky: 'cloud', desert: 'desert', ice: 'ice', volcano: 'lava', jungle: 'forest', toy: 'toy', portal: 'portal', reef: 'beach', tide: 'beach', daynight: 'city', lab: 'neon', cube: 'space', grass: 'forest', train: 'train', paint: 'future', cylinder: 'future' };
-const NEO_NAME = (typeof window !== 'undefined' && window.NEO_SKIN) || NEO_OF[MAP] || 'nymbo', NEO_SK = NEO_SKINS[NEO_NAME] || NEO_SKINS.nymbo; // (window.NEO_SKIN: a test can try any skin on any map)
-// ---- build this world's tiles: [stone, fort, trunk, leaves, prop], each a run of layers ----
-const NEOW = (() => { const K = NEO_SK, fort = K.fort || NEO_SKINS.nymbo.fort, stone = K.stone || [fort[0]], sets = [stone, fort, K.trunk || [NT.bark], K.leaves || [NT.leaves], K.prop || stone];
-  const T = NEO_T, n = sets.reduce((a, s) => a + s.length, 0), data = new Uint8Array(T * T * 4 * n), lay = []; let at = 0;
-  sets.forEach((s, c) => { lay.push(new THREE.Vector2(at, s.length)); s.forEach((fn, i) => { data.set(neoLayer(1000 + c * 97 + i * 13, fn), at * T * T * 4); at++; }); });
-  const tex = new THREE.DataArrayTexture(data, T, T, n); tex.format = THREE.RGBAFormat; tex.type = THREE.UnsignedByteType; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4; tex.needsUpdate = true;
-  const C = c => new THREE.Color(c), tn = K.tint || {}, tv = k => tn[k] ? new THREE.Vector4(C(tn[k][0]).r, C(tn[k][0]).g, C(tn[k][0]).b, tn[k][1]) : new THREE.Vector4(1, 1, 1, 0);
-  return { tex, n, data, U: { neoTex: { value: tex }, neoLay: { value: lay }, neoAcc: { value: C(K.acc) }, neoGlowC: { value: C(K.glow) }, neoTint: { value: ['stone', 'fort', 'trunk', 'leaves', 'prop'].map(tv) },
-      neoPar: { value: K.gloss.map((g, c) => new THREE.Vector4(g, 0, K.own, K.gs * (c === 2 || c === 3 ? .35 : 1))) }, neoT: { value: 0 }, neoSkyA: skyU.zen, neoSkyB: skyU.hor } }; })();
-{ const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam) => { if (prev) prev(r, s, cam); NEOW.U.neoT.value = now() / 1000 % 1000; }; }
-// ---- every plain block remembers which tile it wears ----
-const neoSeed = new THREE.InstancedBufferAttribute(new Float32Array(PLAIN_CAP), 1); plainIM.geometry.setAttribute('aNeo', neoSeed);
-for (const e of blocks) if (e.inst >= 0) neoSeed.setX(e.inst, Math.random()); neoSeed.needsUpdate = true;
-{ const nb0 = newBlock; newBlock = function (...a) { const e = nb0.apply(this, a); if (e && e.inst >= 0) { neoSeed.setX(e.inst, Math.random()); neoSeed.needsUpdate = true; } return e; }; }
-// ---- the block shader (solo: the same skin on a single block that is not one of the crowd, like the one on a robot's head) ----
-function neoPatch(mat, solo) { const prev = mat.onBeforeCompile, su = solo ? { neoSeedU: { value: 0 }, neoDimsU: { value: new THREE.Vector3(1, 1, 1) }, neoCatU: { value: 0 } } : null; if (su) mat.userData.neoU = su;
-  mat.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd); Object.assign(sh.uniforms, NEOW.U, su || {});
-    sh.vertexShader = 'attribute float aFace; ' + (solo ? 'uniform float neoSeedU; uniform vec3 neoDimsU;' : 'attribute float aNeo; attribute float aCat; varying float vNeoC;') + ' varying vec2 vNeoUv; varying float vNeoS; varying vec3 vNeoG;\n' + sh.vertexShader
-      .replace('#include <beginnormal_vertex>', solo ? '#include <beginnormal_vertex>\n  vec3 neoS = neoDimsU;' : `#include <beginnormal_vertex>
+// ---- what every shiny thing mirrors ----
+const NEOU = { neoT: { value: 0 }, neoZen: { value: skyU.zen.value.clone() }, neoHor: { value: skyU.hor.value.clone() }, neoGnd: { value: new THREE.Color('#5b5650') }, neoSunD: { value: SUN_DIR.clone() }, neoSunC: { value: new THREE.Color('#fff0d6') } };
+{ const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam, rt) => { if (prev) prev(r, s, cam, rt); NEOU.neoT.value = now() / 1000 % 1000; }; }
+const NEO_ENV = `
+uniform float neoT; uniform vec3 neoZen; uniform vec3 neoHor; uniform vec3 neoGnd; uniform vec3 neoSunD; uniform vec3 neoSunC;
+vec3 neoEnv(vec3 R, float rough) { float w = .03 + rough * .6, h = R.y; /* (rough: how blurred the mirror is) */
+  vec3 sky = mix(neoHor, neoZen, smoothstep(0., .7, h)), gnd = mix(neoHor * .6, neoGnd, smoothstep(0., -.3 - rough, h));
+  vec3 e = mix(gnd, sky, smoothstep(-w, w, h));
+  float sd = max(dot(R, neoSunD), 0.);
+  e += neoSunC * (pow(sd, mix(700., 30., rough)) * mix(10., 1., rough) + pow(sd, 8.) * .3);
+  e += vec3(1., .96, .92) * pow(max(dot(R, vec3(.35, .87, .35)), 0.), mix(90., 14., rough)) * mix(1.1, .25, rough); /* the soft light overhead */
+  return e; }
+`;
+const NEO_REFL = `{ vec3 nV = normalize(vViewPosition); float nfr = pow(1. - max(dot(normal, nV), 0.), 5.); vec3 nR = inverseTransformDirection(reflect(-nV, normal), viewMatrix);
+    vec3 nF0 = mix(vec3(.04), diffuseColor.rgb, metalnessFactor);
+    outgoingLight += neoEnv(nR, roughnessFactor) * (nF0 + (1. - nF0) * nfr) * (1. - .7 * roughnessFactor); }`;
+// any ordinary material can be given the shine (scenery, the special blocks, the flags)
+function neoShine(m) { if (!m || !m.isMeshStandardMaterial || m.userData.neoC) return m; m.userData.neoC = 1; const prev = m.onBeforeCompile, key = m.customProgramCacheKey ? m.customProgramCacheKey() : '';
+  m.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd); Object.assign(sh.uniforms, NEOU); sh.fragmentShader = NEO_ENV + sh.fragmentShader.replace('#include <opaque_fragment>', NEO_REFL + '\n  #include <opaque_fragment>'); };
+  m.customProgramCacheKey = () => key + '|neoShine'; m.needsUpdate = true; return m; }
+// ---- the blocks: where the paint, the chrome, the cream and the lights go ----
+const NEO_ZONES = `  { int cat = int(vNeoC + .5); float s = vNeoS, s2 = fract(s * 7.31), s3 = fract(s * 13.7);
+    vec3 d = max(vNeoH - abs(vNeoP), 0.); float dmin = min(d.x, min(d.y, d.z)), dmax = max(d.x, max(d.y, d.z)), e = d.x + d.y + d.z - dmin - dmax, cap = d.x + d.y + d.z; /* e: how far in from the nearest edge · cap: small near a corner */
+    vec2 uv, hh; if (d.x <= d.y && d.x <= d.z) { uv = vNeoP.zy; hh = vNeoH.zy; } else if (d.y <= d.z) { uv = vNeoP.xz; hh = vNeoH.xz; } else { uv = vNeoP.xy; hh = vNeoH.xy; } /* where we are on this face */
+    float side = d.y <= d.x && d.y <= d.z ? 0. : 1.; /* a side face (not the top or the bottom) */
+    float aa = fwidth(e) + fwidth(cap) * .5 + .001, w = max(aa, .012);
+    vec3 paint = diffuseColor.rgb; float lum = dot(paint, vec3(.3, .59, .11)); paint = clamp(mix(vec3(lum), paint, 2.3), 0., 1.); paint = pow(paint, vec3(2.3)) * (.8 + .4 * s2); /* candy: the block's own colour made deep and rich; every block its own tone */
+    vec3 CHR = vec3(.9, .92, .95), CRM = vec3(.95, .91, .8), col = paint, glw = vec3(0.); float met = .85, rgh = .2, hgt = 0., flk = 1.;
+    float capM = 1. - smoothstep(.26 - w, .26 + w, cap);
+    #define NEO_CHROME(m) col = mix(col, CHR, m); met = mix(met, 1., m); rgh = mix(rgh, .07, m); flk *= 1. - m; hgt += m * .6;
+    #define NEO_CREAM(m) col = mix(col, CRM, m); met = mix(met, 0., m); rgh = mix(rgh, .16, m); flk *= 1. - m;
+    if (cat == 1) {
+      if (s < .36) { } /* solid candy */
+      else if (s < .5) { float b = abs(vNeoP.y), belt = 1. - smoothstep(.17 - w, .17 + w, b), pin = (1. - smoothstep(.205 - w, .205 + w, b)) - belt; NEO_CREAM(belt) NEO_CHROME(pin) } /* two-tone: a cream belt, chrome pinstripes */
+      else if (s < .62) { float pn = smoothstep(.17 - w, .17 + w, e), fr = smoothstep(.125 - w, .125 + w, e) - pn; if (s3 > .5) { NEO_CREAM(pn) } else col = mix(col, paint * .5, pn); hgt -= pn * .3; NEO_CHROME(fr) } /* an inset panel in a chrome frame */
+      else if (s < .72) { float b = abs(vNeoP.y), inF = smoothstep(.13 - w, .13 + w, e) * side, lt = (1. - smoothstep(.045 - w, .045 + w, b)) * inF, fr = (1. - smoothstep(.08 - w, .08 + w, b)) * inF - lt; /* a strip light across each side */
+        col = mix(col, vec3(.03), lt); met = mix(met, 0., lt); flk *= 1. - lt; glw = vec3(1., .74, .38) * lt * 2.4; NEO_CHROME(fr) }
+      else if (s < .85) { float ed = 1. - smoothstep(.075 - w, .075 + w, e); NEO_CHROME(ed) capM = 0.; } /* chrome along every edge */
+      else { vec2 cu = fract(uv + hh) - .5; float r = length(cu), wr = min(max(fwidth(r), .012), .05), gl = 1. - smoothstep(.19 - wr, .19 + wr, r), rg = (1. - smoothstep(.25 - wr, .25 + wr, r)) - gl; /* a porthole on every face (one per block-length on a long block) */
+        col = mix(col, vec3(.015, .02, .03), gl); met = mix(met, 0., gl); rgh = mix(rgh, .05, gl); flk *= 1. - gl; glw = paint * 3. * (1. - smoothstep(.04, .1, r)) * (.7 + .3 * sin(neoT * 3. + s * 40.)); NEO_CHROME(rg) } }
+    else if (cat == 3) { capM = 0.; rgh = .26; col = sqrt(paint) * vec3(.5, .85, .55); } /* tree tops: candy green, soft */
+    else if (cat == 2) { col = CRM; met = 0.; rgh = .18; flk = 0.; float bnd = 1. - smoothstep(.09 - w, .09 + w, abs(vNeoP.y)); NEO_CHROME(bnd) capM = 0.; } /* trunks: cream pillars with a chrome ring */
+    else { col = s2 > .62 ? vec3(.74, .8, .9) : CRM; met = 0.; rgh = .15; flk = 0.; /* loose blocks and stonework: pearl enamel */
+      if (s > .78) { float ed = 1. - smoothstep(.07 - w, .07 + w, e); NEO_CHROME(ed) capM = 0.; }
+      else if (s > .58) { float bd = 1. - smoothstep(.13 - w, .13 + w, abs(vNeoP.y)); col = mix(col, s3 > .5 ? vec3(.02, .5, .52) : vec3(.9, .5, .06), bd); met = mix(met, .85, bd); flk = bd; } }
+    NEO_CHROME(capM)
+    diffuseColor.rgb = col; neoMet = met; neoRgh = rgh; neoGlow = glw; neoFlk = flk; neoHgt = hgt * .012 * clamp(.012 / aa, 0., 1.); }`;
+const NEO_REFL_BLOCK = `{ vec3 nV = normalize(vViewPosition); float nfr = pow(1. - max(dot(normal, nV), 0.), 5.); vec3 nR = inverseTransformDirection(reflect(-nV, normal), viewMatrix);
+    vec3 nF0 = mix(vec3(.04), diffuseColor.rgb, metalnessFactor);
+    outgoingLight += neoEnv(nR, roughnessFactor) * (nF0 + (1. - nF0) * nfr * .5) * (1. - .7 * roughnessFactor);
+    outgoingLight += neoEnv(nR, .03) * (.02 + .22 * nfr) * neoFlk; /* the clear coat over the candy paint */
+    vec3 fc = floor(vNeoP * 150.); float fh = fract(sin(dot(fc, vec3(12.9898, 78.233, 37.719))) * 43758.5453); vec3 fd = normalize(nR + (vec3(fract(fh * 13.1), fract(fh * 57.3), fract(fh * 91.7)) - .5) * .7);
+    float fs = pow(max(dot(fd, neoSunD), 0.), 36.) + .6 * pow(max(dot(fd, vec3(.35, .87, .35)), 0.), 36.);
+    outgoingLight += (neoSunC * .35 + diffuseColor.rgb * 1.2) * fs * step(.6, fh) * neoFlk * clamp(1.5 - fwidth(vNeoP.x + vNeoP.y + vNeoP.z) * 100., 0., 1.); /* metal flake: tiny glints round the highlights */ }`;
+// (solo: the same paint on a single block that is not one of the crowd, like the one on a robot's head)
+function neoPatch(mat, solo) { if (mat.userData.neoC) return mat; mat.userData.neoC = 1; const prev = mat.onBeforeCompile, su = solo ? { neoSeedU: { value: 0 }, neoDimsU: { value: new THREE.Vector3(1, 1, 1) }, neoCatU: { value: 0 } } : null; if (su) mat.userData.neoU = su;
+  mat.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd); Object.assign(sh.uniforms, NEOU, su || {});
+    sh.vertexShader = (solo ? 'uniform float neoSeedU; uniform vec3 neoDimsU; uniform float neoCatU;' : 'attribute float aNeo; attribute float aCat;') + ' varying vec3 vNeoP; varying vec3 vNeoH; varying float vNeoS; varying float vNeoC;\n' + sh.vertexShader
+      .replace('#include <beginnormal_vertex>', solo ? '#include <beginnormal_vertex>' : `#include <beginnormal_vertex>
   #ifdef USE_INSTANCING
     vec3 neoS = max(vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz)), vec3(1e-4));
   #else
@@ -12929,34 +12875,29 @@ function neoPatch(mat, solo) { const prev = mat.onBeforeCompile, su = solo ? { n
   #endif
   objectNormal *= neoS; /* (the edges are re-rounded below at their true size, so the light has to be told) */`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-  ${solo ? 'vNeoS = neoSeedU;' : `{ vec3 nh = .5 * neoS; float nr = min(.1, .45 * min(nh.x, min(nh.y, nh.z))); /* the bevel: the same size on a block of any length */
-    vec3 nc = clamp(position, vec3(-.4), vec3(.4)), no = position - nc; transformed = (nc * (nh - nr) / .4 + no * (nr / .1)) / neoS; }
-  vNeoS = aNeo; vNeoC = aCat;`}
-  vNeoG = normal;
-  { vec2 nn = aFace < 1.5 ? neoS.zy : aFace < 3.5 ? neoS.xz : neoS.xy; vNeoUv = vec2(uv.x, 1. - uv.y) * max(vec2(1.), floor(nn + .5)); } /* whole tiles along each side */`);
-    sh.fragmentShader = (solo ? 'uniform float neoCatU;\n#define vNeoC neoCatU\n' : 'varying float vNeoC;\n') + 'uniform highp sampler2DArray neoTex; uniform vec2 neoLay[5]; uniform vec3 neoAcc; uniform vec3 neoGlowC; uniform vec4 neoTint[5]; uniform vec4 neoPar[5]; uniform float neoT; uniform vec3 neoSkyA; uniform vec3 neoSkyB; varying vec2 vNeoUv; varying float vNeoS; varying vec3 vNeoG; vec4 neoTx; float neoBev; vec3 neoOwn;\n' + sh.fragmentShader
-      .replace('#include <color_fragment>', `#include <color_fragment>
-  { int nc = int(vNeoC + .5); vec2 nl = neoLay[nc]; neoTx = texture(neoTex, vec3(vNeoUv, nl.x + floor(pow(min(vNeoS, .999), 3.2) * nl.y))); /* (a kind's first tile is its plainest and by far the most common; the fancy ones are the odd block here and there) */
-    vec3 ng = abs(normalize(vNeoG)); neoBev = smoothstep(.985, .8, max(ng.x, max(ng.y, ng.z))); /* (how far round the bevel this spot is) */
-    vec3 b = diffuseColor.rgb; if (nc < 2) { float bl = dot(b, vec3(.3, .59, .11)); b = clamp(mix(vec3(bl), b, 1.4), 0., 1.) * .86; } /* (a richer, deeper version of the block's own colour: glossy paint, not chalk) */
-    b = mix(b, neoTint[nc].rgb, neoTint[nc].a); neoOwn = b;
-    b = mix(b, neoAcc, neoTx.g) * (neoTx.r * 2.);
-    b = mix(b, b * 1.2 + .05, neoBev) * (.93 + .14 * fract(vNeoS * 7.31)); /* the bevel catches the light; no two blocks quite the same shade */
-    diffuseColor.rgb = b; }`)
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  { vec4 np = neoPar[int(vNeoC + .5)]; totalEmissiveRadiance += mix(neoGlowC, neoOwn * 1.5 + .06, np.z) * neoTx.b * np.w * (.82 + .18 * sin(neoT * 2.4 + vNeoS * 40.)); }`)
-      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-  { float gl = clamp(neoPar[int(vNeoC + .5)].x * (.35 + .9 * neoTx.a), 0., 1.6); roughnessFactor = clamp(roughnessFactor * mix(1.45, .28, gl / 1.6), .07, 1.); } /* how shiny: the skin says, tile by tile */`)
-      .replace('#include <metalnessmap_fragment>', `#include <metalnessmap_fragment>
-  metalnessFactor = max(metalnessFactor, smoothstep(.93, 1., neoTx.a) * .6); /* bolts and trims are bare metal */`)
-      .replace('#include <opaque_fragment>', `{ float gl = clamp(neoPar[int(vNeoC + .5)].x * (.35 + .9 * neoTx.a), 0., 1.6); /* the sky mirrored in the gloss, strongest at glancing angles (worked out, not looked up: cheap on a phone) */
-    vec3 nV = normalize(vViewPosition); float nf = pow(1. - max(dot(normal, nV), 0.), 4.); vec3 nR = inverseTransformDirection(reflect(-nV, normal), viewMatrix);
-    outgoingLight += mix(neoSkyB, neoSkyA, smoothstep(-.05, .8, nR.y)) * (nR.y < 0. ? .5 : 1.) * (nf * .55 + .03) * gl; }
-  #include <opaque_fragment>`); };
-  mat.customProgramCacheKey = () => solo ? 'soloNEO' : 'plainNEO'; mat.needsUpdate = true; }
+  ${solo ? 'vNeoP = position * neoDimsU; vNeoH = .5 * neoDimsU; vNeoS = neoSeedU; vNeoC = neoCatU;' : `{ vec3 nh = .5 * neoS; float nr = min(.13, .45 * min(nh.x, min(nh.y, nh.z))); /* the round edge: the same size on a block of any length */
+    vec3 nc = clamp(position, vec3(-.37), vec3(.37)), tp = nc * (nh - nr) / .37 + (position - nc) * (nr / .13); transformed = tp / neoS; vNeoP = tp; vNeoH = nh; }
+  vNeoS = aNeo; vNeoC = aCat;`}`);
+    sh.fragmentShader = 'varying vec3 vNeoP; varying vec3 vNeoH; varying float vNeoS; varying float vNeoC; float neoMet, neoRgh, neoHgt, neoFlk; vec3 neoGlow;\n' + NEO_ENV + sh.fragmentShader
+      .replace('#include <color_fragment>', '#include <color_fragment>\n' + NEO_ZONES)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = neoRgh;')
+      .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n  metalnessFactor = neoMet;')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+  { vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); float hx = dFdx(neoHgt), hy = dFdy(neoHgt); vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
+    normal = normalize(abs(det) * normal - sign(det) * (hx * r1 + hy * r2)); } /* (chrome and frames stand a hair proud: their lips catch the light) */`)
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += neoGlow;')
+      .replace('#include <opaque_fragment>', NEO_REFL_BLOCK + '\n  #include <opaque_fragment>'); };
+  mat.customProgramCacheKey = () => solo ? 'candySolo' : 'candyNEO'; mat.needsUpdate = true; return mat; }
+// every plain block remembers which make it is
+const neoSeed = new THREE.InstancedBufferAttribute(new Float32Array(PLAIN_CAP), 1); plainIM.geometry.setAttribute('aNeo', neoSeed);
+for (const e of blocks) if (e.inst >= 0) neoSeed.setX(e.inst, Math.random()); neoSeed.needsUpdate = true;
+{ const nb0 = newBlock; newBlock = function (...a) { const e = nb0.apply(this, a); if (e && e.inst >= 0) { neoSeed.setX(e.inst, Math.random()); neoSeed.needsUpdate = true; } return e; }; }
 neoPatch(plainIM.material);
-// the block on a robot's head wears the same skin, tile and all, as the block that was picked up
-{ const rh = refreshHeld; refreshHeld = function (r) { rh(r); const e = r.stack[0], m = r.model && r.model.heldPlainMat; if (!m) return; if (!m.userData.neoU) neoPatch(m, true);
+// (other crowds of blocks drawn with the block shape, if a map has any, get the same paint)
+for (const o of scene.children) if (o.isInstancedMesh && o !== plainIM && o.geometry === cubeGeo && o.material && o.material.isMeshStandardMaterial && !o.material.userData.neoC) { const g = cubeGeo.clone(), sd = new Float32Array(o.count); for (let i = 0; i < o.count; i++) sd[i] = Math.random();
+  g.setAttribute('aNeo', new THREE.InstancedBufferAttribute(sd, 1)); g.setAttribute('aCat', new THREE.InstancedBufferAttribute(new Float32Array(o.count), 1)); o.geometry = g; neoPatch(o.material); }
+// the block on a robot's head is the very block that was picked up: same make, same paint
+{ const rh = refreshHeld; refreshHeld = function (r) { rh(r); const e = r.stack[0], m = r.model && r.model.heldPlainMat; if (!m) return; if (!m.userData.neoU) { m.roughness = .25; m.metalness = .8; neoPatch(m, true); }
     if (e && e.inst >= 0) { const u = m.userData.neoU; u.neoCatU.value = tpCatOf(e); u.neoSeedU.value = neoSeed.getX(e.inst); u.neoDimsU.value.copy(e.dims); } }; }
 // ============================================================
 // THE SPECIAL BLOCKS AND THE FLAGS in the new look. Still glass you can see into (the gunpowder, the sloshing water, the
@@ -13003,7 +12944,7 @@ function neoFlagArt(col) { const C = new THREE.Color(col), hex = C.getHex(); let
     const sh = g.createLinearGradient(0, 0, 0, .5); sh.addColorStop(0, 'rgba(255,255,255,.22)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = sh; g.beginPath(); g.ellipse(.4, .1, .42, .2, -.1, 0, 7); g.fill(); });
   const glow = nkT(g => { g.fillStyle = '#000'; g.fillRect(0, 0, 1, 1); g.shadowColor = '#fff'; g.shadowBlur = 18; g.fillStyle = '#ffffff'; half(g, true); g.fill(); g.shadowBlur = 0; g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = .02; g.beginPath(); g.roundRect(.09, .09, .82, .82, .1); g.stroke(); });
   return { map, glow }; }
-const neoFlags = () => { for (const k in flagMats) { const m = flagMats[k]; if (m.userData.neo) continue; const a = neoFlagArt(k); m.map = a.map; m.emissiveMap = a.glow; m.userData.neo = true; m.needsUpdate = true; } };
+const neoFlags = () => { for (const k in flagMats) { const m = flagMats[k]; if (m.userData.neo) continue; const a = neoFlagArt(k); m.map = a.map; m.emissiveMap = a.glow; m.userData.neo = true; neoShine(m); m.needsUpdate = true; } };
 neoFlags(); { const prev = scene.onBeforeRender; scene.onBeforeRender = (r, sc, cam) => { if (prev) prev(r, sc, cam); neoFlags(); }; } // (a flag colour that first turns up later gets its art then)
 // ============================================================
 // EFFECTS in the new look. A blast used to be one glowing ball. Now it is a white-hot flash, the fireball, a shock ring
@@ -13030,7 +12971,148 @@ neoFlags(); { const prev = scene.onBeforeRender; scene.onBeforeRender = (r, sc, 
   updateFx = function (dt) { uf(dt); for (let i = NFX.length - 1; i >= 0; i--) { const f = NFX[i]; f.t += dt; if (f.t < 0) continue; const k = Math.min(1, f.t / f.life), e = 1 - (1 - k) * (1 - k);
       f.m.scale.setScalar(f.r0 + (f.r1 - f.r0) * e); f.m.material.opacity = f.op * (f.kind === 'smoke' ? Math.min(1, k * 6) * (1 - k) * (1 - k) * 1.6 : 1 - k); if (f.v) { f.m.position.addScaledVector(f.v, dt); f.v.multiplyScalar(1 - 1.2 * dt); f.m.material.rotation += dt * f.spin; }
       if (k >= 1) { scene.remove(f.m); f.m.material.dispose(); NFX.splice(i, 1); } } }; }
-window.__neo = { NEOW, NEO_NAME, NEO_SKINS, sheet: () => { const T = NEO_T, c = document.createElement('canvas'); c.width = T * NEOW.n; c.height = T * 4; const g = c.getContext('2d'); for (let l = 0; l < NEOW.n; l++) for (let ch = 0; ch < 4; ch++) { const im = g.createImageData(T, T); for (let i = 0; i < T * T; i++) { const v = NEOW.data[(l * T * T + i) * 4 + ch]; im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; } g.putImageData(im, l * T, ch * T); } return c.toDataURL('image/jpeg', .8); } }; // (for checking the tiles)
+// ============================================================
+// THE PLAZA: the classic map, rebuilt. Same game (the forts, the towers, the portals and every block are where they
+// were, so it plays exactly as before), but nothing of the old island is left to see:
+//  - the ground is a polished stone floor that MIRRORS the world (the game is drawn a second time, upside down and at
+//    half size, into a picture the floor shows; a slow phone drops that and mirrors the sky instead). Laid into it in
+//    chrome and gold: an atom in a teal disc at the middle, rings and a sunburst round it, lanes to each fort, the
+//    portals and the ammo hubs, and a ring round each fort, whose floor is its team's candy colour
+//  - the sky is a painted sunset; the sun is low and golden, the shade is violet
+//  - round the map, rising out of the clouds: rockets, saucer towers, domed halls and ringed globes, in blue and teal
+//    on the blue team's side and red and gold on the red team's; an airship circles and two saucers drift about
+// ============================================================
+if (NEO_PLAZA) {
+  const R = neoRng(4242), rq = (a, b) => a + R() * (b - a);
+  // ---- the light ----
+  { const dir = V(-34.8, 16.2, 27.9); SUN_OFF.copy(dir); dir.normalize(); SUN_AX.x.set(0, 1, 0).cross(dir).normalize(); SUN_AX.y.copy(dir).cross(SUN_AX.x); SUN_DIR.copy(dir); skyU.sun.value.copy(dir); }
+  sun.color.set('#ffbe8c'); sun.intensity = 3.5; if (hemi) { hemi.color.set('#f2d2e2'); hemi.groundColor.set('#ffc49a'); hemi.intensity = .9; } // (the shade is warm and rosy, not grey)
+  const FOGN = 80, FOGF = 360; scene.fog.color.set('#f0a890'); scene.fog.near = FOGN; scene.fog.far = FOGF; Object.assign(LIGHT0, { hemi: hemi ? hemi.intensity : 1, sun: sun.intensity, fog: scene.fog.color.clone() });
+  const sunVis = V(SUN_DIR.x, 0, SUN_DIR.z).normalize().multiplyScalar(Math.cos(.16)).setY(Math.sin(.16)); // (the sun you SEE sits lower than the light: right on the skyline)
+  NEOU.neoZen.value.set('#5a4fb4'); NEOU.neoHor.value.set('#ffb478'); NEOU.neoGnd.value.set('#3a2a46'); NEOU.neoSunD.value.copy(sunVis); NEOU.neoSunC.value.set('#ffd2a0');
+  // ---- the sky: painted once, when the game loads ----
+  const skyTex = (() => { const W = NEO_TOUCH ? 1024 : 2048, H = W / 2, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), yOf = el => H * (.5 - el / 180), sunU = ((Math.atan2(sunVis.z, -sunVis.x) / (Math.PI * 2)) % 1 + 1) % 1, sx = sunU * W, sy = yOf(9.2);
+    const gr = g.createLinearGradient(0, 0, 0, H); for (const [el, col] of [[90, '#1f2470'], [70, '#3a3796'], [52, '#7a4ea8'], [38, '#d0648c'], [25, '#ff8c62'], [13, '#ffb46c'], [4, '#ffd690'], [0, '#ffe4a6'], [-5, '#ffb888'], [-20, '#cc7088'], [-50, '#6d468a'], [-90, '#3b2b68']]) gr.addColorStop(.5 - el / 180, col); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 520; i++) { const el = 34 + R() * 56; g.fillStyle = `rgba(255,255,255,${(.15 + R() * .6) * Math.min(1, (el - 34) / 25)})`; const q = R() < .14 ? 2 : 1; g.fillRect(R() * W, yOf(el), q, q); } // stars, high up
+    for (const ox of [-W, 0, W]) { let rg = g.createRadialGradient(sx + ox, sy, 0, sx + ox, sy, W * .3); rg.addColorStop(0, 'rgba(255,238,176,.95)'); rg.addColorStop(.12, 'rgba(255,192,112,.6)'); rg.addColorStop(.45, 'rgba(255,122,92,.22)'); rg.addColorStop(1, 'rgba(255,100,90,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H); }
+    // clouds: banks of soft puffs, mauve on top, salmon underneath, gold where they are near the sun
+    const mixc = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t)), TOP = [98, 72, 150], LOW = [255, 150, 128], GOLD = [255, 214, 140];
+    const cloud = (u, el, len, thick, n, al) => { const cx = u * W, cy = yOf(el); for (let i = 0; i < n; i++) { const t = R(), bx = cx + (R() - .5) * len * (1 - .5 * t), by = cy + (t - .5) * thick, rx = len * (.07 + R() * .1), ry = thick * (.3 + R() * .35), near = Math.exp(-((((bx / W - sunU + 1.5) % 1 - .5) / .16) ** 2));
+        const col = mixc(mixc(TOP, LOW, Math.min(1, t * 1.2)), GOLD, near * (.3 + .7 * t)); for (const ox of [-W, 0, W]) { g.save(); g.translate(bx + ox, by); g.scale(1, ry / rx); const rg = g.createRadialGradient(0, 0, 0, 0, 0, rx); rg.addColorStop(0, `rgba(${col},${al})`); rg.addColorStop(.6, `rgba(${col},${al * .5})`); rg.addColorStop(1, `rgba(${col},0)`); g.fillStyle = rg; g.fillRect(-rx, -rx, rx * 2, rx * 2); g.restore(); } } };
+    for (let i = 0; i < 9; i++) cloud(R(), rq(42, 62), W * rq(.08, .2), H * .012, 14, .16); // high wisps
+    for (let i = 0; i < 16; i++) cloud(R(), rq(13, 30), W * rq(.06, .16), H * rq(.03, .06), 30, .34); // the big banks
+    for (let i = 0; i < 14; i++) cloud(R(), rq(3, 9), W * rq(.1, .24), H * .014, 18, .3); // long bars along the skyline
+    { const pu = (sunU + .31) % 1, px = pu * W, py = yOf(34), pr = W * .034, ring = half => { g.save(); g.translate(px, py); g.rotate(-.35); g.scale(1, .24); g.strokeStyle = 'rgba(255,226,196,.8)'; g.lineWidth = pr * .5; g.beginPath(); g.arc(0, 0, pr * 1.9, half ? 0 : Math.PI, half ? Math.PI : Math.PI * 2); g.stroke(); g.strokeStyle = 'rgba(255,190,150,.55)'; g.lineWidth = pr * .14; g.beginPath(); g.arc(0, 0, pr * 2.4, half ? 0 : Math.PI, half ? Math.PI : Math.PI * 2); g.stroke(); g.restore(); };
+      ring(false); const pg = g.createRadialGradient(px - pr * .45, py + pr * .35, pr * .1, px, py, pr * 1.05); pg.addColorStop(0, 'rgba(255,224,190,.95)'); pg.addColorStop(.55, 'rgba(240,150,150,.9)'); pg.addColorStop(1, 'rgba(120,84,170,.85)'); g.fillStyle = pg; g.beginPath(); g.arc(px, py, pr, 0, 7); g.fill(); ring(true); // a ringed planet, lit from the sun's side
+      const mx = ((sunU + .62) % 1) * W, my = yOf(52), mr = W * .011, mg = g.createRadialGradient(mx - mr * .4, my + mr * .3, mr * .1, mx, my, mr); mg.addColorStop(0, 'rgba(255,240,225,.95)'); mg.addColorStop(1, 'rgba(170,140,200,.8)'); g.fillStyle = mg; g.beginPath(); g.arc(mx, my, mr, 0, 7); g.fill(); } // and a small moon
+    for (const ox of [-W, 0, W]) { const rg = g.createRadialGradient(sx + ox, sy, 0, sx + ox, sy, W * .024); rg.addColorStop(0, '#fffbe8'); rg.addColorStop(.6, '#fff0b8'); rg.addColorStop(1, 'rgba(255,230,150,0)'); g.fillStyle = rg; g.beginPath(); g.arc(sx + ox, sy, W * .024, 0, 7); g.fill(); } // the sun itself
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(372, 48, 24), new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: false })); dome.renderOrder = -10; dome.frustumCulled = false; scene.add(dome); skyDome.visible = false;
+  { const mtn = scene.children.find(o => o.renderOrder === -5 && o.frustumCulled === false); if (mtn) mtn.visible = false; } // (the old far mountains)
+  scene.traverse(o => { if (o.isInstancedMesh && o.material && o.material.emissive) { const h = o.material.emissive.getHex(); if (h === 0xdbe8fa || h === 0xc8dcf5) { o.material.color.set('#ffd9c4'); o.material.emissive.set('#ff8f7a'); o.material.emissiveIntensity = .5; } } }); // the clouds below and around: lit by the sunset
+  { const ad = applyDark; applyDark = function (b) { ad(b); const k = Math.min(1, Math.max(0, b)); dome.material.color.setScalar(1 - .93 * k); if (!(b > 0)) { scene.fog.near = FOGN; scene.fog.far = FOGF; } }; } // (a blackout dims the painted sky too)
+  // ---- the floor ----
+  sideTint = () => [255, 255, 255]; for (let i = 0; i < cellData.length; i += 4) if (cellData[i + 3] > 0) cellData[i] = cellData[i + 1] = cellData[i + 2] = 255; cellTex.needsUpdate = true; // (no grass, so none of the old stone-coloured patches either: the floor has pads of its own)
+  const slab = scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6), gm = slab && Array.isArray(slab.material) ? slab.material[2] : null;
+  const RT = new THREE.WebGLRenderTarget(8, 8, { type: renderer.extensions.has('EXT_color_buffer_half_float') || renderer.extensions.has('EXT_color_buffer_float') ? THREE.HalfFloatType : THREE.UnsignedByteType });
+  const seg = (a, b) => new THREE.Vector4(a.x, a.z, b.x, b.z), O = { x: 0, z: 0 }, PS = PORTAL_SPOTS, HB = HUBS;
+  const FU = { neoRT: { value: RT.texture }, neoRM: { value: new THREE.Matrix4() }, neoRon: { value: 0 }, neoFB: { value: new THREE.Vector4(FORT.blue.x, FORT.blue.z, FORT.red.x, FORT.red.z) },
+    neoSeg: { value: [seg(FORT.blue, O), seg(FORT.red, O), seg(O, PS[0] || O), seg(O, PS[1] || O), seg(O, HB[0] || O), seg(O, HB[1] || O)] } };
+  if (gm) { gm.userData.neoC = 1; const prev = gm.onBeforeCompile, key = gm.customProgramCacheKey ? gm.customProgramCacheKey() : '';
+    gm.onBeforeCompile = (sh, rd) => { if (prev) prev(sh, rd); Object.assign(sh.uniforms, NEOU, FU);
+      sh.vertexShader = 'varying vec3 vNeoW;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vNeoW = (modelMatrix * vec4(transformed, 1.)).xyz;');
+      sh.fragmentShader = `varying vec3 vNeoW; uniform sampler2D neoRT; uniform mat4 neoRM; uniform float neoRon; uniform vec4 neoSeg[6]; uniform vec4 neoFB; float neoMet, neoRgh, neoMir, neoTh;
+float neoSegD(vec2 p, vec4 s, out float t) { vec2 ab = s.zw - s.xy; t = clamp(dot(p - s.xy, ab) / max(dot(ab, ab), 1e-4), 0., 1.); return length(p - s.xy - ab * t); }
+` + NEO_ENV + sh.fragmentShader
+        .replace('#include <map_fragment>', `#include <map_fragment>
+  { vec2 p = vNeoW.xz; float aw = max(fwidth(p.x), fwidth(p.y)) + .0005; vec3 CHR = vec3(.9, .92, .95), GLD = vec3(1., .72, .3);
+    #define NEO_LINE(dd, hw) (1. - smoothstep((hw) - aw, (hw) + aw, abs(dd)))
+    #define NEO_DISC(rr, r0) (1. - smoothstep((r0) - aw, (r0) + aw, rr))
+    /* polished stone slabs two blocks across, each its own tone, speckled like terrazzo; a thin dark joint between */
+    vec2 tc = p * .5, ti = floor(tc), tf = fract(tc); float th = fract(sin(dot(ti, vec2(127.1, 311.7))) * 43758.5453), th2 = fract(th * 17.3); neoTh = th;
+    float joint = 1. - smoothstep(.022 - aw, .022 + aw, min(min(tf.x, 1. - tf.x), min(tf.y, 1. - tf.y)) * 2.);
+    vec3 col = mix(vec3(.84, .73, .58), vec3(.96, .88, .72), th); col = mix(col, vec3(.72, .78, .80), step(.86, th2) * .6);
+    float sp = fract(sin(dot(floor(p * 9.), vec2(12.9898, 78.233))) * 43758.5453); col *= 1. - .1 * step(.8, sp) * clamp(1. - aw * 9., 0., 1.);
+    float met = 0., rgh = .1 + .08 * th2, mir = .16, chr = 0., gld = 0.;
+    /* lanes: from each fort to the middle, and from the middle to the portals and the ammo hubs */
+    float lane = 0.; for (int i = 0; i < 6; i++) { float t; float dd = neoSegD(p, neoSeg[i], t), L = length(neoSeg[i].zw - neoSeg[i].xy); if (L < 1.) continue;
+      lane = max(lane, NEO_DISC(dd, 1.5)); chr = max(chr, NEO_LINE(dd - 1.64, .07)); gld = max(gld, NEO_LINE(dd, .1) * step(.5, fract(t * L * .5))); }
+    col = mix(col, vec3(.04, .17, .21), lane); mir = mix(mir, .2, lane); /* (lanes of dark polished stone, chrome-edged, a gold dash down the middle) */
+    for (int i = 2; i < 6; i++) { float rh = length(p - neoSeg[i].zw), pad = NEO_DISC(rh, 4.6); col = mix(col, i < 4 ? vec3(.2, .06, .3) : vec3(.03, .25, .29), pad); mir = mix(mir, .22, pad); chr = max(chr * (1. - pad), NEO_LINE(rh - 4.75, .13)); gld *= 1. - pad; } /* a round pad at each portal and each ammo hub */
+    /* each fort stands on a ring of its team's candy colour */
+    float rb = length(p - neoFB.xy), rd = length(p - neoFB.zw), ab_ = NEO_DISC(rb, 15.), ar_ = NEO_DISC(rd, 15.);
+    col = mix(col, mix(vec3(.02, .09, .42), col, .2), ab_); col = mix(col, mix(vec3(.44, .025, .05), col, .2), ar_); mir = mix(mir, .24, max(ab_, ar_));
+    chr = max(chr, max(NEO_LINE(rb - 15.2, .16), NEO_LINE(rd - 15.2, .16))); gld = max(gld, max(NEO_LINE(rb - 11.5, .07), NEO_LINE(rd - 11.5, .07))); gld *= 1. - max(NEO_DISC(rb, 11.), NEO_DISC(rd, 11.)) * 0.;
+    /* the middle: a teal disc with an atom in gold, a chrome ring, a sunburst, an outer ring */
+    float rc = length(p), disc = NEO_DISC(rc, 9.); col = mix(col, vec3(.03, .27, .31), disc); mir = mix(mir, .22, disc); joint *= 1. - disc; gld *= 1. - disc; chr *= 1. - disc;
+    for (int k = 0; k < 3; k++) { float a = float(k) * 1.0471976, ca = cos(a), sa = sin(a); vec2 q = vec2(ca * p.x + sa * p.y, -sa * p.x + ca * p.y) / vec2(6.7, 2.5); gld = max(gld, NEO_LINE((length(q) - 1.) * 3.3, .11) * disc); }
+    gld = max(gld, NEO_DISC(rc, 1.05));
+    chr = max(chr, max(NEO_LINE(rc - 9.25, .2), NEO_LINE(rc - 19.5, .14)));
+    float ang = atan(p.y, p.x); chr = max(chr, NEO_LINE((fract(ang / 6.2831853 * 16.) - .5) * rc * .3927, .1) * step(10.6, rc) * step(rc, 18.4));
+    col *= 1. - .55 * joint; rgh = mix(rgh, .6, joint); mir *= 1. - .8 * joint;
+    col = mix(col, CHR, chr); col = mix(col, GLD, gld); float mt = max(chr, gld); met = mix(met, .45, mt); rgh = mix(rgh, .14, mt); mir = mix(mir, .2, mt); /* (inlaid metal, brushed: bright from any angle) */
+    diffuseColor.rgb = col; neoMet = met; neoRgh = rgh; neoMir = mir; }`)
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = neoRgh;')
+        .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n  metalnessFactor = neoMet;')
+        .replace('#include <opaque_fragment>', `{ vec3 nV = normalize(vViewPosition); float nfr = pow(1. - max(dot(normal, nV), 0.), 5.); vec3 nR = inverseTransformDirection(reflect(-nV, normal), viewMatrix), rc_;
+    if (neoRon > .5) { vec4 ruv = neoRM * vec4(vNeoW, 1.); rc_ = texture2D(neoRT, ruv.xy / ruv.w + (neoTh - .5) * .003).rgb; } else rc_ = neoEnv(nR, .08); /* the world in the floor (or, on a slow phone, just the sky) */
+    outgoingLight = mix(outgoingLight, rc_ * mix(vec3(1.), diffuseColor.rgb, neoMet), clamp(neoMir + (1. - neoMir) * nfr, 0., 1.)); }
+  #include <opaque_fragment>`); };
+    gm.customProgramCacheKey = () => key + '|neoFloor'; gm.roughness = .15; gm.needsUpdate = true; }
+  // the mirror: once a frame the world is drawn from under the floor, looking up
+  let inRefl = false; const vcam = new THREE.PerspectiveCamera(), cp = V(), cq = new THREE.Quaternion(), fw = V(), up = V(), tg = V(), plane = new THREE.Plane(), clip = new THREE.Vector4(), qv = new THREE.Vector4(), sz = new THREE.Vector2(), BIAS = new THREE.Matrix4().set(.5, 0, 0, .5, 0, .5, 0, .5, 0, 0, .5, .5, 0, 0, 0, 1);
+  // ---- the skyline ----
+  const std = (c, met, rgh) => neoShine(new THREE.MeshStandardMaterial({ color: c, metalness: met, roughness: rgh, side: THREE.DoubleSide }));
+  const MAT = { cream: std('#f8ecd4', 0, .3), chrome: std('#e4e9f1', 1, .1), red: std('#c20f1c', .85, .2), blue: std('#0f33c4', .85, .2), teal: std('#0c8f96', .85, .2), gold: std('#f0a422', 1, .18), glow: new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.35, .5) }), glass: new THREE.MeshBasicMaterial({ color: new THREE.Color(.4, 1.5, 1.6) }) };
+  const G = { cyl: new THREE.CylinderGeometry(1, 1, 1, 12), cone: new THREE.ConeGeometry(1, 1, 12), sph: new THREE.SphereGeometry(1, 14, 10), box: new THREE.BoxGeometry(1, 1, 1), ring: new THREE.TorusGeometry(1, .07, 6, 20).rotateX(Math.PI / 2), dome: new THREE.SphereGeometry(1, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2) };
+  const DEC = {}, put = (m, geo, x, y, z, sx = 1, sy = sx, sz_ = sx, ry = 0, tilt = 0) => { const q = geo.clone(); q.scale(sx, sy, sz_); if (tilt) q.rotateZ(tilt); if (ry) q.rotateY(ry); q.translate(x, y, z); (DEC[m] || (DEC[m] = [])).push(q); };
+  const lathe = pts => new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), 14);
+  const rocket = (x, z, y0, h, m) => { const Rm = h * .15, P = [[0, 1], [.1, .95], [.3, .82], [.42, .64], [.46, .44], [.42, .24], [.34, .1], [.3, .04]].map(([r, y]) => [r / .46 * Rm, y * h]);
+    put(m, lathe(P.slice(0, 3)), x, y0, z); put('cream', lathe(P.slice(2, 6)), x, y0, z); put(m, lathe(P.slice(5)), x, y0, z); put('chrome', G.ring, x, y0 + h * .82, z, Rm * .66); put('chrome', G.ring, x, y0 + h * .24, z, Rm * .93);
+    for (let k = 0; k < 3; k++) { const a = k * 2.094 + .5; put(m, G.box, x + Math.cos(a) * Rm * 1.15, y0 + h * .13, z - Math.sin(a) * Rm * 1.15, Rm * 1.1, h * .3, Rm * .12, a); }
+    for (let k = 0; k < 3; k++) { const a = k * 2.094 + 1.5; put('glow', G.sph, x + Math.cos(a) * Rm * .97, y0 + h * .55, z - Math.sin(a) * Rm * .97, Rm * .2); } // lit portholes
+    put('cream', G.cyl, x, y0 - .4, z, Rm * 2.2, .8, Rm * 2.2); put('cream', G.cyl, x, y0 - 30.8, z, Rm * .8, 60, Rm * .8); put('gold', G.ring, x, y0 + .1, z, Rm * 2.2);
+    put('cream', G.box, x + Rm * 2.4, y0 + h * .3, z, Rm * .35, h * .62, Rm * .35); for (let k = 1; k < 4; k++) put('chrome', G.box, x + Rm * 1.5, y0 + h * .17 * k, z, Rm * 1.6, Rm * .1, Rm * .3); }; // (its launch tower and gangways)
+  const saucerTower = (x, z, h, m, k = 1) => { const s = (1 + R() * .5) * k; put('cream', G.cyl, x, h / 2 - 30, z, .9 * k, h + 60, .9 * k);
+    put(m, lathe([[0, .9], [1.6, .75], [3.6, .28], [4.2, 0]]), x, h, z, s); put('chrome', lathe([[4.2, 0], [3.4, -.35], [1.4, -.7], [0, -.8]]), x, h, z, s); put('glass', G.dome, x, h + .7 * s, z, 1.5 * s); put('gold', G.ring, x, h, z, 4.2 * s);
+    for (let i = 0; i < 8; i++) put('glow', G.sph, x + Math.cos(i * .785) * 3.3 * s, h - .25 * s, z + Math.sin(i * .785) * 3.3 * s, .22 * s);
+    for (const f of [.45, .7]) { put(m, G.cyl, x, h * f, z, 2.6 * k * (1.4 - f), .5 * k, 2.6 * k * (1.4 - f)); put('chrome', G.ring, x, h * f + .25 * k, z, 2.6 * k * (1.4 - f)); } }; // (two decks lower down)
+  const hall = (x, z, y0, s, m) => { put('cream', G.dome, x, y0 + 2.4 * s, z, 5.5 * s); put(m, G.cyl, x, y0 + 1.2 * s, z, 5.7 * s, 2.4 * s, 5.7 * s); put('chrome', G.ring, x, y0 + 2.4 * s, z, 5.7 * s); put('gold', G.ring, x, y0 + .05, z, 5.9 * s);
+    put('gold', G.cone, x, y0 + 9.3 * s, z, .35 * s, 3.4 * s, .35 * s); put('glow', G.sph, x, y0 + 11.2 * s, z, .5 * s);
+    for (let k = 0; k < 10; k++) { const a = k * .628; put('glow', G.box, x + Math.cos(a) * 5.72 * s, y0 + 1.1 * s, z - Math.sin(a) * 5.72 * s, .25, 1.3 * s, 1.1 * s, a); } // lit doorways all round
+    put('cream', G.cyl, x, y0 - 30, z, 3.4 * s, 60, 3.4 * s); put(m, G.cyl, x, y0 - 3 * s, z, 7.2 * s, .6 * s, 7.2 * s); put('chrome', G.ring, x, y0 - 2.7 * s, z, 7.2 * s); }; // (on a wide terrace)
+  const globe = (x, z, h, s, m) => { put('cream', G.cyl, x, h / 2 - 30, z, .6 * s, h + 60, .6 * s); put(m, G.sph, x, h + 2.4 * s, z, 2.4 * s); put('chrome', G.ring, x, h + 2.4 * s, z, 3.7 * s, 3.7 * s, 3.7 * s, R() * 3, .45); put('gold', G.ring, x, h + 2.4 * s, z, 4.3 * s, 4.3 * s, 4.3 * s, R() * 3, -.3); };
+  { const bx = FORT.blue.x - FORT.red.x, bz = FORT.blue.z - FORT.red.z, blueSide = (x, z) => x * bx + z * bz > 0, kinds = ['rocket', 'saucer', 'hall', 'globe', 'saucer', 'rocket', 'hall'];
+    const pick = (x, z) => blueSide(x, z) ? (R() < .65 ? 'blue' : 'teal') : (R() < .65 ? 'red' : 'gold');
+    for (let ring = 0; ring < 2; ring++) for (let i = 0, n = ring ? 16 : 18; i < n; i++) { const a = (i + R() * .7) / n * Math.PI * 2, f = ring ? 1.75 + R() * .5 : 1.2 + R() * .28, K = ring ? 1.9 : 1, x = Math.cos(a) * (MX * f + 10), z = Math.sin(a) * (MZ * f + 14), m = pick(x, z), k = kinds[Math.floor(R() * kinds.length)];
+      if (k === 'rocket') rocket(x, z, rq(-8, 4) * K, rq(22, 36) * K, m); else if (k === 'saucer') saucerTower(x, z, rq(12, 28) * K, m, K); else if (k === 'hall') hall(x, z, rq(-8, 0), rq(.9, 1.5) * K, m); else globe(x, z, rq(10, 22) * K, rq(.9, 1.5) * K, m); }
+    // a landmark behind each fort, in its team's colour: a giant rocket between two domed halls
+    for (const [F, m, m2] of [[FORT.blue, 'blue', 'teal'], [FORT.red, 'red', 'gold']]) { const l = Math.hypot(F.x, F.z) || 1, ux = F.x / l, uz = F.z / l, d = l + 48, x = ux * d, z = uz * d; rocket(x, z, -6, 70, m); hall(x - uz * 24, z + ux * 24, -5, 2.1, m2); hall(x + uz * 24, z - ux * 24, -5, 2.1, m); saucerTower(x - uz * 13 - ux * 14, z + ux * 13 - uz * 14, 30, m2, 1.6); } }
+  for (const k in DEC) { const mesh = new THREE.Mesh(mergeGeometries(DEC[k]), MAT[k]); mesh.matrixAutoUpdate = false; scene.add(mesh); }
+  const blimp = new THREE.Group(), ufos = [0, 1].map(() => new THREE.Group());
+  { const b = (grp, m, geo, x, y, z, sx, sy = sx, sz_ = sx) => { const q = new THREE.Mesh(geo, MAT[m]); q.position.set(x, y, z); q.scale.set(sx, sy, sz_); grp.add(q); };
+    b(blimp, 'cream', G.sph, 0, 0, 0, 9, 3, 3); b(blimp, 'red', G.sph, 6.2, 0, 0, 3, 2.3, 2.3); b(blimp, 'red', G.box, -8, 0, 0, 3, 3.6, .2); b(blimp, 'red', G.box, -8, 0, 0, 3, .2, 3.6); b(blimp, 'chrome', G.box, .5, -3.2, 0, 4, .9, 1.3); for (let k = -2; k <= 2; k++) b(blimp, 'glow', G.sph, k * 1.4 + .5, -3.2, .7, .16);
+    const top = lathe([[0, .5], [1, .42], [2.2, .12], [2.5, 0]]), bot = lathe([[2.5, 0], [2, -.2], [.8, -.4], [0, -.45]]); for (const u of ufos) { u.add(new THREE.Mesh(top, MAT.chrome), new THREE.Mesh(bot, MAT.teal)); b(u, 'glass', G.dome, 0, .4, 0, .9); for (let k = 0; k < 6; k++) b(u, 'glow', G.sph, Math.cos(k * 1.047) * 1.9, -.15, Math.sin(k * 1.047) * 1.9, .14); }
+    scene.add(blimp, ...ufos); }
+  // (the scenery that is already there, the gateways and the signpost and the rest, is given the same polish)
+  { const rob = new Set(robots.map(r => r.model.g)); for (const o of scene.children) { if (rob.has(o) || o === dome) continue; o.traverse(q => { for (const m of [].concat(q.material || [])) if (m && m.isMeshStandardMaterial && !m.isMeshPhysicalMaterial && !m.userData.neoC) { if (!m.transparent && !m.map) m.roughness = Math.min(m.roughness, .4); neoShine(m); } }); } }
+  // ---- every frame: the mirror, the airship, the saucers ----
+  { const prevB = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam, rt) => { if (prevB) prevB(r, s, cam, rt); if (inRefl) return;
+      const t = now() / 1000, a = t * .03; blimp.position.set(Math.cos(a) * (MX + 36), 34 + Math.sin(t * .3) * .8, Math.sin(a) * (MZ + 42)); blimp.rotation.y = Math.atan2(-Math.cos(a) * (MZ + 42), -Math.sin(a) * (MX + 36));
+      ufos.forEach((u, i) => { const b = t * .05 * (i ? -1 : 1) + i * 3; u.position.set(Math.cos(b) * (MX + 70 + i * 30), 46 + i * 14 + Math.sin(t * .7 + i) * 1.5, Math.sin(b) * (MZ + 80 + i * 20)); u.rotation.y = t * .6; u.scale.setScalar(1.6); });
+      cam.getWorldPosition(cp); if (rt || !gm || !slab || window.NEO_NOREFL || perf.level >= 2 || !cam.isPerspectiveCamera || cp.y < .3) { FU.neoRon.value = 0; return; }
+      renderer.getDrawingBufferSize(sz); const w = Math.max(64, Math.round(sz.x * .5)), h = Math.max(64, Math.round(sz.y * .5)); if (RT.width !== w || RT.height !== h) RT.setSize(w, h);
+      cam.getWorldQuaternion(cq); fw.set(0, 0, -1).applyQuaternion(cq); up.set(0, 1, 0).applyQuaternion(cq);
+      vcam.position.set(cp.x, -cp.y, cp.z); vcam.up.set(up.x, -up.y, up.z); tg.set(cp.x + fw.x, -(cp.y + fw.y), cp.z + fw.z); vcam.lookAt(tg); vcam.updateMatrixWorld(); vcam.projectionMatrix.copy(cam.projectionMatrix);
+      FU.neoRM.value.copy(BIAS).multiply(vcam.projectionMatrix).multiply(vcam.matrixWorldInverse);
+      // (cut away everything under the floor: it would stand in the mirror's way)
+      plane.normal.set(0, 1, 0); plane.constant = 0; plane.applyMatrix4(vcam.matrixWorldInverse); clip.set(plane.normal.x, plane.normal.y, plane.normal.z, plane.constant); const pm = vcam.projectionMatrix.elements;
+      qv.set((Math.sign(clip.x) + pm[8]) / pm[0], (Math.sign(clip.y) + pm[9]) / pm[5], -1, (1 + pm[10]) / pm[14]); clip.multiplyScalar(2 / clip.dot(qv)); pm[2] = clip.x; pm[6] = clip.y; pm[10] = clip.z + 1 - .003; pm[14] = clip.w;
+      const pRT = renderer.getRenderTarget(), pAU = renderer.shadowMap.autoUpdate; inRefl = true; slab.visible = false; renderer.shadowMap.autoUpdate = false; FU.neoRon.value = 0;
+      renderer.setRenderTarget(RT); renderer.clear(); renderer.render(scene, vcam); renderer.setRenderTarget(pRT); renderer.shadowMap.autoUpdate = pAU; slab.visible = true; inRefl = false; FU.neoRon.value = 1; }; }
+}
+for (const k in kindMat) neoShine(kindMat[k]);
+window.__neo = { NEOU, neoShine };
 }
 
 // test hooks for the newer bits (headless checks only)
