@@ -4095,9 +4095,9 @@ function nbrFace() { if (NBR_FACE) return NBR_FACE;
   return NBR_FACE = { disc, onto }; }
 function nbrEyes(rig, happy, ec, eyesN, eyesF, eyesX) { const F = nbrFace(), eye = new THREE.MeshBasicMaterial({ color: new THREE.Color(ec).multiplyScalar(1.6), toneMapped: false });
   const put = (geo, x, y, grp, rz = 0) => { const q = F.onto(x, y, 1), m = new THREE.Mesh(geo, eye); m.position.copy(q.p).addScaledVector(q.n, .005); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), q.n); m.rotateZ(rz); grp.add(m); };
-  const G = NBR_EYEG || (NBR_EYEG = { arc: new THREE.TorusGeometry(.024, .0065, 8, 24, Math.PI), bar: new RoundedBoxGeometry(.062, .015, .006, 2, .005), flat: new RoundedBoxGeometry(.054, .011, .006, 2, .004), x: new RoundedBoxGeometry(.046, .01, .006, 2, .004) });
+  const G = NBR_EYEG || (NBR_EYEG = { arc: new THREE.TorusGeometry(.024, .0065, 8, 24, Math.PI), bar: new RoundedBoxGeometry(.088, .016, .006, 2, .005), flat: new RoundedBoxGeometry(.07, .011, .006, 2, .004), x: new RoundedBoxGeometry(.046, .01, .006, 2, .004) });
   for (const s of [-1, 1]) {
-    if (happy) put(G.arc, s * .052, .304, eyesN); else put(G.bar, s * .052, .318, eyesN, s * .42); // (angry: \ / , the inner ends low)
+    if (happy) put(G.arc, s * .052, .304, eyesN); else put(G.bar, s * .056, .318, eyesN, s * .38); // (angry: \ / , the inner ends low)
     put(G.flat, s * .05, .312, eyesF, s * (happy ? -.12 : .42));
     for (const a of [-1, 1]) put(G.x, s * .05, .314, eyesX, a * .78); }
   rig.add(eyesN, eyesF, eyesX); eyesF.visible = eyesX.visible = false; }
@@ -4113,7 +4113,7 @@ function nymMeshModel(color, happy) {
       const d = new THREE.Mesh(NBR_EARIN || (NBR_EARIN = new THREE.CylinderGeometry(.04, .04, .032, 32).rotateZ(Math.PI / 2)), inner); d.position.set(sx * .2015, .321, 0); rig.add(d); } }
   const arms = NBR_PARTS.arms.map(A => { const p = new THREE.Group(); p.position.copy(A.sh).multiplyScalar(NBR_S).add(rig.position); torso.add(p);
     const holder = new THREE.Group(); holder.scale.setScalar(NBR_S); holder.quaternion.setFromUnitVectors(A.down, new THREE.Vector3(Math.sign(A.side) * Math.sin(.12), -Math.cos(.12), 0)); p.add(holder); // (the game's rest pose: hanging down)
-    const dn = new THREE.Mesh(A.gDown, skin), upm = new THREE.Mesh(A.gUp, skin); dn.position.copy(A.down).multiplyScalar(-NBR_SINK); /* (the hanging arm tucks its top into the shoulder, so the shoulder stays round) */ upm.quaternion.setFromUnitVectors(A.up, A.down); const top = new THREE.Mesh(NBR_TOP || (NBR_TOP = new THREE.SphereGeometry(.088, 32, 20)), NBR_TOPM || (NBR_TOPM = new THREE.MeshStandardMaterial({ color: 0xf0f1f4, roughness: .35 }))); top.position.copy(A.down).multiplyScalar(-NBR_SINK + .03); dn.add(top); top.position.sub(dn.position); /* (the rounded top of the hanging arm: his shoulder) */
+    const dn = new THREE.Mesh(A.gDown, skin), upm = new THREE.Mesh(A.gUp, skin); dn.position.copy(A.down).multiplyScalar(-NBR_SINK); /* (the hanging arm tucks its top into the shoulder, so the shoulder stays round) */ upm.quaternion.setFromUnitVectors(A.up, A.down); const top = new THREE.Mesh(NBR_TOP || (NBR_TOP = new THREE.SphereGeometry(.06, 32, 20)), NBR_TOPM || (NBR_TOPM = new THREE.MeshStandardMaterial({ color: 0xf0f1f4, roughness: .35 }))); top.position.copy(A.down).multiplyScalar(-NBR_SINK + .03); dn.add(top); top.position.sub(dn.position); /* (the rounded top of the hanging arm: his shoulder) */
     holder.add(dn, upm); p.userData.nb = { dn, upm, A }; return p; });
   const head = new THREE.Group(); torso.add(head); const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); nbrEyes(rig, happy, happy ? 0x2a8cff : 0xff2a1a, eyesN, eyesF, eyesX);
   const held = new THREE.Mesh(cubeGeo, new LiteMat({ roughness: .7 })); held.position.y = NBR.top * NBR_S + rig.position.y + .55; held.visible = false; g.add(held);
