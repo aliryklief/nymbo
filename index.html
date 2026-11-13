@@ -4190,17 +4190,19 @@ function nbrBurst(r, dt) { const M = r.model, N = M.ant; if (!N) return; const n
   M.burstT = (M.burstT || 0) - dt; const on = M.burstT > 0, t = 1 - Math.max(0, M.burstT) / .45; for (const b of M.burst) b.visible = on; M.burstF.visible = on; if (!on) return;
   N.tip.getWorldPosition(_zA); for (const b of M.burst) { _zB.copy(_zA).addScaledVector(b.userData.d, .4 + .6 * Math.min(1, t * 3)); nbrBolt(b, _zA, _zB, .045); b.material.opacity = 1 - t; }
   M.burstF.position.copy(_zA); M.burstF.scale.setScalar(3.2 * (1 - t) + .4); M.burstF.material.opacity = 1 - t; }
-let NBR_ARMW = null; const NBR_ARML = .04, NBR_SHH = .55, NBR_SHS = .55; const NBR_ARMG = (() => { const R1 = .06, R2 = .078, L = .28, pts = [];
+let NBR_PADG = null; const NBR_PADK = [1.45, .5, 1.05, .75, .55, -.45]; let NBR_ARMW = null; const NBR_ARML = .04, NBR_SHH = .55, NBR_SHS = .55; const NBR_ARMG = (() => { const R1 = .06, R2 = .078, L = .28; const build = (SHH, SHS) => { const pts = [];
   for (let i = 0; i <= 12; i++) { const a = Math.PI / 2 * i / 12; pts.push(new THREE.Vector2(R2 * Math.sin(a), -L - R2 * Math.cos(a))); }
   for (let i = 1; i < 10; i++) { const t = i / 10, e = t * t * (3 - 2 * t); pts.push(new THREE.Vector2(R2 + (R1 - R2) * e, -L * (1 - t))); }
-  for (let i = 0; i <= 14; i++) { const a = Math.PI / 2 * i / 14; pts.push(new THREE.Vector2(R1 * Math.cos(a), NBR_SHH * R1 * Math.sin(a))); } /* (a low, gentle shoulder cap, not a half-ball) */
+  for (let i = 0; i <= 14; i++) { const a = Math.PI / 2 * i / 14; pts.push(new THREE.Vector2(R1 * Math.cos(a), SHH * R1 * Math.sin(a))); } /* (a low, gentle shoulder cap, not a half-ball) */
   pts[pts.length - 1].x = 0; pts[0].x = 0;
   const rAt = y => { const t = Math.min(1, Math.max(0, 1 + y / L)), e = t * t * (3 - 2 * t); return R2 + (R1 - R2) * e; };
   // lean: the bottom sits out where it always did, the top tucks in toward the body
   const lean = (g, sd) => { const pa = g.attributes.position; for (let i = 0; i < pa.count; i++) { const y = pa.getY(i), x0 = pa.getX(i), t = Math.min(1, Math.max(0, -y / (L + R2))); pa.setX(i, x0 + sd * NBR_ARML * t);
-      const u = Math.min(1, Math.max(0, (y + .09) / .09)), sm = u * u * (3 - 2 * u); pa.setY(i, y - Math.max(0, x0 * sd) * NBR_SHS * sm); } /* (the shoulder slopes: high where it meets his body, curving gently down over the outside to the bicep) */ g.computeVertexNormals(); return g; };
+      const u = Math.min(1, Math.max(0, (y + .09) / .09)), sm = u * u * (3 - 2 * u); pa.setY(i, y - Math.max(0, x0 * sd) * SHS * sm); } /* (the shoulder slopes: high where it meets his body, curving gently down over the outside to the bicep) */ g.computeVertexNormals(); return g; };
   const ys = -.235, rr = rAt(ys) + .0025, mk = sd => { const arm = lean(new THREE.LatheGeometry(pts, 48), sd), st = new THREE.CylinderGeometry(rr, rr, .013, 48, 1, true); st.translate(0, ys, 0); lean(st, sd); return { arm, stripe: st }; };
-  return { [-1]: mk(-1), [1]: mk(1) }; })();
+  return { [-1]: mk(-1), [1]: mk(1) }; };
+  const D = build(NBR_SHH, NBR_SHS), U = build(1, 0); /* (hanging down: the low sloping shoulder; raised: the round top) */
+  return { [-1]: { ...D[-1], up: U[-1] }, [1]: { ...D[1], up: U[1] }, R1 }; })();
 function nbrEyes(rig, happy, ec, eyesN, eyesF, eyesX) { const F = nbrFace();
   if (!NBR_SCRG) { const gx = 28, gy = 12, x0 = NBR_B2 ? -.15 : -.131, x1 = -x0, y0 = NBR_B2 ? .25 : .257, y1 = NBR_B2 ? .395 : .373, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, pos = [], uv = [], idx = [];
     // a smooth curved panel fitted to his visor (so it never follows a dent or dip), standing just proud of it
@@ -4239,8 +4241,11 @@ function nymMeshModel(color, happy) {
   const arms = NBR_PARTS.arms.map(A => { const p = new THREE.Group(); p.position.copy(A.sh).multiplyScalar(NBR_S).add(rig.position); up.add(p);
     const holder = new THREE.Group(); holder.scale.setScalar(NBR_S); holder.quaternion.setFromUnitVectors(A.down, new THREE.Vector3(Math.sign(A.side) * Math.sin(.12), -Math.cos(.12), 0)); p.add(holder); // (the game's rest pose: hanging down)
     const dn = new THREE.Mesh(A.gDown, skin), upm = new THREE.Mesh(A.gUp, skin); dn.position.copy(A.down).multiplyScalar(-NBR_SINK); /* (the hanging arm tucks its top into the shoulder, so the shoulder stays round) */ upm.quaternion.setFromUnitVectors(A.up, A.down); const top = new THREE.Mesh(NBR_TOP || (NBR_TOP = new THREE.SphereGeometry(.06, 32, 20)), NBR_TOPM || (NBR_TOPM = new THREE.MeshStandardMaterial({ color: 0xf0f1f4, roughness: .35 }))); top.position.copy(A.down).multiplyScalar(-NBR_SINK + .03); if (!NBR_B2) dn.add(top); top.position.sub(dn.position); /* (the rounded top of the hanging arm: his shoulder) */
-    if (NBR_B2) { const cg = new THREE.Group(); cg.rotation.z = Math.sign(A.side) * .04; cg.position.x = Math.sign(A.side) * (.035 - NBR_ARML * NBR_S); p.position.y += .045 * NBR_S; /* (the shoulder sits a little higher, over the socket) */ p.add(cg); const AG = NBR_ARMG[Math.sign(A.side)], am = new THREE.Mesh(AG.arm, NBR_SWAP ? new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(.93), roughness: .28 }) : NBR_ARMW || (NBR_ARMW = new THREE.MeshStandardMaterial({ color: 0xeceef2, roughness: .28 }))); am.scale.setScalar(NBR_S); cg.add(am);
-      const st = new THREE.Mesh(AG.stripe, new THREE.MeshStandardMaterial({ color: NBR_SWAP ? 0xf0f1f4 : color, roughness: .35 })); st.scale.setScalar(NBR_S); cg.add(st); p.userData.nb = { dn: new THREE.Group(), upm: new THREE.Group(), A }; return p; }
+    if (NBR_B2) { const cg = new THREE.Group(); cg.rotation.z = Math.sign(A.side) * .04; cg.position.x = Math.sign(A.side) * (.035 - NBR_ARML * NBR_S); p.position.y += .045 * NBR_S; /* (the shoulder sits a little higher, over the socket) */ p.add(cg); const AG = NBR_ARMG[Math.sign(A.side)], am = new THREE.Mesh(AG.arm, NBR_SWAP ? new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(.93), roughness: .28 }) : NBR_ARMW || (NBR_ARMW = new THREE.MeshStandardMaterial({ color: 0xeceef2, roughness: .28 }))); am.scale.setScalar(NBR_S); const stM = new THREE.MeshStandardMaterial({ color: NBR_SWAP ? 0xf0f1f4 : color, roughness: .35 }), st = new THREE.Mesh(AG.stripe, stM); st.scale.setScalar(NBR_S);
+      const dnG = new THREE.Group(), upG = new THREE.Group(); dnG.add(am, st); cg.add(dnG, upG); const am2 = new THREE.Mesh(AG.up.arm, am.material), st2 = new THREE.Mesh(AG.up.stripe, stM); am2.scale.setScalar(NBR_S); st2.scale.setScalar(NBR_S); upG.add(am2, st2); upG.visible = false;
+      // hanging down, a soft pad fills in where the arm meets his body (like Baymax: the shoulder flows into the body)
+      const sd = Math.sign(A.side), r1 = NBR_ARMG.R1 * NBR_S, pad = new THREE.Mesh(NBR_PADG || (NBR_PADG = new THREE.SphereGeometry(1, 32, 20)), am.material); pad.scale.set(r1 * NBR_PADK[0], r1 * NBR_PADK[1], r1 * NBR_PADK[2]); pad.position.set(p.position.x - sd * r1 * NBR_PADK[3], p.position.y - r1 * NBR_PADK[4], p.position.z); pad.rotation.z = sd * NBR_PADK[5]; up.add(pad);
+      p.userData.nb = { dn: dnG, upm: upG, pad, A }; return p; }
     holder.add(dn, upm); p.userData.nb = { dn, upm, A }; return p; });
   const head = new THREE.Group(); up.add(head); const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); const scr = nbrEyes(rig, happy, (() => { const c = new THREE.Color(color), h = {}; c.getHSL(h); return c.setHSL(h.h, 1, .52).getHex(); })(), /* (the eyes glow in the robot's own colour) */ eyesN, eyesF, eyesX);
   const held = new THREE.Mesh(cubeGeo, new LiteMat({ roughness: .7 })); held.position.y = NBR.top * NBR_S + rig.position.y + .55; held.visible = false; g.add(held);
@@ -4260,12 +4265,12 @@ function nymMeshModel(color, happy) {
 }
 // every frame: pick the raised look or the hanging look for each arm, whichever way it points
 const nbrV = new THREE.Vector3();
-function nbrPose(m) { for (const a of m.arms) { const U = a.userData.nb; nbrV.set(0, -1, 0).applyEuler(a.rotation); const up = nbrV.y > 0; U.upm.visible = up; U.dn.visible = !up; } }
+function nbrPose(m) { for (const a of m.arms) { const U = a.userData.nb; nbrV.set(0, -1, 0).applyEuler(a.rotation); const up = nbrV.y > (U.pad ? -.6 : 0); U.upm.visible = up; U.dn.visible = !up; if (U.pad) U.pad.visible = !up; } }
 if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMeshModel(color, happy); };
   const sRB = syncRobot; syncRobot = function (r, ...a) { const out = sRB(r, ...a); if (r.model && r.model.rigged) { const A = r.model.arms, M = r.model; M.scr.visible = !M.seeThru; M.ball.position.y -= NBR_BDROP; M.hub.position.y = M.ball.position.y; /* (the smaller ball still sits on the ground) */ if (NBR_B2) { /* (blocks: held up on his head as always; a flag: held out in front with both arms; a throw: both arms swing forward) */
       const play = r.state === 'play', flag = play && r.stack[0] && r.stack[0].kind === 'flag', block = play && r.stack.length > 0 && !flag, thr = r.carryUp > 0, dt = clamp(lastDt || 1 / 60, 1 / 240, 1 / 30), k = Math.min(1, dt * (thr ? 22 : 12));
       const tx = thr || flag ? -1.57 : block ? -2.95 : 0, tz = block && !thr ? .2 : .03; /* (all in one plane: arms go up over his head through the front, and a throw brings them straight forward and down) */ M.armX = (M.armX || 0) + (tx - (M.armX || 0)) * k; M.armZ = (M.armZ ?? .12) + (tz - (M.armZ ?? .12)) * k;
-      A.forEach((a, i) => a.rotation.set(M.armX, 0, (i ? 1 : -1) * M.armZ));
+      A.forEach((a, i) => { a.rotation.set(M.armX, 0, (i ? 1 : -1) * M.armZ); });
       if (flag) { M.held.position.copy(M.heldFront); M.held.scale.setScalar(.72); } else { M.held.position.copy(M.heldTop); M.held.scale.setScalar(1); }
       nbrAntLight(r); nbrZap(r, dt); nbrBurst(r, dt); nbrGhost(r); if (r === robots[0]) nbrSuck(dt);
       // the antenna: a spring that lags behind when he speeds up, turns or stops, and wobbles back
