@@ -4079,7 +4079,7 @@ function nbrMat(col, body) { const key = col + (body ? 'b' : ''); if (NBR_MAT[ke
   // (body only: the eyes painted on his visor are wiped off, because real eyes that change go on top; the face painted on
   //  the back of his head is wiped off too, back to plain white, and a flat colour circle goes there instead)
   // (Meshy body: his whole head is one clean white shell: no mottled patches, nothing painted on the back; only the visor stays black)
-  const FACE = body && NBR_B2 ? `if (vNbP.y > .214 && abs(vNbP.x) < .19) { vec2 vq = abs(vec2(vNbP.x, vNbP.y - .3225)) - vec2(.158 - .052, .081 - .052); float vd = length(max(vq, 0.)) - .052; diffuseColor.rgb = (vNbP.z > 0. && vd < 0.) ? vec3(.012) : (nbSwap > .5 ? nbTeam * .93 : vec3(.93)); } else if (abs(vNbP.x) > .17 && vNbP.y > -.02 && vNbP.y < .2) { float dk = 1. - smoothstep(.25, .6, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.93), dk); }` : body ? `if (vNbP.y > .245 && abs(vNbP.x) < .16) {
+  const FACE = body && NBR_B2 ? `if (vNbP.y > .214 && abs(vNbP.x) < .19) { vec2 vq = abs(vec2(vNbP.x, vNbP.y - .3225)) - vec2(.158 - .078, .081 - .078); float vd = length(max(vq, 0.)) - .078; diffuseColor.rgb = (vNbP.z > 0. && vd < 0.) ? vec3(.012) : (nbSwap > .5 ? nbTeam * .93 : vec3(.93)); } else if (abs(vNbP.x) > .17 && vNbP.y > -.02 && vNbP.y < .2) { float dk = 1. - smoothstep(.25, .6, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.93), dk); }` : body ? `if (vNbP.y > .245 && abs(vNbP.x) < .16) {
       if (vNbP.z > .06 && abs(vNbP.x) < .125 && vNbP.y > .262 && vNbP.y < .368) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.012), smoothstep(.0, .12, k + max(0., diffuseColor.b - .1)));
       else if (vNbP.z < -.06) { float dk = 1. - smoothstep(.25, .6, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.9), max(dk, k)); } }` : '';
   M.onBeforeCompile = sh => { sh.uniforms.nbTeam = team; sh.uniforms.nbMask = mask; sh.uniforms.nbSwap = NBR_SWAPU;
@@ -4105,21 +4105,24 @@ const NBR_SCR = {}, NBR_FW = 256, NBR_FH = 114;
 function nbrScreenTex(col, happy) { const key = col + happy; if (NBR_SCR[key]) return NBR_SCR[key];
   const c = document.createElement('canvas'); c.width = NBR_FW * 4; c.height = NBR_FH * 2; const g = c.getContext('2d'), W = NBR_FW, H = NBR_FH;
   const frame = (k, draw) => { const ox = (k % 4) * W, oy = Math.floor(k / 4) * H; g.save(); g.translate(ox, oy);
-    g.beginPath(); g.roundRect(1, 1, W - 2, H - 2, 44); g.clip();
+    g.beginPath(); g.roundRect(1, 1, W - 2, H - 2, H / 2 - 3); /* (round ends, like a pill) */ g.clip();
     const bg = g.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, W * .6); bg.addColorStop(0, '#0c1424'); bg.addColorStop(1, '#020309'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
     g.fillStyle = 'rgba(255,255,255,.035)'; for (let y = 0; y < H; y += 4) g.fillRect(0, y, W, 1.5); // (screen lines)
     g.strokeStyle = g.fillStyle = col; g.shadowColor = col; g.shadowBlur = 14; g.lineCap = 'round'; g.lineJoin = 'round'; draw(g, W, H);
     g.shadowBlur = 0; const gl = g.createLinearGradient(0, 0, 0, H * .45); gl.addColorStop(0, 'rgba(255,255,255,.13)'); gl.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gl; g.beginPath(); g.ellipse(W * .42, H * .1, W * .4, H * .22, -.05, 0, Math.PI * 2); g.fill(); // (a shine on the glass)
     g.restore(); };
   // the same eyes as the classic robots: happy arcs for the good guys, angry slanted bars for the baddies
-  const ex = [W * .29, W * .71], ey = H * .52, bar = (x, y, w, h, rot) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, h * .45); g.fill(); g.restore(); };
-  const exH = [W * .29, W * .71], happyE = (r, th) => () => { g.lineWidth = th; for (const x of exH) { g.beginPath(); g.arc(x, ey + r * .55, r, Math.PI, Math.PI * 2); g.stroke(); } };
-  const angryE = (w, h, rot) => () => ex.forEach((x, i) => bar(x, ey, w, h, (i ? -1 : 1) * rot)); // (\ / : the inner ends low)
-  const shut = (w, h, rot = 0) => () => ex.forEach((x, i) => bar(x, ey + 4, w, h, (i ? -1 : 1) * rot));
-  const dizzy = (rot, sp) => () => { ex.forEach((x, i) => { for (const a of [-1, 1]) bar(x, ey, 62, 15, a * .78 + (i ? -1 : 1) * rot); });
+  // small eyes (like his Meshy picture): happy little arcs for the good guys; for the baddies, curved tapering slashes,
+  // fat in the middle and pointed at the ends, tilted so the inner ends sit low
+  const ex = [W * .34, W * .66], ey = H * .52, bar = (x, y, w, h, rot) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, h * .45); g.fill(); g.restore(); };
+  const happyE = (r, th) => () => { g.lineWidth = th; for (const x of ex) { g.beginPath(); g.arc(x, ey + r * .55, r, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); } };
+  const slash = (x, y, len, th, rot, bow) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); const L = len / 2; g.moveTo(-L, 0); g.quadraticCurveTo(0, bow - th, L, 0); g.quadraticCurveTo(0, bow + th, -L, 0); g.fill(); g.restore(); };
+  const angryE = (len, th, rot) => () => ex.forEach((x, i) => slash(x, ey, len, th, (i ? -1 : 1) * rot, 5));
+  const shut = (w, h, rot = 0) => () => ex.forEach((x, i) => bar(x, ey + 3, w, h, (i ? -1 : 1) * rot));
+  const dizzy = (rot, sp) => () => { ex.forEach((x, i) => { for (const a of [-1, 1]) bar(x, ey, 40, 9, a * .78 + (i ? -1 : 1) * rot); });
   };
-  if (happy) { frame(0, happyE(28, 13)); frame(1, shut(66, 10)); frame(2, () => ex.forEach((x, i) => bar(x, ey, 74, 15, (i ? 1 : -1) * .18))); frame(3, shut(66, 9)); }
-  else { frame(0, angryE(80, 21, .55)); frame(1, shut(70, 10, .3)); frame(2, angryE(76, 15, .55)); frame(3, shut(66, 9, .3)); }
+  if (happy) { frame(0, happyE(19, 8)); frame(1, shut(40, 6)); frame(2, () => ex.forEach((x, i) => bar(x, ey, 44, 8, (i ? 1 : -1) * .15))); frame(3, shut(40, 6)); }
+  else { frame(0, angryE(54, 11, .515)); frame(1, shut(44, 6, .3)); frame(2, angryE(50, 8, .515)); frame(3, shut(40, 6, .3)); }
   frame(4, dizzy(.12, 0)); frame(5, dizzy(-.12, 2.1)); frame(6, dizzy(.04, 4.2)); frame(7, () => {});
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return NBR_SCR[key] = t; }
 let NBR_SCRG = null;
@@ -4165,6 +4168,28 @@ function nbrBolt(mesh, A, B, w) { const pos = [], seg = 7, cam = camera.position
   for (let i = 0; i < seg; i++) { const a = pts[i], b = pts[i + 1], d = b.clone().sub(a), side = d.cross(cam.clone().sub(a)).normalize().multiplyScalar(w);
     pos.push(a.x - side.x, a.y - side.y, a.z - side.z, a.x + side.x, a.y + side.y, a.z + side.z, b.x + side.x, b.y + side.y, b.z + side.z, a.x - side.x, a.y - side.y, a.z - side.z, b.x + side.x, b.y + side.y, b.z + side.z, b.x - side.x, b.y - side.y, b.z - side.z); }
   mesh.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); }
+// frozen: the whole robot turns to ice (each robot gets its own copy of any paint it shares, so only he goes icy)
+const NBR_ICEC = new THREE.Color('#cdeeff'), NBR_ICEE = new THREE.Color('#2a8fc4');
+if (BOT_KIND === 'ball') { const sI = setIce; setIce = function (r, on) { const m = r.model; if (!m || !m.rigged) return sI(r, on); if (!!m.frozen === on) return; m.frozen = on;
+    m.g.traverse(o => { if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial || o === m.ice) return;
+      const M = nbrOwn(o); if (on) { M.userData.c = M.color.clone(); M.userData.e = M.emissive.clone(); M.userData.ei = M.emissiveIntensity; M.color.lerp(NBR_ICEC, .7); M.emissive.copy(NBR_ICEE); M.emissiveIntensity = .35; }
+      else if (M.userData.c) { M.color.copy(M.userData.c); M.emissive.copy(M.userData.e); M.emissiveIntensity = M.userData.ei; } });
+    if (on) { const q = rPos(r); fxDebris(q, 0xe8f6ff, 10, 3); } }; }
+// see-through (just respawned, or invisible): the whole robot goes ghostly, like the classic ones (only its face hides)
+function nbrOwn(o) { if (!o.userData.ownMat) { const a = o.material, b = a.clone(); b.onBeforeCompile = a.onBeforeCompile; b.customProgramCacheKey = a.customProgramCacheKey; o.material = b; o.userData.ownMat = true; } return o.material; }
+function nbrGhost(r) { const M = r.model, tr = !!M.seeThru, op = M.mats[0].opacity;
+  if (M.ghostOn !== tr) { M.ghostOn = tr; M.ghostList = []; M.g.traverse(o => { if (o.isMesh && o.material && o.material.isMeshStandardMaterial && o !== M.ice) { const m = nbrOwn(o); m.transparent = tr; m.depthWrite = true; m.needsUpdate = true; if (!tr) m.opacity = 1; else M.ghostList.push(m); } }); }
+  if (tr) for (const m of M.ghostList) m.opacity = op; if (M.ant) M.ant.glow.material.opacity = tr ? op : 1; }
+// knocked out or otherwise losing your blocks (not by throwing): a big zap bursts out of the antenna in every direction
+function nbrBurst(r, dt) { const M = r.model, N = M.ant; if (!N) return; const n = r.stack.length;
+  if (M.lastN !== undefined && n < M.lastN && !(r.carryUp > .2)) { M.burstT = .45; sfx('reload', rPos(r));
+    if (!M.burst) { M.burst = []; for (let i = 0; i < 9; i++) { const b = new THREE.Mesh(new THREE.BufferGeometry(), NBR_ZAPM.clone()); b.frustumCulled = false; b.renderOrder = 3; scene.add(b); M.burst.push(b); }
+      M.burstF = new THREE.Sprite(new THREE.SpriteMaterial({ map: nbrGlowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); M.burstF.renderOrder = 3; scene.add(M.burstF); }
+    const c = new THREE.Color(M.mats[0].color || 0xffffff).lerp(new THREE.Color(0xffffff), .45); for (const b of M.burst) { b.material.color.copy(c).multiplyScalar(2); b.userData.d = new THREE.Vector3(rr(-1, 1), rr(-.25, .9), rr(-1, 1)).normalize().multiplyScalar(rr(1.6, 2.8)); } M.burstF.material.color.copy(c); }
+  M.lastN = n; if (!M.burst) return;
+  M.burstT = (M.burstT || 0) - dt; const on = M.burstT > 0, t = 1 - Math.max(0, M.burstT) / .45; for (const b of M.burst) b.visible = on; M.burstF.visible = on; if (!on) return;
+  N.tip.getWorldPosition(_zA); for (const b of M.burst) { _zB.copy(_zA).addScaledVector(b.userData.d, .4 + .6 * Math.min(1, t * 3)); nbrBolt(b, _zA, _zB, .045); b.material.opacity = 1 - t; }
+  M.burstF.position.copy(_zA); M.burstF.scale.setScalar(3.2 * (1 - t) + .4); M.burstF.material.opacity = 1 - t; }
 let NBR_ARMW = null; const NBR_ARML = .04; const NBR_ARMG = (() => { const R1 = .06, R2 = .078, L = .28, pts = [];
   for (let i = 0; i <= 12; i++) { const a = Math.PI / 2 * i / 12; pts.push(new THREE.Vector2(R2 * Math.sin(a), -L - R2 * Math.cos(a))); }
   for (let i = 1; i < 10; i++) { const t = i / 10, e = t * t * (3 - 2 * t); pts.push(new THREE.Vector2(R2 + (R1 - R2) * e, -L * (1 - t))); }
@@ -4194,12 +4219,12 @@ function nbrEyes(rig, happy, ec, eyesN, eyesF, eyesX) { const F = nbrFace();
     tex.offset.set((k % 4) * .25, k < 4 ? .5 : 0); };
   rig.add(scr, eyesN, eyesF, eyesX); eyesF.visible = eyesX.visible = false; return scr; }
 function nymMeshModel(color, happy) {
-  const g = new THREE.Group(), hex = '#' + new THREE.Color(color).getHexString(), skin = nbrMat(hex), spare = new LiteMat({ color }), mats = [spare, spare, spare, skin]; // (the game's look tricks repaint mats[0..2]: they get a spare, his paint stays)
+  const g = new THREE.Group(), hex = '#' + new THREE.Color(color).getHexString(), skin = nbrMat(hex), spare = new LiteMat({ color }), mats = [spare, spare, spare]; // (the game's look tricks repaint mats[0..2]: they get a spare, his paint stays)
   const ball = new THREE.Group(); ball.position.y = -.58; g.add(ball); { const wh = new THREE.MeshStandardMaterial({ color: 0xf6f7fa, roughness: .3 }), pt = new THREE.MeshStandardMaterial({ color, roughness: .35 }); const bin = new THREE.Group(); bin.scale.setScalar(NBR_BALLK); ball.add(bin); for (const [geo, mm] of [[NB.ball, wh], [NB.band, pt], [NB.badge, pt], [NB.badgeIn, pt]]) bin.add(new THREE.Mesh(geo, mm)); }
   const hub = new THREE.Group(); hub.position.y = -.58; g.add(hub); const torso = new THREE.Group(); g.add(torso);
   const rig = new THREE.Group(); rig.scale.setScalar(NBR_S); rig.position.y = -.58 - NBR.ballC * NBR_S;
   // (a slightly smaller ball, and the top half grown to fill the same height: a bigger body, longer arms)
-  const up = new THREE.Group(); torso.add(up); up.add(rig); { const top = rig.position.y + NBR.top * NBR_S, b0 = -.58 + .37, b1 = -.58 - NBR_BDROP + .37 * NBR_BALLK, k = (top - b1) / (top - b0); up.scale.setScalar(k); up.position.y = b1 - k * b0; } rig.add(new THREE.Mesh(NBR_BODY2 || NBR_PARTS.body, nbrMat(hex, true))); if (!NBR_B2) rig.add(new THREE.Mesh(nbrFace().disc, new THREE.MeshStandardMaterial({ color, roughness: .35 })));
+  const up = new THREE.Group(); torso.add(up); up.add(rig); { const top = rig.position.y + NBR.top * NBR_S, b0 = -.58 + .37, b1 = -.58 - NBR_BDROP + .37 * NBR_BALLK, k = (top - b1) / (top - b0); up.scale.setScalar(k); up.position.y = b1 - k * b0; } const bodyM = (() => { const B = nbrMat(hex, true), m2 = B.clone(); m2.onBeforeCompile = B.onBeforeCompile; m2.customProgramCacheKey = B.customProgramCacheKey; return m2; })(); rig.add(new THREE.Mesh(NBR_BODY2 || NBR_PARTS.body, bodyM)); if (!NBR_B2) rig.add(new THREE.Mesh(nbrFace().disc, new THREE.MeshStandardMaterial({ color, roughness: .35 })));
   // ears: a metal cylinder with the team colour inside
   { const metal = NBR_EARM || (NBR_EARM = new THREE.MeshStandardMaterial({ color: 0xc8ccd4, metalness: .6, roughness: .3 })), inner = new THREE.MeshStandardMaterial({ color, roughness: .35 });
     for (const sx of [-1, 1]) { const c = new THREE.Mesh(NBR_EAR || (NBR_EAR = new THREE.TorusGeometry(.046, .014, 16, 48).rotateY(Math.PI / 2)), metal); c.position.set(sx * .187, .321, 0); rig.add(c); /* (a rounded silver ring, a colour dome set inside it) */
@@ -4210,7 +4235,7 @@ function nymMeshModel(color, happy) {
     if (NBR_B2) { const cg = new THREE.Group(); cg.rotation.z = Math.sign(A.side) * .04; cg.position.x = Math.sign(A.side) * (.035 - NBR_ARML * NBR_S); p.position.y += .03 * NBR_S; /* (the shoulder sits a little higher, over the socket) */ p.add(cg); const AG = NBR_ARMG[Math.sign(A.side)], am = new THREE.Mesh(AG.arm, NBR_SWAP ? new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(.93), roughness: .28 }) : NBR_ARMW || (NBR_ARMW = new THREE.MeshStandardMaterial({ color: 0xeceef2, roughness: .28 }))); am.scale.setScalar(NBR_S); cg.add(am);
       const st = new THREE.Mesh(AG.stripe, new THREE.MeshStandardMaterial({ color: NBR_SWAP ? 0xf0f1f4 : color, roughness: .35 })); st.scale.setScalar(NBR_S); cg.add(st); p.userData.nb = { dn: new THREE.Group(), upm: new THREE.Group(), A }; return p; }
     holder.add(dn, upm); p.userData.nb = { dn, upm, A }; return p; });
-  const head = new THREE.Group(); up.add(head); const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); const scr = nbrEyes(rig, happy, (() => { const c = new THREE.Color(color), h = {}; c.getHSL(h); return c.setHSL(h.h, 1, .58).getHex(); })(), /* (the eyes glow in the robot's own colour) */ eyesN, eyesF, eyesX);
+  const head = new THREE.Group(); up.add(head); const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); const scr = nbrEyes(rig, happy, (() => { const c = new THREE.Color(color), h = {}; c.getHSL(h); return c.setHSL(h.h, 1, .52).getHex(); })(), /* (the eyes glow in the robot's own colour) */ eyesN, eyesF, eyesX);
   const held = new THREE.Mesh(cubeGeo, new LiteMat({ roughness: .7 })); held.position.y = NBR.top * NBR_S + rig.position.y + .55; held.visible = false; g.add(held);
   const heldTop = held.position.clone(), heldFront = new THREE.Vector3(); if (NBR_B2) { const sh = arms[0].position; heldFront.set(0, up.position.y + up.scale.y * sh.y - .02, .6); } // (blocks ride on his head; a flag is held out in front, between his hands)
   // the antenna: a little silver socket set into the back of his head, up near the top, a thin springy stalk and a small glowing tip
@@ -4235,7 +4260,7 @@ if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMesh
       const tx = thr || flag ? -1.57 : block ? -2.95 : 0, tz = block && !thr ? .2 : .03; /* (all in one plane: arms go up over his head through the front, and a throw brings them straight forward and down) */ M.armX = (M.armX || 0) + (tx - (M.armX || 0)) * k; M.armZ = (M.armZ ?? .12) + (tz - (M.armZ ?? .12)) * k;
       A.forEach((a, i) => a.rotation.set(M.armX, 0, (i ? 1 : -1) * M.armZ));
       if (flag) { M.held.position.copy(M.heldFront); M.held.scale.setScalar(.72); } else { M.held.position.copy(M.heldTop); M.held.scale.setScalar(1); }
-      nbrAntLight(r); nbrZap(r, dt); if (r === robots[0]) nbrSuck(dt);
+      nbrAntLight(r); nbrZap(r, dt); nbrBurst(r, dt); nbrGhost(r); if (r === robots[0]) nbrSuck(dt);
       // the antenna: a spring that lags behind when he speeds up, turns or stops, and wobbles back
       const N = M.ant; if (N) { const p = M.g.position; if (N.last) { const vx = (p.x - N.last.x) / dt, vz = (p.z - N.last.z) / dt, ax = (vx - N.lv.x) / dt, az = (vz - N.lv.z) / dt, ry = M.g.rotation.y, c = Math.cos(ry), sn = Math.sin(ry), lx = ax * c - az * sn, lz = ax * sn + az * c; N.lv.set(vx, 0, vz);
           const fx = clamp(lx, -45, 45) * .9, fz = clamp(lz, -45, 45) * .9; N.v.x += (-90 * N.o.x - 3.2 * N.v.x - fx) * dt; N.v.y += (-90 * N.o.y - 3.2 * N.v.y - fz) * dt; N.o.x += N.v.x * dt; N.o.y += N.v.y * dt; N.o.clampScalar(-.7, .7);
@@ -12760,7 +12785,7 @@ if (HD && DESERT) { const st0 = sideTint; sideTint = function (cx, cz) { return 
     box.insertBefore(row, box.firstChild); }; }
 
 // test hooks for the newer bits (headless checks only)
-Object.assign(window.__nymbo, { nbrPose, nymMeshModel, NBR_PARTS, nbrMat, NBR_SWAPU, grabBlock: (...a) => grabBlock(...a), get blocks() { return blocks; }, NBD, nbBuild, nymModel, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
+Object.assign(window.__nymbo, { nbrPose, nymMeshModel, NBR_PARTS, nbrMat, NBR_SWAPU, grabBlock: (...a) => grabBlock(...a), freezeRobot: (...a) => freezeRobot(...a), ragdoll: (...a) => ragdoll(...a), get blocks() { return blocks; }, NBD, nbBuild, nymModel, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
 
 document.getElementById('loading').hidden = true;
 </script>
