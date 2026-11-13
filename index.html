@@ -3951,56 +3951,70 @@ function syncRobot(r) {
 // ============================================================
 const BOT_KIND = (() => { try { const k = localStorage.getItem('nymbo-bot'); return ['legs', 'ball'].includes(k) ? k : 'classic'; } catch (e) { return 'classic'; } })();
 const NB = {};
-{ // shared shapes
-  const egg = (h, w, d, n = 28) => { const pts = []; for (let i = 0; i <= n; i++) { const t = i / n, a = -Math.PI / 2 + t * Math.PI, y = Math.sin(a) * h / 2, k = Math.cos(a), bulge = 1 + .14 * (1 - t) - .04; pts.push(new THREE.Vector2(Math.max(.001, k * w / 2 * bulge), y)); }
-    const g = new THREE.LatheGeometry(pts, 48); g.scale(1, 1, d / w); return g; };
-  NB.body = egg(1.0, .96, .78); NB.bodyB = egg(.78, .86, .7);
-  NB.head = new RoundedBoxGeometry(1.04, .84, .9, 8, .38);
-  NB.visor = new RoundedBoxGeometry(.8, .44, .3, 6, .2); NB.back = new RoundedBoxGeometry(.8, .44, .3, 6, .2);
-  NB.ear = new THREE.CylinderGeometry(.17, .17, .1, 32).rotateZ(Math.PI / 2); NB.earIn = new THREE.CylinderGeometry(.11, .12, .06, 32).rotateZ(Math.PI / 2);
-  NB.neck = new THREE.CylinderGeometry(.22, .26, .1, 32);
-  NB.arm = new THREE.CapsuleGeometry(.14, .46, 8, 20).translate(0, -.3, 0); NB.stripe = new THREE.CylinderGeometry(.148, .148, .045, 28).translate(0, -.48, 0);
-  NB.leg = new THREE.CylinderGeometry(.165, .17, .24, 28).translate(0, -.12, 0); NB.sole = new THREE.CylinderGeometry(.182, .18, .08, 28).translate(0, -.27, 0);
-  NB.ball = new THREE.SphereGeometry(.37, 48, 32); NB.band = new THREE.SphereGeometry(.373, 64, 2, 0, Math.PI * 2, Math.PI / 2 - .075, .15);
-  NB.badge = new THREE.SphereGeometry(.3735, 48, 3, 0, Math.PI * 2, .25, .1).rotateZ(-Math.PI / 2); NB.badgeIn = NB.badge.clone().rotateZ(Math.PI); // (rings painted on the ball's two sides, round the axle)
+// sizes taken from Ali's ball robot (front view): ball, round tummy and round head all about the same width; head a little
+// wider than tall; the coloured tummy patch covers most of the front (and the same patch on the back)
+const NBD = { ballR: .37, bodyW: .8, bodyH: .72, bodyD: .7, headW: .86, headH: .64, headD: .72 };
+{ // round body: a squashed ball, a little narrower at the top where the neck is
+  const pts = []; for (let i = 0; i <= 40; i++) { const t = i / 40, a = -Math.PI / 2 + t * Math.PI, y = Math.sin(a) * NBD.bodyH / 2, k = Math.pow(Math.cos(a), .82) * (1 - .1 * t * t); pts.push(new THREE.Vector2(Math.max(.001, k * NBD.bodyW / 2), y)); }
+  NB.body = new THREE.LatheGeometry(pts, 64); NB.body.scale(1, 1, NBD.bodyD / NBD.bodyW);
+  // round head: a ball, a touch flatter than wide, slightly flattened underneath
+  const shapeHead = (geo, k = 1) => { const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { let x = p.getX(i), y = p.getY(i), z = p.getZ(i); const r = Math.hypot(x, y, z) || 1, sq = 1 + .18 * (1 - Math.abs(y / r)); p.setXYZ(i, x * sq * NBD.headW / 1.18 * k, y * NBD.headH * k, z * sq * NBD.headD / 1.18 * k); } geo.computeVertexNormals(); return geo; };
+  NB.head = shapeHead(new THREE.SphereGeometry(.5, 64, 40));
+  // the round colour disc on the back of the head: a cap of the head's own shape, a hair proud of it (flat against the head, perfectly round)
+  { const R0 = .17, g = new THREE.CircleGeometry(R0, 64, 0, Math.PI * 2); g.rotateY(Math.PI); const p = g.attributes.position; // (a perfect circle, bent onto the back of the head)
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), k = 1 - (x / (NBD.headW / 2)) ** 2 - (y / (NBD.headH / 2)) ** 2; p.setZ(i, -(NBD.headD / 2) * Math.sqrt(Math.max(.05, k)) - .016); }
+    const n = g.attributes.normal, A = NBD.headW / 2, B = NBD.headH / 2, C = NBD.headD / 2; for (let i = 0; i < p.count; i++) { const v = V(p.getX(i) / (A * A), p.getY(i) / (B * B), p.getZ(i) / (C * C)).normalize(); n.setXYZ(i, v.x, v.y, v.z); } // (smooth normals straight off the head's shape)
+    NB.back = g; }
+  NB.ear = new THREE.CylinderGeometry(.13, .14, .08, 40).rotateZ(Math.PI / 2); NB.earIn = new THREE.CylinderGeometry(.085, .095, .05, 40).rotateZ(Math.PI / 2);
+  NB.neck = new THREE.CylinderGeometry(.2, .24, .05, 40); NB.waist = new THREE.CylinderGeometry(.24, .2, .06, 40);
+  NB.arm = new THREE.CapsuleGeometry(.12, .36, 10, 24).translate(0, -.24, 0); NB.stripe = new THREE.CylinderGeometry(.127, .127, .035, 32).translate(0, -.38, 0);
+  NB.leg = new THREE.CylinderGeometry(.14, .145, .22, 32).translate(0, -.11, 0); NB.sole = new THREE.CylinderGeometry(.155, .15, .07, 32).translate(0, -.25, 0);
+  NB.ball = new THREE.SphereGeometry(NBD.ballR, 48, 32); NB.band = new THREE.SphereGeometry(NBD.ballR + .003, 64, 2, 0, Math.PI * 2, Math.PI / 2 - .075, .15);
+  NB.badge = new THREE.SphereGeometry(NBD.ballR + .0035, 48, 3, 0, Math.PI * 2, .25, .1).rotateZ(-Math.PI / 2); NB.badgeIn = NB.badge.clone().rotateZ(Math.PI); // (rings painted on the ball's two sides, round the axle)
 }
-// the coloured belly: painted onto the body's surface so its edge is a clean smooth curve
-const NB_BELLY = {};
-function nbBellyTex(color) { if (NB_BELLY[color]) return NB_BELLY[color];
-  const c = document.createElement('canvas'); c.width = 1024; c.height = 512; const g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, 1024, 512);
-  // lathe u runs round the body (front = u .75), v runs bottom to top
-  g.fillStyle = color; for (const cx of [0, 1024]) { g.beginPath(); g.ellipse(cx, 270, 150, 205, 0, 0, Math.PI * 2); g.fill(); } // (u = 0 is the front)
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return NB_BELLY[color] = t; }
-const nbEyeSets = (head, happy, ec, z) => { const eye = new LiteMat({ color: ec, emissive: ec, emissiveIntensity: 1.5 });
+// painted skins (smooth antialiased edges, so every colour line is clean)
+const NB_TEX = {};
+const nbTex = (key, draw) => { if (NB_TEX[key]) return NB_TEX[key]; const c = document.createElement('canvas'); c.width = 2048; c.height = 1024; const g = c.getContext('2d'); draw(g, 2048, 1024);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return NB_TEX[key] = t; };
+// tummy: a big rounded patch on the front, the same patch on the back (lathe: u 0 = front, .5 = back; v 0 = bottom)
+const nbBodyTex = col => nbTex('b' + col, (g, W, H) => { g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H); g.fillStyle = col;
+  for (const cx of [0, W / 2, W]) { g.beginPath(); g.ellipse(cx, H * .47, W * .155, H * .36, 0, 0, Math.PI * 2); g.fill(); } });
+// head: the black visor on the front (sphere: u .25 = front, .75 = back; v .5 = the middle), a round colour disc on the back
+const nbHeadTex = col => nbTex('h' + col, (g, W, H) => { g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#07080c'; g.beginPath(); g.roundRect(W * (.25 - .155), H * .35, W * .31, H * .32, H * .13); g.fill();
+ });
+const nbHeadZ = (x, y) => { // the head's front surface (for the eyes to sit on)
+  const a = NBD.headW / 2, b = NBD.headH / 2, c = NBD.headD / 2, k = 1 - (x / a) ** 2 - (y / b) ** 2; return c * Math.sqrt(Math.max(.05, k)) * 1.04 + .006; };
+const nbEyeSets = (head, happy, ec) => { const eye = new LiteMat({ color: ec, emissive: ec, emissiveIntensity: 1.5 });
   const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); head.add(eyesN, eyesF, eyesX); eyesF.visible = eyesX.visible = false;
+  const put = (m, x, y, grp, rz = 0) => { m.position.set(x, y, nbHeadZ(x, y)); m.rotation.set(0, Math.atan2(x, NBD.headD) * .9, rz); grp.add(m); };
   for (const s of [-1, 1]) {
-    if (happy) { const e = new THREE.Mesh(new THREE.TorusGeometry(.085, .022, 8, 24, Math.PI), eye); e.position.set(s * .17, -.06, z); eyesN.add(e); }
-    else { const e = new THREE.Mesh(new RoundedBoxGeometry(.22, .05, .02, 2, .02), eye); e.position.set(s * .17, -.02, z); e.rotation.z = s * .45; eyesN.add(e); } // angry \ / (inner ends low)
-    const f = new THREE.Mesh(new THREE.BoxGeometry(.2, .036, .02), eye); f.position.set(s * .17, -.03, z); f.rotation.z = s * (happy ? -.15 : .45); eyesF.add(f);
-    for (const a of [-1, 1]) { const x = new THREE.Mesh(new THREE.BoxGeometry(.16, .034, .02), eye); x.position.set(s * .17, -.03, z); x.rotation.z = a * .78; eyesX.add(x); } }
+    if (happy) put(new THREE.Mesh(new THREE.TorusGeometry(.075, .019, 8, 24, Math.PI), eye), s * .14, -.04, eyesN);
+    else put(new THREE.Mesh(new RoundedBoxGeometry(.19, .045, .016, 2, .015), eye), s * .14, -.02, eyesN, s * .45); // angry \ / (inner ends low)
+    put(new THREE.Mesh(new THREE.BoxGeometry(.15, .028, .016), eye), s * .12, -.04, eyesF, s * (happy ? -.15 : .45));
+    for (const a of [-1, 1]) put(new THREE.Mesh(new THREE.BoxGeometry(.12, .026, .016), eye), s * .12, -.04, eyesX, a * .78); }
   return { eyesN, eyesF, eyesX }; };
 function nymModel(color, happy, kind) {
-  const g = new THREE.Group(), ballK = kind === 'ball';
-  const white = new LiteMat({ color: 0xffffff, emissive: 0x2a2c30, roughness: .2 }), paint = new LiteMat({ color, roughness: .26 }), visorM = new LiteMat({ color: 0x07080c, roughness: .08, metalness: .3 });
-  const bellyM = new LiteMat({ map: nbBellyTex('#' + new THREE.Color(color).getHexString()), roughness: .24 }), neckM = new LiteMat({ color: 0x1a1c22, roughness: .4 });
-  const ec = happy ? 0x1ec8ff : 0xff1a10, mats = [white, paint, visorM, bellyM, neckM];
+  const g = new THREE.Group(), ballK = kind === 'ball', hex = '#' + new THREE.Color(color).getHexString();
+  const white = new LiteMat({ color: 0xffffff, emissive: 0x2a2c30, roughness: .2 }), paint = new LiteMat({ color, roughness: .26 }), dark = new LiteMat({ color: 0x15171c, roughness: .35 });
+  const bodyM = new LiteMat({ map: nbBodyTex(hex), emissive: 0x1a1a1e, roughness: .22 }), headM = new LiteMat({ map: nbHeadTex(hex), emissive: 0x1a1a1e, roughness: .16 });
+  const ec = happy ? 0x1ec8ff : 0xff1a10, mats = [white, paint, dark, bodyM, headM];
   const add = (geo, mat, x, y, z, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
-  // ball (or an empty stand-in for the legs version, so the rest of the game can still find it)
+  // the ball (or an empty stand-in for the legs version, so the rest of the game can still find it)
   const ball = new THREE.Group(); ball.position.y = -.58; g.add(ball); const hub = new THREE.Group(); hub.position.y = -.58; g.add(hub);
   if (ballK) { add(NB.ball, white, 0, 0, 0, ball); add(NB.band, paint, 0, 0, 0, ball); add(NB.badge, paint, 0, 0, 0, ball); add(NB.badgeIn, paint, 0, 0, 0, ball); }
-  // legs: hips under the body, they swing as you walk
-  const legs = []; if (!ballK) for (const sx of [-1, 1]) { const L = new THREE.Group(); L.position.set(sx * .2, -.63, 0); g.add(L); add(NB.leg, white, 0, 0, 0, L); add(NB.sole, paint, 0, 0, 0, L); legs.push(L); }
-  // body, neck, head
+  const legs = []; if (!ballK) for (const sx of [-1, 1]) { const L = new THREE.Group(); L.position.set(sx * .17, -.66, 0); g.add(L); add(NB.leg, white, 0, 0, 0, L); add(NB.sole, paint, 0, 0, 0, L); legs.push(L); }
+  // body, neck, head (stacked: ball top -0.21 → waist ring → body → neck ring → head)
   const torso = new THREE.Group(); g.add(torso);
-  const by = ballK ? .12 : -.17, bh = ballK ? .78 : 1.0; add(ballK ? NB.bodyB : NB.body, bellyM, 0, by, 0, torso);
-  const headY = by + bh / 2 + .42; add(NB.neck, neckM, 0, by + bh / 2 + .01, 0, torso);
-  const head = new THREE.Group(); head.position.y = headY; torso.add(head);
-  add(NB.head, white, 0, 0, 0, head); add(NB.visor, visorM, 0, -.05, .33, head); add(NB.back, paint, 0, -.05, -.33, head);
-  for (const sx of [-1, 1]) { add(NB.ear, paint, sx * .53, -.02, 0, head); add(NB.earIn, paint, sx * .585, -.02, 0, head); }
-  const eyes = nbEyeSets(head, happy, ec, .482);
+  const by = (ballK ? -.21 : -.66) + .03 + NBD.bodyH / 2; add(NB.body, bodyM, 0, by, 0, torso); if (ballK) add(NB.waist, dark, 0, -.19, 0, torso);
+  add(NB.neck, dark, 0, by + NBD.bodyH / 2 - .02, 0, torso);
+  const head = new THREE.Group(); head.position.y = by + NBD.bodyH / 2 + NBD.headH / 2 - .02; torso.add(head);
+  add(NB.head, headM, 0, 0, 0, head); add(NB.back, paint, 0, 0, 0, head);
+  for (const sx of [-1, 1]) { add(NB.ear, paint, sx * (NBD.headW / 2 - .01), -.01, 0, head); add(NB.earIn, paint, sx * (NBD.headW / 2 + .04), -.01, 0, head); }
+  const eyes = nbEyeSets(head, happy, ec);
   // arms hang from the shoulders; the game swings them up to carry and throw
-  const sh = by + bh * .22, arms = [-1, 1].map(s => { const p = new THREE.Group(); p.position.set(s * (ballK ? .44 : .5), sh, 0); torso.add(p); add(NB.arm, white, 0, 0, 0, p); add(NB.stripe, paint, 0, 0, 0, p); return p; });
-  const held = new THREE.Mesh(cubeGeo, new LiteMat({ roughness: .7 })); held.position.y = 1.78; held.visible = false; g.add(held);
+  const arms = [-1, 1].map(s => { const p = new THREE.Group(); p.position.set(s * (NBD.bodyW / 2 + .02), by + NBD.bodyH * .2, 0); torso.add(p); add(NB.arm, white, 0, 0, 0, p); add(NB.stripe, paint, 0, 0, 0, p); return p; });
+  const held = new THREE.Mesh(cubeGeo, new LiteMat({ roughness: .7 })); held.position.y = head.position.y + NBD.headH / 2 + .55; held.visible = false; g.add(held);
   g.traverse(o => { if (o.isMesh) o.castShadow = false; });
   const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 })); blob.renderOrder = 1; scene.add(blob);
   const ice = new THREE.Mesh(new RoundedBoxGeometry(1.45, 2.4, 1.35, 2, .14), iceOverlayMat); ice.visible = false; g.add(ice);
