@@ -4201,7 +4201,7 @@ function nbrPose(m) { for (const a of m.arms) { const U = a.userData.nb; nbrV.se
 if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMeshModel(color, happy); };
   const sRB = syncRobot; syncRobot = function (r, ...a) { const out = sRB(r, ...a); if (r.model && r.model.rigged) { const A = r.model.arms, M = r.model; M.scr.visible = !M.seeThru; M.ball.position.y -= NBR_BDROP; M.hub.position.y = M.ball.position.y; /* (the smaller ball still sits on the ground) */ if (NBR_B2) { /* (blocks: held up on his head as always; a flag: held out in front with both arms; a throw: both arms swing forward) */
       const play = r.state === 'play', flag = play && r.stack[0] && r.stack[0].kind === 'flag', block = play && r.stack.length > 0 && !flag, thr = r.carryUp > 0, dt = clamp(lastDt || 1 / 60, 1 / 240, 1 / 30), k = Math.min(1, dt * (thr ? 22 : 12));
-      const tx = thr || flag ? -1.57 : 0, tz = block && !thr ? 2.7 : .03; M.armX = (M.armX || 0) + (tx - (M.armX || 0)) * k; M.armZ = (M.armZ ?? .12) + (tz - (M.armZ ?? .12)) * k;
+      const tx = thr || flag ? -1.57 : block ? -2.95 : 0, tz = block && !thr ? .2 : .03; /* (all in one plane: arms go up over his head through the front, and a throw brings them straight forward and down) */ M.armX = (M.armX || 0) + (tx - (M.armX || 0)) * k; M.armZ = (M.armZ ?? .12) + (tz - (M.armZ ?? .12)) * k;
       A.forEach((a, i) => a.rotation.set(M.armX, 0, (i ? 1 : -1) * M.armZ));
       if (flag) { M.held.position.copy(M.heldFront); M.held.scale.setScalar(.72); } else { M.held.position.copy(M.heldTop); M.held.scale.setScalar(1); }
       nbrAntLight(r);
