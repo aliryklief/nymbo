@@ -4113,7 +4113,7 @@ function nbrScreenTex(col, happy) { const key = col + happy; if (NBR_SCR[key]) r
     g.restore(); };
   // the same eyes as the classic robots: happy arcs for the good guys, angry slanted bars for the baddies
   const ex = [W * .29, W * .71], ey = H * .52, bar = (x, y, w, h, rot) => { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, h * .45); g.fill(); g.restore(); };
-  const exH = [W * .275, W * .725], happyE = (r, th) => () => { g.lineWidth = th; for (const x of exH) { g.beginPath(); g.arc(x, ey + r * .55, r, Math.PI, Math.PI * 2); g.stroke(); } };
+  const exH = [W * .29, W * .71], happyE = (r, th) => () => { g.lineWidth = th; for (const x of exH) { g.beginPath(); g.arc(x, ey + r * .55, r, Math.PI, Math.PI * 2); g.stroke(); } };
   const angryE = (w, h, rot) => () => ex.forEach((x, i) => bar(x, ey, w, h, (i ? -1 : 1) * rot)); // (\ / : the inner ends low)
   const shut = (w, h, rot = 0) => () => ex.forEach((x, i) => bar(x, ey + 4, w, h, (i ? -1 : 1) * rot));
   const dizzy = (rot, sp) => () => { ex.forEach((x, i) => { for (const a of [-1, 1]) bar(x, ey, 62, 15, a * .78 + (i ? -1 : 1) * rot); });
