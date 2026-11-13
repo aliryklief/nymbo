@@ -4038,7 +4038,7 @@ if (BOT_KIND !== 'classic') { const rmC = robotModel; robotModel = function (col
     const lv = r.body.linvel(), sp = r.state === 'play' && r.grounded && r.frozenT <= 0 ? Math.hypot(lv.x, lv.z) : 0, dt = clamp(lastDt || 1 / 60, 1 / 240, 1 / 30);
     m.step += sp * dt * 2.6; const sw = Math.min(1, sp / 4) * .7;
     if (m.legs.length) { m.legs[0].rotation.x = Math.sin(m.step) * sw; m.legs[1].rotation.x = -Math.sin(m.step) * sw; m.ball.position.y = -.58; m.torso.position.y += Math.abs(Math.cos(m.step)) * sw * .05; }
-    if (!r.stack.length && r.state === 'play' && !(r.carryUp > 0)) { m.arms[0].rotation.x = -Math.sin(m.step) * sw * .6; m.arms[1].rotation.x = Math.sin(m.step) * sw * .6; }
+    // (arms stay still while rolling: no swing)
     return out; }; }
 // the picker (Settings → Function)
 document.querySelectorAll('[data-bot]').forEach(b => { b.classList.toggle('on', b.dataset.bot === BOT_KIND); if (b.dataset.bot === BOT_KIND) b.style.outline = '3px solid #ffd23a';
@@ -4058,7 +4058,8 @@ const nbrLoad = (k, f) => { const im = new Image(); im.onload = () => { NBR_IMG[
 const nbrPlain = k => { const t = new THREE.Texture(); t.flipY = false; if (k !== 'normal' && k !== 'mr') t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; NBR_TX[k] = t; return t; };
 for (const k of ['normal', 'mr']) nbrPlain(k);
 for (const k of ['base', 'emis', 'normal', 'mr']) nbrLoad(k, () => { if (NBR_TX[k]) { NBR_TX[k].image = NBR_IMG[k]; NBR_TX[k].needsUpdate = true; } });
-function nbrRecolor(img, col, cv) { const W = 1024; cv.width = cv.height = W; const g = cv.getContext('2d'); g.drawImage(img, 0, 0, W, W); const d = g.getImageData(0, 0, W, W), D = d.data, t = new THREE.Color(col), th = {}; t.getHSL(th); const hsl = {}, c = new THREE.Color();
+function nbrRecolor(img, col, cv) { const W = 512; // (512: eight robots' paint fits easily in a phone's memory)
+  cv.width = cv.height = W; const g = cv.getContext('2d'); g.drawImage(img, 0, 0, W, W); const d = g.getImageData(0, 0, W, W), D = d.data, t = new THREE.Color(col), th = {}; t.getHSL(th); const hsl = {}, c = new THREE.Color();
   for (let i = 0; i < D.length; i += 4) { const r = D[i], gg = D[i + 1], b = D[i + 2], mx = Math.max(r, gg, b), mn = Math.min(r, gg, b); if (mx - mn < 40 || b < r || b < gg) continue; // (only the blue bits)
     c.setRGB(r / 255, gg / 255, b / 255); c.getHSL(hsl); if (hsl.h < .5 || hsl.h > .72) continue; c.setHSL(th.h, Math.min(1, hsl.s * (th.s / .85 + .15)), hsl.l * (.55 + th.l * .9)); D[i] = c.r * 255; D[i + 1] = c.g * 255; D[i + 2] = c.b * 255; }
   g.putImageData(d, 0, 0); }
@@ -4067,13 +4068,13 @@ function nbrEnv() { if (NBR_ENV) return NBR_ENV; const pm = new THREE.PMREMGener
   es.add(new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, vertexShader: 'varying vec3 v; void main(){ v = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }', fragmentShader: 'varying vec3 v; void main(){ vec3 c = mix(vec3(.45,.5,.55), vec3(.85,.92,1.), smoothstep(-.2,.6,v.y)); gl_FragColor = vec4(c,1.); }' })));
   for (const [x, y, z, w, h] of [[0, 30, 0, 40, 10], [-30, 10, 20, 6, 24], [30, 14, -20, 8, 20]]) { const q = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 3, 3), side: THREE.DoubleSide })); q.position.set(x, y, z); q.lookAt(0, 0, 0); es.add(q); }
   NBR_ENV = pm.fromScene(es, .02).texture; pm.dispose(); return NBR_ENV; }
-function nbrMat(col) { if (NBR_MAT[col]) return NBR_MAT[col]; const mk = () => { const t = new THREE.CanvasTexture(document.createElement('canvas')); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; };
-  const M = new THREE.MeshStandardMaterial({ map: mk(), emissiveMap: mk(), emissive: 0xffffff, normalMap: NBR_TX.normal, roughnessMap: NBR_TX.mr, metalnessMap: NBR_TX.mr, envMap: nbrEnv(), envMapIntensity: 1.1, side: THREE.DoubleSide });
+function nbrMat(col) { if (NBR_MAT[col]) return NBR_MAT[col]; const mk = () => { const cv = document.createElement('canvas'); cv.width = cv.height = 4; const q = cv.getContext('2d'); q.fillStyle = '#f4f5f8'; q.fillRect(0, 0, 4, 4); const t = new THREE.CanvasTexture(cv); /* (white until his paint is ready, never black) */ t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; };
+  const M = new THREE.MeshStandardMaterial({ map: mk(), emissiveMap: mk(), emissive: 0xffffff, normalMap: NBR_TX.normal, roughnessMap: NBR_TX.mr, metalness: 0, envMap: nbrEnv(), envMapIntensity: 1.1, /* (plastic, not metal: on phones whose shine map fails, metal turned black) */ side: THREE.DoubleSide });
   NBR_MAT[col] = M; nbrRefresh(col); return M; }
 function nymMeshModel(color, happy) {
   const g = new THREE.Group(), hex = '#' + new THREE.Color(color).getHexString(), skin = nbrMat(hex).clone(), spare = new LiteMat({ color }), mats = [spare, spare, spare, skin]; // (the game's look tricks repaint mats[0..2]: they get a spare, his paint stays)
-  const ball = new THREE.Group(); ball.position.y = -.58; g.add(ball); { const b = new THREE.Mesh(NBR_BALL, skin); b.scale.setScalar(NBR_S); ball.add(b); } const hub = new THREE.Group(); hub.position.y = -.58; g.add(hub);
-  const torso = new THREE.Group(); g.add(torso);
+  const ball = new THREE.Group(); ball.position.y = -.58; g.add(ball); { const wh = new THREE.MeshStandardMaterial({ color: 0xf6f7fa, roughness: .25, envMap: nbrEnv(), envMapIntensity: 1.1 }), pt = new THREE.MeshStandardMaterial({ color, roughness: .3, envMap: nbrEnv() }); for (const [geo, mm] of [[NB.ball, wh], [NB.band, pt], [NB.badge, pt], [NB.badgeIn, pt]]) ball.add(new THREE.Mesh(geo, mm)); } // (a proper round ball: white, colour band round the middle, rings on the sides) const hub = new THREE.Group(); hub.position.y = -.58; g.add(hub);
+  const hub = new THREE.Group(); hub.position.y = -.58; g.add(hub); const torso = new THREE.Group(); g.add(torso);
   const rig = new THREE.Group(); rig.scale.setScalar(NBR_S); rig.position.y = -.58 - NBR.ballC * NBR_S; torso.add(rig);
   const bones = NBR.bones.map(b => { const o = new THREE.Bone(); o.name = b.n; o.position.fromArray(b.t); o.quaternion.fromArray(b.r); o.scale.fromArray(b.s); return o; });
   NBR.bones.forEach((b, k) => (b.p >= 0 ? bones[b.p] : rig).add(bones[k]));
@@ -4100,7 +4101,7 @@ function nbrPose(m) { for (const a of m.arms) { const S_ = a.userData.sh, out = 
     nbrQ.setFromAxisAngle(NBR_Z, out).multiply(nbrQ3.setFromEuler(a.rotation)).multiply(S_.hang).multiply(S_.qb); nbrQ2.copy(S_.qp).invert().multiply(nbrQ); S_.bone.quaternion.copy(nbrQ2); } }
 const nbrQ3 = new THREE.Quaternion(), NBR_Z = new THREE.Vector3(0, 0, 1);
 if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMeshModel(color, happy); };
-  const sRB = syncRobot; syncRobot = function (r, ...a) { const out = sRB(r, ...a); if (r.model && r.model.rigged) nbrPose(r.model); return out; }; }
+  const sRB = syncRobot; syncRobot = function (r, ...a) { const out = sRB(r, ...a); if (r.model && r.model.rigged) { const A = r.model.arms; if (r.carryUp > 0 || (r.stack.length && r.state === 'play')) A[0].rotation.x = A[1].rotation.x; nbrPose(r.model); } return out; }; } // (he holds and throws with both arms)
 
 // ============================================================
 // RULES: thrown blocks hitting robots, bombs, freeze, homing, flags and scoring
