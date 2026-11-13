@@ -4138,7 +4138,7 @@ function nbrAntLight(r) { const N = r.model.ant; if (!N) return; const f = r.sta
 // and the block flickers in from nothing with a flash
 const NBR_ZAPM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), _zA = new THREE.Vector3(), _zB = new THREE.Vector3();
 function nbrZap(r, dt) { const M = r.model, N = M.ant; if (!N) return;
-  if (r.heldHideT) M.zapPend = true;
+  if (r.heldHideT) { M.zapPend = true; M.held.visible = false; } /* (nothing on his head until the zap brings it) */
   if (M.zapPend && M.held.visible && !r.heldHideT) { M.zapPend = false; M.zapT = .32; const c = new THREE.Color(M.mats[0].color || 0xffffff).lerp(new THREE.Color(0xffffff), .45); if (!M.zapBolt) { M.zapBolt = new THREE.Mesh(new THREE.BufferGeometry(), NBR_ZAPM.clone()); M.zapBolt.frustumCulled = false; M.zapBolt.renderOrder = 3; scene.add(M.zapBolt);
       M.zapFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: nbrGlowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); M.zapFlash.renderOrder = 3; scene.add(M.zapFlash); }
     M.zapBolt.material.color.copy(c).multiplyScalar(2); M.zapFlash.material.color.copy(c); sfx('reload', rPos(r)); }
