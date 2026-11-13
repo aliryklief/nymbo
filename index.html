@@ -7570,14 +7570,14 @@ const _rpQ2 = new THREE.Quaternion(), _rpM = new THREE.Matrix4(), _rpP = new THR
 function robotPose(r) { const m = r.model, g = m.g, b = m.ball, tr = m.torso, bl = m.blob;
   return [g.position.x, g.position.y, g.position.z, g.quaternion.x, g.quaternion.y, g.quaternion.z, g.quaternion.w, g.visible ? 1 : 0, m.eyesX.visible ? 2 : m.eyesF.visible ? 1 : 0,
     b.rotation.x, b.scale.x, b.scale.y, b.position.y, tr.rotation.x, tr.position.y, tr.scale.x, tr.scale.y,
-    m.arms[0].rotation.z, m.arms[0].rotation.x, m.arms[1].rotation.z, m.arms[1].rotation.x, m.held.visible ? 1 : 0,
+    m.arms[0].rotation.z, m.arms[0].rotation.x, m.arms[1].rotation.z, m.arms[1].rotation.x, m.held.visible ? (m.heldFront && m.held.position.z > .3 ? 2 : 1) : 0,
     bl.position.x, bl.position.y, bl.position.z, bl.scale.x, bl.material.opacity, bl.visible ? 1 : 0]; }
 function applyPose(r, a, b, k, kp) { const m = r.model, g = m.g, L = (i, kk = k) => a[i] + (b[i] - a[i]) * kk;
   g.position.set(L(0, kp), L(1, kp), L(2, kp)); g.quaternion.set(a[3], a[4], a[5], a[6]).slerp(_rpQ.set(b[3], b[4], b[5], b[6]), k); g.visible = !!a[7];
   const eye = k < .5 ? a[8] : b[8]; m.eyesN.visible = eye === 0; m.eyesF.visible = eye === 1; m.eyesX.visible = eye === 2;
   m.ball.rotation.x = L(9); m.ball.scale.set(L(10), L(11), L(10)); m.ball.position.y = L(12); m.hub.position.y = m.ball.position.y; m.hub.scale.copy(m.ball.scale);
   m.torso.rotation.x = L(13); m.torso.position.y = L(14); m.torso.scale.set(L(15), L(16), L(15));
-  m.arms[0].rotation.z = L(17); m.arms[0].rotation.x = L(18); m.arms[1].rotation.z = L(19); m.arms[1].rotation.x = L(20); m.held.visible = !!(k < .5 ? a[21] : b[21]);
+  m.arms[0].rotation.z = L(17); m.arms[0].rotation.x = L(18); m.arms[1].rotation.z = L(19); m.arms[1].rotation.x = L(20); { const h = k < .5 ? a[21] : b[21]; m.held.visible = !!h; if (m.heldFront) { if (h === 2) { m.held.position.copy(m.heldFront); m.held.scale.setScalar(.72); } else { m.held.position.copy(m.heldTop); m.held.scale.setScalar(1); } } } /* (a flag is held out in front, a block on the head) */
   m.blob.position.set(L(22, kp), L(23, kp), L(24, kp)); m.blob.scale.setScalar(L(25)); m.blob.material.opacity = L(26); m.blob.visible = !!a[27]; }
 function recordFrame() {
   const t = now() / 1000; if (t - REPLAY.recAt < REC_EVERY) return; REPLAY.recAt = t;
