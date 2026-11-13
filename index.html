@@ -378,8 +378,6 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <div class="sect"><h3>Testing</h3>
       <div class="tog"><label for="sAllPowers">All powers <small>every power and the black hole, no streak needed</small></label><input id="sAllPowers" type="checkbox"></div>
       <div class="tog"><label for="sFps">Show FPS <small>frames per second, and what the game spends its time on</small></label><input id="sFps" type="checkbox"></div></div>
-    <div class="sect"><h3>Function</h3><p class="rules" style="margin:0 0 8px">Which robots play. Every robot in the game changes (the game restarts).</p>
-      <div class="menurow" style="grid-template-columns:1fr 1fr 1fr"><button class="ghost" data-bot="classic">Classic</button><button class="ghost" data-bot="legs">Nym · legs 1</button><button class="ghost" data-bot="ball">Nym · ball 1</button></div></div>
     <div class="sect"><h3>Creator tools</h3><p class="rules" style="margin:0 0 8px">Change every sound and texture in the game, paint your own, see them in 3D.</p>
       <div class="menurow" style="grid-template-columns:1fr 1fr"><button class="ghost" id="soundLabBtn">🔊 Sound lab</button><button class="ghost" id="lookLabBtn">🎨 Look lab</button></div></div>
     <div style="display:grid;gap:8px;margin-top:12px"><button class="ghost" id="setBack">Back</button><button class="ghost" id="resetBtn" style="font-size:12px;padding:8px">Reset all my settings on this phone</button></div>
@@ -420,6 +418,8 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
     <div class="panel"><h2>Look lab</h2><p class="rules" style="margin:0 0 8px">How the whole game looks. Pick a world, then change any texture: tap 🧊 3D to turn it round and look, paint your own, or upload a picture (square, 64 to 512 pixels). Kept on this device; export to send.</p>
       <div class="sub">World style <small style="font-weight:500;color:var(--muted)">the same game on another planet: shapes, shading, ground and sky all change (reloads the game)</small></div>
       <div id="worldCards" class="wcards"></div>
+      <div class="sub" style="margin-top:12px">Robots <small style="font-weight:500;color:var(--muted)">which robots play (reloads the game)</small></div>
+      <div class="menurow" style="grid-template-columns:1fr 1fr 1fr"><button class="ghost" data-bot="classic">Classic</button><button class="ghost" data-bot="ball">Nym</button><button class="ghost" data-bot="ballswap">Nym · colour swap</button></div>
       <div class="sub" style="margin-top:12px">Textures and looks</div>
       <div id="lookList"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><button class="ghost" id="labExport2">Export my replacements</button><button class="ghost" id="lookLabBack">Back</button></div></div>
@@ -3955,7 +3955,7 @@ const NBR = {"P":"PwCpPev/PD6w4z+5IPBAuOv/LD6RC8457/+jPREAPD4EAbK83v8HPvz/WD7j/w
 // in the robot's colour (no face on the back).
 // Picked in Settings → Function → Robots (the page reloads with the new robots for everyone in the game).
 // ============================================================
-const BOT_KIND = (() => { try { const k = localStorage.getItem('nymbo-bot'); return ['legs', 'ball'].includes(k) ? k : 'classic'; } catch (e) { return 'classic'; } })();
+const BOT_KIND = (() => { try { const k = localStorage.getItem('nymbo-bot'); return k === 'ball' || k === 'legs' ? 'ball' : 'classic'; } catch (e) { return 'classic'; } })();
 const NB = {};
 // sizes taken from Ali's ball robot (front view): ball, round tummy and round head all about the same width; head a little
 // wider than tall; the coloured tummy patch covers most of the front (and the same patch on the back)
@@ -4044,8 +4044,8 @@ if (BOT_KIND !== 'classic') { const rmC = robotModel; robotModel = function (col
     // (arms stay still while rolling: no swing)
     return out; }; }
 // the picker (Settings → Function)
-document.querySelectorAll('[data-bot]').forEach(b => { b.classList.toggle('on', b.dataset.bot === BOT_KIND); if (b.dataset.bot === BOT_KIND) b.style.outline = '3px solid #ffd23a';
-  b.onclick = () => { if (b.dataset.bot === BOT_KIND) return; try { localStorage.setItem('nymbo-bot', b.dataset.bot); } catch (e) {} location.reload(); }; });
+document.querySelectorAll('[data-bot]').forEach(b => { const cur = BOT_KIND === 'ball' ? (localStorage.getItem('nymbo-botswap') === '1' ? 'ballswap' : 'ball') : 'classic', on = b.dataset.bot === cur; b.classList.toggle('on', on); if (on) b.style.outline = '3px solid #ffd23a';
+  b.onclick = () => { if (b.dataset.bot === cur) return; try { localStorage.setItem('nymbo-bot', b.dataset.bot === 'classic' ? 'classic' : 'ball'); localStorage.setItem('nymbo-botswap', b.dataset.bot === 'ballswap' ? '1' : '0'); } catch (e) {} location.reload(); }; });
 // his model, plain and simple: the body stays still, each arm is a solid piece that swings from the shoulder.
 // The arm as he modelled it (raised) is used when it points up; a mirror image of it (armpit and shoulder swapped)
 // when it points down, so it looks just as clean both ways. Team colour is painted on by the graphics card.
@@ -4072,19 +4072,19 @@ const NBR_PARTS = (() => {
   return out.arms.sort((a, b) => a.side - b.side), out; })();
 // textures straight from his file (no pixel reading on the phone: the colour swap happens in the shader)
 const nbrTexOf = (() => { const T = {}; return k => { if (T[k]) return T[k]; const t = new THREE.Texture(), im = new Image(), k0 = k.replace('2:', ''), src = k.startsWith('2:') ? NBR2.tex : NBR.tex; t.flipY = false; if (k0 === 'neutral') t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; im.onload = () => { t.image = im; t.needsUpdate = true; }; im.src = src[k0]; return T[k] = t; }; })();
-const NBR_MAT = {};
+const NBR_SWAP = (() => { try { return localStorage.getItem('nymbo-botswap') === '1'; } catch (e) { return false; } })(), NBR_MAT = {}, NBR_SWAPU = { value: NBR_SWAP ? 1 : 0 }; // (nbSwap: a preview with the white and the colour swapped round)
 function nbrMat(col, body) { const key = col + (body ? 'b' : ''); if (NBR_MAT[key]) return NBR_MAT[key];
   const M = body && NBR_B2 ? new THREE.MeshStandardMaterial({ color: 0xffffff, map: nbrTexOf('2:neutral'), metalness: 0, roughness: .3 }) : new THREE.MeshStandardMaterial({ color: 0xffffff, map: nbrTexOf('neutral'), normalMap: nbrTexOf('normal'), roughnessMap: nbrTexOf('mr'), metalness: 0, roughness: 1 });
   const team = { value: new THREE.Color(col) }, mask = { value: nbrTexOf(body && NBR_B2 ? '2:mask' : 'mask') };
   // (body only: the eyes painted on his visor are wiped off, because real eyes that change go on top; the face painted on
   //  the back of his head is wiped off too, back to plain white, and a flat colour circle goes there instead)
   // (Meshy body: his whole head is one clean white shell: no mottled patches, nothing painted on the back; only the visor stays black)
-  const FACE = body && NBR_B2 ? `if (vNbP.y > .214 && abs(vNbP.x) < .19) { vec2 vq = abs(vec2(vNbP.x, vNbP.y - .3225)) - vec2(.158 - .052, .081 - .052); float vd = length(max(vq, 0.)) - .052; diffuseColor.rgb = (vNbP.z > 0. && vd < 0.) ? vec3(.012) : vec3(.93); } else if (abs(vNbP.x) > .17 && vNbP.y > -.02 && vNbP.y < .2) { float dk = 1. - smoothstep(.25, .6, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.93), dk); }` : body ? `if (vNbP.y > .245 && abs(vNbP.x) < .16) {
+  const FACE = body && NBR_B2 ? `if (vNbP.y > .214 && abs(vNbP.x) < .19) { vec2 vq = abs(vec2(vNbP.x, vNbP.y - .3225)) - vec2(.158 - .052, .081 - .052); float vd = length(max(vq, 0.)) - .052; diffuseColor.rgb = (vNbP.z > 0. && vd < 0.) ? vec3(.012) : (nbSwap > .5 ? nbTeam * .93 : vec3(.93)); } else if (abs(vNbP.x) > .17 && vNbP.y > -.02 && vNbP.y < .2) { float dk = 1. - smoothstep(.25, .6, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.93), dk); }` : body ? `if (vNbP.y > .245 && abs(vNbP.x) < .16) {
       if (vNbP.z > .06 && abs(vNbP.x) < .125 && vNbP.y > .262 && vNbP.y < .368) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.012), smoothstep(.0, .12, k + max(0., diffuseColor.b - .1)));
       else if (vNbP.z < -.06) { float dk = 1. - smoothstep(.25, .6, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.9), max(dk, k)); } }` : '';
-  M.onBeforeCompile = sh => { sh.uniforms.nbTeam = team; sh.uniforms.nbMask = mask;
+  M.onBeforeCompile = sh => { sh.uniforms.nbTeam = team; sh.uniforms.nbMask = mask; sh.uniforms.nbSwap = NBR_SWAPU;
     if (body) sh.vertexShader = 'varying vec3 vNbP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vNbP = position;');
-    sh.fragmentShader = (body ? 'varying vec3 vNbP;\n' : '') + 'uniform vec3 nbTeam; uniform sampler2D nbMask;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n { float k = texture2D(nbMask, vMapUv).r; diffuseColor.rgb = mix(diffuseColor.rgb, nbTeam * (.35 + .9 * diffuseColor.r), k); ' + FACE + ' }');
+    sh.fragmentShader = (body ? 'varying vec3 vNbP;\n' : '') + 'uniform vec3 nbTeam; uniform sampler2D nbMask; uniform float nbSwap;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n { float k = texture2D(nbMask, vMapUv).r; diffuseColor.rgb = mix(diffuseColor.rgb, nbTeam * (.35 + .9 * diffuseColor.r), k); if (nbSwap > .5) { float L = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b)); if (k > .5) diffuseColor.rgb = vec3(.93); else if (L > .55 && L - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b)) < .12) diffuseColor.rgb = nbTeam * L; } ' + FACE + ' }');
     if (body && !NBR_B2) sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n if (vNbP.y > .245 && abs(vNbP.x) < .16 && vNbP.z < -.06) roughnessFactor = .45;').replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n if (vNbP.y > .245 && abs(vNbP.x) < .16 && vNbP.z < -.06) normal = nonPerturbedNormal;'); };
   M.customProgramCacheKey = () => 'nymbot' + (body ? 'b' : ''); return NBR_MAT[key] = M; }
 // the face: real eyes that sit on his visor (and change: happy or angry, focused while carrying, X X when bonked, a blink
@@ -4176,10 +4176,10 @@ function nymMeshModel(color, happy) {
   const arms = NBR_PARTS.arms.map(A => { const p = new THREE.Group(); p.position.copy(A.sh).multiplyScalar(NBR_S).add(rig.position); up.add(p);
     const holder = new THREE.Group(); holder.scale.setScalar(NBR_S); holder.quaternion.setFromUnitVectors(A.down, new THREE.Vector3(Math.sign(A.side) * Math.sin(.12), -Math.cos(.12), 0)); p.add(holder); // (the game's rest pose: hanging down)
     const dn = new THREE.Mesh(A.gDown, skin), upm = new THREE.Mesh(A.gUp, skin); dn.position.copy(A.down).multiplyScalar(-NBR_SINK); /* (the hanging arm tucks its top into the shoulder, so the shoulder stays round) */ upm.quaternion.setFromUnitVectors(A.up, A.down); const top = new THREE.Mesh(NBR_TOP || (NBR_TOP = new THREE.SphereGeometry(.06, 32, 20)), NBR_TOPM || (NBR_TOPM = new THREE.MeshStandardMaterial({ color: 0xf0f1f4, roughness: .35 }))); top.position.copy(A.down).multiplyScalar(-NBR_SINK + .03); if (!NBR_B2) dn.add(top); top.position.sub(dn.position); /* (the rounded top of the hanging arm: his shoulder) */
-    if (NBR_B2) { const cg = new THREE.Group(); cg.rotation.z = Math.sign(A.side) * .04; cg.position.x = Math.sign(A.side) * (.035 - NBR_ARML * NBR_S); p.position.y += .03 * NBR_S; /* (the shoulder sits a little higher, over the socket) */ p.add(cg); const AG = NBR_ARMG[Math.sign(A.side)], am = new THREE.Mesh(AG.arm, NBR_ARMW || (NBR_ARMW = new THREE.MeshStandardMaterial({ color: 0xeceef2, roughness: .28 }))); am.scale.setScalar(NBR_S); cg.add(am);
-      const st = new THREE.Mesh(AG.stripe, new THREE.MeshStandardMaterial({ color, roughness: .35 })); st.scale.setScalar(NBR_S); cg.add(st); p.userData.nb = { dn: new THREE.Group(), upm: new THREE.Group(), A }; return p; }
+    if (NBR_B2) { const cg = new THREE.Group(); cg.rotation.z = Math.sign(A.side) * .04; cg.position.x = Math.sign(A.side) * (.035 - NBR_ARML * NBR_S); p.position.y += .03 * NBR_S; /* (the shoulder sits a little higher, over the socket) */ p.add(cg); const AG = NBR_ARMG[Math.sign(A.side)], am = new THREE.Mesh(AG.arm, NBR_SWAP ? new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(.93), roughness: .28 }) : NBR_ARMW || (NBR_ARMW = new THREE.MeshStandardMaterial({ color: 0xeceef2, roughness: .28 }))); am.scale.setScalar(NBR_S); cg.add(am);
+      const st = new THREE.Mesh(AG.stripe, new THREE.MeshStandardMaterial({ color: NBR_SWAP ? 0xf0f1f4 : color, roughness: .35 })); st.scale.setScalar(NBR_S); cg.add(st); p.userData.nb = { dn: new THREE.Group(), upm: new THREE.Group(), A }; return p; }
     holder.add(dn, upm); p.userData.nb = { dn, upm, A }; return p; });
-  const head = new THREE.Group(); up.add(head); const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); const scr = nbrEyes(rig, happy, happy ? 0x3aa2ff : 0xff3322, eyesN, eyesF, eyesX);
+  const head = new THREE.Group(); up.add(head); const eyesN = new THREE.Group(), eyesF = new THREE.Group(), eyesX = new THREE.Group(); const scr = nbrEyes(rig, happy, (() => { const c = new THREE.Color(color), h = {}; c.getHSL(h); return c.setHSL(h.h, 1, .58).getHex(); })(), /* (the eyes glow in the robot's own colour) */ eyesN, eyesF, eyesX);
   const held = new THREE.Mesh(cubeGeo, new LiteMat({ roughness: .7 })); held.position.y = NBR.top * NBR_S + rig.position.y + .55; held.visible = false; g.add(held);
   const heldTop = held.position.clone(), heldFront = new THREE.Vector3(); if (NBR_B2) { const sh = arms[0].position; heldFront.set(0, up.position.y + up.scale.y * sh.y - .02, .6); } // (blocks ride on his head; a flag is held out in front, between his hands)
   // the antenna: a little silver socket set into the back of his head, up near the top, a thin springy stalk and a small glowing tip
@@ -12729,7 +12729,7 @@ if (HD && DESERT) { const st0 = sideTint; sideTint = function (cx, cz) { return 
     box.insertBefore(row, box.firstChild); }; }
 
 // test hooks for the newer bits (headless checks only)
-Object.assign(window.__nymbo, { nbrPose, nymMeshModel, NBR_PARTS, nbrMat, NBD, nbBuild, nymModel, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
+Object.assign(window.__nymbo, { nbrPose, nymMeshModel, NBR_PARTS, nbrMat, NBR_SWAPU, NBD, nbBuild, nymModel, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
 
 document.getElementById('loading').hidden = true;
 </script>
