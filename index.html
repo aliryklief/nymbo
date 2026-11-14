@@ -15423,10 +15423,10 @@ if (!TOY && !PLAT && !REEF && !(NM && NM.noMountains)) {
     for (let k = 0; k <= NR; k++) { const r = R0 + (R1 - R0) * Math.pow(k / NR, 1.15), x = ca * r, z = sa * r * .94; pos.push(x, height(ca * r, sa * r, r), z); } }
   for (let j = 0; j < NA; j++) for (let k = 0; k < NR; k++) { const a = j * (NR + 1) + k, b = a + NR + 1; idx.push(a, a + 1, b + 1, a, b + 1, b); }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
-  const landU = { uK: { value: 1 }, uSun: { value: sunD }, uHaze: { value: haze }, uHill: { value: C('hill') }, uHill2: { value: C('hill2') }, uMtn: { value: C('mtn') }, uMtn2: { value: C('mtn2') }, uPeak: { value: C('peak') }, uSnow: { value: C('snow') }, uWoods: { value: C('woods') }, uR: { value: new THREE.Vector2(R0, R1) } };
+  const landU = { uK: { value: 1 }, uSun: { value: sunD }, uHaze: { value: haze }, uHill: { value: C('hill') }, uHill2: { value: C('hill2') }, uMtn: { value: C('mtn') }, uMtn2: { value: C('mtn2') }, uPeak: { value: C('peak') }, uSnow: { value: C('snow') }, uWoods: { value: C('woods') }, uR: { value: new THREE.Vector2(R0, R1) }, uSunC: { value: new THREE.Color(1, 1, 1) }, uAmbC: { value: new THREE.Color(1, 1, 1) }, uHazeK: { value: 1 } };
   const landM = new THREE.ShaderMaterial({ uniforms: landU, fog: false, side: THREE.DoubleSide,
     vertexShader: 'varying vec3 vP, vN; void main(){ vP = position; vN = normal; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
-    fragmentShader: `uniform float uK; uniform vec2 uR; uniform vec3 uSun, uHaze, uHill, uHill2, uMtn, uMtn2, uPeak, uSnow, uWoods; varying vec3 vP, vN;
+    fragmentShader: `uniform float uK, uHazeK; uniform vec2 uR; uniform vec3 uSunC, uAmbC, uSun, uHaze, uHill, uHill2, uMtn, uMtn2, uPeak, uSnow, uWoods; varying vec3 vP, vN;
       float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
       float fb(vec2 p){ float s = 0., a = .5; for (int i = 0; i < 5; i++) { s += a * n2(p); p = p * 2.07 + 1.3; a *= .5; } return s; }
@@ -15441,8 +15441,8 @@ if (!TOY && !PLAT && !REEF && !(NM && NM.noMountains)) {
         float rk = smoothstep(.28, .5, slope + (d2 - .5) * .25) * .8 + smoothstep(12., 40., y + (d1 - .5) * 20.); vec3 col = mix(grass, rock, clamp(rk, 0., 1.));
         float sn = smoothstep(.0, .12, (y - 62. - (d1 - .5) * 40. - (d2 - .5) * 14.) / 40.) * smoothstep(.75, .35, slope + (d2 - .5) * .3);
         col = mix(col, uSnow * (.92 + .1 * d2), sn);
-        float lit = .3 + 1.0 * max(dot(N, uSun), 0.) + .12 * N.y; col *= lit; // (sunny sides bright, the far sides in shade)
-        col = mix(col, uHaze, clamp(.06 + k * .42 + (1. - smoothstep(-30., 40., y)) * .25, 0., .85)); // (fades into the haze with distance, and low down)
+        vec3 lit = (.3 + .12 * N.y) * uAmbC + max(dot(N, uSun), 0.) * uSunC; col *= lit; // (sunny sides bright, the far sides in shade)
+        col = mix(col, uHaze, clamp((.06 + k * .42 + (1. - smoothstep(-30., 40., y)) * .25) * uHazeK, 0., .95)); // (fades into the haze with distance, and low down)
         gl_FragColor = vec4(col * uK, 1.);
         #include <colorspace_fragment>
       }` });
@@ -15475,12 +15475,746 @@ if (!TOY && !PLAT && !REEF && !(NM && NM.noMountains)) {
       puffMats.push([m, m.opacity]); const s = new THREE.Sprite(m), sz = (top ? 6 : 8) + nr() * 5; s.scale.set(sz * 1.35, sz, 1); s.position.set((nr() - .5) * 14, top ? nr() * 3 + 1 : -1 - nr() * 1.5, (nr() - .5) * 5); s.renderOrder = -3; cl.add(s); }
     near.add(cl); }
   scene.add(near);
+  if (window.__nymbo) window.__nymbo.BG = { landU, mistU, puffMats, skyDome }; // (for trying out other lighting)
   // ---- every frame: clouds drift, the sky's clouds move, the blackout darkens it all ----
   const pH = pulseHalos; let last = 0;
   pulseHalos = function (t) { pH(t); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t;
     skyDome.material.uniforms.uT.value += dt; mistU.uT.value += dt; clouds.rotation.y += dt * .0016; near.rotation.y += dt * .003;
     const k = 1 - .95 * skyU.dark.value; landU.uK.value = k; for (const [m, o] of puffMats) m.opacity = o * k; };
 }
+
+// ============================================================
+// THE SCAVENGED-STONE KIT from the fort lab (14 Nov, the walls Ali picked): pillowy stones packed tight, shaped tops,
+// carved pieces, and the surface materials (sandstone, granite, clay...). Used by the classic stage (12m_classic.js).
+// ============================================================
+// SCAVENGED FORT BRICKS (Ali, 14 Nov): the Nym built their forts from whatever they could find in each world, picking
+// pieces close to their own colour. Every cell of a wall is still one 1×1×1 block (the game's physics doesn't change),
+// but what fills it varies: one big lumpy stone, two half bricks, a stack of small bricks, an old crate, a pile of
+// cobbles, a slab of tile. Already worn: chipped corners, uneven edges. Chunky and toy-like, like the Nyms.
+// One geometry per variant with the colours painted in (vertex colours), so the game can draw thousands with a few
+// instanced meshes.
+function makeFortKit(THREE, RBOX, MERGE) {
+  let CRES = 40; // (how finely the carved pieces are divided: the game uses fewer)
+  const rng = s => { s = Math.abs(Math.floor(Math.sin(s * 12.9898 + 78.233) * 43758.5453)) % 2147483646 + 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; }; // (seeds scrambled first, so neighbours don't repeat)
+  const tint = (geo, col) => { geo = geo.index ? geo.toNonIndexed() : geo; for (const k of Object.keys(geo.attributes)) if (!['position', 'normal'].includes(k)) geo.deleteAttribute(k);
+    const n = geo.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) col.toArray(a, i * 3); geo.setAttribute('color', new THREE.BufferAttribute(a, 3)); return geo; };
+  // lumpy: push every vertex in or out a little by smooth noise, so nothing is a perfect box
+  const lump = (geo, amt, seed) => { const P = geo.attributes.position, v = new THREE.Vector3(), R = rng(seed);
+    const a = [R() * 9, R() * 9, R() * 9], f = 5 + R() * 4;
+    for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); const k = 1 + amt * (Math.sin(v.x * f + a[0]) * Math.sin(v.y * f * 1.1 + a[1]) * Math.sin(v.z * f * .9 + a[2])); P.setXYZ(i, v.x * k, v.y * k, v.z * k); }
+    geo.computeVertexNormals(); return geo; };
+  // a chipped corner: flatten one corner of a box in toward the middle
+  const chip = (geo, cx, cy, cz, d) => { const P = geo.attributes.position, v = new THREE.Vector3(), n = new THREE.Vector3(cx, cy, cz).normalize();
+    let mx = -1e9; for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); mx = Math.max(mx, v.dot(n)); }
+    for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); const over = v.dot(n) - (mx - d); if (over > 0) v.addScaledVector(n, -over); P.setXYZ(i, v.x, v.y, v.z); }
+    geo.computeVertexNormals(); return geo; };
+  const shade = (base, R, j = .09) => { const c = base.clone(), h = {}; c.getHSL(h); return c.setHSL(h.h + (R() - .5) * .03, Math.max(0, Math.min(1, h.s + (R() - .5) * j * 2)), Math.max(0, Math.min(1, h.l + (R() - .5) * j * 2))); };
+  const MORTAR = new THREE.Color('#5a524a');
+
+  // ---- the variants: each takes the material colour and a seed, returns one geometry filling a 1×1×1 cell ----
+  const V = {
+    stone(col, s) { const R = rng(s); const g = lump(new RBOX(.97, .97, .97, 3, .14), .05, s); if (R() < .6) chip(g, R() < .5 ? 1 : -1, 1, R() < .5 ? 1 : -1, .12); return tint(g, shade(col, R)); },
+    halves(col, s) { const R = rng(s), parts = [tint(new THREE.BoxGeometry(.9, .9, .9), MORTAR)];
+      for (const y of [-.245, .245]) { const o = (R() - .5) * .06; const g = lump(new RBOX(.97, .47, .97, 2, .08).translate(o, y, (R() - .5) * .04), .03, s + y * 100); if (R() < .4) chip(g, R() < .5 ? 1 : -1, y > 0 ? 1 : -1, 1, .08); parts.push(tint(g, shade(col, R))); }
+      return MERGE(parts); },
+    bricks(col, s) { const R = rng(s), parts = [tint(new THREE.BoxGeometry(.92, .92, .92), MORTAR)], h = .97 / 3;
+      const rows = [[[-.485, 0], [0, .485]], [[-.485, -.24], [-.24, .24], [.24, .485]], [[-.485, 0], [0, .485]]]; // (a running bond: each row's joints sit over the middle of the bricks below)
+      rows.forEach((row, r) => { for (const [a, b] of row) { const g = new RBOX(b - a - .025, h - .028, .97, 2, .035).translate((a + b) / 2 + (R() - .5) * .01, -.485 + h * (r + .5), (R() - .5) * .02); parts.push(tint(lump(g, .02, s + r * 7 + a * 31), shade(col, R, .12))); } });
+      return MERGE(parts); },
+    crate(col, s) { const R = rng(s), wood = shade(col, R, .06), dark = wood.clone().multiplyScalar(.7), parts = [tint(new RBOX(.9, .9, .9, 2, .03), dark)];
+      for (const ax of [0, 1, 2]) for (const a of [-1, 1]) for (const b of [-1, 1]) { const g = new RBOX(ax === 0 ? .97 : .1, ax === 1 ? .97 : .1, ax === 2 ? .97 : .1, 2, .03); g.translate(ax === 0 ? 0 : a * .44, ax === 1 ? 0 : (ax === 0 ? a : b) * .44, ax === 2 ? 0 : b * .44); parts.push(tint(g, shade(wood, R, .05))); }
+      for (const f of [-1, 1]) { const g = new RBOX(.1, 1.1, .03, 2, .012).rotateZ(f * .78).translate(0, 0, .47); parts.push(tint(g, shade(wood, R, .05))); const g2 = g.clone().translate(0, 0, -.94); parts.push(tint(g2, shade(wood, R, .05))); }
+      return MERGE(parts); },
+    cobbles(col, s) { const R = rng(s), parts = [tint(new THREE.BoxGeometry(.8, .8, .8), col.clone().multiplyScalar(.55))];
+      for (let i = 0; i < 8; i++) { const x = (i & 1 ? .24 : -.24) + (R() - .5) * .06, y = (i & 2 ? .24 : -.24) + (R() - .5) * .06, z = (i & 4 ? .24 : -.24) + (R() - .5) * .06, r = .3 + R() * .05;
+        parts.push(tint(lump(new THREE.SphereGeometry(r, 14, 10).scale(1, .85 + R() * .25, 1).translate(x, y, z), .08, s + i * 13), shade(col, R, .12))); }
+      return MERGE(parts); },
+    slab(col, s) { const R = rng(s), base = shade(col, R), parts = [tint(lump(new RBOX(.97, .97, .97, 2, .06), .015, s), base.clone().multiplyScalar(.85))];
+      for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) for (const f of [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 1, 0]]) { const t = new RBOX(.44, .44, .03, 2, .02), u = -.24 + i * .48, v = -.24 + j * .48;
+          if (f[2]) t.translate(u, v, f[2] * .49); else if (f[0]) t.rotateY(Math.PI / 2).translate(f[0] * .49, v, u); else t.rotateX(Math.PI / 2).translate(u, .49, v); parts.push(tint(t, shade(base, R, .1))); }
+      return MERGE(parts); },
+  };
+  // ---- the tops: the pieces on top of a wall don't have to be cubes (Ali: angled, parallelograms...) ----
+  // each still sits in its 1×1×1 cell, standing on the block below; a few shapes a builder might cap a wall with
+  const skew = (geo, k) => { const P = geo.attributes.position; for (let i = 0; i < P.count; i++) P.setX(i, P.getX(i) + P.getY(i) * k); geo.computeVertexNormals(); return geo; };
+  const prism = (pts, depth) => { const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))); return new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: true, bevelThickness: .03, bevelSize: .03, bevelSegments: 2 }).translate(0, 0, -depth / 2); };
+  const T = {
+    wedge(col, s) { const R = rng(s), g = prism([[-.45, -.47], [.45, -.47], [.45, -.1 + R() * .2], [-.45, .44]], .91); return tint(lump(g, .02, s), shade(col, R)); }, // (a ramp, high on one side)
+    gable(col, s) { const R = rng(s), g = prism([[-.45, -.47], [.45, -.47], [.45, -.05], [0, .44], [-.45, -.05]], .91); return tint(lump(g, .02, s), shade(col, R)); }, // (a little roof ridge)
+    lean(col, s) { const R = rng(s), g = skew(new RBOX(.84, .94, .94, 2, .07), (R() < .5 ? 1 : -1) * .12); return tint(lump(g, .025, s), shade(col, R)); }, // (a parallelogram, leaning over)
+    pyramid(col, s) { const R = rng(s), g = new THREE.ConeGeometry(.66, .94, 4, 1).rotateY(Math.PI / 4); g.translate(0, -.0, 0); return tint(lump(g, .03, s), shade(col, R)); }, // (a pointed cap)
+    round(col, s) { const R = rng(s), parts = [tint(new RBOX(.94, .5, .94, 2, .05).translate(0, -.22, 0), shade(col, R))]; parts.push(tint(new THREE.CylinderGeometry(.46, .46, .94, 24, 1, false, 0, Math.PI).rotateZ(Math.PI / 2).rotateY(Math.PI / 2).translate(0, .03, 0), shade(col, R))); return MERGE(parts); }, // (a rounded top)
+    steps(col, s) { const R = rng(s), c = shade(col, R); return MERGE([tint(new RBOX(.94, .47, .94, 2, .05).translate(0, -.24, 0), c), tint(lump(new RBOX(.47, .47, .94, 2, .05).translate(R() < .5 ? -.235 : .235, .235, 0), .02, s), shade(col, R))]); }, // (two steps)
+    chamfer(col, s) { const R = rng(s), g = prism([[-.45, -.47], [.45, -.47], [.45, .2], [.22, .44], [-.22, .44], [-.45, .2]], .91); return tint(lump(g, .02, s), shade(col, R)); }, // (corners cut off the top)
+  };
+  // what each world's Nym could find (the material colours they pick from: the team's colour pulls them over)
+  const WORLDS = {
+    classic: { kinds: ['stone', 'halves', 'bricks', 'cobbles', 'crate', 'slab'], mats: ['#b9b4aa', '#a99f92', '#c8c2b6', '#9a8f80', '#b08a5c', '#d0c7b8'] },
+    desert: { kinds: ['stone', 'halves', 'bricks', 'cobbles', 'crate'], mats: ['#d9b07a', '#c9955a', '#e4c48e', '#b9804a'] },
+    ice: { kinds: ['stone', 'halves', 'slab', 'cobbles'], mats: ['#dfeef8', '#c4dcec', '#eef6fb', '#a9c8dc'] },
+  };
+  // pick a team-leaning colour: the found material, pulled part of the way to the team's colour
+  function teamCol(world, team, R) { const W = WORLDS[world] || WORLDS.classic, m = new THREE.Color(W.mats[Math.floor(R() * W.mats.length)]), t = new THREE.Color(team);
+    const h = {}; t.getHSL(h); const tl = new THREE.Color().setHSL(h.h + (R() - .5) * .04, .5 + R() * .3, .36 + R() * .16); return m.lerp(tl, .55 + R() * .25); }
+  function block(world, team, seed) { const R = rng(seed * 7919 + 13), W = WORLDS[world] || WORLDS.classic, kind = W.kinds[Math.floor(R() * W.kinds.length)];
+    return { kind, geo: V[kind](teamCol(world, team, R), seed * 31 + 7) }; }
+  function top(world, team, seed) { const R = rng(seed * 104729 + 3), ks = Object.keys(T), kind = ks[Math.floor(R() * ks.length)]; return { kind, geo: T[kind](teamCol(world, team, R), seed * 17 + 5) }; }
+  // ---- a whole wall packed like a real one: long and short rectangular pieces in a running bond, the odd row of
+  // thinner slabs, the odd single found piece (crate, cobbles...), shaped pieces along the top ----
+  const longPiece = (w, h, col, s) => { const R = rng(s), g = lump(new RBOX(w - .03, h - .03, .97, 2, Math.min(.12, h * .2)), .03 / Math.max(1, w * .6), s); if (R() < .45) chip(g, R() < .5 ? 1 : -1, R() < .5 ? 1 : -1, R() < .5 ? 1 : -1, .07 + R() * .06); return tint(g, shade(col, R)); };
+  const stretch = (geo, w) => { const P = geo.attributes.position; for (let i = 0; i < P.count; i++) P.setX(i, P.getX(i) * w); geo.computeVertexNormals(); return geo; };
+  // ---- carvings (an idea, on some pieces only): the Nym scratched their own signs into what they built with, like the
+  // engraved power blocks. Drawn on the front and back faces: grooves (dark, sunk) or raised shapes (the stone's colour) ----
+  const flat = (pts, w, z) => { const g = []; for (let i = 0; i < pts.length - 1; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], L = Math.hypot(x1 - x0, y1 - y0);
+      g.push(new THREE.BoxGeometry(L + w, w, .03, 1, 1, 1).rotateZ(Math.atan2(y1 - y0, x1 - x0)).translate((x0 + x1) / 2, (y0 + y1) / 2, z)); } return g; };
+  const circ = (cx, cy, r, n = 28, a0 = 0, a1 = Math.PI * 2) => Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; });
+  const SIGNS = {
+    swirl: () => [Array.from({ length: 50 }, (_, i) => { const k = i / 49, a = k * Math.PI * 4.2, r = .04 + k * .24; return [Math.cos(a) * r, Math.sin(a) * r]; })], // (the black hole in every Nym's antenna)
+    portal: () => [circ(0, 0, .27), circ(0, 0, .13)],
+    chevrons: () => [[[-.28, .2], [-.08, 0], [-.28, -.2]], [[.28, .2], [.08, 0], [.28, -.2]]],
+    visor: () => [[[-.28, .14], [.28, .14], [.3, .1], [.3, -.1], [.28, -.14], [-.28, -.14], [-.3, -.1], [-.3, .1], [-.28, .14]], [[-.16, 0], [-.06, 0]], [[.06, 0], [.16, 0]]], // (a Nym face)
+    antenna: () => [[[0, -.28], [0, .16]], circ(0, .22, .06), [[-.18, -.28], [.18, -.28]]],
+    panel: () => [[[-.36, .32], [.36, .32], [.36, -.32], [-.36, -.32], [-.36, .32]], [[-.26, .22], [.26, .22], [.26, -.22], [-.26, -.22], [-.26, .22]]],
+  };
+  function carve(geo, w, h, col, R) { if (R() > .3) return geo; const ks = Object.keys(SIGNS), lines = SIGNS[ks[Math.floor(R() * ks.length)]](), sunk = R() < .6, k = Math.min(1, h) * .95;
+    const cx = w > 1.5 ? (Math.floor(R() * Math.floor(w)) - (Math.floor(w) - 1) / 2) : 0, parts = [geo];
+    for (const z of [.485, -.485]) { const gs = []; for (const L of lines) gs.push(...flat(L.map(([x, y]) => [cx + x * k, y * k]), sunk ? .045 : .05, z + (sunk ? 0 : Math.sign(z) * .012)));
+      parts.push(tint(MERGE(gs.map(g => g.toNonIndexed())), sunk ? col.clone().multiplyScalar(.45) : col.clone().multiplyScalar(1.08))); }
+    return MERGE(parts); }
+  // ---- real carving (Ali: inlaid, recessed, not perfect): the face itself is cut. A finely divided block is rounded
+  // off, then every point on its front and back is pushed in where the design is: channels for the lines, a sunk
+  // panel, a sunk ring... Edges wobble a little, like they were cut by hand. Some cuts are left bare (darker stone),
+  // some are filled with an inlay (brass, slate, or a glowing line in the team's colour) ----
+  const segD = (px, py, ax, ay, bx, by) => { const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(px - ax - dx * t, py - ay - dy * t); };
+  const polyD = (px, py, L) => { let d = 9; for (let i = 0; i < L.length - 1; i++) d = Math.min(d, segD(px, py, L[i][0], L[i][1], L[i + 1][0], L[i + 1][1])); return d; };
+  const band = (d, w) => Math.max(0, Math.min(1, (w + .016 - d) / .032)); // (soft-edged: the cut slopes in, like a chisel)
+  const box = (x, y, a, b) => Math.min(band(Math.abs(x) - a, 0), band(Math.abs(y) - b, 0));
+  // point-in-triangle as a soft mask (for triangles and random shapes)
+  const triM = (x, y, a, b, c) => { if ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) < 0) [b, c] = [c, b]; // (always counter-clockwise)
+    const e = (p, q) => ((q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0])) / Math.hypot(q[0] - p[0], q[1] - p[1]); return Math.min(band(-e(a, b), 0), band(-e(b, c), 0), band(-e(c, a), 0)); };
+  // geometric carving patterns (no symbols): each is made for one piece (its width w and height h) and returns (x, y) → depth 0..1
+  const PATTERNS = {
+    recess: (w, h, R) => { const m = .1 + R() * .05, inner = R() < .5; return (x, y) => box(x, y, w / 2 - m, h / 2 - m) * (inner ? 1 - .6 * box(x, y, w / 2 - m - .1, h / 2 - m - .1) : 1); }, // (a sunk panel, sometimes with a raised middle)
+    rects: (w, h, R) => { const n = Math.max(1, Math.round(w * (1 + R()))), bw = w / n, rs = Array.from({ length: n }, (_, i) => [-w / 2 + bw * (i + .5) + (R() - .5) * .05, (R() - .5) * .1, bw / 2 - .09 - R() * .06, h / 2 - .12 - R() * .1]);
+      return (x, y) => Math.max(...rs.map(([cx, cy, a, b]) => box(x - cx, y - cy, a, b))); },
+    triangles: (w, h, R) => { const n = Math.max(2, Math.round(w * 2.2)), bw = (w - .16) / n, hh = h / 2 - .12, flip = R() < .5;
+      return (x, y) => { let q = 0; for (let i = 0; i < n; i++) { const x0 = -w / 2 + .08 + bw * i, up = (i % 2 === 0) !== flip; q = Math.max(q, up ? triM(x, y, [x0 + .02, -hh], [x0 + bw - .02, -hh], [x0 + bw / 2, hh]) : triM(x, y, [x0 + .02, hh], [x0 + bw - .02, hh], [x0 + bw / 2, -hh])); } return q; }; },
+    zigzag: (w, h, R) => { const n = Math.max(3, Math.round(w * 4)), amp = h * (.18 + R() * .08), L = Array.from({ length: n + 1 }, (_, i) => [-w / 2 + .06 + (w - .12) * i / n, (i % 2 ? amp : -amp)]), two = R() < .4;
+      return (x, y) => two ? Math.max(band(polyD(x, y - h * .18, L.map(([a, b]) => [a, b * .6])), .03), band(polyD(x, y + h * .18, L.map(([a, b]) => [a, b * .6])), .03)) : band(polyD(x, y, L), .04); },
+    grooves: (w, h, R) => { const n = 2 + Math.floor(R() * 2), ys = Array.from({ length: n }, (_, i) => -h / 2 + h * (i + 1) / (n + 1)); return (x, y) => Math.abs(x) > w / 2 - .07 ? 0 : Math.max(...ys.map(cy => band(Math.abs(y - cy), .035))); },
+    diamonds: (w, h, R) => { const n = Math.max(1, Math.round(w * 1.6)), bw = w / n, r = Math.min(bw, h) * .32; return (x, y) => { let q = 0; for (let i = 0; i < n; i++) { const cx = -w / 2 + bw * (i + .5); q = Math.max(q, band(Math.abs(x - cx) + Math.abs(y) - r, 0)); } return q; }; },
+    shards: (w, h, R) => { const ts = []; for (let i = 0; i < 2 + Math.floor(R() * 3); i++) { const cx = (R() - .5) * (w - .4), cy = (R() - .5) * (h - .4), s = .14 + R() * .12, a = R() * 6;
+        ts.push([0, 1, 2].map(k => [cx + Math.cos(a + k * 2.1 + (R() - .5) * .6) * s, cy + Math.sin(a + k * 2.1 + (R() - .5) * .6) * s])); } return (x, y) => Math.max(...ts.map(t => triM(x, y, ...t))); }, // (random chipped-out shapes)
+    steps: (w, h, R) => { const side = R() < .5 ? 1 : -1, st = 2 + Math.floor(R() * 2); return (x, y) => { const u = (x * side + w / 2) / w; let q = 0; for (let k = 0; k < st; k++) if (u > 1 - (k + 1) * .14 && y > h / 2 - (k + 1) * h / (st + 1) - .03) q = 1; return q * band(Math.abs(x) - (w / 2 - .06), 0) * band(Math.abs(y) - (h / 2 - .06), 0); }; }, // (stepped notches cut into a corner)
+  };
+  const PAT_W = { recess: 3, rects: 3, grooves: 2, shards: 2, steps: 2, diamonds: 1, triangles: .5, zigzag: .5 }; // (how often each comes up: few zigzags)
+  const pickW = (W, R) => { const t = Object.values(W).reduce((a, b) => a + b, 0); let x = R() * t; for (const [k, v] of Object.entries(W)) if ((x -= v) < 0) return k; return Object.keys(W)[0]; };
+  const INLAY = [null, null, '#c9a24a', '#3a3f4a', 'team'];
+  // nothing is perfect: every corner of a piece is nudged a little in its own direction (the whole block bends to follow),
+  // so pieces come out slightly wonky, tapered, leaning, one end fatter than the other
+  function wonky(geo, w, h, R, amt = .05) { const P = geo.attributes.position, v = new THREE.Vector3(), C = Array.from({ length: 8 }, () => new THREE.Vector3((R() - .5) * 2, (R() - .5) * 2, (R() - .5) * 1.2).multiplyScalar(amt)), hw = w / 2, hh = h / 2, hd = .5;
+    for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); const u = (v.x / hw + 1) / 2, t = (v.y / hh + 1) / 2, q = (v.z / hd + 1) / 2; const o = new THREE.Vector3();
+      for (let k = 0; k < 8; k++) o.addScaledVector(C[k], (k & 1 ? u : 1 - u) * (k & 2 ? t : 1 - t) * (k & 4 ? q : 1 - q));
+      v.add(o); v.y += Math.sin(v.x * 2.3 + C[0].x * 40) * amt * .25 * Math.max(0, t * 2 - 1); P.setXYZ(i, v.x, v.y, v.z); } // (and the top edge gently wavy)
+    geo.computeVertexNormals(); return geo; }
+  // a few chips knocked out of the edges and corners (only on some pieces): bowl-shaped bites with a rough floor
+  function bite(geo, w, h, R) { const P = geo.attributes.position, v = new THREE.Vector3(), n = 1 + Math.floor(R() * 3), hw = w / 2, hh = h / 2, hd = .485, bites = [];
+    for (let i = 0; i < n; i++) { const c = new THREE.Vector3((R() < .5 ? -1 : 1) * hw * (R() < .6 ? 1 : R()), (R() < .5 ? -1 : 1) * hh, (R() < .5 ? -1 : 1) * hd * (R() < .5 ? 1 : R())); bites.push([c, .13 + R() * .13]); }
+    for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); for (const [c, r] of bites) { const d = v.distanceTo(c); if (d < r) { const k = (1 - d / r); v.lerp(new THREE.Vector3(0, 0, 0), Math.min(.45, k * r * 1.6 * (.75 + .5 * Math.sin(v.x * 41 + v.y * 37 + v.z * 43)))); } } P.setXYZ(i, v.x, v.y, v.z); }
+    geo.computeVertexNormals(); return geo; }
+  // the long pieces: a finely divided rounded block (so it can be chipped and carved), sometimes chipped, sometimes carved
+  // ---- a proper cartoon stone (Ali's reference pictures): a pillowy block with well rounded edges and a slightly
+  // irregular outline, its face broken by a few big flat chipped facets that catch the light differently, hairline
+  // cracks, the odd pit, and its own colour. Built on a finely divided block so it can be shaped. ----
+  function stoneGeo(w, h, s, R, res = 22) { const gw = w - .005, gh = h - .005, r = Math.min(.11, Math.min(gw, gh) * .16), hd = .46; /* (packed tight: neighbours touch, no cement) */
+    const geo = new THREE.BoxGeometry(gw, gh, hd * 2, Math.round(res * w), Math.round(res * h), 8), P = geo.attributes.position, v = new THREE.Vector3(), c = new THREE.Vector3(), hw = gw / 2, hh = gh / 2;
+    for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); c.set(Math.max(-hw + r, Math.min(hw - r, v.x)), Math.max(-hh + r, Math.min(hh - r, v.y)), Math.max(-hd + r, Math.min(hd - r, v.z))); const d = v.clone().sub(c); if (d.lengthSq() > 1e-9) v.copy(c).addScaledVector(d.normalize(), r);
+      // pillow: the front and back bulge out in the middle
+      const u = v.x / hw, t = v.y / hh; v.z += Math.sign(v.z) * .06 * Math.max(0, 1 - u * u) * Math.max(0, 1 - t * t) * Math.min(1, Math.abs(v.z) / hd);
+      // an irregular outline: the sides wander in and out a little
+      const a = Math.atan2(v.y / hh, v.x / hw), k = 1 + .018 * Math.sin(a * 3 + s % 7) + .012 * Math.sin(a * 5 + s % 11); v.x *= k; v.y *= 1 + (k - 1) * .8;
+      P.setXYZ(i, v.x, v.y, v.z); }
+    // flat chipped facets: a few planes slicing off bits of the face and edges (like the light/dark planes in the pictures)
+    const nF = 2 + Math.floor(R() * 3);
+    for (let f = 0; f < nF; f++) { const side = R() < .5 ? 1 : -1, n = new THREE.Vector3((R() - .5) * 1.6, (R() - .5) * 1.6, side).normalize(); let mx = -1e9;
+      for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); mx = Math.max(mx, v.dot(n)); }
+      const cut = .05 + R() * .08; for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); const over = v.dot(n) - (mx - cut); if (over > 0) { v.addScaledVector(n, -over); P.setXYZ(i, v.x, v.y, v.z); } } }
+    geo.computeVertexNormals(); lump(geo, .012, s); if (R() < .35) bite(geo, gw, gh, R); wonky(geo, w, h, R, .02);
+    // cracks: a couple of thin wandering lines on the faces, sunk slightly (their colour is darkened later)
+    const crack = new Float32Array(P.count), lines = [];
+    for (let k = 0, n = R() < .6 ? 1 + Math.floor(R() * 2) : 0; k < n; k++) { let x = (R() - .5) * gw * .8, y = (R() - .5) * gh * .8; const pts = [[x, y]], ang = R() * 6.28; for (let q = 0; q < 6; q++) { x += Math.cos(ang + (R() - .5) * 1.4) * .07; y += Math.sin(ang + (R() - .5) * 1.4) * .07; pts.push([x, y]); } lines.push(pts); }
+    if (lines.length) for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); if (Math.abs(v.z) < hd * .7) continue; let d = 9; for (const L of lines) d = Math.min(d, polyD(v.x, v.y, L)); const q = Math.max(0, 1 - d / .018); if (q > 0) { crack[i] = q; v.z -= Math.sign(v.z) * .018 * q; P.setXYZ(i, v.x, v.y, v.z); } }
+    geo.computeVertexNormals(); geo.userData.crack = crack; return geo; }
+  // colour a stone: its own shade, a little lighter on the top facing parts, darker in the cracks
+  function paintStone(geo, col) { const P = geo.attributes.position, N = geo.attributes.normal, cr = geo.userData.crack, a = new Float32Array(P.count * 3), c = new THREE.Color();
+    for (let i = 0; i < P.count; i++) { c.copy(col).multiplyScalar(1 + N.getY(i) * .06); if (cr && cr[i] > 0) c.multiplyScalar(1 - .7 * cr[i]); c.toArray(a, i * 3); }
+    for (const k of Object.keys(geo.attributes)) if (!['position', 'normal'].includes(k)) geo.deleteAttribute(k); geo.setAttribute('color', new THREE.BufferAttribute(a, 3)); return geo; }
+  function solidPiece(w, h, s, R) { return stoneGeo(w, h, s, R); }
+  function carvedPiece(w, h, col, s, team) { const R = rng(s), r = .07, sx = Math.max(4, Math.round(CRES * w)), sy = Math.max(4, Math.round(CRES * h));
+    const geo = new THREE.BoxGeometry(w - .03, h - .03, .97, sx, sy, 1), P = geo.attributes.position, v = new THREE.Vector3(), c = new THREE.Vector3(), hw = (w - .03) / 2, hh = (h - .03) / 2, hd = .485;
+    for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); c.set(Math.max(-hw + r, Math.min(hw - r, v.x)), Math.max(-hh + r, Math.min(hh - r, v.y)), Math.max(-hd + r, Math.min(hd - r, v.z))); const d = v.clone().sub(c); if (d.lengthSq() > 1e-9) v.copy(c).addScaledVector(d.normalize(), r); P.setXYZ(i, v.x, v.y, v.z); } // (rounded off)
+    const pat = PATTERNS[pickW(PAT_W, R)](w - .03, h - .03, R), depth = .045 + R() * .03;
+    const inl = INLAY[Math.floor(R() * INLAY.length)], inlC = inl === 'team' ? new THREE.Color(team).multiplyScalar(1.3) : inl ? new THREE.Color(inl) : null;
+    const base = shade(col, R), cut = base.clone().multiplyScalar(.55), m = new Float32Array(P.count);
+    const n1 = R() * 9, n2 = R() * 9, kx = (R() - .5) * .25, ky = (R() - .5) * .12;
+    for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); if (Math.abs(v.z) < hd - .002) continue;
+      const wob = .014 * Math.sin(v.x * 9 + n1) * Math.sin(v.y * 11 + n2), x = v.x + wob, y = v.y - wob; /* (a hand-cut wobble on every edge) */
+      const q = pat(x + kx * y + .035 * Math.sin(y * 5 + n1), y + ky * x + .03 * Math.sin(x * 4 + n2)); /* (carvings a bit crooked and uneven too) */ m[i] = q; if (q > 0) v.z -= Math.sign(v.z) * depth * q * (inlC ? .45 : 1); P.setXYZ(i, v.x, v.y, v.z); }
+    geo.computeVertexNormals(); lump(geo, .015, s); if (R() < .25) bite(geo, w - .03, h - .03, R); wonky(geo, w, h, R);
+    const ca = new Float32Array(P.count * 3), cc = new THREE.Color(); for (let i = 0; i < P.count; i++) { cc.copy(base); if (m[i] > 0) cc.copy(inlC || cut).lerp(base, 1 - m[i]); cc.toArray(ca, i * 3); }
+    geo.setAttribute('color', new THREE.BufferAttribute(ca, 3)); geo.deleteAttribute('uv'); return geo; }
+  function wall(world, team, W, H, seed) { const R = rng(seed), out = [], pickSurf = surfaces(world, R), used = Array.from({ length: H }, () => new Array(W).fill(false));
+    // laid at random on a grid: mostly long pieces lying down, some standing on end (two blocks tall), the odd single;
+    // every gap gets filled; the top row gets the shaped pieces
+    const SIZES = [[1, 1], [2, 1], [2, 1], [3, 1], [1, 2], [1, 2], [2, 2]];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (used[y][x]) continue; const top = y === H - 1, sd = Math.floor(R() * 1e6);
+      let w = 1, h = 1; if (top) w = R() < .35 && x + 1 < W && !used[y][x + 1] ? 2 : 1;
+      else for (let k = 0; k < 6; k++) { const [a, b] = SIZES[Math.floor(R() * SIZES.length)]; if (y + b > H - 1 || x + a > W) continue; let ok = true; for (let yy = y; yy < y + b; yy++) for (let xx = x; xx < x + a; xx++) if (used[yy][xx]) ok = false; if (ok) { w = a; h = b; break; } }
+      for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) used[yy][xx] = true;
+      let geo; const c = teamCol(world, team, R);
+      if (top) { const ks = Object.keys(T), k = ks[Math.floor(R() * ks.length)]; geo = wonky(stretch(T[k](c, sd), w), w, 1, R, .06); }
+      else if (w === 1 && h === 1 && R() < .1) geo = V.slab(c, sd);
+      else geo = R() < .18 ? carvedPiece(w, h, c, sd, team) : paintStone(solidPiece(w, h, sd, R), shade(c, R));
+      out.push({ geo, x: x + w / 2, y: y + h / 2, w, h, surf: pickSurf() }); }
+    return out; }
+  // ---- surface materials (Ali: no patterns drawn on, a proper system): every piece is one big brick/stone and its
+  // MATERIAL decides how its surface looks up close, all worked out in the shader from 3-D noise (so it never repeats
+  // and needs no UVs): colour mottling, grain, tiny bumps that catch the light, pits, worn lighter edges, how shiny it
+  // is and where. Each material is just a handful of numbers. ----
+  const NOISE = `
+    float h31(vec3 p){ p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+    float vn(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);
+      return mix(mix(mix(h31(i), h31(i + vec3(1,0,0)), f.x), mix(h31(i + vec3(0,1,0)), h31(i + vec3(1,1,0)), f.x), f.y),
+                 mix(mix(h31(i + vec3(0,0,1)), h31(i + vec3(1,0,1)), f.x), mix(h31(i + vec3(0,1,1)), h31(i + vec3(1,1,1)), f.x), f.y), f.z); }
+    float fbm(vec3 p){ float a = .5, s = 0.; for (int i = 0; i < 4; i++) { s += a * vn(p); p *= 2.03; a *= .5; } return s; }`;
+  // mot: colour mottling (amount, scale) · grain: fine speckle (amount, scale) · bump: how bumpy · pits: little holes ·
+  // vein: soft streaks · layer: horizontal bedding · rough: base roughness, variation · wear: lighter worn edges · grainDir: wood
+  const FAM = {
+    sandstone: { mot: [.18, 1.4], grain: [.14, 36], bump: .5, pits: .15, vein: 0, layer: .22, rough: [.9, .08], wear: .25 },
+    granite: { mot: [.1, 2.2], grain: [.26, 45], bump: .25, pits: 0, vein: 0, layer: 0, rough: [.55, .25], wear: .15 },
+    clay: { mot: [.2, 1.8], grain: [.1, 40], bump: .45, pits: .25, vein: 0, layer: 0, rough: [.85, .1], wear: .3 },
+    concrete: { mot: [.12, 1.2], grain: [.08, 40], bump: .35, pits: .4, vein: 0, layer: 0, rough: [.92, .05], wear: .2 },
+    slate: { mot: [.1, 1.], grain: [.06, 50], bump: .3, pits: 0, vein: 0, layer: .5, rough: [.45, .2], wear: .12 },
+    marble: { mot: [.06, 1.], grain: [.03, 60], bump: .06, pits: 0, vein: .5, layer: 0, rough: [.22, .1], wear: .08 },
+    glazed: { mot: [.08, 1.6], grain: [.02, 40], bump: .04, pits: .05, vein: 0, layer: 0, rough: [.12, .05], wear: .35 },
+    wood: { mot: [.1, 1.], grain: [.22, 22], bump: .3, pits: 0, vein: 0, layer: 0, rough: [.75, .1], wear: .2, grainDir: 1 },
+  };
+  const MATS = {};
+  function surfMat(kind) { if (MATS[kind]) return MATS[kind]; const F = FAM[kind] || FAM.sandstone;
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: F.rough[0], metalness: 0 });
+    m.onBeforeCompile = sh => {
+      sh.uniforms.uMot = { value: new THREE.Vector2(...F.mot) }; sh.uniforms.uGrain = { value: new THREE.Vector2(...F.grain) };
+      sh.uniforms.uB = { value: new THREE.Vector4(F.bump, F.pits, F.vein, F.layer) }; sh.uniforms.uR = { value: new THREE.Vector3(F.rough[0], F.rough[1], F.wear) }; sh.uniforms.uWood = { value: F.grainDir || 0 };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vOP; varying vec3 vON;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOP = position; vON = normal;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vOP; varying vec3 vON; uniform vec2 uMot, uGrain; uniform vec4 uB; uniform vec3 uR; uniform float uWood;' + NOISE + `
+        float surfH(vec3 p){ vec3 q = uWood > .5 ? vec3(p.x * .15, p.y * 6., p.z * 6.) : p;
+          float h = fbm(q * uGrain.y * .25) * .6 + vn(q * uGrain.y) * .4;
+          float pit = smoothstep(.78, .86, vn(p * 18.)) * uB.y; return h - pit * 1.5; }`)
+        .replace('#include <color_fragment>', `#include <color_fragment>
+        { vec3 p = vOP + 13.1; float mot = fbm(p * uMot.y) - .5, g = vn(p * uGrain.y) - .5, ly = sin(p.y * 22. + fbm(p * 3.) * 4.) * uB.w;
+          float vein = uB.z > 0. ? pow(1. - abs(sin(p.x * 3. + p.y * 2. + fbm(p * 2.5) * 6.)), 14.) * uB.z : 0.;
+          float pit = smoothstep(.78, .86, vn(p * 18.)) * uB.y;
+          vec3 n0 = abs(normalize(vON)); float edge = 1. - max(n0.x, max(n0.y, n0.z)); // (rounded edges and corners)
+          diffuseColor.rgb *= 1. + mot * uMot.x * 2. + g * uGrain.x + ly * .12 - vein * .35 - pit * .35;
+          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.25 + .05, smoothstep(.08, .3, edge) * uR.z * (.6 + .8 * vn(p * 9.))); }`)
+        .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = clamp(uR.x + (fbm((vOP + 7.) * 3.) - .5) * uR.y * 2., .04, 1.);`)
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        { vec3 p = vOP + 13.1; float H = surfH(p) * uB.x * .02; vec2 dH = vec2(dFdx(H), dFdy(H));
+          vec3 sX = dFdx(-vViewPosition), sY = dFdy(-vViewPosition), R1 = cross(sY, normal), R2 = cross(normal, sX); float det = dot(sX, R1);
+          normal = normalize(abs(det) * normal - sign(det) * (dH.x * R1 + dH.y * R2)); }`); };
+    m.customProgramCacheKey = () => 'fortfam_' + kind; return (MATS[kind] = m); }
+  const SURF = { classic: ['sandstone', 'granite', 'clay', 'concrete', 'slate', 'marble', 'glazed', 'wood'], desert: ['sandstone', 'clay', 'concrete', 'granite'], ice: ['marble', 'glazed', 'slate', 'concrete'] };
+  // each world's walls mostly use two or three materials, with the odd different one mixed in
+  function surfaces(world, R) { const all = SURF[world] || SURF.classic, main = [...all].sort(() => R() - .5).slice(0, 3); return () => R() < .8 ? main[Math.floor(R() * main.length)] : all[Math.floor(R() * all.length)]; }
+  return { V, T, WORLDS, block, top, wall, teamCol, surfMat, surfaces, stoneGeo, paintStone, carvedPiece, shade, rng, lump, stretch, tint, setRes: r => { CRES = r; } };
+}
+
+// ============================================================
+// THE CLASSIC STAGE, NEW LOOK (14 Nov, Ali): candy-dream light; forts, towers and ammo built from scavenged stones
+// (nothing perfect: jagged tops, some lower some higher, wonky doorways, the odd stone sticking out); the grey ammo in
+// pale mixed colours; bark on the trunks, leafy clumps on the trees; a meadow in the pastures; a field of grass with
+// worn paths and tall grass where nobody walks; the centre pole rebuilt from the same stones.
+// Only how things look has changed: every block is still the same box underneath (same size, physics and rules).
+// ============================================================
+const CLX = MAP === 'classic' && WORLD === 'day' && !NIGHT && !NEO && !HD;
+const prng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
+const CL_TOUCH = matchMedia('(pointer: coarse)').matches; // (phones and tablets: fewer triangles, less grass)
+// shared GLSL: hash + value noise in 3D and 2D
+const ST_NOISE = `
+  float stH1(float n){ return fract(sin(n) * 43758.5453); }
+  float stH3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+  float stN3(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+    return mix(mix(mix(stH3(i), stH3(i + vec3(1, 0, 0)), f.x), mix(stH3(i + vec3(0, 1, 0)), stH3(i + vec3(1, 1, 0)), f.x), f.y),
+               mix(mix(stH3(i + vec3(0, 0, 1)), stH3(i + vec3(1, 0, 1)), f.x), mix(stH3(i + vec3(0, 1, 1)), stH3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
+  float stF3(vec3 p){ return stN3(p) * .55 + stN3(p * 2.1 + 3.1) * .3 + stN3(p * 4.3 + 7.7) * .15; }
+  float stH2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float stN2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(stH2(i), stH2(i + vec2(1, 0)), f.x), mix(stH2(i + vec2(0, 1)), stH2(i + vec2(1, 1)), f.x), f.y); }
+  float stF2(vec2 p){ float s = 0., a = .5; for (int i = 0; i < 4; i++) { s += a * stN2(p); p = p * 2.07 + 1.7; a *= .5; } return s; }
+`;
+// ---- the stone look: one material for every plain block (and the centre pole). Per block (instanced) or per mesh:
+//   aSt = (seed, top raised/lowered, slanted top, type)  aMv = (stick out x, stick out z, twist, lumpiness)  aEx = (width, lean, -, -)
+//   types: 0 stone, 1 fort stone, 2 bark, 3 leaves, 4 tower stone
+function stoneMaterial(base) {
+  const m = base || new LiteMat({ roughness: .9 });
+  m.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
+      attribute vec4 aSt; attribute vec4 aMv; attribute vec4 aEx; varying vec3 vSp; varying vec3 vSm; varying vec4 vSt; varying vec3 vNo;
+      ${ST_NOISE}
+      vec3 stS; vec3 stD(vec3 p){ // where this point of the box ends up: taller/shorter top, slanted top, a lean, a twist, lumps, pushed out a bit
+        vec3 q = p; float up = clamp(p.y + .5, 0., 1.);
+        q.xz *= aEx.x + (1. - aEx.x) * 0.;
+        q.y += aSt.y * up + aSt.z * p.x * up * up;
+        q.x += aEx.y * p.y;
+        float tw = aMv.z * (p.y + .5), c = cos(tw), s = sin(tw); q.xz = mat2(c, -s, s, c) * q.xz;
+        vec3 m = q * stS; float n = stN3(m * 1.7 + aSt.x * 61.) - .5, n2 = stN3(m * 4.1 + aSt.x * 13.) - .5;
+        q += normalize(p + 1e-4) * (n + n2 * .35) * aMv.w / stS;
+        q.xz += aMv.xy; return q; }`)
+      .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+      #ifdef USE_INSTANCING
+        stS = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+      #else
+        stS = vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz));
+      #endif
+      vec3 stN0 = normalize(objectNormal), stT1 = normalize(cross(stN0, abs(stN0.y) < .9 ? vec3(0, 1, 0) : vec3(1, 0, 0))), stT2 = cross(stN0, stT1);
+      vec3 stP = stD(position), stA = stD(position + stT1 * .02), stB = stD(position + stT2 * .02), stNN = normalize(cross(stA - stP, stB - stP));
+      if (dot(stNN, stN0) < 0.) stNN = -stNN; objectNormal = stNN;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+      transformed = stP; vSp = position; vSm = stP * stS; vSt = aSt; vNo = stN0;`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+      varying vec3 vSp; varying vec3 vSm; varying vec4 vSt; varying vec3 vNo;
+      ${ST_NOISE}`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+      float stHt = 0.; { vec3 b = diffuseColor.rgb; float sd = vSt.x, ty = vSt.w; vec3 P = vSm + sd * 37.;
+        if (ty > 1.5 && ty < 2.5) { // bark: deep wavy grooves running up the trunk, knots
+          float ang = atan(vSp.z, vSp.x), g = sin(ang * 11. + stF3(vec3(P.x * .7, P.y * 1.1, P.z * .7)) * 5.) * .5 + .5; g = smoothstep(.15, .85, g);
+          float k = smoothstep(.78, .9, stN3(P * 2.3)); b *= .62 + .5 * g - k * .3; b *= .9 + .2 * stN3(P * 9.); stHt = g * .9 - k * .6; }
+        else if (ty > 2.5 && ty < 3.5) { // leaves: clumps of light and dark, sunny tips, dark gaps between leaves
+          float c = stF3(P * 2.2), l = stN3(P * 9.5), l2 = stN3(P * 19.);
+          b *= .62 + .55 * c; b = mix(b, b * vec3(1.25, 1.22, .8) + vec3(.06, .07, 0.), smoothstep(.62, .85, l) * .7); b *= 1. - smoothstep(.32, .12, l) * .45; b *= .9 + .2 * l2;
+          stHt = l * .8 + l2 * .3; }
+        else { // stone: mottled, speckled, worn lighter edges, hairline cracks, a little grime low down
+          float n1 = stF3(P * 1.1), n2 = stN3(P * 5.5), n3 = stN3(P * 17.), h = stH1(sd * 91.7);
+          b *= 1. + (h - .5) * .2; b = mix(b, b.gbr, (stH1(sd * 47.3) - .5) * .08);
+          b *= .8 + .32 * n1; b *= 1. - smoothstep(.7, .8, n3) * .22 + smoothstep(.2, .1, n3) * .1;
+          vec3 a = abs(vSp) * 2.; float mx = max(a.x, max(a.y, a.z)), e2 = a.x + a.y + a.z - mx - min(a.x, min(a.y, a.z)), edge = smoothstep(.78, .97, e2);
+          b = mix(b, b * 1.12 + .035, edge * (.35 + .45 * step(.45, n2)));
+          float cr = 1. - abs(2. * stN3(P * 1.9 + 5.) - 1.); cr = smoothstep(.94, .99, cr); b *= 1. - cr * .4;
+          b *= .9 + .1 * smoothstep(-.5, .2, vSp.y);
+          stHt = n1 * .75 + n2 * .18 - cr * .35 - edge * .15; }
+        diffuseColor.rgb = b; }`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      { vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); float hx = dFdx(stHt), hy = dFdy(stHt);
+        vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
+        vec3 grad = sign(det) * (hx * r1 + hy * r2); normal = normalize(abs(det) * normal - grad * (vSt.w > 2.5 && vSt.w < 3.5 ? 1.1 : vSt.w > 1.5 && vSt.w < 2.5 ? .9 : .5)); }`);
+  };
+  m.customProgramCacheKey = () => 'stone1'; return m;
+}
+const stoneGeo = (seg) => new RoundedBoxGeometry(1, 1, 1, seg, .14);
+// one stone as its own mesh (the centre pole, the fence): the per-block numbers are stored on every vertex
+function stoneMesh(w, h, d, col, st, mv, ex, mat) {
+  const g = stoneGeo(CL_TOUCH ? 1 : 2), n = g.attributes.position.count;
+  for (const [k, v] of [['aSt', st], ['aMv', mv], ['aEx', ex || [1, 0, 0, 0]]]) { const a = new Float32Array(n * 4); for (let i = 0; i < n; i++) a.set(v, i * 4); g.setAttribute(k, new THREE.BufferAttribute(a, 4)); }
+  const M = new THREE.Mesh(g, mat); M.scale.set(w, h, d); M.castShadow = M.receiveShadow = true; if (col) { M.material = mat.clone(); M.material.color.set(col); M.material.onBeforeCompile = mat.onBeforeCompile; M.material.customProgramCacheKey = mat.customProgramCacheKey; } return M;
+}
+
+if (CLX) {
+  // ---------------- 1. candy-dream light ----------------
+  { const C = c => new THREE.Color(c);
+    skyU.zen.value.set('#3a2a8a'); skyU.mid.value.set('#7a6ae0'); skyU.hor.value.set('#ffb0e0'); skyU.low.value.set('#c8a0f0'); skyU.sunCol.value.set('#ffe0f0');
+    scene.background = C('#ffb0e0'); scene.fog.color.set('#e8b8f0');
+    if (hemi) { hemi.color.set('#ffd0f0'); hemi.groundColor.set('#4a3a8a'); hemi.intensity = 1.1; }
+    sun.color.set('#ffe0f0'); sun.intensity = 2.3;
+    Object.assign(LIGHT0, { hemi: hemi ? hemi.intensity : 1, sun: sun.intensity, bg: scene.background, fog: scene.fog.color.clone() });
+    const BG = window.__nymbo && window.__nymbo.BG;
+    if (BG) { BG.landU.uHaze.value.set('#c8a8f0'); BG.mistU.uHaze.value.set('#c8a8f0').lerp(C('#ffffff'), .25); BG.landU.uSunC.value.set('#ffe0f0').multiplyScalar(1.1); BG.landU.uAmbC.value.set('#a080ff').multiplyScalar(1.1);
+      for (const [m, o] of BG.puffMats) m.color.set(o > .85 ? '#ffe8ff' : '#a080d0'); }
+    const sea = scene.children.find(o => o.isInstancedMesh && o.geometry.type === 'SphereGeometry' && o.count > 300); if (sea) { sea.material.emissive.set('#f0c8ff'); sea.material.emissiveIntensity = .42; } }
+
+  // ---------------- 2. every plain block becomes a scavenged stone ----------------
+  const geo = stoneGeo(CL_TOUCH ? 1 : 2), N = plainIM.instanceMatrix.count;
+  const aSt = new THREE.InstancedBufferAttribute(new Float32Array(N * 4), 4), aMv = new THREE.InstancedBufferAttribute(new Float32Array(N * 4), 4), aEx = new THREE.InstancedBufferAttribute(new Float32Array(N * 4).fill(1), 4);
+  for (let i = 0; i < N; i++) aEx.setXYZW(i, 1, 0, 0, 0);
+  geo.setAttribute('aSt', aSt); geo.setAttribute('aMv', aMv); geo.setAttribute('aEx', aEx);
+  plainIM.geometry = geo; stoneMaterial(plainIM.material); plainIM.material.needsUpdate = true;
+  const sr = prng(4242), R = (a, b) => a + (b - a) * sr();
+  // the ammo: pale stones in mixed colours (grey, white, light blue, light red, yellow…)
+  const AMMO = ['#a9adb6', '#c4c6cb', '#e6e4de', '#8fb8e0', '#7ea8d8', '#e89a92', '#de8a80', '#ecc860', '#e2b84a', '#b0a4cc', '#b4ce9e', '#c8bca8'];
+  const isGrey = c => Math.abs(c.r - c.g) < .03 && Math.abs(c.g - c.b) < .05 && c.r > .6;
+  function stoneSet(e, o = {}) {
+    if (!(e.inst >= 0)) return; const i = e.inst, d = e.dims, seed = sr();
+    let type = 0, top = 0, slant = 0, sx = 0, sz = 0, tw = R(-.06, .06), lump = .035, wid = 1, lean = R(-.03, .03);
+    if (e.kind === 'tree') { const c = e.color; if (c.r > c.g) { type = 2; lump = .03; tw = 0; lean = 0; } else { type = 3; lump = .04; tw = 0; lean = 0; } }
+    else if (e.kind === 'stone') { lump = .045; tw = R(-.1, .1); slant = R(-.08, .08);
+      if (o.recolour !== false && isGrey(e.color)) { e.color.set(AMMO[Math.floor(sr() * AMMO.length)]).offsetHSL(0, 0, R(-.03, .03)); plainIM.setColorAt(i, e.color); } }
+    else if (e.kind === 'fort') { type = 1; lump = .04; Object.assign(o, o); }
+    if (o.top) { top = R(-.28, .32) / d.y; slant = R(-.22, .22) / d.y; }
+    if (o.stick) { const a = o.stickDir != null ? o.stickDir : Math.floor(sr() * 4) * Math.PI / 2, m = o.stick; sx = Math.cos(a) * m / d.x; sz = Math.sin(a) * m / d.z; }
+    if (o.tower) { type = 4; tw = R(-.35, .35); lump = .05; lean = R(-.05, .05); }
+    aSt.setXYZW(i, seed, top, slant, type); aMv.setXYZW(i, sx, sz, tw, lump); aEx.setXYZW(i, wid, lean, 0, 0);
+    aSt.needsUpdate = aMv.needsUpdate = aEx.needsUpdate = true; plainIM.instanceColor.needsUpdate = true;
+  }
+  // the forts: tops jagged (some stones higher, some lower, slanted), the odd stone sticking out, doorways not square
+  { const F = blocks.filter(e => e.kind === 'fort' && e.inst >= 0), over = (a, b) => Math.abs(a.spawnPos.x - b.spawnPos.x) < (a.dims.x + b.dims.x) / 2 - .05 && Math.abs(a.spawnPos.z - b.spawnPos.z) < (a.dims.z + b.dims.z) / 2 - .05;
+    const towerXZ = new Set(F.filter(e => e.spawnPos.y > 5.5).map(e => Math.round(e.spawnPos.x) + ',' + Math.round(e.spawnPos.z)));
+    for (const e of F) {
+      const tower = towerXZ.has(Math.round(e.spawnPos.x) + ',' + Math.round(e.spawnPos.z));
+      if (tower) { e._lab = { tower: true }; stoneSet(e, { tower: true }); continue; }
+      const top = !F.some(b => b !== e && Math.abs(b.spawnPos.y - e.spawnPos.y - 1) < .3 && over(b, e));
+      const team = e.team || 'blue', Fc = FORT[team], lx = e.spawnPos.x - Fc.x, lz = e.spawnPos.z - Fc.z;
+      // next to a doorway? (the gap in the middle of each wall): lean into the opening a little
+      let door = null; if (Math.abs(lz) < 3.2 && Math.abs(lx) > FORT_RX - 2.5) door = Math.sign(lz) * -Math.PI / 2 * -1; else if (Math.abs(lx) < 3.2 && Math.abs(lz) > FORT_RZ - 2.5) door = Math.sign(lx) > 0 ? Math.PI : 0;
+      const o = { top };
+      if (door != null && sr() < .55) { o.stick = R(.06, .2); o.stickDir = Math.abs(lz) < 3.2 && Math.abs(lx) > FORT_RX - 2.5 ? (lz > 0 ? -Math.PI / 2 : Math.PI / 2) : (lx > 0 ? Math.PI : 0); }
+      else if (sr() < .16) { o.stick = R(.05, .16); o.stickDir = Math.abs(lx) / FORT_RX > Math.abs(lz) / FORT_RZ ? (lx > 0 ? 0 : Math.PI) : (lz > 0 ? Math.PI / 2 : -Math.PI / 2); if (sr() < .5) o.stickDir += Math.PI; }
+      e._lab = o; stoneSet(e, o);
+    } }
+  for (const e of blocks) if (e.inst >= 0 && e.kind !== 'fort') stoneSet(e);
+  // blocks made later in the match (more ammo, repairs) get dressed too
+  { const nb = newBlock; newBlock = function (...a) { const e = nb(...a); if (e && e.inst >= 0) stoneSet(e); return e; }; }
+  window.__nymbo && (window.__nymbo.stoneSet = stoneSet);
+
+  // ---------------- 2b. the stones themselves: the lab's scavenged-stone kit ----------------
+  // Every fort brick, ammo block and ledge is drawn as one of the lab's pieces made to its exact size: a pillowy stone
+  // (or now and then a carved one), and the battlements on top get the lab's shaped tops (ramps, gables, points, round
+  // tops, steps...), some taller, some lower. The plain box underneath stops drawing but still does all the physics;
+  // each frame its position is copied onto its stone. One draw call per surface material (sandstone, granite, clay...).
+  const LABK = makeFortKit(THREE, RoundedBoxGeometry, mergeGeometries); LABK.setRes(CL_TOUCH ? 12 : 20);
+  const RES = CL_TOUCH ? 6 : 10, hideA = new THREE.InstancedBufferAttribute(new Float32Array(N), 1); geo.setAttribute('aHide', hideA);
+  { const ob = plainIM.material.onBeforeCompile; plainIM.material.onBeforeCompile = sh => { ob(sh); sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aHide;').replace('#include <project_vertex>', '#include <project_vertex>\nif (aHide > .5) gl_Position = vec4(0., 0., 2., 1.);'); }; plainIM.material.customProgramCacheKey = () => 'stone1h'; }
+  const LAB = [], byFam = {}, R2 = LABK.rng(9001), clean = g => { g = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(k)) g.deleteAttribute(k); return g; };
+  const famPick = { blue: LABK.surfaces('classic', LABK.rng(31)), red: LABK.surfaces('classic', LABK.rng(77)), none: LABK.surfaces('classic', LABK.rng(5)) };
+  const _S = new THREE.Matrix4(), _T = new THREE.Matrix4(), _Rm = new THREE.Matrix4();
+  function labPiece(e) { const d = e.dims, o = e._lab || {}, R = LABK.rng(e.id * 131 + 7), along = d.z > d.x + .01, w = along ? d.z : d.x, dep = along ? d.x : d.z, h = d.y, sd = Math.floor(R() * 1e6);
+    const base = e.kind === 'fort' ? LABK.teamCol('classic', e.team === 'red' ? '#FF2D2D' : '#008CFF', R) : e.color.clone(), col = LABK.shade(base, R, .05);
+    let g, lift = 0, sy = 1;
+    if (o.top && !o.tower) { const ks = Object.keys(LABK.T), k = ks[Math.floor(R() * ks.length)]; g = LABK.T[k](col, sd); if (w > 1.05) g = LABK.stretch(g, w); sy = .8 + R() * .6; g.scale(1, sy, 1); lift = (sy - 1) * h / 2; } // (shaped tops, some taller, some lower: a jagged skyline)
+    else if (e.kind === 'fort' && !o.tower && h > .9 && R() < .14) g = LABK.carvedPiece(w, h, col, sd, '#' + e.color.getHexString());
+    else g = LABK.paintStone(LABK.stoneGeo(w, h, sd, R, RES), LABK.shade(col, R));
+    g = clean(g); g.computeBoundingBox(); const bb = g.boundingBox, gd = bb.max.z - bb.min.z; if (Math.abs(gd - dep) > .08) g.scale(1, 1, dep / gd * (o.top ? 1 : 1.02)); // (made exactly as deep as the block)
+    let off = new THREE.Vector3(0, lift, 0), yaw = along ? Math.PI / 2 : 0;
+    if (o.stick) { off.x += Math.cos(o.stickDir) * o.stick; off.z += Math.sin(o.stickDir) * o.stick; }
+    if (o.tower) { yaw += (R() - .5) * .3; g.scale(.94, 1, .94); } else yaw += (R() - .5) * .05;
+    // the block's matrix has its size in it; the stone is already the right size, so that's taken back out
+    const local = new THREE.Matrix4().makeScale(1 / d.x, 1 / d.y, 1 / d.z).multiply(_T.makeTranslation(off.x, off.y, off.z)).multiply(_Rm.makeRotationY(yaw));
+    const fam = e.kind === 'fort' ? famPick[e.team === 'red' ? 'red' : 'blue']() : famPick.none();
+    return { e, g, fam, local }; }
+  const dressE = blocks.filter(e => e.inst >= 0 && (e.kind === 'fort' || e.kind === 'stone' || e.kind === 'prop') && !e.mazeBrick);
+  for (const e of dressE) { const p = labPiece(e); LAB.push(p); (byFam[p.fam] = byFam[p.fam] || []).push(p); hideA.setX(e.inst, 1); }
+  hideA.needsUpdate = true;
+  const ENVS = (() => { try { const pm = new THREE.PMREMGenerator(renderer); return pm.fromScene(new RoomEnvironment(), .04).texture; } catch (_) { return null; } })();
+  // Drawing them: every stone that hasn't moved is welded into one big mesh per material (a handful of draw calls for
+  // the whole map). The moment a stone's block moves (knocked loose, picked up, blown up), its stone is cut out of the
+  // big mesh and becomes a mesh of its own that follows the block.
+  const FAMM = {}; const famMat = fam => FAMM[fam] || (FAMM[fam] = (() => { const m = LABK.surfMat(fam); return m; /* (no studio reflections: lit only by the stage's own light, like everything else) */ })());
+  const _M = new THREE.Matrix4(), _N3 = new THREE.Matrix3(), _v = new THREE.Vector3();
+  const WELD = [];
+  for (const fam in byFam) { const L = byFam[fam], nv = L.reduce((a, p) => a + p.g.attributes.position.count, 0);
+    const Pa = new Float32Array(nv * 3), Na = new Float32Array(nv * 3), Ca = new Float32Array(nv * 3); let o = 0;
+    for (const p of L) { plainIM.getMatrixAt(p.e.inst, _M); _M.multiply(p.local); p.m0 = _M.clone(); _N3.getNormalMatrix(_M);
+      const gp = p.g.attributes.position, gn = p.g.attributes.normal, gc = p.g.attributes.color; p.o = o; p.n = gp.count;
+      for (let i = 0; i < gp.count; i++) { _v.fromBufferAttribute(gp, i).applyMatrix4(_M); Pa.set([_v.x, _v.y, _v.z], (o + i) * 3); _v.fromBufferAttribute(gn, i).applyMatrix3(_N3).normalize(); Na.set([_v.x, _v.y, _v.z], (o + i) * 3); Ca.set([gc.getX(i), gc.getY(i), gc.getZ(i)], (o + i) * 3); }
+      o += gp.count; }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Pa, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Na, 3)); g.setAttribute('color', new THREE.BufferAttribute(Ca, 3)); g.computeBoundingSphere();
+    const mesh = new THREE.Mesh(g, famMat(fam)); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh); for (const p of L) p.weld = mesh; WELD.push(mesh); }
+  const detach = p => { const P_ = p.weld.geometry.attributes.position; P_.array.fill(0, p.o * 3, (p.o + p.n) * 3); P_.addUpdateRange(p.o * 3, p.n * 3); P_.needsUpdate = true; p.weld = null;
+    const m = new THREE.Mesh(p.g, famMat(p.fam)); m.matrixAutoUpdate = false; m.castShadow = m.receiveShadow = true; scene.add(m); p.mesh = m; };
+  const syncLab = () => { for (const p of LAB) { plainIM.getMatrixAt(p.e.inst, _M); _M.multiply(p.local);
+      if (p.weld) { const a = _M.elements, b = p.m0.elements; let same = true; for (let k = 0; k < 16; k++) if (Math.abs(a[k] - b[k]) > 1e-4) { same = false; break; } if (same) continue; detach(p); }
+      p.mesh.matrix.copy(_M); p.mesh.matrixWorldNeedsUpdate = true; } };
+  { const pH = pulseHalos; pulseHalos = function (t) { pH(t); syncLab(); }; }
+  // ammo made later in the match: a stone of its own
+  { const nb = newBlock; newBlock = function (...a) { const e = nb(...a);
+      if (e && e.inst >= 0 && (e.kind === 'stone' || e.kind === 'prop') && !e.mazeBrick) try { const p = labPiece(e); p.weld = null; const m = new THREE.Mesh(p.g, famMat(p.fam)); m.matrixAutoUpdate = false; m.castShadow = m.receiveShadow = true; scene.add(m); p.mesh = m; LAB.push(p); hideA.setX(e.inst, 1); hideA.needsUpdate = true; } catch (err) { /* (it just stays a plain block) */ }
+      return e; }; }
+  window.__nymbo && (window.__nymbo.LAB = LAB);
+  // one lab stone as its own mesh (the centre pole, the fence)
+  const labMesh = (w, h, d, col, fam, seed, wood) => { const R = LABK.rng(seed); let g = wood ? LABK.tint(LABK.lump(new RoundedBoxGeometry(w, h, d, 2, Math.min(.04, Math.min(w, h, d) * .25)), .04, seed), LABK.shade(new THREE.Color(col), R, .06)) : LABK.paintStone(LABK.stoneGeo(w, h, seed, R, RES), LABK.shade(new THREE.Color(col), R, .05));
+    g = clean(g); if (!wood) { g.computeBoundingBox(); const gd = g.boundingBox.max.z - g.boundingBox.min.z; g.scale(1, 1, d / gd); }
+    const M = new THREE.Mesh(g, famMat(fam)); M.castShadow = M.receiveShadow = true; return M; };
+
+  // ---------------- 2c. the tree tops: clusters of leaves all over the canopy, so the edges are leafy, not ruler lines ----------------
+  { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), lr = prng(55), r = () => lr();
+    for (let i = 0; i < 46; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * 46, x = 64 + Math.cos(a) * d, y = 64 + Math.sin(a) * d, L = 9 + r() * 9, W = L * (.42 + r() * .15), ang = r() * 6.28, sh = .75 + r() * .45;
+      g.save(); g.translate(x, y); g.rotate(ang); g.fillStyle = `rgb(${(70 + r() * 50) * sh | 0},${(150 + r() * 70) * sh | 0},${(40 + r() * 30) * sh | 0})`; g.beginPath(); g.moveTo(-L, 0); g.quadraticCurveTo(0, -W * 1.4, L, 0); g.quadraticCurveTo(0, W * 1.4, -L, 0); g.fill();
+      g.strokeStyle = 'rgba(30,70,20,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-L * .9, 0); g.lineTo(L * .9, 0); g.stroke(); g.restore(); }
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+    const card = new THREE.PlaneGeometry(1, 1); // (lying flat on the block's face)
+    const leafM = new THREE.MeshLambertMaterial({ map: tx, alphaTest: .45, side: THREE.DoubleSide });
+    const LV = [], lr2 = prng(66), q = () => lr2(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
+    for (const e of blocks) { if (e.kind !== 'tree' || !(e.inst >= 0) || !(e.color.g > e.color.r)) continue; const d = e.dims;
+      const faces = [[0, 1, d.x * d.z * 1.3], [0, -1, d.x * d.z * .4], [1, 1, d.y * d.z], [1, -1, d.y * d.z], [2, 1, d.x * d.y], [2, -1, d.x * d.y]], tot = faces.reduce((a, f) => a + f[2], 0), n = Math.round(tot * 16);
+      for (let k = 0; k < n; k++) { let w = q() * tot, f = faces[0]; for (const F of faces) { if ((w -= F[2]) < 0) { f = F; break; } }
+        const ax = f[0], half = [d.x / 2, d.y / 2, d.z / 2], pt = [0, 0, 0], u = (ax + 1) % 3, v = (ax + 2) % 3;
+        // spots near the edges of the face more often (that's where the outline is)
+        const edgeP = () => { const a = q(); return a < .6 ? (q() < .5 ? -1 : 1) * (.82 + q() * .2) : (q() - .5) * 2; };
+        pt[ax] = f[1] * (half[ax] + .015 + q() * .02); pt[u] = edgeP() * half[u]; pt[v] = edgeP() * half[v];
+        const sc = .32 + q() * .22; _p.set(...pt);
+        const nrm = new THREE.Vector3(); nrm.setComponent(ax, f[1]); _q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), nrm); _q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), q() * 6.28)); _q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler((q() - .5) * .5, (q() - .5) * .5, 0)));
+        _s.set(sc, sc, sc * .2);
+        const local = new THREE.Matrix4().makeScale(1 / d.x, 1 / d.y, 1 / d.z).multiply(new THREE.Matrix4().compose(_p.clone(), _q.clone(), _s.clone()));
+        LV.push({ e, local, c: new THREE.Color(e.color).offsetHSL((q() - .5) * .04, 0, (q() - .5) * .12) }); } }
+    const im = new THREE.InstancedMesh(card, leafM, Math.max(1, LV.length)); im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
+    LV.forEach((v, i) => im.setColorAt(i, v.c)); scene.add(im);
+    const G = new Map(); LV.forEach((v, i) => { if (!G.has(v.e)) G.set(v.e, { last: new THREE.Matrix4().makeScale(0, 0, 0), ids: [] }); G.get(v.e).ids.push(i); });
+    const _L = new THREE.Matrix4(), _W = new THREE.Matrix4();
+    const syncLeaves = () => { let ch = false; for (const [e, o] of G) { plainIM.getMatrixAt(e.inst, _L); if (o.last.equals(_L)) continue; o.last.copy(_L); ch = true; for (const i of o.ids) { _W.multiplyMatrices(_L, LV[i].local); im.setMatrixAt(i, _W); } } if (ch) im.instanceMatrix.needsUpdate = true; };
+    syncLeaves(); { const pH = pulseHalos; pulseHalos = function (t) { pH(t); syncLeaves(); }; } }
+
+  // ---------------- 2d. the pick-up outline follows the real shape (stones, animals) ----------------
+  const hullN = new THREE.MeshBasicMaterial({ color: 0xffe14a, side: THREE.BackSide, transparent: true, depthWrite: false });
+  hullN.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += normalize(normal) * .07;'); }; hullN.customProgramCacheKey = () => 'hullN';
+  const sHull = new THREE.Mesh(new THREE.BufferGeometry(), hullN); sHull.matrixAutoUpdate = false; sHull.renderOrder = -1; sHull.visible = false; sHull.frustumCulled = false; scene.add(sHull);
+  for (const p of LAB) p.e._piece = p;
+  { const ph = placeHighlight; placeHighlight = function () { ph(); sHull.visible = false; const e = hlE && !hlE.holder && !hlE.dead && hlE.body ? hlE : null;
+      if (e && e._piece && hlHull.visible) { const p = e._piece; hl.visible = hlHull.visible = false; if (sHull.geometry !== p.g) sHull.geometry = p.g; plainIM.getMatrixAt(e.inst, sHull.matrix); sHull.matrix.multiply(p.local); sHull.matrixWorldNeedsUpdate = true; sHull.visible = true; }
+      hullN.color.copy(hullMat.color); hullN.opacity = hullMat.opacity; }; }
+  { const nb = newBlock; newBlock = function (...a) { const e = nb(...a); const p = e && LAB.find(q_ => q_.e === e); if (p) e._piece = p; return e; }; }
+
+  // ---------------- 3. the pastures: a proper meadow, and wonky old wooden posts ----------------
+  { const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d'), pr = prng(77), r = () => pr();
+    const rg = g.createRadialGradient(256, 256, 120, 256, 256, 256); rg.addColorStop(0, 'rgba(98,178,64,.95)'); rg.addColorStop(.8, 'rgba(92,170,60,.85)'); rg.addColorStop(1, 'rgba(92,170,60,0)'); g.fillStyle = rg; g.fillRect(0, 0, 512, 512);
+    const inR = (x, y, R0) => Math.hypot(x - 256, y - 256) < R0;
+    for (let i = 0; i < 900; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * 215, x = 256 + Math.cos(a) * d, y = 256 + Math.sin(a) * d; g.fillStyle = `rgba(${40 + r() * 50 | 0},${110 + r() * 70 | 0},${30 + r() * 30 | 0},${.25 + r() * .35})`; g.beginPath(); g.ellipse(x, y, 3 + r() * 7, 2 + r() * 5, r() * 3, 0, 7); g.fill(); } // (lush clumps)
+    g.lineCap = 'round'; for (let k = 0; k < 2; k++) { g.strokeStyle = k ? 'rgba(150,118,70,.35)' : 'rgba(170,150,95,.4)'; g.lineWidth = k ? 6 : 16; g.beginPath(); for (let a = 0; a <= 6.3; a += .05) { const d = 196 + Math.sin(a * 5) * 6 + Math.sin(a * 13) * 3; a ? g.lineTo(256 + Math.cos(a) * d, 256 + Math.sin(a) * d) : g.moveTo(256 + d, 256); } g.stroke(); } // (a ring trodden bare by the animals, just inside the fence)
+    for (let i = 0; i < 26; i++) { const a = r() * 6.28, d = 30 + r() * 150, x = 256 + Math.cos(a) * d, y = 256 + Math.sin(a) * d; // clover patches
+      for (let k = 0; k < 14; k++) { const px = x + (r() - .5) * 34, py = y + (r() - .5) * 26; g.fillStyle = `rgba(${60 + r() * 30 | 0},${150 + r() * 40 | 0},${60 + r() * 25 | 0},.85)`; for (let l = 0; l < 3; l++) { const q = l * 2.09 + r(); g.beginPath(); g.arc(px + Math.cos(q) * 2.4, py + Math.sin(q) * 2.4, 2.6, 0, 7); g.fill(); } } }
+    const FL = ['#ffffff', '#fff6a8', '#ffd84a', '#ffb0e0', '#e0b8ff', '#ffffff'];
+    for (let i = 0; i < 420; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * 185, x = 256 + Math.cos(a) * d, y = 256 + Math.sin(a) * d, f = FL[i % FL.length]; // little flowers: petals round a yellow middle
+      if (i % 3) { g.fillStyle = f; g.beginPath(); g.arc(x, y, 1.6 + r(), 0, 7); g.fill(); } else { g.fillStyle = f; for (let l = 0; l < 5; l++) { const q = l * 1.257; g.beginPath(); g.arc(x + Math.cos(q) * 2.2, y + Math.sin(q) * 2.2, 1.7, 0, 7); g.fill(); } g.fillStyle = '#ffcf3a'; g.beginPath(); g.arc(x, y, 1.4, 0, 7); g.fill(); } }
+    for (let i = 0; i < 40; i++) { const a = r() * 6.28, d = r() * 170, x = 256 + Math.cos(a) * d, y = 256 + Math.sin(a) * d; g.strokeStyle = 'rgba(226,198,110,.75)'; g.lineWidth = 1.4; for (let k = 0; k < 9; k++) { const q = r() * 6.28, L = 5 + r() * 8; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(q) * L, y + Math.sin(q) * L); g.stroke(); } } // (bits of hay)
+    for (let i = 0; i < 60; i++) { const a = r() * 6.28, d = 60 + r() * 120, x = 256 + Math.cos(a) * d, y = 256 + Math.sin(a) * d; g.fillStyle = 'rgba(90,70,40,.3)'; g.beginPath(); g.ellipse(x - 2, y, 1.6, 2.3, a, 0, 7); g.ellipse(x + 2, y, 1.6, 2.3, a, 0, 7); g.fill(); } // (hoof prints)
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4;
+    for (const o of scene.children) if (o.isMesh && o.geometry.type === 'CircleGeometry' && o.material.map && o.material.transparent && Math.abs(o.geometry.parameters.radius - (PASTURE_R + 1.2)) < .01) { o.material.map = tx; o.material.needsUpdate = true; }
+    // the fence: old wooden posts, every one a bit different, leaning a little, with rails between neighbours (not across the gates)
+    const posts = scene.children.filter(o => o.isMesh && o.geometry === boxGeo && Math.abs(o.scale.x - .22) < .001 && Math.abs(o.scale.y - .9) < .001);
+    const caps = scene.children.filter(o => o.isMesh && o.geometry === boxGeo && Math.abs(o.scale.x - .28) < .001 && Math.abs(o.scale.y - .08) < .001);
+    for (const c_ of caps) scene.remove(c_);
+    const WOODC = ['#9a6a3e', '#8a5e36', '#a87648', '#7e5632'];
+    for (const p of posts) { const h = R(.85, 1.1), M = labMesh(R(.2, .26), h, R(.2, .26), WOODC[Math.floor(sr() * 4)], 'wood', Math.floor(sr() * 1e6), true);
+      M.position.set(p.position.x, h / 2 - .02, p.position.z); M.rotation.set(R(-.07, .07), R(0, 3), R(-.07, .07)); scene.add(M); scene.remove(p); }
+    for (const pa of PASTURES) { const ps = posts.filter(p => Math.hypot(p.position.x - pa.x, p.position.z - pa.z) < PASTURE_R + 1.5).map(p => [Math.atan2(p.position.z - pa.z, p.position.x - pa.x), p.position]).sort((a, b) => a[0] - b[0]);
+      for (let k = 0; k < ps.length; k++) { const [a0, A] = ps[k], [a1, B] = ps[(k + 1) % ps.length]; let da = a1 - a0; if (da < 0) da += 6.283; if (da > 6.283 / 18 * 1.5) continue; // (no rail across a gate)
+        for (const y of [.42, .74]) { const L = Math.hypot(B.x - A.x, B.z - A.z), M = labMesh(L + .1, .09, .07, WOODC[Math.floor(sr() * 4)], 'wood', Math.floor(sr() * 1e6), true);
+          M.position.set((A.x + B.x) / 2, y + R(-.04, .04), (A.z + B.z) / 2); M.rotation.set(0, -Math.atan2(B.z - A.z, B.x - A.x), R(-.04, .04)); M.castShadow = true; scene.add(M); } } } }
+
+  // ---------------- 4. the centre pole: rebuilt from the same scavenged stones ----------------
+  if (MONUMENT.g && MONUMENT.g.parent) { const g = MONUMENT.g, keepY = POLE_H - 1.28, sm = stoneMaterial(new LiteMat({ roughness: .9 })); sm.customProgramCacheKey = () => 'stone1p';
+    // take away the old plinth and column (everything low down), keep the lantern, the weathervane and the signposts
+    for (const o of [...g.children]) { if (o === MONUMENT.vane || o === MONUMENT.lantern) continue; if (o.position.y < keepY) g.remove(o); }
+    const ang = Math.atan2(FORT.blue.x, FORT.blue.z), pr = prng(9), r = (a, b) => a + (b - a) * pr();
+    const PF = LABK.surfaces('classic', LABK.rng(44)), put = (w, h, d, col, x, y, z, ry) => { const M = labMesh(w, h, d, col, PF(), Math.floor(pr() * 1e6)); M.position.set(x, y, z); M.rotation.y = ry; g.add(M); return M; };
+    // the base: a ring of chunky stones, the blue fort's side blue-ish, the red side pink-ish, set round a low stone pad
+    for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2 + r(-.08, .08), side = Math.cos(a - ang) > 0 ? '#6fa8ff' : '#ff8a80', R0 = 1.18;
+      put(r(.8, 1.05), r(.55, .8), r(.55, .7), new THREE.Color(side).lerp(new THREE.Color('#e8e4f0'), r(.15, .35)).getStyle(), Math.sin(a) * R0, .32, Math.cos(a) * R0, a + r(-.15, .15), [pr(), r(-.1, .12), r(-.12, .12), 1], [0, 0, r(-.1, .1), .05]); }
+    put(1.9, .55, 1.9, '#cfcbd8', 0, .55, 0, r(0, 3), [pr(), 0, .05, 0], [0, 0, .05, .04]);
+    put(1.35, .4, 1.35, '#e6e0d2', 0, 1.0, 0, .7, [pr(), 0, -.06, 0], [0, 0, -.08, .04]);
+    // the column: stones of every colour stacked up, each a different size, turned and leaning a little, to the lantern
+    const COLS = ['#e9e8e4', '#b9d4ec', '#f2dc94', '#f0b9b4', '#c9ccd3', '#cfe0c4', '#c9c1d8', '#f4f1ea'];
+    let y = 1.2; const top = POLE_H - 1.2; let k = 0;
+    while (y < top - .2) { const h = Math.min(r(.6, 1.05), top - y), w = r(.82, 1.08), x = r(-.05, .05), z = r(-.05, .05);
+      put(w, h, r(.82, 1.05), COLS[k++ % COLS.length], x, y + h / 2, z, r(0, 3), [pr(), 0, r(-.1, .1), 0], [0, 0, r(-.15, .15), .05]); y += h - .02; }
+    // a flat cap stone under the lantern
+    put(1.1, .2, 1.1, '#d8d2c6', 0, top - .08, 0, .3, [pr(), 0, .03, 0], [0, 0, 0, .03]);
+    // the signposts' end caps: stone too
+    for (const o of g.children) if (o.isGroup) for (const c of [...o.children]) if (c.isMesh && c.geometry.type === 'RoundedBoxGeometry' && c.material.color && c.material.color.getHex() === (NIGHT ? 0xd8def0 : 0xf3efe6)) { const st = labMesh(.66, .86, .3, '#d8d2c6', 'granite', Math.floor(pr() * 1e6)); st.position.copy(c.position); o.add(st); o.remove(c); }
+  }
+
+  // ---------------- 4b. stone floors: the power-block pads, the portal pads and the sky island ----------------
+  // laid from the same stones as flagstones: big and small, a little uneven (some higher, some tilted), the odd one
+  // cracked in two, a piece or two missing, and a ragged edge. Fixed scenery: they never move.
+  const FLOORB = []; // (where the floors are: no grass grows there)
+  { const FR = LABK.rng(2024), fr = (a, b) => a + (b - a) * FR(), parts = {};
+    const GREYS = ['#8e9097', '#9a9ca3', '#83858c', '#a3a39c', '#8a8a92', '#9c968c'];
+    const slab = (w, d, x, y, z, yaw, tx, tz, col, fam) => { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let g = LABK.paintStone(LABK.stoneGeo(w, d, sd, R, RES), LABK.shade(new THREE.Color(col), R, .06));
+      g = clean(g); g.rotateX(-Math.PI / 2); g.computeBoundingBox(); const t = g.boundingBox.max.y - g.boundingBox.min.y; g.scale(1, .38 / t, 1); g.scale(1.05, 1, 1.05); g.computeBoundingBox(); g.translate(0, -g.boundingBox.max.y, 0);
+      g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(tx, yaw, tz))); g.translate(x, y, z); (parts[fam] = parts[fam] || []).push(g); };
+    function floor(cx, y, cz, inside, cells, o = {}) { // cells: [x,z] integer offsets; inside(x,z): is this cell part of the floor
+      const used = new Set(), K = (a, b) => a + ',' + b, fam = o.fam || LABK.surfaces('classic', LABK.rng(cx * 7 + cz))();
+      for (const [x, z] of cells) { if (used.has(K(x, z)) || !inside(x, z)) continue;
+        const edge = !inside(x + 1, z) || !inside(x - 1, z) || !inside(x, z + 1) || !inside(x, z - 1);
+        if (!edge && FR() < (o.miss ?? .05)) { used.add(K(x, z)); continue; } // (a piece missing)
+        let w = 1, d = 1; const tryS = [[2, 2], [2, 1], [1, 2]].filter(() => FR() < .5);
+        for (const [a, b] of tryS) { let ok = true; for (let i = 0; i < a; i++) for (let j = 0; j < b; j++) if (used.has(K(x + i, z + j)) || !inside(x + i, z + j)) ok = false; if (ok) { w = a; d = b; break; } }
+        for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) used.add(K(x + i, z + j));
+        const col = o.col ? o.col(FR) : GREYS[Math.floor(FR() * GREYS.length)], X = cx + x + (w - 1) / 2, Z = cz + z + (d - 1) / 2, Y = y + .09 + fr(-.035, .03) + (edge ? fr(-.08, 0) : 0);
+        const tx = fr(-.03, .03), tz = fr(-.03, .03), yaw = fr(-.04, .04), out = edge && FR() < .4 ? fr(-.15, .2) : 0, ox = Math.sign(x) * out * (Math.abs(x) >= Math.abs(z) ? 1 : 0), oz = Math.sign(z) * out * (Math.abs(z) > Math.abs(x) ? 1 : 0);
+        if (FR() < .1 && (w > 1 || d > 1)) { // (cracked in two: the halves part a little, one sunk lower)
+          if (w >= d) { slab(w / 2 - .03, d - .02, X - w / 4 - .02 + ox, Y, Z + oz, yaw, tx, tz, col, fam); slab(w / 2 - .03, d - .02, X + w / 4 + .02 + ox, Y - .05, Z + oz, yaw + .05, tx, -tz, col, fam); }
+          else { slab(w - .02, d / 2 - .03, X + ox, Y, Z - d / 4 - .02 + oz, yaw, tx, tz, col, fam); slab(w - .02, d / 2 - .03, X + ox, Y - .05, Z + d / 4 + .02 + oz, yaw - .05, -tx, tz, col, fam); } }
+        else slab(w - .02, d - .02, X + ox, Y, Z + oz, yaw, tx, tz, col, fam);
+        FLOORB.push({ x: X, z: Z, rx: w / 2 + .1, rz: d / 2 + .1 }); } }
+    // the old flat tiles go (hubs and portals), the stone ones go in
+    for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === boxGeo && o.count > 20) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (Math.abs(m.elements[13] + .47) < .05) scene.remove(o); }
+    const disc = (R0, jit) => { const cells = [], j = {}; for (let x = -7; x <= 7; x++) for (let z = -7; z <= 7; z++) cells.push([x, z]); const inside = (x, z) => { const k = x + ',' + z; if (j[k] == null) j[k] = R0 + (FR() - .5) * jit; return Math.hypot(x, z) < j[k]; }; return [cells, inside]; };
+    for (const h of HUBS) { const [cells, inside] = disc(5.6, 1.3); floor(h.x, .03, h.z, inside, cells); }
+    for (const sp of PORTAL_SPOTS) { const cells = []; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) cells.push([a, b]); const cut = new Set(cells.filter(([a, b]) => Math.abs(a) === 2 && Math.abs(b) === 2 && FR() < .6).map(c => c + '')); floor(Math.round(sp.x), .03, Math.round(sp.z), (x, z) => Math.abs(x) <= 2 && Math.abs(z) <= 2 && !cut.has([x, z] + ''), cells, { miss: .02 }); }
+    // the sky island: a stone floor on top, and a rough rocky underside hanging below it
+    if (ISLAND.on) { for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === cubeGeo && o.count < 80) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (Math.abs(m.elements[13] - (ISLAND.top - .5)) < .05) scene.remove(o); }
+      const [cells, inside] = disc(ISLAND.r + .15, .7); floor(0, ISLAND.top, 0, inside, cells, { miss: .04, col: r_ => ['#a9adb8', '#9a9ea9', '#b4b0a6', '#9c9890'][Math.floor(r_() * 4)] });
+      const fam = 'granite', ROCK = ['#7d7a78', '#6f6c6a', '#86817a', '#75716e'];
+      for (let k = 0; k < 4; k++) { const Rk = (ISLAND.r - .2) * (1 - k * .24), yk = ISLAND.top - .55 - k * .75;
+        for (let x = -5; x <= 5; x++) for (let z = -5; z <= 5; z++) { const dd = Math.hypot(x, z); if (dd > Rk + (FR() - .5) * .8) continue; if (k > 0 && dd < Rk - 1.6) continue; // (only the outer shell shows from below)
+          const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd), w = fr(.9, 1.3), h = fr(.7, 1); let g = clean(LABK.paintStone(LABK.stoneGeo(w, h, sd, R, RES), LABK.shade(new THREE.Color(ROCK[Math.floor(FR() * 4)]), R, .06)));
+          g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(fr(-.3, .3), FR() * 6.28, fr(-.3, .3)))); g.translate(x + fr(-.15, .15), yk - fr(0, .3), z + fr(-.15, .15)); (parts[fam] = parts[fam] || []).push(g); } }
+      const tip = clean(LABK.paintStone(LABK.stoneGeo(1.4, 1.2, 77, LABK.rng(77), RES), new THREE.Color('#6f6c6a'))); tip.rotateX(.4); tip.translate(0, ISLAND.top - 3.6, 0); parts.granite.push(tip); }
+    for (const fam in parts) { const g = mergeGeometries(parts[fam]); const m = new THREE.Mesh(g, famMat(fam)); m.castShadow = m.receiveShadow = true; scene.add(m); } }
+
+  // ---------------- 5. the field: grass with worn paths, tall grass where nobody walks ----------------
+  { const W = MX * 2, D = MZ * 2, RES = 2, GW_ = W * RES, GD_ = D * RES, wear = new Float32Array(GW_ * GD_), tall = new Float32Array(GW_ * GD_);
+    const at = (x, z) => [Math.round((x + MX) * RES), Math.round((z + MZ) * RES)];
+    const stamp = (x, z, rad, v, A) => { const [cx, cz] = at(x, z), rr_ = Math.ceil(rad * RES); for (let a = -rr_; a <= rr_; a++) for (let b = -rr_; b <= rr_; b++) { const X = cx + a, Z = cz + b; if (X < 0 || Z < 0 || X >= GW_ || Z >= GD_) continue; const d = Math.hypot(a, b) / RES; if (d > rad) continue; const k = v * (1 - d / rad) ** .6; A[Z * GW_ + X] = Math.max(A[Z * GW_ + X], k); } };
+    const path = (a, b, w = 1.4) => { const L = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(L * 2), nx = -(b.z - a.z) / L, nz = (b.x - a.x) / L, ph = sr() * 9;
+      for (let i = 0; i <= n; i++) { const t = i / n, s = Math.sin(t * Math.PI), wob = (Math.sin(t * 9 + ph) * 1.4 + Math.sin(t * 23 + ph * 2) * .5) * s; stamp(a.x + (b.x - a.x) * t + nx * wob, a.z + (b.z - a.z) * t + nz * wob, w * (.85 + .3 * Math.sin(t * 17 + ph)), 1, wear); } };
+    const C0 = { x: 0, z: 0 };
+    for (const t of ['blue', 'red']) { const F = FORT[t]; const doors = [{ x: F.x + FORT_RX + .5, z: F.z }, { x: F.x - FORT_RX - .5, z: F.z }, { x: F.x, z: F.z + FORT_RZ + .5 }, { x: F.x, z: F.z - FORT_RZ - .5 }];
+      doors.sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z)); path(doors[0], C0, 1.7);
+      for (const d of doors) { const h = HUBS.reduce((m, h_) => Math.hypot(h_.x - d.x, h_.z - d.z) < Math.hypot(m.x - d.x, m.z - d.z) ? h_ : m, HUBS[0]); path(d, h, 1.3); }
+      for (const d of doors) stamp(d.x, d.z, 2.6, 1, wear); stamp(F.x, F.z, Math.max(FORT_RX, FORT_RZ) - 1.5, .55, wear); }
+    for (const h of HUBS) { path(h, C0, 1.4); stamp(h.x, h.z, 5.5, 1, wear); }
+    for (const p of PORTAL_SPOTS) { const h = HUBS.reduce((m, h_) => Math.hypot(h_.x - p.x, h_.z - p.z) < Math.hypot(m.x - p.x, m.z - p.z) ? h_ : m, HUBS[0]); path(p, h, 1.2); path(p, C0, 1.1); stamp(p.x, p.z, 3.4, 1, wear); }
+    stamp(0, 0, 3.6, 1, wear);
+    // tall grass: away from the paths, the forts, the pastures, the trees and the stones; thicker towards the island's edges
+    const blockers = [...FLOORB, { x: 0, z: 0, r: 2.4 }, ...Object.values(FORT).map(F => ({ x: F.x, z: F.z, rx: FORT_RX + 2.5, rz: FORT_RZ + 2.5 })), ...PASTURES.map(p => ({ x: p.x, z: p.z, r: PASTURE_R + 1 })),
+      ...blocks.filter(e => e.inst >= 0 && e.kind !== 'fort').map(e => ({ x: e.spawnPos.x, z: e.spawnPos.z, r: Math.max(e.dims.x, e.dims.z) * .5 + (e.kind === 'tree' ? .6 : .7) }))];
+    const blockM = new Uint8Array(GW_ * GD_);
+    for (const b of blockers) { const x0 = b.r != null ? b.x - b.r : b.x - b.rx, x1 = b.r != null ? b.x + b.r : b.x + b.rx, z0 = b.r != null ? b.z - b.r : b.z - b.rz, z1 = b.r != null ? b.z + b.r : b.z + b.rz;
+      for (let Z = Math.max(0, Math.floor((z0 + MZ) * RES)); Z <= Math.min(GD_ - 1, Math.ceil((z1 + MZ) * RES)); Z++) for (let X = Math.max(0, Math.floor((x0 + MX) * RES)); X <= Math.min(GW_ - 1, Math.ceil((x1 + MX) * RES)); X++) {
+        const x = X / RES - MX, z = Z / RES - MZ; if (b.r == null || Math.hypot(x - b.x, z - b.z) < b.r) blockM[Z * GW_ + X] = 1; } }
+    for (let Z = 0; Z < GD_; Z++) for (let X = 0; X < GW_; X++) { const x = X / RES - MX, z = Z / RES - MZ, i = Z * GW_ + X;
+      const t = blockM[i] ? 0 : 1 - wear[i] * 1.6; if (t <= 0) { tall[i] = 0; continue; }
+      const nn = Math.sin(x * .13 + 1.7) * Math.sin(z * .17 + .4) * .5 + Math.sin(x * .41 - z * .29) * .25 + Math.sin(x * .07 + z * .05) * .5;
+      const edge = Math.max(Math.abs(x) / MX, Math.abs(z) / MZ);
+      tall[i] = clamp(t * (nn * .9 + .1 + edge * .8), 0, 1); }
+    const blur = (A, n) => { const B = new Float32Array(A.length); for (let it = 0; it < n; it++) { for (let Z = 0; Z < GD_; Z++) for (let X = 0; X < GW_; X++) { let s = 0, c = 0; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const X2 = X + a, Z2 = Z + b; if (X2 < 0 || Z2 < 0 || X2 >= GW_ || Z2 >= GD_) continue; s += A[Z2 * GW_ + X2]; c++; } B[Z * GW_ + X] = s / c; } A.set(B); } };
+    blur(wear, 2); blur(tall, 2);
+    const tex = new Uint8Array(GW_ * GD_ * 4); for (let i = 0; i < GW_ * GD_; i++) { tex[i * 4] = Math.min(255, wear[i] * 255); tex[i * 4 + 1] = Math.min(255, tall[i] * 255); tex[i * 4 + 2] = blockM[i] * 255; tex[i * 4 + 3] = 255; }
+    const fieldTex = new THREE.DataTexture(tex, GW_, GD_, THREE.RGBAFormat); fieldTex.magFilter = fieldTex.minFilter = THREE.LinearFilter; fieldTex.needsUpdate = true;
+    // the ground itself: one plain green under everything (no checkers), then painted per spot in the shader
+    const slab = scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6);
+    if (slab) { const mTop = slab.material[2], img = mTop.map && mTop.map.image; if (img && img.getContext) { const x = img.getContext('2d'); x.fillStyle = '#4f9a2c'; x.fillRect(0, 0, img.width, img.height); mTop.map.needsUpdate = true; }
+      const ob = mTop.onBeforeCompile;
+      mTop.onBeforeCompile = sh => { ob(sh); sh.uniforms.fieldTex = { value: fieldTex }; sh.uniforms.fieldSz = { value: new THREE.Vector2(MX, MZ) };
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vFW;').replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvFW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+          uniform sampler2D fieldTex; uniform vec2 fieldSz; varying vec3 vFW; ${ST_NOISE}`)
+          .replace('#include <color_fragment>', `#include <color_fragment>
+          { vec2 w = vFW.xz; vec4 F = texture2D(fieldTex, (w + fieldSz) / (fieldSz * 2.)); float wr = F.r, tl = F.g;
+            float n1 = stF2(w * .07), n2 = stN2(w * .55), n3 = stN2(w * 3.1), n4 = stH2(floor(w * 9.));
+            vec3 b = diffuseColor.rgb;
+            b *= .84 + .3 * n1; b = mix(b, b * vec3(1.18, 1.1, .7), smoothstep(.55, .8, n1) * .5); b = mix(b, b * vec3(.8, .95, 1.05), smoothstep(.4, .2, n1) * .4); // (patches of yellower and bluer green)
+            b *= .9 + .14 * n2 + .08 * n3;
+            b *= 1. - tl * .28; // (shade under the tall grass)
+            vec3 worn = mix(b * vec3(1.18, 1.08, .78), vec3(.62, .5, .36), smoothstep(.5, .9, wr + (n2 - .5) * .5) * .75); // (paths: dry, flattened grass, bare earth down the middle)
+            worn *= .92 + .14 * n3; b = mix(b, worn, smoothstep(.12, .55, wr));
+            float fl = step(.985, n4) * (1. - smoothstep(.1, .4, wr)) * (1. - tl); vec3 fc = stH2(floor(w * 9.) + 3.) < .5 ? vec3(1.) : stH2(floor(w * 9.) + 7.) < .5 ? vec3(1., .85, .3) : vec3(1., .7, .9); b = mix(b, fc, fl * .85); // (tiny flowers)
+            diffuseColor.rgb = b; }`); };
+      mTop.customProgramCacheKey = () => 'groundcells-field'; mTop.needsUpdate = true; }
+    // THE LAB GRASS: thin curved blades, dark at the root, bright yellow-green at the tip, leaning in big slow gusts of
+    // wind. Too many to cover the whole island, so they grow in rings round the camera: very thick close by, thinner
+    // further out, and every blade keeps its own spot on the ground as you move (the rings slide over a fixed pattern).
+    // Each blade looks up the field map: tall where nobody walks, short elsewhere, flattened on the paths, none
+    // inside the forts or under the stones.
+    const seg = CL_TOUCH ? 3 : 4, bw = .075, pos = [], nor = [], idx = [];
+    for (let i = 0; i <= seg; i++) { const t = i / seg, w = bw * (1 - t * .92); for (const s_ of [-1, 1]) { pos.push(s_ * w, t, 0); nor.push(s_ * .5, .3, 1); } }
+    for (let i = 0; i < seg; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    const RINGS = CL_TOUCH ? [[120, .15], [100, .34]] : [[210, .11], [180, .23], [160, .45]]; // (blades per side, spacing): each ring a square lattice
+    let n = 0; for (const [k] of RINGS) n += k * k;
+    const aL = new Float32Array(n * 4), aRr = new Float32Array(n); let q = 0;
+    RINGS.forEach(([k, c], ri) => { const inner = ri ? RINGS[ri - 1][0] * RINGS[ri - 1][1] / 2 - RINGS[ri - 1][1] : 0; for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) { aL.set([a - k / 2, b - k / 2, c, inner], q * 4); aRr[q] = k * c / 2 - c; q++; } });
+    const blade = new THREE.InstancedBufferGeometry(); blade.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); blade.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); blade.setIndex(idx);
+    blade.setAttribute('aL', new THREE.InstancedBufferAttribute(aL, 4)); blade.setAttribute('aR', new THREE.InstancedBufferAttribute(aRr, 1)); blade.instanceCount = n;
+    const GU = { uT: { value: 0 }, uWind: { value: new THREE.Vector2(1, .35).normalize() }, uCam: { value: new THREE.Vector3() }, fieldTex: { value: fieldTex }, fieldSz: { value: new THREE.Vector2(MX, MZ) } };
+    const gm = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .55, side: THREE.DoubleSide, emissive: '#1c3a08', emissiveIntensity: .35 });
+    gm.onBeforeCompile = sh => { Object.assign(sh.uniforms, GU);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
+        attribute vec4 aL; attribute float aR; uniform float uT; uniform vec2 uWind; uniform vec3 uCam; uniform sampler2D fieldTex; uniform vec2 fieldSz; varying float vH; varying float vC; varying float vG;
+        float gH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float gN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(gH(i), gH(i + vec2(1, 0)), f.x), mix(gH(i + vec2(0, 1)), gH(i + vec2(1, 1)), f.x), f.y); }`)
+        .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+        // this blade's spot: the lattice cell under the camera plus its place in the ring, then a fixed random nudge inside that cell
+        float cl = aL.z; vec2 cell = floor(uCam.xz / cl) + aL.xy; vec2 wp = (cell + vec2(gH(cell), gH(cell + 17.3))) * cl;
+        float turn = gH(cell + 5.1) * 6.283, cs = cos(turn), sn = sin(turn);
+        objectNormal = vec3(objectNormal.x * cs + objectNormal.z * sn, objectNormal.y, -objectNormal.x * sn + objectNormal.z * cs);`)
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+        float t = position.y; vH = t; vC = gH(cell + 9.7);
+        float edgeD = length(wp - uCam.xz), jag = .86 + .14 * gN(wp * .23) + .06 * gN(wp * .9); // (round, ragged edges: no straight lines)
+        vec4 F = texture2D(fieldTex, (wp + fieldSz) / (fieldSz * 2.));
+        float clump = gN(wp * .45) * .6 + gN(wp * 1.7) * .4; // (some clumps taller, some shorter)
+        float hgt = mix(.38, 1.05, smoothstep(.2, .75, F.g + (gN(wp * .3) - .5) * .25)) * (.7 + .5 * clump) * (.6 + .9 * gH(cell + 3.3) * gH(cell + 8.1) + .25 * gH(cell + 3.3));
+        hgt *= 1. - smoothstep(.12, .45, F.r) * .8; if (F.r > .3 && gH(cell + 12.2) < smoothstep(.3, .7, F.r)) hgt = 0.; // (paths: flattened, short and thin, bare in the middle)
+        hgt = min(hgt, .95 + .1 * gH(cell + 1.9)); // (never much taller than a Nym's ball)
+        if (hgt < .2) hgt = 0.; // (no tiny spikes: too short to be worth a blade, none at all)
+        hgt *= 1. - step(.5, F.b); // (nothing in the forts or under the stones)
+        if (abs(wp.x) > fieldSz.x - .3 || abs(wp.y) > fieldSz.y - .3) hgt = 0.;
+        float ringR = aR; // half the ring's width
+        float R1 = ringR * .9 * jag; hgt *= 1. - smoothstep(R1 * .8, R1, edgeD); // (thin out at the ring's outer edge)
+        if (aL.w > 0.) { float R0 = aL.w * .9 * jag; hgt *= smoothstep(R0 * .8, R0, edgeD); } // (and hand the inside to the thicker ring, crossfading)
+        vec2 wd = normalize(uWind + vec2(gN(wp * .02 + uT * .03) - .5, gN(wp * .02 - uT * .03 + 7.) - .5) * 1.2); // (the wind wanders: never quite the same direction twice)
+        float gust = gN(wp * .07 - wd * uT * .55) * .65 + gN(wp * .19 - wd * uT * 1.1 + 3.) * .35; gust = smoothstep(.3, .85, gust); vG = gust; // (gusts are patches of noise blowing across, not stripes)
+        float ph_ = gH(cell + 21.7) * 6.283, sp_ = 2.6 + gH(cell + 13.1) * 3.2; float flut = (sin(uT * sp_ + ph_) * .08 + sin(uT * sp_ * 2.3 + ph_ * 1.7) * .03) * (.5 + gust), bend = (.25 + gH(cell + 2.2) * .45 + gust * 1.15 + flut + smoothstep(.12, .45, F.r) * .8) * t * t;
+        float bwid = (.7 + .7 * gH(cell + 6.6)) * sqrt(cl / .12); // (wider blades further out, so it stays thick)
+        vec3 p = vec3(position.x * bwid * cs, 0., -position.x * bwid * sn); vec2 lean = wd * bend + vec2(-wd.y, wd.x) * sin(uT * sp_ * .7 + ph_) * .08 * t * t + vec2(cs, sn) * (gH(cell + 4.4) - .5) * .5 * t * t;
+        transformed = vec3(wp.x + p.x + lean.x * hgt, hgt * t * (1. - .35 * bend * bend), wp.y + p.z + lean.y * hgt);`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vH; varying float vC; varying float vG;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+        // bright greens, every blade its own: lime, grass green, emerald, yellow-green, a few deeper ones
+        vec3 g1 = vec3(.36, .82, .12), g2 = vec3(.2, .7, .16), g3 = vec3(.12, .62, .26), g4 = vec3(.62, .86, .16), g5 = vec3(.16, .5, .1);
+        float k_ = fract(vC * 7.31); vec3 tip = k_ < .3 ? g1 : k_ < .55 ? g2 : k_ < .72 ? g3 : k_ < .9 ? g4 : g5; tip = mix(tip, tip * vec3(1.1, 1.05, .9), fract(vC * 3.7));
+        vec3 root = tip * vec3(.3, .42, .3), mid = tip * .78;
+        vec3 col = vH < .5 ? mix(root, mid, vH * 2.) : mix(mid, tip * 1.12, (vH - .5) * 2.);
+        col *= .9 + vC * .2; col = mix(col, col * 1.25 + vec3(.05, .06, 0.), vG * vH);
+        diffuseColor.rgb = col;`); };
+    gm.customProgramCacheKey = () => 'labgrass';
+    const grass = new THREE.Mesh(blade, gm); grass.frustumCulled = false; grass.receiveShadow = true; scene.add(grass);
+    const pH = pulseHalos; let last = 0;
+    // a slow phone: the game already steps its quality down (sharpness, then shadows); the grass follows it: the outer
+    // rings go first (the distant grass), then the middle one, so only the thick grass right round you is left
+    const ringN = RINGS.map(([k]) => k * k), upTo = m => ringN.slice(0, m).reduce((a, b) => a + b, 0);
+    pulseHalos = function (t) { pH(t); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t; GU.uT.value += dt; GU.uCam.value.copy(camera.position);
+      const lv = perf.level || 0, keep = lv >= 3 ? 1 : lv >= 2 ? Math.max(1, RINGS.length - 1) : RINGS.length; blade.instanceCount = upTo(keep); };
+    window.__nymbo && (window.__nymbo.FIELD = { grass, wear, tall, n, GU }); }
+
+  // ---------------- 6. the island's edge: not a ruler-straight box any more ----------------
+  // a ragged lip of grass all the way round (it pokes out a little, more in some places than others, with rounded
+  // corners), and below it a lumpy earth-and-rock cliff instead of the flat striped side. Same shape of island; the
+  // ground you can stand on hasn't changed.
+  { const slab = scene.children.find(o => o.isMesh && o.geometry.parameters && o.geometry.parameters.width === MX * 2 && o.geometry.parameters.height === 6);
+    const mTop = slab && slab.material[2], er = prng(321), ph = [er() * 9, er() * 9, er() * 9];
+    const out = s_ => .35 + .55 * (.5 + .5 * Math.sin(s_ * .21 + ph[0])) * (.6 + .4 * Math.sin(s_ * .53 + ph[1])) + .25 * Math.sin(s_ * 1.37 + ph[2]) ** 2;
+    const pts = []; const step = .8; let S_ = 0; // (inner point on the edge, outward direction, distance round)
+    const sides = [[[-MX, -MZ], [MX, -MZ], [0, -1]], [[MX, -MZ], [MX, MZ], [1, 0]], [[MX, MZ], [-MX, MZ], [0, 1]], [[-MX, MZ], [-MX, -MZ], [-1, 0]]];
+    sides.forEach(([A, B, nn], si) => { const L = Math.hypot(B[0] - A[0], B[1] - A[1]), k = Math.ceil(L / step);
+      for (let i = 0; i < k; i++) { const t = i / k; pts.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, nn[0], nn[1], S_]); S_ += L / k; }
+      const nx = sides[(si + 1) % 4][2]; for (let a = 1; a < 6; a++) { const t = a / 6, ang0 = Math.atan2(nn[1], nn[0]); let ang1 = Math.atan2(nx[1], nx[0]); if (ang1 < ang0) ang1 += Math.PI * 2; const an = ang0 + (ang1 - ang0) * t; pts.push([B[0], B[1], Math.cos(an), Math.sin(an), S_]); S_ += .25; } });
+    pts.push(pts[0].slice(0, 4).concat([S_]));
+    const P = [], C = [], I = [], col = new THREE.Color(), RW = 9; // rows: 0 inner lip, 1 outer lip, 2..8 down the cliff
+    for (const [x, z, nx, nz, s_] of pts) { const o = out(s_);
+      for (let r = 0; r < RW; r++) { let d, y;
+        if (r === 0) { d = 0; y = .005; } else if (r === 1) { d = o; y = -.04; } else { const t = (r - 1) / (RW - 2); d = o * (1 - t * .55) + (Math.sin(s_ * 1.9 + r * 2.1) * .5 + Math.sin(s_ * .7 + r) * .3) * .35 * (1 - t * .3) - t * .4; y = -.15 - t * 5.8 + Math.sin(s_ * 2.3 + r) * .12; }
+        P.push(x + nx * d, y, z + nz * d);
+        if (r <= 1) col.set('#4f9a2c').offsetHSL(0, 0, (Math.sin(s_ * .9) * .5 + .5) * .05 - .02); else { const t = (r - 1) / (RW - 2), n = Math.sin(s_ * 3.1 + r * 1.7) * .5 + .5; col.set(t < .12 ? '#3f7a24' : t < .45 ? '#8a5e3a' : t < .75 ? '#75553a' : '#6a6460').offsetHSL(0, 0, (n - .5) * .08); }
+        C.push(col.r, col.g, col.b); } }
+    for (let i = 0; i < pts.length - 1; i++) for (let r = 0; r < RW - 1; r++) { const a = i * RW + r, b = (i + 1) * RW + r; I.push(a, b, a + 1, b, b + 1, a + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setIndex(I); g.computeVertexNormals();
+    const rim = new THREE.Mesh(g, new LiteMat({ vertexColors: true, side: THREE.DoubleSide })); rim.receiveShadow = true; scene.add(rim); }
+
+}
+
+// ---- cows and sheep in proportion (Ali): a cow is a big animal, a sheep a small one ----
+{ const K_ = { cow: VOLC ? 1 : 1.22, sheep: .74 };
+  for (const e of blocks) if (e.kind === 'animal' && K_[e.animal] && K_[e.animal] !== 1 && e.body) { const k = K_[e.animal], t = e.body.translation(), r = e.body.rotation();
+    dropBody(e); e.dims.multiplyScalar(k); e.size = Math.max(e.dims.x, e.dims.y, e.dims.z); e.rad = (e.dims.x + e.dims.y + e.dims.z) / 6; e.mesh.scale.multiplyScalar(k);
+    makeBody(e, V(t.x, t.y + (k - 1) * e.dims.y / (2 * k), t.z), new THREE.Quaternion(r.x, r.y, r.z, r.w)); if (e.anchored === false) {} } }
+// ---- the pick-up outline on animals: a shell round the animal you actually see (its new model), not the old box parts ----
+{ const hullA = new THREE.MeshBasicMaterial({ color: 0xffe14a, side: THREE.BackSide, transparent: true, depthWrite: false });
+  hullA.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += normalize(normal) * .06;'); }; hullA.customProgramCacheKey = () => 'hullA';
+  const ah = animalHull; animalHull = function (e) { if (!e.mesh) return ah(e); if (!e._hullA) { const list = [], src = [];
+      e.mesh.traverse(o => { if (o.isMesh && o.material && o.material.visible !== false && !(Array.isArray(o.material)) && o.material !== hullMat && o.material !== hullA && o.geometry && o.geometry.attributes.normal) src.push(o); });
+      for (const o of src) { const h = new THREE.Mesh(o.geometry, hullA); h.renderOrder = -1; h.visible = false; o.add(h); list.push(h); }
+      e._hullA = list.length ? list : ah(e); }
+    hullA.color.copy(hullMat.color); hullA.opacity = hullMat.opacity; return e._hullA; }; }
+
 
 // test hooks for the newer bits (headless checks only)
 Object.assign(window.__nymbo, { nbrPose, nbrAntPose, nbrAntRest, nbrHeld, startReplay: () => startReplay(), drawReplay: () => drawReplay(), onPlayerKO: (...a) => onPlayerKO(...a), nymMeshModel, NBR_SWAPU, NBR_HD, NBR_TS, grabBlock: (...a) => grabBlock(...a), freezeRobot: (...a) => freezeRobot(...a), ragdoll: (...a) => ragdoll(...a), get blocks() { return blocks; }, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
