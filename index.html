@@ -2545,12 +2545,11 @@ for (const t of TREES) {
       }
     } else if (MAP === 'classic' && WORLD === 'day' && !NIGHT && !NEO && !HD) { // the classic stage (Ali's blocky tree picture): the top is a stepped heap of whole blocks, some poking out, some missing
       for (let y = 0; y < t.h; y++) mk(V(t.x, y + .5, t.z), V(1, 1, 1), '#6b4526');
-      const tr = (() => { let s_ = Math.abs(Math.round(t.x * 73 + t.z * 31)) + 7; return () => (s_ = (s_ * 16807) % 2147483647) / 2147483647; })(), y0 = t.h;
-      const layers = [[1.6, 1], [1.6, .75], [1.05, .5], [.5, 0]]; // (radius of each layer, chance of its outer blocks)
-      layers.forEach(([R, keep], k) => { for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) { const d = Math.hypot(a, b); if (d > R + .45) continue;
-        if (d > R - .6 && tr() > (keep || .6)) continue; if (k === 3 && tr() < .4 && (a || b)) continue;
-        mk(V(t.x + a, y0 + k + .5, t.z + b), V(1, 1, 1), '#4aa83c'); } });
-      for (let q = 0; q < 3; q++) { const a = tr() * 6.28, r = 2.2; mk(V(t.x + Math.round(Math.cos(a) * r), y0 + 1 + Math.floor(tr() * 2) + .5, t.z + Math.round(Math.sin(a) * r)), V(1, 1, 1), '#46a63b'); } // (a few blocks sticking out)
+      // the same all the way round: a wide heavy bottom, each layer narrower, one block on top
+      const y0 = t.h, LAYERS = [(a, b) => Math.max(Math.abs(a), Math.abs(b)) <= 2 && !(Math.abs(a) === 2 && Math.abs(b) === 2), // (5 wide, corners off)
+        (a, b) => Math.max(Math.abs(a), Math.abs(b)) <= 1 || (Math.abs(a) + Math.abs(b) === 2 && (a === 0 || b === 0)), // (3x3 and an arm out each side)
+        (a, b) => Math.abs(a) + Math.abs(b) <= 1, (a, b) => !a && !b]; // (a plus, then the top block)
+      LAYERS.forEach((inL, k) => { for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) if (inL(a, b)) mk(V(t.x + a, y0 + k + .5, t.z + b), V(1, 1, 1), '#4aa83c'); });
     } else {
     for (let y = 0; y < t.h; y++) mk(V(t.x, y + .5, t.z), V(1, 1, 1), '#6b4526');
     mk(V(t.x, t.h + .5, t.z), V(3, 1, 3), '#3f9a35'); mk(V(t.x, t.h + 1.5, t.z), V(3, 1, 3), '#46a63b'); mk(V(t.x, t.h + 2.5, t.z), V(1, 1, 1), '#4aa83c');
@@ -16066,6 +16065,12 @@ if (CLX) {
     const onFloor = (x, z) => FLOORB.some(b => Math.abs(x - b.x) < b.rx && Math.abs(z - b.z) < b.rz);
     for (const e of blocks) if (e.body && e.kind !== 'fort' && e.kind !== 'tree' && e.kind !== 'animal' && e.kind !== 'flag') { const t = e.body.translation(); if (t.y < 2 && onFloor(t.x, t.z)) { e.body.setTranslation({ x: t.x, y: t.y + .1, z: t.z }, true); if (e.spawnPos) e.spawnPos.y += .1; } }
     for (const sl of slots) if (onFloor(sl.pos.x, sl.pos.z)) sl.baseY = (sl.baseY || 0) + .1;
+    // the fixed little structures (the flag gates' frames, the step ledges by the forts, the portals' stone feet): stones too
+    for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === cubeGeo && o.instanceColor && !o.castShadow === false && o !== plainIM) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (m.elements[13] < -.4 || m.elements[13] > 12) continue;
+      const v = new THREE.Vector3(), c = new THREE.Color();
+      for (let k = 0; k < o.count; k++) { o.getMatrixAt(k, m); v.setFromMatrixPosition(m); o.getColorAt(k, c); const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd);
+        const g = clean(LABK.paintStone(LABK.stoneGeo(1, 1, sd, R, RES), LABK.shade(c.clone().lerp(new THREE.Color(GREYS[k % GREYS.length]), .5), R, .06))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); const fam = k % 3 ? 'granite' : 'sandstone'; (parts[fam] = parts[fam] || []).push(g); }
+      scene.remove(o); }
     for (const fam in parts) { const g = mergeGeometries(parts[fam]); const m = new THREE.Mesh(g, famMat(fam)); m.castShadow = m.receiveShadow = true; scene.add(m); } }
 
   // ---------------- 5. the field: grass with worn paths, tall grass where nobody walks ----------------
@@ -16226,6 +16231,29 @@ if (CLX) {
     hullA.color.copy(hullMat.color); hullA.opacity = hullMat.opacity; return e._hullA; }; }
 // a bigger cow isn't a heavier wrecking ball, a smaller sheep isn't lighter: every animal keeps the weight it always had
 { const mb = makeBody; makeBody = function (e, ...a) { mb(e, ...a); if (e.kind === 'animal' && e._massK && e.col) e.col.setDensity(9 / e._massK); }; }
+
+// ---- the portals and the flag gates: a flowing liquid screen (like the gold block's insides), still see-through ----
+function liquidScreen(deep, mid, hi, square) {
+  const m = new THREE.ShaderMaterial({ uniforms: { t: { value: Math.random() * 20 }, op: { value: 1 }, cD: { value: new THREE.Color(deep) }, cM: { value: new THREE.Color(mid) }, cH: { value: new THREE.Color(hi) } }, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    vertexShader: 'varying vec2 vU; void main(){ vU = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+    fragmentShader: `uniform float t, op; uniform vec3 cD, cM, cH; varying vec2 vU;
+      float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
+      float fb(vec2 p){ return n2(p) * .55 + n2(p * 2.03 + 7.1) * .3 + n2(p * 4.1 - 3.3) * .15; }
+      void main(){ vec2 p = (vU - .5) * 2.; float r = ${square ? 'max(abs(p.x), abs(p.y))' : 'length(p)'}, a = atan(p.y, p.x);
+        float sw = a + t * .3 + (1. - length(p)) * 2.4; vec2 q = ${square ? 'p * 1.6 + vec2(0., -t * .12)' : 'vec2(cos(sw), sin(sw)) * r * 2.3'}; // (portals swirl in; gates pour slowly)
+        vec2 w = vec2(fb(q + vec2(0., t * .16)), fb(q + vec2(5.2, 1.3) - vec2(t * .13, 0.))); // (folded over itself, so it flows like liquid)
+        float f = fb(q + w * 2.4 + vec2(t * .05, 0.)), f2 = fb(q * 1.7 + w * 1.6 + 3.);
+        vec3 c = mix(cD, cM, smoothstep(.3, .66, f)); c = mix(c, cH, smoothstep(.6, .82, f * .6 + f2 * .5));
+        c += cH * smoothstep(.025, 0., abs(f - .52)) * .45; // (bright creamy folds)
+        c += cH * pow(max(0., 1. - length(p)), 3.) * .45; // (a glowing heart)
+        float al = (.38 + .4 * smoothstep(.3, .78, f)) * smoothstep(1., ${square ? '.9' : '.86'}, r);
+        gl_FragColor = vec4(c, al * op); }` });
+  return m; }
+{ const LIQ = [];
+  if (!DESERT && !VOLC && !PLAT) { const pm = liquidScreen('#3d0a8a', '#a44aff', '#ffd0ff'); for (const P of PORTALS) if (P.disc) P.disc.material = pm; LIQ.push([pm, null]); }
+  if (CLX) for (const team of ['blue', 'red']) { const G = GATES[team]; if (!G || !G.glow) continue; const m = team === 'blue' ? liquidScreen('#06246a', '#2a8cff', '#c8f0ff', true) : liquidScreen('#5a0a06', '#ff4a2a', '#ffe0c0', true); m.opacity = G.glow.material.opacity; G.glow.material = m; LIQ.push([m, G.glow]); }
+  const pH = pulseHalos; let last = 0; pulseHalos = function (tm) { pH(tm); const dt = clamp((tm - (last || tm)) / 1000, 0, .05); last = tm; for (const [m] of LIQ) { m.uniforms.t.value += dt; m.uniforms.op.value = Math.min(1, (m.opacity ?? 1) * 1.6); } }; }
 
 
 // test hooks for the newer bits (headless checks only)
