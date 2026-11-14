@@ -14551,7 +14551,7 @@ function makeAnimals(THREE, MERGE_) {
   function legAt(parent, x, z, col, foot, h = .1, r = .08) { const l = leg(col, foot, h, r); l.userData.stubR = r; l.position.set(x, h + r * .55 + .025, z); parent.add(l); return l; }
   const ring = (r, t = .014) => mesh(new THREE.TorusGeometry(r, t, 8, 28), chrome);
   const cone = (r, h, m, seg = 16) => mesh(new THREE.ConeGeometry(r, h, seg).translate(0, h / 2, 0), m);
-  const tube = (pts, r, m, seg = 40) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), seg, r, 8), m);
+  const tube = (pts, r, m, seg = 40) => { const t = mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), seg, r, 12), m); for (const p of [pts[0], pts[pts.length - 1]]) t.add(mesh(new THREE.SphereGeometry(r, 12, 8), m, ...p)); return t; }; // (round ends, never flat)
   const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
   const at = (o, x, y, z) => { o.position.set(x, y, z); return o; };
   // the common life every animal gets: breathing body, a little head bob, the antenna springing, blinking
@@ -14564,7 +14564,7 @@ function makeAnimals(THREE, MERGE_) {
     for (const l of legs) { const r = l.userData.stubR, from = new THREE.Vector3(); l.getWorldPosition(from);
       _rc.set(from, new THREE.Vector3(0, 1, 0)); _rc.far = 2; const hit = _rc.intersectObjects(solid, false)[0]; if (!hit) continue;
       const d = hit.distance; if (d < .02) continue;
-      const fl = d + .06 + r * 2.2, fill = new THREE.Mesh(new THREE.CylinderGeometry(r, r, fl, 16).translate(0, fl / 2, 0), l.children[0].material); // (goes well up inside the body, so no flat top shows when the leg swings) fill.castShadow = true; l.add(fill);
+      const fl = Math.max(.01, d - r * .3), fill = new THREE.Mesh(new THREE.CapsuleGeometry(r * .99, fl, 4, 16).translate(0, fl / 2, 0), l.children[0].material); fill.castShadow = true; l.add(fill); // (a little way up inside the body, with a round top, so nothing flat shows when the leg swings)
     } }
   // seat a part (horn, spike, ear...) onto a surface: look from the part along 'dir' (towards the surface) and move it so
   // its base sits a little way into whatever it hits
@@ -14641,7 +14641,7 @@ function makeAnimals(THREE, MERGE_) {
     H.add(mesh(new THREE.CapsuleGeometry(.03, .08, 4, 10), shell(K), 0, -.26, .12));
     for (const s of [-1, 1]) { const e = mesh(blob(.07, 1.6, .5, .8, 16).translate(s * .09, 0, 0), shell(C), s * .22, .05, -.04); e.rotation.z = s * .5; H.add(e); }
     const ant = antenna('#c6ff7a'); ant.position.set(0, .26, -.1); H.add(ant);
-    const tail = mesh(blob(.04, 1, 1.6, .8, 14), shell(C), 0, .64, -.42); tail.rotation.x = -.7; g.add(tail);
+    const tail = mesh(blob(.04, 1, 1.6, .8, 14).translate(0, .05, 0), shell(C), 0, .6, -.3); tail.rotation.x = -.7; g.add(tail); // (its root inside the rump)
     const legs = [[-.17, .2], [.17, .2], [-.17, -.22], [.17, -.22]].map(([x, z]) => legAt(g, x, z, C, K, .09, .062));
     return life(g, { body, face: H.userData.face, head: H, ant, legs, extra: t => { tail.rotation.z = Math.sin(t * 9) * .4; } }); }
 
@@ -14649,9 +14649,9 @@ function makeAnimals(THREE, MERGE_) {
     const body = mesh(blob(.3, .9, 1, 1.05, 36), shell(W)); body.position.y = .4; g.add(body);
     const H = head(.2, 1, 1, .95, shell(W)); H.position.set(0, .72, .12); g.add(H);
     for (const [x, y, r] of [[0, .21, .055], [0, .25, .045], [0, .17, .05]]) H.add(mesh(new THREE.SphereGeometry(r, 14, 10), shell('#ff3b2f'), x, y, (y - .17) * -1.2));
-    H.add(at(cone(.05, .09, shell(Y)).rotateX(PI / 2), 0, -.07, .2));
+    H.add(at(cone(.05, .09, shell(Y)).rotateX(PI / 2), 0, -.07, .16)); // (its base sunk into the head)
     H.add(mesh(new THREE.SphereGeometry(.03, 12, 8).scale(1, 1.4, .8), shell('#ff3b2f'), 0, -.13, .16));
-    for (const s of [-1, 1]) { const w = new THREE.Group(); w.position.set(s * .26, .5, -.02); w.rotation.z = s * .2; g.add(w); w.name = 'wing' + s; w.add(mesh(blob(.12, .35, .8, 1.1, 20), shell(W), s * .01, -.08, 0)); } // (hung from the shoulder, so it can flap)
+    for (const s of [-1, 1]) { const w = new THREE.Group(); w.position.set(s * .2, .5, -.02); w.rotation.z = s * .2; g.add(w); w.name = 'wing' + s; w.add(mesh(blob(.12, .35, .8, 1.1, 20), shell(W), s * .065, -.08, 0)); } // (hung from the shoulder, so it can flap)
     const legs = []; for (const s of [-1, 1]) { const l = new THREE.Group(); l.position.set(s * .1, .14, 0); g.add(l); l.add(mesh(new THREE.CylinderGeometry(.018, .018, .14, 8).translate(0, -.07, 0), shell(Y)));
       for (const a of [-.5, 0, .5]) { const toe = mesh(new THREE.CapsuleGeometry(.014, .06, 3, 6).rotateX(PI / 2).translate(0, -.14, .04), shell(Y)); toe.rotation.y = a; l.add(toe); } legs.push(l); }
     const wings = [g.getObjectByName('wing-1'), g.getObjectByName('wing1')];
@@ -14661,8 +14661,8 @@ function makeAnimals(THREE, MERGE_) {
     const body = mesh(blob(.36, .86, .74, 1.12, 40), patchy(C, [{ p: V3(0, -.18, .2), r: .26 }, { p: V3(0, -.2, -.1), r: .22 }], CR)); body.position.y = .44; g.add(body);
     const H = head(.28, 1.02, .94, .95, patchy(C, [{ p: V3(0, -.12, .2), r: .16 }], CR)); H.position.set(0, .74, .38); g.add(H);
     H.add(mesh(blob(.12, 1.1, .75, 1.35, 26), shell(CR), 0, -.15, .24)); H.add(mesh(new THREE.SphereGeometry(.045, 14, 10).scale(1.3, .9, .8), visorM, 0, -.11, .4)); // (the snout, with its nose on the tip)
-    const ears = []; for (const s of [-1, 1]) { const e = new THREE.Group(); e.position.set(s * .26, .14, -.02); H.add(e); e.add(mesh(blob(.11, .45, 1.2, .8, 18).translate(0, -.1, 0), shell('#8a5a2e'))); e.add(ring(.04, .01).rotateY(PI / 2)); ears.push(e); }
-    const collar = mesh(new THREE.TorusGeometry(.17, .03, 10, 30), shell('#ff4a5a'), 0, .6, .3); collar.rotation.x = PI / 2 - .6; g.add(collar);
+    const ears = []; for (const s of [-1, 1]) { const e = new THREE.Group(); e.position.set(s * .26, .14, -.02); H.add(e); e.add(mesh(blob(.11, .45, 1.2, .8, 18).translate(0, -.1, 0), shell('#8a5a2e'))); e.add(mesh(new THREE.TorusGeometry(.05, .01, 8, 28).rotateX(PI / 2).scale(.95, 1, 1.6), chrome, 0, -.015, 0)); /* (an oval ring round the top of the ear, where it hangs from the head) */ ears.push(e); }
+    const collar = mesh(new THREE.TorusGeometry(.16, .03, 10, 30), shell('#ff4a5a'), 0, .6, .27); collar.rotation.x = PI / 2 - .95; g.add(collar); // (round the neck, tipped the same way the neck leans)
     g.add(mesh(new THREE.CylinderGeometry(.04, .04, .015, 16).rotateX(PI / 2), new THREE.MeshPhysicalMaterial({ color: '#f2c03a', metalness: 1, roughness: .2 }), 0, .47, .44));
     const ant = antenna('#ffe066'); ant.position.set(0, .28, -.08); H.add(ant);
     const tail = new THREE.Group(); tail.position.set(0, .54, -.32); g.add(tail); tail.add(mesh(new THREE.CapsuleGeometry(.04, .16, 4, 10).translate(0, .1, 0), shell(C))); tail.rotation.x = -.6;
@@ -14683,9 +14683,9 @@ function makeAnimals(THREE, MERGE_) {
   function penguin() { const g = new THREE.Group(), K = '#1e2230', W = '#fbfbf8', O = '#ff9a1f';
     const body = mesh(blob(.3, .92, 1.25, .9, 40), patchy(K, [{ p: V3(0, -.05, .28), r: .27 }, { p: V3(0, .12, .26), r: .2 }], W)); body.position.y = .4; g.add(body);
     const H = head(.22, 1, .95, .95, patchy(K, [], K)); H.position.set(0, .78, .03); g.add(H);
-    H.add(at(cone(.045, .1, shell(O)).rotateX(PI / 2), 0, -.1, .2));
-    const fl = []; for (const s of [-1, 1]) { const f = new THREE.Group(); f.position.set(s * .27, .62, 0); g.add(f); f.add(mesh(blob(.25, .23, 1, .52, 20).translate(0, -.25, 0), shell(K))); f.rotation.z = s * .25; fl.push(f); }
-    const legs = []; for (const s of [-1, 1]) { const ft = mesh(blob(.07, 1, .35, 1.5, 16), shell(O), s * .1, .025, .06); g.add(ft); legs.push(ft); }
+    H.add(at(cone(.045, .1, shell(O)).rotateX(PI / 2), 0, -.1, .165));
+    const fl = []; for (const s of [-1, 1]) { const f = new THREE.Group(); f.position.set(s * .2, .62, 0); g.add(f); f.add(mesh(blob(.25, .23, 1, .52, 20).translate(0, -.25, 0), shell(K), s * .065, 0, 0)); /* (hinged inside the body) */ f.rotation.z = s * .25; fl.push(f); }
+    const legs = []; for (const s of [-1, 1]) { const ft = mesh(blob(.07, 1, .55, 1.5, 16), shell(O), s * .1, .045, .06); g.add(ft); legs.push(ft); }
     const ant = antenna('#9ff0ff'); ant.position.set(0, .23, -.06); H.add(ant);
     return life(g, { body, flip: fl, face: H.userData.face, head: H, ant, legs, extra: t => { fl.forEach((f, i) => f.rotation.z = (i ? 1 : -1) * (.25 + Math.max(0, Math.sin(t * 2.5)) ** 4 * .5)); g.children[0].rotation.z = Math.sin(t * 3) * .04; } }); }
 
@@ -14717,7 +14717,7 @@ function makeAnimals(THREE, MERGE_) {
     for (const s of [-1, 1]) { H.add(mesh(new THREE.SphereGeometry(.09, 18, 12).scale(.5, 1, 1), shell(B), s * .27, .02, -.02)); H.add(mesh(new THREE.SphereGeometry(.06, 14, 10).scale(.4, 1, 1), shell(F), s * .3, .02, -.01)); }
     const arms = []; for (const s of [-1, 1]) { const a = new THREE.Group(); a.position.set(s * .22, .5, .02); g.add(a); a.add(mesh(new THREE.CapsuleGeometry(.05, .2, 4, 10).translate(0, -.12, 0), shell(B))); a.add(at(ring(.05, .01).rotateX(PI / 2), 0, -.2, 0)); arms.push(a); }
     const tailPts = []; for (let i = 0; i <= 20; i++) { const k = i / 20; tailPts.push([Math.sin(k * 4) * .04, .25 + k * .35 + (k > .7 ? Math.sin((k - .7) * 15) * .08 : 0), -.2 - k * .25 + (k > .7 ? (1 - Math.cos((k - .7) * 15)) * .08 : 0)]); }
-    const tail = tube(tailPts, .025, shell(B)); g.add(tail);
+    tailPts.unshift([0, .32, -.08]); const tail = tube(tailPts, .025, shell(B)); g.add(tail); // (starts inside the body)
     const ant = antenna('#ffd84a'); ant.position.set(0, .24, -.06); H.add(ant);
     const legs = [-1, 1].map(s => legAt(g, s * .1, .03, B, F, .06, .065));
     return life(g, { body, arms, tail, face: H.userData.face, head: H, ant, legs, extra: t => { arms.forEach((a, i) => a.rotation.x = Math.sin(t * 2.4 + i * PI) * .5); tail.rotation.y = Math.sin(t * 1.5) * .3; } }); }
@@ -14729,7 +14729,7 @@ function makeAnimals(THREE, MERGE_) {
     // the snout: a soft white muzzle sitting on top of the bottom of the visor, with the pink nose on it and the whiskers out of its sides
     for (const s of [-1, 1]) H.add(mesh(blob(.075, 1.1, .85, .8, 22), shell(CR), s * .055, -.125, .235));
     H.add(mesh(new THREE.SphereGeometry(.03, 12, 8).scale(1.3, .8, .8), shell('#ff7a9a'), 0, -.09, .285));
-    for (const s of [-1, 1]) { const e = cone(.08, .14, shell(O), 4); e.position.set(s * .17, .19, -.03); e.rotation.set(0, PI / 4, s * -.3); H.add(e);
+    for (const s of [-1, 1]) { const e = cone(.08, .14, shell(O), 4); e.position.set(s * .16, .15, -.03); e.rotation.set(0, PI / 4, s * -.3); H.add(e);
       for (const k of [0, 1]) { const w = mesh(new THREE.CylinderGeometry(.004, .004, .15, 4), chrome, s * .17, -.135 + k * .03, .25); w.rotation.z = PI / 2 + s * (k - .5) * .25; H.add(w); } } // (out of the sides of the muzzle)
     const tail = tube([[0, .46, -.26], [0, .52, -.4], [0, .66, -.5], [0, .82, -.5], [.05, .92, -.44]], .035, shell(O)); g.add(tail);
     const ant = antenna('#ff9ad8'); ant.position.set(0, .26, -.1); H.add(ant);
@@ -14739,10 +14739,10 @@ function makeAnimals(THREE, MERGE_) {
   function owl() { const g = new THREE.Group(), B = '#8a6240', L = '#e9d2b0';
     const body = mesh(blob(.28, .95, 1.1, .9, 40), patchy(B, [{ p: V3(0, -.02, .24), r: .2 }], L)); body.position.y = .32; g.add(body);
     const H = head(.25, 1.1, .92, .92, patchy(B, [{ p: V3(0, 0, .22), r: .22 }], L), '#ffd84a'); H.position.set(0, .66, .02); g.add(H);
-    for (const s of [-1, 1]) { const t = cone(.05, .12, shell(B), 8); t.position.set(s * .17, .19, -.02); t.rotation.z = s * -.4; H.add(t); }
-    H.add(at(cone(.03, .07, shell('#e8a21a')).rotateX(PI), 0, -.05, .25));
+    for (const s of [-1, 1]) { const t = cone(.05, .12, shell(B), 8); t.position.set(s * .16, .15, -.02); t.rotation.z = s * -.4; H.add(t); }
+    H.add(at(cone(.03, .07, shell('#e8a21a')).rotateX(PI * .72), 0, -.04, .2)); // (out of the face, pointing down and forwards)
     const wings = []; for (const s of [-1, 1]) { const w = new THREE.Group(); w.position.set(s * .26, .45, -.02); g.add(w); w.add(mesh(blob(.14, .3, .9, .8, 18), shell('#6e4a2e'), 0, -.11, 0)); wings.push(w); }
-    const legs = [-1, 1].map(s => { const f = mesh(blob(.05, 1, .4, 1.2, 12), shell('#e8a21a'), s * .09, .02, .1); g.add(f); return f; });
+    const legs = [-1, 1].map(s => { const f = mesh(blob(.05, 1, .6, 1.2, 12), shell('#e8a21a'), s * .09, .05, .1); g.add(f); return f; });
     return life(g, { body, wings, face: H.userData.face, head: H, legs, extra: t => { H.rotation.y = Math.sin(t * .5) * .6 * (Math.sin(t * .23) > .5 ? 1 : .1); wings.forEach((w, i) => w.rotation.z = (i ? 1 : -1) * Math.max(0, Math.sin(t * 2)) ** 10 * .5); } }); }
 
   function pigeon() { const g = new THREE.Group(), G = '#9aa3b2';
@@ -14757,8 +14757,12 @@ function makeAnimals(THREE, MERGE_) {
 
   function crab(hermit = false) { const g = new THREE.Group(), R = hermit ? '#ff8a5a' : '#ff4a3a', L = '#ffd0b8';
     const body = mesh(blob(.26, 1.25, .55, .95, 36), patchy(R, [{ p: V3(0, -.12, 0), r: .22 }], L)); body.position.y = .2; g.add(body);
-    if (hermit) { const pts = []; for (let i = 0; i <= 30; i++) { const k = i / 30, a = k * PI * 3.2, r = .2 * (1 - k * .8); pts.push(V3(Math.cos(a) * r, k * .35, Math.sin(a) * r)); }
-      const sh = mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, .1, 14), patchy('#f3e4c8', [{ p: V3(0, .1, 0), r: .12 }], '#d8b98a')); sh.position.set(0, .26, -.1); sh.rotation.x = -.5; g.add(sh); body.scale.set(.75, .9, .7); }
+    if (hermit) { // a proper spiral shell, one solid piece: a fat whorl winding up to a point, its coils fused together, a cream stripe following the spiral
+      const parts = [], C1 = new THREE.Color('#f1dcc0'), C2 = new THREE.Color('#c98b5a'), N = 70;
+      for (let i = 0; i <= N; i++) { const k = i / N, a = k * PI * 5, R = .15 * (1 - k) ** 1.1, rr = .135 * (1 - k) ** 1.2 + .012, y = k * .42;
+        const sp = new THREE.SphereGeometry(rr, 20, 14).translate(Math.cos(a) * R, y, Math.sin(a) * R).toNonIndexed(); const c = (Math.sin(a * 2) > .55 ? C2 : C1), n = sp.attributes.position.count, ca = new Float32Array(n * 3); for (let j = 0; j < n; j++) c.toArray(ca, j * 3); sp.setAttribute('color', new THREE.BufferAttribute(ca, 3)); sp.deleteAttribute('uv'); parts.push(sp); }
+      const sh = mesh(MERGE_(parts), shell('#ffffff', { vertexColors: true })); sh.position.set(0, .22, -.08); sh.rotation.x = -.55; g.add(sh); body.scale.set(.75, .9, .7);
+      sh.add(mesh(new THREE.TorusGeometry(.12, .035, 12, 32).rotateX(PI / 2), shell('#e9c9a4'), 0, -.02, 0)); } // (the lip of the opening, where the crab sits inside)
     // eyes: two stalks standing up from the front, each with its own little screen
     const stalks = new THREE.Group(); g.add(stalks); const eyeList = [];
     for (const sd of [-1, 1]) { const st = new THREE.Group(); st.position.set(sd * .08, .3, .16); st.rotation.z = sd * -.2; stalks.add(st);
@@ -14775,7 +14779,7 @@ function makeAnimals(THREE, MERGE_) {
       const palm = mesh(blob(.07, .8, .75, 1.1, 18), metal, 0, 0, .13); c.add(palm);
       const top = pinch(sd, 1); top.position.set(0, .02, .17); c.add(top); const bot = pinch(sd, -1); bot.position.set(0, -.02, .17); c.add(bot); claws.push([c, bot]); }
     const legs = []; for (const sd of [-1, 1]) for (const z of [-.12, 0, .1]) { const l = tube([[0, 0, 0], [sd * .18, -.04, 0], [sd * .22, -.18, 0]], .016, shell(R), 8); l.position.set(sd * .2, .18, z); g.add(l); legs.push(l); }
-    return life(g, { body, claws, stalks, face: F, legs, extra: (t, dt) => { F.update(dt); claws.forEach(([c, bot], i) => { bot.rotation.x = -(Math.max(0, Math.sin(t * 3 + i * 2)) ** 6) * .6; c.rotation.x = Math.sin(t * 1.3 + i) * .1; }); stalks.children.forEach((st, i) => st.rotation.x = Math.sin(t * 1.7 + i) * .15); } }); }
+    return life(g, { body, claws, stalks, face: F, legs, extra: (t, dt) => { F.update(dt); claws.forEach(([c, bot], i) => { bot.rotation.x = .15 - (Math.max(0, Math.sin(t * 3 + i * 2)) ** 6) * .45; /* (snaps shut against the top jaw, never through it) */ c.rotation.x = Math.sin(t * 1.3 + i) * .1; }); stalks.children.forEach((st, i) => st.rotation.x = Math.sin(t * 1.7 + i) * .15); } }); }
 
   function snail() { const g = new THREE.Group(), S = '#c7d6a2', SH = '#d98d5a';
     const body = mesh(blob(.22, .8, .55, 2, 36), shell(S)); body.position.set(0, .12, .05); g.add(body);
@@ -14804,7 +14808,7 @@ function makeAnimals(THREE, MERGE_) {
     const eyeList = []; for (const sd of [-1, 1]) { const tur = mesh(new THREE.SphereGeometry(.075, 20, 14), m, sd * .16, .04, .02); H.add(tur); eyeList.push({ parent: tur, pos: V3(sd * .06, 0, .01), dir: V3(sd, 0, .35), r: .05 }); tur.userData.turret = 1; }
     const F = useMiniEyes(H, miniEyes(eyeList));
     // the tail: out from the back, then a tight curl rolling under (a proper spiral)
-    const pts = [[0, .3, -.12], [0, .3, -.28]]; for (let i = 0; i <= 50; i++) { const k = i / 50, a = k * PI * 2.6, r = .13 * (1 - k * .82); pts.push([0, .2 + Math.cos(a) * r, -.33 - Math.sin(a) * r]); }
+    const pts = [[0, .3, .02], [0, .3, -.12], [0, .3, -.28]]; for (let i = 0; i <= 50; i++) { const k = i / 50, a = k * PI * 2.6, r = .13 * (1 - k * .82); pts.push([0, .2 + Math.cos(a) * r, -.33 - Math.sin(a) * r]); }
     const tail = mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => V3(...p))), 120, .03, 10), m); g.add(tail);
     const legs = [[-.14, .18], [.14, .18], [-.14, -.16], [.14, -.16]].map(([x, z]) => legAt(g, x, z, '#4fcf5c', '#2f9a3e', .07, .05));
     return life(g, { body, tail, turrets: H.children.filter(c => c.userData.turret), face: F, head: H, legs, extra: (t, dt) => { F.update(dt); } }); }
@@ -14826,7 +14830,7 @@ function makeAnimals(THREE, MERGE_) {
     const F = face(H, BR, bsx, bsy, bsz);
     for (const sd of [-1, 1]) { H.add(mesh(new THREE.SphereGeometry(.07, 16, 12), shell(W), sd * .17, -.1, .16)); H.add(mesh(new THREE.SphereGeometry(.065, 16, 12).scale(1, 1, .5), shell('#ffb6c8'), sd * .15, .2, -.02)); }
     H.add(mesh(new THREE.SphereGeometry(.02, 10, 8), shell('#ff7a9a'), 0, -.07, .27));
-    const legs = [[-.1, .1], [.1, .1], [-.1, -.1], [.1, -.1]].map(([x, z]) => { const f = mesh(blob(.035, 1, .5, 1.3, 12), shell('#ffb6c8'), x, .015, z); g.add(f); return f; });
+    const legs = [[-.1, .1], [.1, .1], [-.1, -.1], [.1, -.1]].map(([x, z]) => { const f = mesh(blob(.035, 1, .7, 1.3, 12), shell('#ffb6c8'), x, .05, z); g.add(f); return f; });
     const ant = antenna('#ffe066'); ant.position.set(0, .23, -.04); H.add(ant);
     return life(g, { face: F, head: H, ant, legs, extra: t => { H.position.y = .26 + Math.max(0, Math.sin(t * 9)) ** 2 * .01; } }); }
 
@@ -14984,11 +14988,11 @@ const ZOO = (() => {
       let sp = Math.hypot(_v.x - z.lp.x, _v.z - z.lp.z) / dt, vy = (_v.y - z.lp.y) / dt; if (sp > 60) sp = vy = 0; z.lp.copy(_v);
       let dy = yaw - z.ly; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); z.ly = yaw;
       z.sp = sm(z.sp, sp / z.hw, dt * 6); z.vy = sm(z.vy, vy / z.hw, dt * 8); z.turn = sm(z.turn, dy / dt, dt * 5);
-      z.t += dt; z.ud.update(dt); move(z, dt, T);
+      z.t += dt; try { z.ud.update(dt); move(z, dt, T); } catch (err) { if (!z.err) { z.err = 1; console.warn('zoo', z.kind, err); } } // (an animal's mistake must never stop the game)
     }
   }
   function kick(z, T) { // carried, or tumbling through the air: legs and wings going like mad
-    const L = z.ud.legs, p = z.ud.parts;
+    const L = z.ud.legs, p = z.ud.parts || {};
     L.forEach((l, i) => { if (z.P.type === 'six') { l.rotation.y = Math.sin(T * 30 + i * 1.9) * .5; l.rotation.z = Math.sin(T * 23 + i) * .3; }
       else if (l.userData.stubR || l.isGroup) { l.rotation.x = Math.sin(T * 34 + i * 1.7) * .75; l.rotation.z = Math.sin(T * 27 + i * 2.3) * .35; }
       else { l.position.y = z.lb[i].y + Math.max(0, Math.sin(T * 30 + i * 2)) * .05; } });
@@ -14998,7 +15002,7 @@ const ZOO = (() => {
     z.pose.rotation.set(0, 0, Math.sin(T * 17) * .06); z.pose.position.set(0, 0, 0); z.hip.rotation.x = 0;
   }
   function move(z, dt, T) {
-    const P = z.P, ud = z.ud, L = ud.legs, p = ud.parts, H = ud.head, o = z.o, r = z.rig;
+    const P = z.P, ud = z.ud, L = ud.legs, p = ud.parts || {}, H = ud.head, o = z.o, r = z.rig;
     const held = T - z.heldT < 250 || (o.held && o.held(r)), angry = !held && (o.angry ? o.angry(r) : (r.userData.face && r.userData.face.visible) || !!(r.material && r.material.emissive && r.material.emissive.r > .3));
     mood(z, held ? 'stressed' : angry ? 'angry' : (o.mood && o.mood(r)) || 'calm');
     // glowing red when it's fuming (the old animal's body glowed; now the new one does)
@@ -15012,7 +15016,7 @@ const ZOO = (() => {
     z.ph += dt * rate * Math.max(sp, z.amp * .6) / (P.stride * (gear === 2 ? 1.5 : 1)); const ph = z.ph, A = z.amp;
     const pose = z.pose; pose.position.set(0, 0, 0); pose.rotation.set(0, 0, 0); z.hip.rotation.x = 0;
     const air = P.leap && Math.abs(z.vy) > 1.6;
-    if (H && z.hb) { H.rotation.y += Math.max(-.3, Math.min(.3, z.turn * .15)); }
+    if (H && z.hb) { H.rotation.y = Math.max(-.3, Math.min(.3, z.turn * .15)) + (z.dogRig ? z.dogRig.head.rotation.y : 0); } // (set, never added: the idle sway doesn't set this one, so adding would spin it round)
     if (P.type === 'quad') {
       const g = P.g[gear], off = OFF[g], amp = P.amp * A * (g === 'pronk' ? .35 : g === 'gallop' || g === 'bound' ? 1.35 : 1);
       for (let i = 0; i < 4 && i < L.length; i++) { const l = L[i], s = Math.sin((ph + off[i]) * PI2);
@@ -15049,7 +15053,7 @@ const ZOO = (() => {
     } else if (P.type === 'snail') { const b = p.body; if (b) b.scale.z *= 1 + Math.sin(ph * PI2) * .08 * A; }
   }
   function bird(z, dt, ph, A, moving) {
-    const P = z.P, ud = z.ud, L = ud.legs, p = ud.parts, H = ud.head, r = z.rig, o = z.o, pose = z.pose;
+    const P = z.P, ud = z.ud, L = ud.legs, p = ud.parts || {}, H = ud.head, r = z.rig, o = z.o, pose = z.pose;
     const fly = o.flap ? Math.abs(o.flap(r)) > .02 || (z.flyT = (z.flyT || 0) - dt) > 0 : false; if (fly && o.flap && Math.abs(o.flap(r)) > .02) z.flyT = .25;
     if (fly) { // flapping: wings beat, legs tucked, body leaning into the flight
       for (const w of p.wings || []) w.rotation.z = (w.position.x < 0 ? -1 : 1) * (.9 + Math.sin(z.t * 24) * .9);
@@ -15069,13 +15073,13 @@ const ZOO = (() => {
     } else { z.tiltTo = 0; z.swvTo = 0; }
     z.tilt = sm(z.tilt, z.tiltTo, dt * 10); z.swv = sm(z.swv, z.swvTo, dt * 6); H.rotation.z += z.tilt; if (P.swivel) H.rotation.y = z.swv;
   }
-  function dartEyes(z, dt) { const T = z.ud.parts.turrets; if (!T) return; if ((z.eyesT -= dt) <= 0) { z.eyesT = .3 + Math.random() * 1.2; const i = Math.random() < .5 ? 0 : 1; z.eyesTo[i] = (Math.random() - .5) * 1.4; }
+  function dartEyes(z, dt) { const T = (z.ud.parts || {}).turrets; if (!T) return; if ((z.eyesT -= dt) <= 0) { z.eyesT = .3 + Math.random() * 1.2; const i = Math.random() < .5 ? 0 : 1; z.eyesTo[i] = (Math.random() - .5) * 1.4; }
     T.forEach((tu, i) => { z.eyes[i] = sm(z.eyes[i], z.eyesTo[i], dt * 18); tu.rotation.y = z.eyes[i]; tu.rotation.x = z.eyesTo[i] * .3; }); }
   // the polar bear: stands up on its back legs (arms up), drops onto all fours to run
   function bear(z, dt, T) { const m = z.o.bear; if (!m) return; const up = 1 - Math.min(1, Math.max(0, m.pitch / 1.32)), L = z.ud.legs, H = z.ud.head, a = 1.3 * up;
     z.hip.rotation.x = -a; L[2].rotation.x = L[2].rotation.x * (1 - up) + a; L[3].rotation.x = L[3].rotation.x * (1 - up) + a;
     for (let i = 0; i < 2; i++) { const arm = m.arms[i]; L[i].rotation.x = L[i].rotation.x * (1 - up) + up * (arm ? (arm.rotation.x + 2) * .8 - .5 : -.5); L[i].rotation.z = up * (arm ? arm.rotation.z * .45 : 0); }
-    if (H) { H.rotation.x += a * .85; if (m.head) H.rotation.y += m.head.rotation.y * up; }
+    if (H) { H.rotation.x += a * .85; if (m.head) H.rotation.y = m.head.rotation.y * up; }
     z.pose.rotation.z *= 1 - up; z.pose.position.y *= 1 - up;
     const roar = m.mouth && m.mouth.scale.y > 1.6; mood(z, roar || (BEAR.b && BEAR.b.mode === 'run') ? 'angry' : 'calm'); }
   return { kit, dress, tick, list, held(e) { const z = e && e.mesh && e.mesh.userData.zoo; if (z) z.heldT = now(); } };
@@ -15090,7 +15094,7 @@ for (const e of blocks) if (e.kind === 'animal' && e.mesh) ZOO.dress(e.mesh, zoo
 // the dog (the Fetch power)
 { const dm = dogModel; dogModel = function () { const m = dm(); ZOO.dress(m.g, 'dog', { keep: [], angry: () => false, mood: () => 'happy' });
   const z = m.g.userData.zoo; if (z) { const o = z.o; o.held = () => false; const mv = z.ud.update; z.ud.update = dt => { mv(dt); // its head follows the old head (sniffing, biting), its tail the old tail; mid-leap legs stretch out
-      const H = z.ud.head; if (H) { H.rotation.x += m.head.rotation.x; H.rotation.y += m.head.rotation.y; } }; z.dogRig = m; } return m; }; }
+      const H = z.ud.head; if (H) H.rotation.x += m.head.rotation.x; }; z.dogRig = m; } return m; }; }
 // the polar bear
 { const bm = bearModel; bearModel = function () { const m = bm(); ZOO.dress(m.g, 'polarBear', { bear: m, before: () => { m.up.rotation.x = 1.32; }, after: () => { m.up.rotation.x = m.pitch; }, angry: () => false, fit: 'l' }); return m; }; }
 // monkeys in the jungle (they keep the block they're carrying up over their heads)
