@@ -15399,15 +15399,19 @@ if (!TOY && !PLAT && !REEF && !(NM && NM.noMountains)) {
   // horizon, its height made of bent "ridged" noise (sharp crests, soft valleys, detail at every size): low rolling
   // hills nearest, rising to mountains, then the tallest peaks furthest away. Because it has real slopes, the sun lights
   // one side of every ridge and leaves the other in shade, valleys sit behind hills, and it all shifts as you move. ----
+  const TOUCH_DEV = matchMedia('(pointer: coarse)').matches;
   const rnd = prng(57), T = Array.from({ length: 512 }, () => rnd()), hsh = (x, z) => T[(((x * 73 + z * 151) % 512) + 512) % 512];
   const vn2 = (x, z) => { const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz, u = fx * fx * (3 - 2 * fx), w = fz * fz * (3 - 2 * fz);
     return (hsh(ix, iz) * (1 - u) + hsh(ix + 1, iz) * u) * (1 - w) + (hsh(ix, iz + 1) * (1 - u) + hsh(ix + 1, iz + 1) * u) * w; };
-  const ridged2 = (x, z) => { let s = 0, a = .55, f = 1, wgt = 1; for (let o = 0; o < 6; o++) { const n = 1 - Math.abs(2 * vn2(x * f + o * 17.1, z * f - o * 9.3) - 1), r = n * n * wgt; s += r * a; wgt = Math.min(1, r * 2.2); f *= 2.07; a *= .5; } return s; };
-  const R0 = 225, R1 = 430, NA = 900, NR = 70;
-  const height = (x, z, r) => { const k = (r - R0) / (R1 - R0), wx = x * .018 + (vn2(x * .006, z * .006) - .5) * 2.4, wz = z * .018 + (vn2(z * .006 + 7, x * .006) - .5) * 2.4;
-    const broad = vn2(x * .007 + 3, z * .007) * .6 + vn2(x * .016, z * .016 + 5) * .4, rid = ridged2(wx, wz);
-    const amp = 14 + 130 * Math.pow(k, 1.25), edge = THREE.MathUtils.smoothstep(k, 0, .08); // (rises from below the cloud sea at its near edge)
-    return -30 + edge * (22 + amp * (broad * .45 + rid * .75)) * (.75 + .5 * vn2(x * .004 + 11, z * .004)); };
+  const ridged2 = (x, z) => { let s = 0, a = .6, f = 1, wgt = 1; for (let o = 0; o < 5; o++) { const n = 1 - Math.abs(2 * vn2(x * f + o * 17.1, z * f - o * 9.3) - 1), r = n * n * wgt; s += r * a; wgt = Math.min(1, r * 1.8); f *= 2.03; a *= .42; } return s; };
+  const R0 = 225, R1 = 430, NA = TOUCH_DEV ? 900 : 1600, NR = TOUCH_DEV ? 70 : 110; // (fewer triangles on phones and tablets)
+  // a few big mountain ranges with calm valleys and plains between them (not peaks everywhere): a slow "where are the
+  // ranges" map decides how mountainous each place is, and the ridges are wide so each range has only a handful of tops
+  const height = (x, z, r) => { const k = (r - R0) / (R1 - R0), wx = x * .011 + (vn2(x * .003, z * .003) - .5) * 2.2, wz = z * .011 + (vn2(z * .003 + 7, x * .003) - .5) * 2.2;
+    const range = THREE.MathUtils.smoothstep(vn2(x * .0045 + 3, z * .0045) * .7 + vn2(x * .011, z * .011 + 5) * .3, .2, .62) * .85 + .15 * k;
+    const rolling = vn2(x * .012 + 9, z * .012) * .6 + vn2(x * .03, z * .03 + 2) * .4, rid = ridged2(wx, wz);
+    const amp = 10 + 145 * Math.pow(k, 1.2), edge = THREE.MathUtils.smoothstep(k, 0, .08); // (rises from below the cloud sea at its near edge)
+    return -30 + edge * (18 + 14 * rolling + amp * range * (.2 + rid * .9)); };
   const pos = [], idx = [];
   for (let j = 0; j <= NA; j++) { const a = j / NA * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
     for (let k = 0; k <= NR; k++) { const r = R0 + (R1 - R0) * Math.pow(k / NR, 1.15), x = ca * r, z = sa * r * .94; pos.push(x, height(ca * r, sa * r, r), z); } }
