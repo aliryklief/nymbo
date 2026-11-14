@@ -14369,6 +14369,29 @@ function makeBlockKit(THREE, RBOX, MERGE) {
   return kit;
 }
 
+// ---- making models cheaper to draw (used by the blocks, the animals and the Nyms) ----
+// A model is built from many small pieces (every ring, rivet, wool puff...), and each piece costs the phone a draw call.
+// Pieces that never move relative to each other and look the same are welded into one. What moves is found by watching:
+// the model is run for a few moments (and through its moods), and anything whose place, size or visibility changes is
+// left alone, as is anything the game holds on to (o.keep). Nothing looks or behaves any different.
+function bakeStatic(M, o = {}) { const snap = new Map(), moving = new Set(), keep = new Set((o.keep || []).filter(x => x && x.isObject3D));
+  const rec = () => M.traverse(x => { const k = x.position.toArray().concat(x.quaternion.toArray(), x.scale.toArray(), [x.visible ? 1 : 0]).map(v => Math.round(v * 1e4)).join(','); if (snap.has(x) && snap.get(x) !== k) moving.add(x); snap.set(x, k); });
+  rec(); if (o.update) for (let i = 0; i < 12; i++) { try { o.update(.137 + i * .05); } catch (_) {} rec(); }
+  if (o.moods) for (const m of ['angry', 'stressed', 'happy', 'calm']) { try { o.moods(m); } catch (_) {} rec(); }
+  const matKey = m => m.onBeforeCompile && m.customProgramCacheKey ? m.uuid : [m.type, m.color && m.color.getHexString(), m.roughness, m.metalness, m.clearcoat, m.transparent, m.opacity, m.vertexColors, m.emissive && m.emissive.getHexString(), m.emissiveIntensity, m.map && m.map.uuid, m.envMap && m.envMap.uuid, m.side, m.toneMapped].join('|');
+  // every fixed piece is welded onto its nearest "anchor": the closest thing above it that moves or that the game holds
+  // on to (or the model itself), so pieces spread over several fixed sub-groups still end up as one
+  M.updateMatrixWorld(true); const bins = new Map(), inv = new THREE.Matrix4(), rel = new THREE.Matrix4(); let n0 = 0, n1 = 0;
+  M.traverse(ch => { if (ch === M || !ch.isMesh || ch.isInstancedMesh || ch.isSkinnedMesh || ch.children.length || moving.has(ch) || keep.has(ch) || ch.userData.facePart || !ch.geometry || !ch.geometry.attributes.position) return;
+    const mat = ch.material; if (!mat || Array.isArray(mat) || mat.transparent) return;
+    let a = ch.parent, ok = true; while (a && a !== M && !moving.has(a) && !keep.has(a)) { if (!a.visible || a.userData.facePart) ok = false; a = a.parent; } if (!ok || !ch.visible || !a) return;
+    const k = a.uuid + '|' + matKey(mat) + '|' + ch.castShadow + ch.renderOrder; (bins.get(k) || bins.set(k, { a, list: [] }).get(k)).list.push(ch); });
+  for (const { a, list } of bins.values()) { if (list.length < 2) continue; inv.copy(a.matrixWorld).invert();
+    const geos = list.map(m => { const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone(); g.applyMatrix4(rel.multiplyMatrices(inv, m.matrixWorld)); return g; });
+    const keys = ['position', 'normal', 'uv', 'color'].filter(k => geos.every(g => g.attributes[k] && g.attributes[k].itemSize === geos[0].attributes[k].itemSize)); for (const g of geos) { for (const k of Object.keys(g.attributes)) if (!keys.includes(k)) g.deleteAttribute(k); g.morphAttributes = {}; }
+    let merged = null; try { merged = mergeGeometries(geos); } catch (_) {} if (!merged) continue; geos.forEach(g => g.dispose()); n0 += list.length; n1++;
+    const one = new THREE.Mesh(merged, list[0].material); one.castShadow = list[0].castShadow; one.receiveShadow = list[0].receiveShadow; one.renderOrder = list[0].renderOrder; for (const m of list) m.parent.remove(m); a.add(one); }
+  M.userData.baked = [n0, n1]; return M; }
 const SKIN = (() => {
   const kit = makeBlockKit(THREE, RoundedBoxGeometry, mergeGeometries);
   const KIND = { bomb: 'bomb', freeze: 'ice', homing: 'homing', sticky: 'sticky', gold: 'gold', streak: 'star', flag: 'flag' };
@@ -14378,7 +14401,7 @@ const SKIN = (() => {
   function make(kind, hex, team) {
     const k = KIND[kind], g = k === 'flag' ? kit.make('flag', { color: hex, parity: team === 'red' ? 1 : 0 }) : kit.make(k), E = env();
     g.traverse(o => { const m = o.material; if (m && m.isMeshStandardMaterial && !m.userData.kitEnv) { m.userData.kitEnv = 1; if (E) { m.envMap = E; m.envMapIntensity = (m.envMapIntensity ?? 1) * .75; m.needsUpdate = true; } } });
-    g.userData.kind = kind; return g; }
+    g.userData.kind = kind; return bakeStatic(g, { update: g.userData.update }); }
   const keyOf = e => e.kind + (e.kind === 'flag' ? '#' + e.color.getHexString() + (e.team || '') : '');
   function wear(M, e) { // put the new model inside this mesh (a block, or the one on a robot's head)
     const key = keyOf(e);
@@ -14973,6 +14996,11 @@ const ZOO = (() => {
     crab: { type: 'six', stride: .5 }, hermit: { type: 'six', stride: .5 }, ladybug: { type: 'six', stride: .5 }, ant: { type: 'six', stride: .45 }, snail: { type: 'snail', stride: 1 }, jellyfish: { type: 'none' } };
   const hid = m => { const c = m.clone(); c.visible = false; return c; };
   const sm = (a, b, k) => a + (b - a) * Math.min(1, k);
+  // ---- making each animal cheaper to draw: it's built from many small pieces (every wool puff, ring, toe...), and
+  // each piece costs a draw call. Pieces that never move relative to each other and share a look are welded into one.
+  // What moves is found by watching: the animal is run for a few moments and through its moods, and anything whose
+  // place, size or visibility changes is left alone (so tails still wag, eyes still change). ----
+  const bake = M => bakeStatic(M, { update: dt => M.userData.update(dt), moods: m => M.userData.face && M.userData.face.setMood && M.userData.face.setMood(m), keep: [...(M.userData.legs || []), ...Object.values(M.userData.parts || {}).flat()] });
   // ---- dress a rig in a new animal ----
   function dress(rig, kind, o = {}) {
     if (!rig || rig.userData.zoo || !PROF[kind]) return rig;
@@ -14984,7 +15012,7 @@ const ZOO = (() => {
     o.after && o.after(rig);
     if (box.isEmpty()) return rig;
     for (const x of hide) { x.material = Array.isArray(x.material) ? x.material.map(hid) : hid(x.material); x.castShadow = false; }
-    const M = kit.make(kind), ud = M.userData, hold = new THREE.Group(), pose = new THREE.Group(), hip = new THREE.Group();
+    const M = bake(kit.make(kind)), ud = M.userData, hold = new THREE.Group(), pose = new THREE.Group(), hip = new THREE.Group();
     M.updateMatrixWorld(true); const mb = new THREE.Box3(); M.traverse(x => { if (x.isMesh && x.geometry && x.visible) { if (!x.geometry.boundingBox) x.geometry.computeBoundingBox(); _b.copy(x.geometry.boundingBox).applyMatrix4(x.matrixWorld); mb.union(_b); } });
     const rs = box.getSize(new THREE.Vector3()), ms = mb.getSize(new THREE.Vector3()), rc = box.getCenter(new THREE.Vector3()), mc = mb.getCenter(new THREE.Vector3());
     const ky = rs.y / ms.y, kz = Math.max(rs.z, rs.x) / Math.max(ms.z, ms.x), s = (o.fit === 'h' ? ky : o.fit === 'l' ? kz : Math.sqrt(ky * kz)) * (o.k || 1);
@@ -15245,6 +15273,10 @@ function drawBoneIcon(cv, size) { const dpr = Math.min(2, devicePixelRatio || 1)
     if (on && !m.bone && m.held && m.held.parent) { const bn = new THREE.Mesh(BIG_BONE, boneMat); bn.castShadow = true; m.held.parent.add(bn); m.bone = bn; }
     if (m.bone) { m.bone.visible = on; if (on) { m.held.visible = false; m.bone.position.copy(m.held.position); m.bone.rotation.set(0, Math.PI / 2, .2); } }
     const st = A[n - 1], kk = Math.max(0, st - .9) / .7; if (kk > 0) m.g.rotateZ(Math.sin(st * 55) * .12 * kk); }; }
+// the Nyms are cheaper to draw too: their many fixed pieces welded, everything the game moves or swaps left alone
+const nymKeep = M => { const k = []; for (const v of Object.values(M)) { if (v && v.isObject3D) k.push(v); else if (Array.isArray(v)) for (const x of v) if (x && x.isObject3D) k.push(x); } if (M.ant) for (const v of Object.values(M.ant)) if (v && v.isObject3D) k.push(v); return k; };
+{ const nm = nymMeshModel; nymMeshModel = function (c, h) { const M = nm(c, h); try { bakeStatic(M.g, { keep: nymKeep(M) }); } catch (e) { console.warn('bake nym', e); } return M; }; }
+for (const r of robots) if (r.model && r.model.nym && !r.model.g.userData.baked) try { bakeStatic(r.model.g, { keep: nymKeep(r.model) }); } catch (e) { console.warn('bake nym', e); }
 
 // ============================================================
 // LOOK LAB, the new layout (Ali, 14 Nov): what's in the game NOW sits on top, everything else under "Old".
