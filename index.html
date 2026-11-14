@@ -2543,6 +2543,14 @@ for (const t of TREES) {
         for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) mkS(V(t.x + fx * 1.8, H + .2, t.z + fz * 1.8), V(fx ? 2.6 : .9, .25, fz ? 2.6 : .9), '#4c9a3a');
         for (const [fx, fz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) mkS(V(t.x + fx * 1.2, H - .1, t.z + fz * 1.2), V(1.2, .25, 1.2), '#5aab45');
       }
+    } else if (MAP === 'classic' && WORLD === 'day' && !NIGHT && !NEO && !HD) { // the classic stage (Ali's blocky tree picture): the top is a stepped heap of whole blocks, some poking out, some missing
+      for (let y = 0; y < t.h; y++) mk(V(t.x, y + .5, t.z), V(1, 1, 1), '#6b4526');
+      const tr = (() => { let s_ = Math.abs(Math.round(t.x * 73 + t.z * 31)) + 7; return () => (s_ = (s_ * 16807) % 2147483647) / 2147483647; })(), y0 = t.h;
+      const layers = [[1.6, 1], [1.6, .75], [1.05, .5], [.5, 0]]; // (radius of each layer, chance of its outer blocks)
+      layers.forEach(([R, keep], k) => { for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) { const d = Math.hypot(a, b); if (d > R + .45) continue;
+        if (d > R - .6 && tr() > (keep || .6)) continue; if (k === 3 && tr() < .4 && (a || b)) continue;
+        mk(V(t.x + a, y0 + k + .5, t.z + b), V(1, 1, 1), '#4aa83c'); } });
+      for (let q = 0; q < 3; q++) { const a = tr() * 6.28, r = 2.2; mk(V(t.x + Math.round(Math.cos(a) * r), y0 + 1 + Math.floor(tr() * 2) + .5, t.z + Math.round(Math.sin(a) * r)), V(1, 1, 1), '#46a63b'); } // (a few blocks sticking out)
     } else {
     for (let y = 0; y < t.h; y++) mk(V(t.x, y + .5, t.z), V(1, 1, 1), '#6b4526');
     mk(V(t.x, t.h + .5, t.z), V(3, 1, 3), '#3f9a35'); mk(V(t.x, t.h + 1.5, t.z), V(3, 1, 3), '#46a63b'); mk(V(t.x, t.h + 2.5, t.z), V(1, 1, 1), '#4aa83c');
@@ -15001,7 +15009,7 @@ const ZOO = (() => {
   // g: gaits from slow to fast; at: the speeds (body heights a second) where it changes up; stride: body heights per stride
   const Q = (g, at, o = {}) => Object.assign({ type: 'quad', g, at, stride: 1, amp: .55 }, o);
   const PROF = {
-    cow: Q(['walk', 'trot', 'gallop'], [1.1, 2.4], { amp: .45 }), sheep: Q(['walk', 'trot', 'pronk'], [1.1, 2.8]), goat: Q(['walk', 'trot', 'gallop'], [1, 2.4], { leap: 1 }),
+    cow: Q(['walk', 'trot', 'gallop'], [1.1, 2.4], { amp: .45 }), sheep: Q(['walk', 'trot', 'gallop'], [1.5, 3.6], { amp: .35 }) /* (Ali: sheep walk, no hopping) */, goat: Q(['walk', 'trot', 'gallop'], [1, 2.4], { leap: 1 }),
     camel: Q(['pace', 'pace', 'gallop'], [.9, 3.2], { stride: 1.2 }), dog: Q(['trot', 'trot', 'gallop'], [.6, 1.9], { leap: 1 }), cat: Q(['walk', 'walk', 'bound'], [1, 1.8], { leap: 1 }),
     polarBear: Q(['walk', 'walk', 'gallop'], [1, 1.7], { bear: 1 }), chameleon: Q(['walk', 'walk', 'walk'], [9, 9], { creep: 1, amp: .32 }), hamster: Q(['trot', 'trot', 'trot'], [9, 9], { feet: 1, stride: .6 }),
     chicken: { type: 'bird', bob: 1, peck: 1, stride: .7 }, pigeon: { type: 'bird', bob: 1, tilt: 1, stride: .7, fly: 1 }, owl: { type: 'bird', tilt: 1, swivel: 1, stride: .8, fly: 1, hop: 1 },
@@ -15762,7 +15770,7 @@ function stoneMaterial(base) {
       attribute vec4 aSt; attribute vec4 aMv; attribute vec4 aEx; varying vec3 vSp; varying vec3 vSm; varying vec4 vSt; varying vec3 vNo;
       ${ST_NOISE}
       vec3 stS; vec3 stD(vec3 p){ // where this point of the box ends up: taller/shorter top, slanted top, a lean, a twist, lumps, pushed out a bit
-        vec3 q = p; float up = clamp(p.y + .5, 0., 1.);
+        vec3 q = p; if (aSt.w > 1.5 && aSt.w < 3.5) q = clamp(p * 1.4, -.5, .5); /* (trees: crisp block edges, not rounded) */ float up = clamp(q.y + .5, 0., 1.);
         q.xz *= aEx.x + (1. - aEx.x) * 0.;
         q.y += aSt.y * up + aSt.z * p.x * up * up;
         q.x += aEx.y * p.y;
@@ -15777,7 +15785,8 @@ function stoneMaterial(base) {
         stS = vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz));
       #endif
       vec3 stN0 = normalize(objectNormal), stT1 = normalize(cross(stN0, abs(stN0.y) < .9 ? vec3(0, 1, 0) : vec3(1, 0, 0))), stT2 = cross(stN0, stT1);
-      vec3 stP = stD(position), stA = stD(position + stT1 * .02), stB = stD(position + stT2 * .02), stNN = normalize(cross(stA - stP, stB - stP));
+      vec3 stP = stD(position), stA = stD(position + stT1 * .02), stB = stD(position + stT2 * .02), stCr = cross(stA - stP, stB - stP), stNN = dot(stCr, stCr) > 1e-12 ? normalize(stCr) : stN0;
+      if (aSt.w > 1.5 && aSt.w < 3.5) { vec3 aa = abs(stN0); stNN = aa.x > aa.y && aa.x > aa.z ? vec3(sign(stN0.x), 0., 0.) : aa.y > aa.z ? vec3(0., sign(stN0.y), 0.) : vec3(0., 0., sign(stN0.z)); } // (trees: flat block faces)
       if (dot(stNN, stN0) < 0.) stNN = -stNN; objectNormal = stNN;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
       transformed = stP; vSp = position; vSm = stP * stS; vSt = aSt; vNo = stN0;`);
@@ -15786,13 +15795,13 @@ function stoneMaterial(base) {
       ${ST_NOISE}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
       float stHt = 0.; { vec3 b = diffuseColor.rgb; float sd = vSt.x, ty = vSt.w; vec3 P = vSm + sd * 37.;
-        if (ty > 1.5 && ty < 2.5) { // bark: deep wavy grooves running up the trunk, knots
-          float ang = atan(vSp.z, vSp.x), g = sin(ang * 11. + stF3(vec3(P.x * .7, P.y * 1.1, P.z * .7)) * 5.) * .5 + .5; g = smoothstep(.15, .85, g);
-          float k = smoothstep(.78, .9, stN3(P * 2.3)); b *= .62 + .5 * g - k * .3; b *= .9 + .2 * stN3(P * 9.); stHt = g * .9 - k * .6; }
-        else if (ty > 2.5 && ty < 3.5) { // leaves: clumps of light and dark, sunny tips, dark gaps between leaves
-          float c = stF3(P * 2.2), l = stN3(P * 9.5), l2 = stN3(P * 19.);
-          b *= .62 + .55 * c; b = mix(b, b * vec3(1.25, 1.22, .8) + vec3(.06, .07, 0.), smoothstep(.62, .85, l) * .7); b *= 1. - smoothstep(.32, .12, l) * .45; b *= .9 + .2 * l2;
-          stHt = l * .8 + l2 * .3; }
+        if (ty > 1.5 && ty < 3.5) { // trees, like the blocky picture Ali liked: every face split into little squares, each a slightly different shade
+          vec3 a3 = abs(vNo); vec2 fp = a3.x > a3.y && a3.x > a3.z ? vSm.zy : a3.y > a3.z ? vSm.xz : vSm.xy; // (the face this point is on)
+          vec2 px = floor(fp * 4. + .001); float h1 = stH3(vec3(px, sd * 13. + floor(vNo.x * 2.) + floor(vNo.y * 3.) * 5. + floor(vNo.z * 2.) * 9.)), h2 = stH3(vec3(px * 1.7, sd * 7. + 3.));
+          vec2 big = floor(fp * 1.5); float hb = stH3(vec3(big, sd * 5. + 1.)); // (bigger patches of light and dark)
+          if (ty > 2.5) { b *= 1.28 * (.86 + .2 * h1 + .1 * hb); b = mix(b, b * vec3(1.18, 1.16, .85), step(.82, h2) * .6); }
+          else { b *= .82 + .26 * h1; b *= 1. - step(.85, h2) * .2; }
+          b *= 1. + .08 * clamp(vNo.y, 0., 1.); stHt = 0.; }
         else { // stone: mottled, speckled, worn lighter edges, hairline cracks, a little grime low down
           float n1 = stF3(P * 1.1), n2 = stN3(P * 5.5), n3 = stN3(P * 17.), h = stH1(sd * 91.7);
           b *= 1. + (h - .5) * .2; b = mix(b, b.gbr, (stH1(sd * 47.3) - .5) * .08);
@@ -15806,7 +15815,7 @@ function stoneMaterial(base) {
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
       { vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); float hx = dFdx(stHt), hy = dFdy(stHt);
         vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
-        vec3 grad = sign(det) * (hx * r1 + hy * r2); normal = normalize(abs(det) * normal - grad * (vSt.w > 2.5 && vSt.w < 3.5 ? 1.1 : vSt.w > 1.5 && vSt.w < 2.5 ? .9 : .5)); }`);
+        vec3 grad = sign(det) * (hx * r1 + hy * r2); normal = normalize(abs(det) * normal - grad * (vSt.w > 2.5 && vSt.w < 3.5 ? .45 : vSt.w > 1.5 && vSt.w < 2.5 ? .9 : .5)); }`);
   };
   m.customProgramCacheKey = () => 'stone1'; return m;
 }
@@ -15844,7 +15853,7 @@ if (CLX) {
   function stoneSet(e, o = {}) {
     if (!(e.inst >= 0)) return; const i = e.inst, d = e.dims, seed = sr();
     let type = 0, top = 0, slant = 0, sx = 0, sz = 0, tw = R(-.06, .06), lump = .035, wid = 1, lean = R(-.03, .03);
-    if (e.kind === 'tree') { const c = e.color; if (c.r > c.g) { type = 2; lump = .03; tw = 0; lean = 0; } else { type = 3; lump = .04; tw = 0; lean = 0; } }
+    if (e.kind === 'tree') { const c = e.color; if (c.r > c.g) { type = 2; lump = 0; tw = 0; lean = 0; } else { type = 3; lump = 0; tw = 0; lean = 0; e.color.set(['#5cc23c', '#64c840', '#55b838'][Math.floor(sr() * 3)]); plainIM.setColorAt(i, e.color); } }
     else if (e.kind === 'stone') { lump = .045; tw = R(-.1, .1); slant = R(-.08, .08);
       if (o.recolour !== false && isGrey(e.color)) { e.color.set(AMMO[Math.floor(sr() * AMMO.length)]).offsetHSL(0, 0, R(-.03, .03)); plainIM.setColorAt(i, e.color); } }
     else if (e.kind === 'fort') { type = 1; lump = .04; Object.assign(o, o); }
@@ -15885,9 +15894,19 @@ if (CLX) {
   const LAB = [], byFam = {}, R2 = LABK.rng(9001), clean = g => { g = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(k)) g.deleteAttribute(k); return g; };
   const famPick = { blue: LABK.surfaces('classic', LABK.rng(31)), red: LABK.surfaces('classic', LABK.rng(77)), none: LABK.surfaces('classic', LABK.rng(5)) };
   const _S = new THREE.Matrix4(), _T = new THREE.Matrix4(), _Rm = new THREE.Matrix4();
+  const LEAFC = ['#5cc23c', '#6fd14a', '#4fb236', '#7ad655', '#63c843', '#56b93a'];
+  function leafCluster(e) { const d = e.dims, R = LABK.rng(e.id * 977 + 3), parts = [], s0 = .78;
+    const nx = Math.max(1, Math.round(d.x / .66)), nz = Math.max(1, Math.round(d.z / .66)), ny = Math.max(1, Math.round(d.y / .8));
+    for (let a = 0; a < nx; a++) for (let b = 0; b < nz; b++) for (let c = 0; c < ny; c++) {
+      const corner = (a === 0 || a === nx - 1) && (b === 0 || b === nz - 1); if (corner && nx > 2 && R() < .5) continue; // (round the corners off a bit)
+      const sz = s0 * (.85 + R() * .3), x = (nx > 1 ? (a / (nx - 1) - .5) * (d.x - sz * .7) : 0) + (R() - .5) * .14, z = (nz > 1 ? (b / (nz - 1) - .5) * (d.z - sz * .7) : 0) + (R() - .5) * .14, y = (ny > 1 ? (c / (ny - 1) - .5) * (d.y - sz * .6) : 0) + (R() - .5) * .3;
+      const g = new RoundedBoxGeometry(sz, sz, sz, 2, .1); g.translate(x, y, z); parts.push(LABK.tint(g, new THREE.Color(LEAFC[Math.floor(R() * LEAFC.length)]).offsetHSL(0, 0, (R() - .5) * .06))); }
+    if (d.x > 1.5) for (let k = 0; k < 2; k++) { const sz = s0 * (.8 + R() * .2), g = new RoundedBoxGeometry(sz, sz, sz, 2, .1); g.translate((R() - .5) * d.x * .4, d.y / 2 + sz * .2, (R() - .5) * d.z * .4); parts.push(LABK.tint(g, new THREE.Color(LEAFC[Math.floor(R() * LEAFC.length)]))); } // (a few cubes poking up on top)
+    return mergeGeometries(parts); }
   function labPiece(e) { const d = e.dims, o = e._lab || {}, R = LABK.rng(e.id * 131 + 7), along = d.z > d.x + .01, w = along ? d.z : d.x, dep = along ? d.x : d.z, h = d.y, sd = Math.floor(R() * 1e6);
     const base = e.kind === 'fort' ? LABK.teamCol('classic', e.team === 'red' ? '#FF2D2D' : '#008CFF', R) : e.color.clone(), col = LABK.shade(base, R, .05);
     let g, lift = 0, sy = 1;
+    if (e.kind === 'tree') { g = clean(leafCluster(e)); return { e, g, fam: 'leafy', local: new THREE.Matrix4().makeScale(1 / d.x, 1 / d.y, 1 / d.z) }; }
     if (o.top && !o.tower) { const ks = Object.keys(LABK.T), k = ks[Math.floor(R() * ks.length)]; g = LABK.T[k](col, sd); if (w > 1.05) g = LABK.stretch(g, w); sy = .8 + R() * .6; g.scale(1, sy, 1); lift = (sy - 1) * h / 2; } // (shaped tops, some taller, some lower: a jagged skyline)
     else if (e.kind === 'fort' && !o.tower && h > .9 && R() < .14) g = LABK.carvedPiece(w, h, col, sd, '#' + e.color.getHexString());
     else g = LABK.paintStone(LABK.stoneGeo(w, h, sd, R, RES), LABK.shade(col, R));
@@ -15906,7 +15925,7 @@ if (CLX) {
   // Drawing them: every stone that hasn't moved is welded into one big mesh per material (a handful of draw calls for
   // the whole map). The moment a stone's block moves (knocked loose, picked up, blown up), its stone is cut out of the
   // big mesh and becomes a mesh of its own that follows the block.
-  const FAMM = {}; const famMat = fam => FAMM[fam] || (FAMM[fam] = (() => { const m = LABK.surfMat(fam); return m; /* (no studio reflections: lit only by the stage's own light, like everything else) */ })());
+  const FAMM = {}; const famMat = fam => FAMM[fam] || (FAMM[fam] = (() => { if (fam === 'leafy') return new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .42, metalness: 0 }); /* (the tree tops: smooth, a little glossy) */ const m = LABK.surfMat(fam); return m; /* (no studio reflections: lit only by the stage's own light, like everything else) */ })());
   const _M = new THREE.Matrix4(), _N3 = new THREE.Matrix3(), _v = new THREE.Vector3();
   const WELD = [];
   for (const fam in byFam) { const L = byFam[fam], nv = L.reduce((a, p) => a + p.g.attributes.position.count, 0);
@@ -15933,33 +15952,10 @@ if (CLX) {
     g = clean(g); if (!wood) { g.computeBoundingBox(); const gd = g.boundingBox.max.z - g.boundingBox.min.z; g.scale(1, 1, d / gd); }
     const M = new THREE.Mesh(g, famMat(fam)); M.castShadow = M.receiveShadow = true; return M; };
 
-  // ---------------- 2c. the tree tops: clusters of leaves all over the canopy, so the edges are leafy, not ruler lines ----------------
-  { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), lr = prng(55), r = () => lr();
-    for (let i = 0; i < 46; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * 46, x = 64 + Math.cos(a) * d, y = 64 + Math.sin(a) * d, L = 9 + r() * 9, W = L * (.42 + r() * .15), ang = r() * 6.28, sh = .75 + r() * .45;
-      g.save(); g.translate(x, y); g.rotate(ang); g.fillStyle = `rgb(${(70 + r() * 50) * sh | 0},${(150 + r() * 70) * sh | 0},${(40 + r() * 30) * sh | 0})`; g.beginPath(); g.moveTo(-L, 0); g.quadraticCurveTo(0, -W * 1.4, L, 0); g.quadraticCurveTo(0, W * 1.4, -L, 0); g.fill();
-      g.strokeStyle = 'rgba(30,70,20,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-L * .9, 0); g.lineTo(L * .9, 0); g.stroke(); g.restore(); }
-    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
-    const card = new THREE.PlaneGeometry(1, 1); // (lying flat on the block's face)
-    const leafM = new THREE.MeshLambertMaterial({ map: tx, alphaTest: .45, side: THREE.DoubleSide });
-    const LV = [], lr2 = prng(66), q = () => lr2(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
-    for (const e of blocks) { if (e.kind !== 'tree' || !(e.inst >= 0) || !(e.color.g > e.color.r)) continue; const d = e.dims;
-      const faces = [[0, 1, d.x * d.z * 1.3], [0, -1, d.x * d.z * .4], [1, 1, d.y * d.z], [1, -1, d.y * d.z], [2, 1, d.x * d.y], [2, -1, d.x * d.y]], tot = faces.reduce((a, f) => a + f[2], 0), n = Math.round(tot * 16);
-      for (let k = 0; k < n; k++) { let w = q() * tot, f = faces[0]; for (const F of faces) { if ((w -= F[2]) < 0) { f = F; break; } }
-        const ax = f[0], half = [d.x / 2, d.y / 2, d.z / 2], pt = [0, 0, 0], u = (ax + 1) % 3, v = (ax + 2) % 3;
-        // spots near the edges of the face more often (that's where the outline is)
-        const edgeP = () => { const a = q(); return a < .6 ? (q() < .5 ? -1 : 1) * (.82 + q() * .2) : (q() - .5) * 2; };
-        pt[ax] = f[1] * (half[ax] + .015 + q() * .02); pt[u] = edgeP() * half[u]; pt[v] = edgeP() * half[v];
-        const sc = .32 + q() * .22; _p.set(...pt);
-        const nrm = new THREE.Vector3(); nrm.setComponent(ax, f[1]); _q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), nrm); _q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), q() * 6.28)); _q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler((q() - .5) * .5, (q() - .5) * .5, 0)));
-        _s.set(sc, sc, sc * .2);
-        const local = new THREE.Matrix4().makeScale(1 / d.x, 1 / d.y, 1 / d.z).multiply(new THREE.Matrix4().compose(_p.clone(), _q.clone(), _s.clone()));
-        LV.push({ e, local, c: new THREE.Color(e.color).offsetHSL((q() - .5) * .04, 0, (q() - .5) * .12) }); } }
-    const im = new THREE.InstancedMesh(card, leafM, Math.max(1, LV.length)); im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
-    LV.forEach((v, i) => im.setColorAt(i, v.c)); scene.add(im);
-    const G = new Map(); LV.forEach((v, i) => { if (!G.has(v.e)) G.set(v.e, { last: new THREE.Matrix4().makeScale(0, 0, 0), ids: [] }); G.get(v.e).ids.push(i); });
-    const _L = new THREE.Matrix4(), _W = new THREE.Matrix4();
-    const syncLeaves = () => { let ch = false; for (const [e, o] of G) { plainIM.getMatrixAt(e.inst, _L); if (o.last.equals(_L)) continue; o.last.copy(_L); ch = true; for (const i of o.ids) { _W.multiplyMatrices(_L, LV[i].local); im.setMatrixAt(i, _W); } } if (ch) im.instanceMatrix.needsUpdate = true; };
-    syncLeaves(); { const pH = pulseHalos; pulseHalos = function (t) { pH(t); syncLeaves(); }; } }
+  // ---------------- 2e. the block on your head is the same stone you picked up (not a smooth copy) ----------------
+  { const rh = refreshHeld; refreshHeld = function (r) { rh(r); const h = r.model && r.model.held; if (!h) return; const e = r.stack[0];
+      if (h.userData.labC) { h.remove(h.userData.labC); h.userData.labC = null; }
+      if (e && e._piece && !r.heldAnimal) { const p = e._piece, m = new THREE.Mesh(p.g, famMat(p.fam)); m.matrixAutoUpdate = false; m.matrix.copy(p.local); m.castShadow = true; h.add(m); h.userData.labC = m; h.material = SKIN.hideM; } }; }
 
   // ---------------- 2d. the pick-up outline follows the real shape (stones, animals) ----------------
   const hullN = new THREE.MeshBasicMaterial({ color: 0xffe14a, side: THREE.BackSide, transparent: true, depthWrite: false });
@@ -16026,7 +16022,7 @@ if (CLX) {
   const FLOORB = []; // (where the floors are: no grass grows there)
   { const FR = LABK.rng(2024), fr = (a, b) => a + (b - a) * FR(), parts = {};
     const GREYS = ['#8e9097', '#9a9ca3', '#83858c', '#a3a39c', '#8a8a92', '#9c968c'];
-    const slab = (w, d, x, y, z, yaw, tx, tz, col, fam) => { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let g = LABK.paintStone(LABK.stoneGeo(w, d, sd, R, RES), LABK.shade(new THREE.Color(col), R, .06));
+    let FRES = RES; const slab = (w, d, x, y, z, yaw, tx, tz, col, fam) => { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let g = LABK.paintStone(LABK.stoneGeo(w, d, sd, R, FRES), LABK.shade(new THREE.Color(col), R, .06));
       g = clean(g); g.rotateX(-Math.PI / 2); g.computeBoundingBox(); const t = g.boundingBox.max.y - g.boundingBox.min.y; g.scale(1, .38 / t, 1); g.scale(1.05, 1, 1.05); g.computeBoundingBox(); g.translate(0, -g.boundingBox.max.y, 0);
       g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(tx, yaw, tz))); g.translate(x, y, z); (parts[fam] = parts[fam] || []).push(g); };
     function floor(cx, y, cz, inside, cells, o = {}) { // cells: [x,z] integer offsets; inside(x,z): is this cell part of the floor
@@ -16047,8 +16043,17 @@ if (CLX) {
     // the old flat tiles go (hubs and portals), the stone ones go in
     for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === boxGeo && o.count > 20) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (Math.abs(m.elements[13] + .47) < .05) scene.remove(o); }
     const disc = (R0, jit) => { const cells = [], j = {}; for (let x = -7; x <= 7; x++) for (let z = -7; z <= 7; z++) cells.push([x, z]); const inside = (x, z) => { const k = x + ',' + z; if (j[k] == null) j[k] = R0 + (FR() - .5) * jit; return Math.hypot(x, z) < j[k]; }; return [cells, inside]; };
-    for (const h of HUBS) { const [cells, inside] = disc(5.6, 1.3); floor(h.x, .03, h.z, inside, cells); }
-    for (const sp of PORTAL_SPOTS) { const cells = []; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) cells.push([a, b]); const cut = new Set(cells.filter(([a, b]) => Math.abs(a) === 2 && Math.abs(b) === 2 && FR() < .6).map(c => c + '')); floor(Math.round(sp.x), .03, Math.round(sp.z), (x, z) => Math.abs(x) <= 2 && Math.abs(z) <= 2 && !cut.has([x, z] + ''), cells, { miss: .02 }); }
+    // the floors are solid: blocks sit on top of the stones, not sunk into them
+    const padCol = (x, z, shape) => { const c = world.createCollider(shape.setTranslation(x, .045, z).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); };
+    for (const h of HUBS) { const [cells, inside] = disc(5.6, 1.3); floor(h.x, .03, h.z, inside, cells); padCol(h.x, h.z, RAPIER.ColliderDesc.cylinder(.045, 5.2)); }
+    for (const sp of PORTAL_SPOTS) { const cells = []; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) cells.push([a, b]); const cut = new Set(cells.filter(([a, b]) => Math.abs(a) === 2 && Math.abs(b) === 2 && FR() < .6).map(c => c + '')); floor(Math.round(sp.x), .03, Math.round(sp.z), (x, z) => Math.abs(x) <= 2 && Math.abs(z) <= 2 && !cut.has([x, z] + ''), cells, { miss: .02 }); padCol(Math.round(sp.x), Math.round(sp.z), RAPIER.ColliderDesc.cuboid(2.4, .045, 2.4)); }
+    // the forts: the same stone floor inside the walls (a bit simpler, there's a lot of it)
+    FRES = CL_TOUCH ? 4 : 6;
+    for (const t of ['blue', 'red']) { const F = FORT[t], ix = FORT_RX - 2, iz = FORT_RZ - 2, cells = []; for (let x = -ix; x <= ix; x++) for (let z = -iz; z <= iz; z++) cells.push([x, z]);
+      const col = r_ => new THREE.Color(GREYS[Math.floor(r_() * GREYS.length)]).lerp(new THREE.Color(t === 'red' ? '#c08a84' : '#8a98b8'), .25).getStyle();
+      floor(Math.round(F.x), .03, Math.round(F.z), (x, z) => Math.abs(x) <= ix && Math.abs(z) <= iz, cells, { miss: .03, col });
+      padCol(Math.round(F.x), Math.round(F.z), RAPIER.ColliderDesc.cuboid(ix + .5, .045, iz + .5)); }
+    FRES = RES;
     // the sky island: a stone floor on top, and a rough rocky underside hanging below it
     if (ISLAND.on) { for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === cubeGeo && o.count < 80) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (Math.abs(m.elements[13] - (ISLAND.top - .5)) < .05) scene.remove(o); }
       const [cells, inside] = disc(ISLAND.r + .15, .7); floor(0, ISLAND.top, 0, inside, cells, { miss: .04, col: r_ => ['#a9adb8', '#9a9ea9', '#b4b0a6', '#9c9890'][Math.floor(r_() * 4)] });
@@ -16058,6 +16063,9 @@ if (CLX) {
           const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd), w = fr(.9, 1.3), h = fr(.7, 1); let g = clean(LABK.paintStone(LABK.stoneGeo(w, h, sd, R, RES), LABK.shade(new THREE.Color(ROCK[Math.floor(FR() * 4)]), R, .06)));
           g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(fr(-.3, .3), FR() * 6.28, fr(-.3, .3)))); g.translate(x + fr(-.15, .15), yk - fr(0, .3), z + fr(-.15, .15)); (parts[fam] = parts[fam] || []).push(g); } }
       const tip = clean(LABK.paintStone(LABK.stoneGeo(1.4, 1.2, 77, LABK.rng(77), RES), new THREE.Color('#6f6c6a'))); tip.rotateX(.4); tip.translate(0, ISLAND.top - 3.6, 0); parts.granite.push(tip); }
+    const onFloor = (x, z) => FLOORB.some(b => Math.abs(x - b.x) < b.rx && Math.abs(z - b.z) < b.rz);
+    for (const e of blocks) if (e.body && e.kind !== 'fort' && e.kind !== 'tree' && e.kind !== 'animal' && e.kind !== 'flag') { const t = e.body.translation(); if (t.y < 2 && onFloor(t.x, t.z)) { e.body.setTranslation({ x: t.x, y: t.y + .1, z: t.z }, true); if (e.spawnPos) e.spawnPos.y += .1; } }
+    for (const sl of slots) if (onFloor(sl.pos.x, sl.pos.z)) sl.baseY = (sl.baseY || 0) + .1;
     for (const fam in parts) { const g = mergeGeometries(parts[fam]); const m = new THREE.Mesh(g, famMat(fam)); m.castShadow = m.receiveShadow = true; scene.add(m); } }
 
   // ---------------- 5. the field: grass with worn paths, tall grass where nobody walks ----------------
@@ -16170,8 +16178,10 @@ if (CLX) {
     const pH = pulseHalos; let last = 0;
     // a slow phone: the game already steps its quality down (sharpness, then shadows); the grass follows it: the outer
     // rings go first (the distant grass), then the middle one, so only the thick grass right round you is left
-    const ringN = RINGS.map(([k]) => k * k), upTo = m => ringN.slice(0, m).reduce((a, b) => a + b, 0);
-    pulseHalos = function (t) { pH(t); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t; GU.uT.value += dt; GU.uCam.value.copy(camera.position);
+    const _gd = new THREE.Vector3(), ringN = RINGS.map(([k]) => k * k), upTo = m => ringN.slice(0, m).reduce((a, b) => a + b, 0);
+    pulseHalos = function (t) { pH(t); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t; GU.uT.value += dt;
+      // the rings are centred a little ahead of the camera, on the ground you're looking at (the camera sits behind and above you)
+      camera.getWorldDirection(_gd); _gd.y = 0; if (_gd.lengthSq() > 1e-6) _gd.normalize(); GU.uCam.value.copy(camera.position).addScaledVector(_gd, 9);
       const lv = perf.level || 0, keep = lv >= 3 ? 1 : lv >= 2 ? Math.max(1, RINGS.length - 1) : RINGS.length; blade.instanceCount = upTo(keep); };
     window.__nymbo && (window.__nymbo.FIELD = { grass, wear, tall, n, GU }); }
 
@@ -16204,8 +16214,8 @@ if (CLX) {
 // ---- cows and sheep in proportion (Ali): a cow is a big animal, a sheep a small one ----
 { const K_ = { cow: VOLC ? 1 : 1.22, sheep: .74 };
   for (const e of blocks) if (e.kind === 'animal' && K_[e.animal] && K_[e.animal] !== 1 && e.body) { const k = K_[e.animal], t = e.body.translation(), r = e.body.rotation();
-    dropBody(e); e.dims.multiplyScalar(k); e.size = Math.max(e.dims.x, e.dims.y, e.dims.z); e.rad = (e.dims.x + e.dims.y + e.dims.z) / 6; e.mesh.scale.multiplyScalar(k);
-    makeBody(e, V(t.x, t.y + (k - 1) * e.dims.y / (2 * k), t.z), new THREE.Quaternion(r.x, r.y, r.z, r.w)); if (e.anchored === false) {} } }
+    dropBody(e); e._massK = k * k * k; e.dims.multiplyScalar(k); e.size = Math.max(e.dims.x, e.dims.y, e.dims.z); e.rad = (e.dims.x + e.dims.y + e.dims.z) / 6; e.mesh.scale.multiplyScalar(k);
+    makeBody(e, V(t.x, t.y + (k - 1) * e.dims.y / (2 * k), t.z), new THREE.Quaternion(r.x, r.y, r.z, r.w)); if (e.col) e.col.setDensity(9 / e._massK); if (e.upright !== false) { e.upright = true; e.body.setEnabledRotations(false, true, false, true); } } } // (stands upright again, as it did before)
 // ---- the pick-up outline on animals: a shell round the animal you actually see (its new model), not the old box parts ----
 { const hullA = new THREE.MeshBasicMaterial({ color: 0xffe14a, side: THREE.BackSide, transparent: true, depthWrite: false });
   hullA.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += normalize(normal) * .06;'); }; hullA.customProgramCacheKey = () => 'hullA';
@@ -16214,6 +16224,8 @@ if (CLX) {
       for (const o of src) { const h = new THREE.Mesh(o.geometry, hullA); h.renderOrder = -1; h.visible = false; o.add(h); list.push(h); }
       e._hullA = list.length ? list : ah(e); }
     hullA.color.copy(hullMat.color); hullA.opacity = hullMat.opacity; return e._hullA; }; }
+// a bigger cow isn't a heavier wrecking ball, a smaller sheep isn't lighter: every animal keeps the weight it always had
+{ const mb = makeBody; makeBody = function (e, ...a) { mb(e, ...a); if (e.kind === 'animal' && e._massK && e.col) e.col.setDensity(9 / e._massK); }; }
 
 
 // test hooks for the newer bits (headless checks only)
