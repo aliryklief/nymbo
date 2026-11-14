@@ -6081,9 +6081,11 @@ function skyMapBits(g, X, s, U) {
 const SHIELD_CD = 20, SHIELD_R = 1.75;
 const SHIELD = { cool: 0, stopT: 0 }; // stopT: you stand still inside the wall for a moment (swipe/tap to move again)
 const shieldBtn = $('aNowBox'); // the block-in-hand slot IS the shield button: tap it and everything you carry drops round you
-function shieldFor(r) { // the host (or offline game) builds the ring for any robot
+function shieldFor(r, all) { // the host (or offline game) builds the ring for any robot; all: you drop EVERYTHING (Ali): blocks in the ring, animals and flags at your feet
   if (!canAct(r)) return 0;
-  const use = r.stack.filter(e => e.kind !== 'flag' && e.kind !== 'animal'); if (!use.length) return 0;
+  const use = r.stack.filter(e => e.kind !== 'flag' && e.kind !== 'animal');
+  if (all && r.stack.some(e => e.kind === 'flag' || e.kind === 'animal')) { dropAnimals(r); dropFlags(r); }
+  if (!use.length) return all ? 1 : 0;
   r.stack = r.stack.filter(e => !use.includes(e));
   const p = rPos(r), n = use.length, perRing = Math.min(n, 10), rings = Math.ceil(n / perRing);
   const a0 = r.yaw + Math.PI; // the first gap-free arc faces where you're looking, so the wall is in front of you first
@@ -6105,10 +6107,10 @@ function botShield(r, chance) { // a bot dropping its ammo as a wall (same rules
 }
 function playerShield() {
   if (match.state !== 'play' || !canAct(P) || SHIELD.cool > 0) { sfx('denied'); return; }
-  const have = P.stack.some(e => e.kind !== 'flag' && e.kind !== 'animal'); if (!have) { toast('NO BLOCKS FOR A SHIELD'); sfx('denied'); return; }
-  SHIELD.cool = SHIELD_CD; SHIELD.stopT = 1.5;
-  if (NET && NET.client) { NET.act(['sh']); toast('SHIELD UP'); return; }
-  if (shieldFor(P)) toast('SHIELD UP');
+  const have = P.stack.length > 0; if (!have) { toast('NOTHING TO DROP'); sfx('denied'); return; }
+  const blocksToo = P.stack.some(e => e.kind !== 'flag' && e.kind !== 'animal'); if (blocksToo) { SHIELD.cool = SHIELD_CD; SHIELD.stopT = 1.5; } // (just dropping a flag or an animal: no recharge needed)
+  if (NET && NET.client) { NET.act(['sh']); toast(blocksToo ? 'SHIELD UP' : 'DROPPED'); return; }
+  if (shieldFor(P, true)) toast(blocksToo ? 'SHIELD UP' : 'DROPPED');
 }
 shieldBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); });
 shieldBtn.addEventListener('pointerup', e => { e.stopPropagation(); playerShield(); });
@@ -11618,7 +11620,7 @@ function hostMsg(c, m) {
     if (a[0] === 'j') { if (canAct(r)) r.jumpReq = true; }
     else if (a[0] === 'd') dodge(r, a[1]);
     else if (a[0] === 'g') grabFor(r);
-    else if (a[0] === 'sh') shieldFor(r);
+    else if (a[0] === 'sh') shieldFor(r, true);
     else if (a[0] === 'bh') { if ((r.streak || 0) >= BH_AT - 1 || true) { BH.byNext = r; startBlackHole(r.team); } } // (the client checked its own streak)
     else if (a[0] === 't') { if (canAct(r)) { if (typeof a[4] === 'number') r.yaw = r.yawT = a[4]; const lt = robots[a[2]], ht = robots[a[3]]; throwFor(r, a[1], lt && hittable(lt) ? lt : null, ht && hittable(ht) ? ht : null); } }
   }
@@ -15919,12 +15921,13 @@ if (CLX) {
           float vein = vF2.z > 0. ? pow(1. - abs(sin(p.x * 3. + p.y * 2. + fbm(p * 2.5) * 6.)), 14.) * vF2.z : 0.;
           float pit = smoothstep(.78, .86, vn(p * 18.)) * vF2.y;
           vec3 n0 = abs(normalize(vON)); float edge = 1. - max(n0.x, max(n0.y, n0.z));
-          diffuseColor.rgb *= 1. + mot * vF1.x * 2. + g * vF1.z + ly * .12 - vein * .35 - pit * .35;
+          float aa = clamp(1. - length(fwidth(p * vF1.w)) * .8, 0., 1.); // (fine grain fades out when it's too small to see: no shimmering lines as you move)
+          diffuseColor.rgb *= 1. + mot * vF1.x * 2. + g * vF1.z * aa + ly * .12 * clamp(1. - length(fwidth(p * 22.)) * .8, 0., 1.) - vein * .35 - pit * .35 * aa;
           diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.25 + .05, smoothstep(.08, .3, edge) * vF3.z * (.6 + .8 * vn(p * 9.))); }`)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         roughnessFactor = clamp(vF3.x + (fbm((vOP + 7.) * 3.) - .5) * vF3.y * 2., .04, 1.);`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-        { vec3 p = vOP + 13.1; float H = surfH(p) * vF2.x * .02; vec2 dH = vec2(dFdx(H), dFdy(H));
+        { vec3 p = vOP + 13.1; float H = surfH(p) * vF2.x * .02 * clamp(1. - length(fwidth(p * vF1.w)) * .8, 0., 1.); vec2 dH = vec2(dFdx(H), dFdy(H));
           vec3 sX = dFdx(-vViewPosition), sY = dFdy(-vViewPosition), R1 = cross(sY, normal), R2 = cross(normal, sX); float det = dot(sX, R1);
           normal = normalize(abs(det) * normal - sign(det) * (dH.x * R1 + dH.y * R2)); }`); };
     m.customProgramCacheKey = () => 'labuni'; return m; })());
@@ -16372,6 +16375,8 @@ if (CLX) try { renderer.compile(scene, camera); } catch (_) {}
 if (CLX) { const ob = scene.onBeforeRender; scene.onBeforeRender = function (...a) { if (ob) ob.apply(this, a); if (scene.fog && !(PW && PW.dark > 0)) { scene.fog.near *= .62; scene.fog.far *= .78; } };
   const ar = scene.onAfterRender; scene.onAfterRender = function (...a) { if (ar) ar.apply(this, a); if (scene.fog && !(PW && PW.dark > 0)) { scene.fog.near /= .62; scene.fog.far /= .78; } }; }
 window.__clt = performance.now() - CL_T0;
+// shadows on the rounded stones: a little more offset so they don't streak with lines (shadow acne)
+if (CLX) { sun.shadow.bias = -0.0009; sun.shadow.normalBias = 0.06; }
 
 
 // test hooks for the newer bits (headless checks only)
