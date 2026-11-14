@@ -15845,7 +15845,8 @@ if (CLX) {
     sun.color.set('#ffe0f0'); sun.intensity = 2.3;
     Object.assign(LIGHT0, { hemi: hemi ? hemi.intensity : 1, sun: sun.intensity, bg: scene.background, fog: scene.fog.color.clone() });
     const BG = window.__nymbo && window.__nymbo.BG;
-    if (BG) { BG.landU.uHaze.value.set('#c8a8f0'); BG.mistU.uHaze.value.set('#c8a8f0').lerp(C('#ffffff'), .25); BG.landU.uSunC.value.set('#ffe0f0').multiplyScalar(1.1); BG.landU.uAmbC.value.set('#a080ff').multiplyScalar(1.1);
+    if (BG) { BG.landU.uHazeK.value = 1.9; // (a soft haze over the distance: the far mountains fade into it)
+      BG.landU.uHaze.value.set('#c8a8f0'); BG.mistU.uHaze.value.set('#c8a8f0').lerp(C('#ffffff'), .25); BG.landU.uSunC.value.set('#ffe0f0').multiplyScalar(1.1); BG.landU.uAmbC.value.set('#a080ff').multiplyScalar(1.1);
       for (const [m, o] of BG.puffMats) m.color.set(o > .85 ? '#ffe8ff' : '#a080d0'); }
     const sea = scene.children.find(o => o.isInstancedMesh && o.geometry.type === 'SphereGeometry' && o.count > 300); if (sea) { sea.material.emissive.set('#f0c8ff'); sea.material.emissiveIntensity = .42; } }
 
@@ -16351,6 +16352,10 @@ function liquidScreen(deep, mid, hi, square, pal) {
   const pH = pulseHalos; let last = 0; pulseHalos = function (tm) { pH(tm); const dt = clamp((tm - (last || tm)) / 1000, 0, .05); last = tm; for (const [m] of LIQ) { m.uniforms.t.value += dt; m.uniforms.op.value = Math.min(1, (m.opacity ?? 1) * 1.6); } }; }
 // get every material ready while the game loads, so nothing pops in or stutters the first time you see it
 if (CLX) try { renderer.compile(scene, camera); } catch (_) {}
+// a hazier distance on the classic stage: the haze starts closer and is thicker by the far edge (whatever the camera does)
+if (CLX) { const ob = scene.onBeforeRender; scene.onBeforeRender = function (...a) { if (ob) ob.apply(this, a); if (scene.fog && !(PW && PW.dark > 0)) { scene.fog.near *= .62; scene.fog.far *= .78; } };
+  const ar = scene.onAfterRender; scene.onAfterRender = function (...a) { if (ar) ar.apply(this, a); if (scene.fog && !(PW && PW.dark > 0)) { scene.fog.near /= .62; scene.fog.far /= .78; } }; }
+
 
 // test hooks for the newer bits (headless checks only)
 Object.assign(window.__nymbo, { nbrPose, nbrAntPose, nbrAntRest, nbrHeld, startReplay: () => startReplay(), drawReplay: () => drawReplay(), onPlayerKO: (...a) => onPlayerKO(...a), nymMeshModel, NBR_SWAPU, NBR_HD, NBR_TS, grabBlock: (...a) => grabBlock(...a), freezeRobot: (...a) => freezeRobot(...a), ragdoll: (...a) => ragdoll(...a), get blocks() { return blocks; }, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
