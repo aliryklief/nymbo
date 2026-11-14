@@ -14277,12 +14277,14 @@ function makeBlockKit(THREE, RBOX, MERGE) {
   }
 
   // ---------- the flags (chonks): circuit-board half cubes that interlock ----------
-  const CT = {}; function circuitTex(hex) { return CT[hex] || (CT[hex] = circuitTexBuild(hex)); }
-  function circuitTexBuild(hex) {
+  // how bright the board is drawn: reds deeper, oranges and yellows bright, so red and orange never look alike once lit
+  const boardK = hex => { const h = {}; new THREE.Color(hex).getHSL(h); return h.h < .03 || h.h > .95 ? .5 : h.h < .15 ? 1 : .8; };
+  const CT = {}; function circuitTex(hex, base = .62) { const k = hex + base; return CT[k] || (CT[k] = circuitTexBuild(hex, base)); }
+  function circuitTexBuild(hex, base = .62) {
     const S = 512, c = document.createElement('canvas'), e = document.createElement('canvas'); c.width = c.height = e.width = e.height = S;
     const g = c.getContext('2d'), ge = e.getContext('2d'), col = new THREE.Color(hex), R = mulberry(7);
     const css = (k, l = 1) => { const q = col.clone().multiplyScalar(k); return `rgb(${Math.min(255, q.r * 255 * l) | 0},${Math.min(255, q.g * 255 * l) | 0},${Math.min(255, q.b * 255 * l) | 0})`; };
-    g.fillStyle = css(.62); g.fillRect(0, 0, S, S); ge.fillStyle = '#000'; ge.fillRect(0, 0, S, S);
+    g.fillStyle = css(base); g.fillRect(0, 0, S, S); ge.fillStyle = '#000'; ge.fillRect(0, 0, S, S);
     // traces: little Manhattan paths with 45° corners
     for (let i = 0; i < 46; i++) {
       let x = (R() * 32 | 0) * 16, y = (R() * 32 | 0) * 16; const glow = i < 7;
@@ -14309,7 +14311,7 @@ function makeBlockKit(THREE, RBOX, MERGE) {
       const on = x < BODY || ((((y / T) | 0) + ((z / T) | 0)) % 2 === parity); vox[x + X * (y + N * z)] = on ? 1 : 0; }
     return vox; }
   function chonk(hex, parity = 0) {
-    const [map, emi] = circuitTex(hex), X = BODY + TEETH;
+    const [map, emi] = circuitTex(hex, boardK(hex) * .8), X = BODY + TEETH;
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map, emissiveMap: emi, emissive: '#ffffff', emissiveIntensity: 1.2, roughness: .35, metalness: .15 });
     const g = mesh(chonkVox(0), X, N, N, [{ c: '#ffffff' }], { material: mat, uvScale: 1 });
     // the mesh is centred on its own box; shift so it sits in the left part of the shared cube
@@ -14328,9 +14330,9 @@ function makeBlockKit(THREE, RBOX, MERGE) {
   }
 
   function flag(hex, parity = 0) {
-    const soft = new THREE.Color(hex), hsl = {}; soft.getHSL(hsl); soft.setHSL(hsl.h, hsl.s * .5, .55);
+    const soft = new THREE.Color(hex), hsl = {}; soft.getHSL(hsl); soft.setHSL(hsl.h, hsl.s * .8, .58);
     // the frame: one solid piece in the flag's own colour, a circuit board all over it (the same motherboard look as the chonk inside)
-    const [fmap, femi] = circuitTex(hex), fm = new THREE.MeshPhysicalMaterial({ color: '#ffffff', map: fmap, emissive: '#ffffff', emissiveMap: femi, emissiveIntensity: .7, roughness: .3, metalness: .25, clearcoat: 1, clearcoatRoughness: .08 });
+    const [fmap, femi] = circuitTex(hex, boardK(hex)), /* (a bright board, so every colour stays itself: orange reads orange, not red) */ fm = new THREE.MeshPhysicalMaterial({ color: '#ffffff', map: fmap, emissive: '#ffffff', emissiveMap: femi, emissiveIntensity: .7, roughness: .3, metalness: .25, clearcoat: 1, clearcoatRoughness: .08 });
     const g = roundCage(fm);
     const c = chonk(hex, parity), pivot = new THREE.Group(); c.scale.setScalar(.6); pivot.add(c); g.add(pivot);
     const water = liquid(.398, 3, soft); water.renderOrder = 1; g.add(water);
