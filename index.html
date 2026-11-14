@@ -13812,7 +13812,7 @@ float rN3(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); 
 //           glass walls packed with gunpowder, a white dome on each face that throbs like a heartbeat, a red fuse with slow sparks
 //   freeze  glacier ice (deep blue below, pale above), see-through walls with thick icy slush inside, white snowflakes
 //           slowly turning, frost flakes, glints, cold steam
-//   homing  a radar in a red forged-carbon frame: a white target ring, a red dot, a green sweep going round with blips
+//   homing  a radar in a white frame with red trim: a white target ring, a red dot, a green sweep going round with blips
 //   sticky  semtex in an army-camo frame: living green goo behind glass, slime dripping and wobbling, a timer that counts down once stuck
 //   gold    rounded Damascus-gold frame, glass set back into it, thick molten gold flowing inside with glitter
 //   streak  (the star) rounded purple Damascus box, a straight-edged star window, a flowing galaxy inside
@@ -14071,11 +14071,11 @@ function makeBlockKit(THREE, RBOX, MERGE) {
     return g;
   }
   function homing() {
-    const g = solidRound(polish('#ffffff', { map: FLAKE_RED(), metalness: .35, roughness: .3, clearcoat: 1, clearcoatRoughness: .05 }), polish('#031d21', { roughness: .4, metalness: .2 })); // red forged carbon, a dark radar screen in the recess
+    const g = solidRound(polish('#f3f4f7', { metalness: .05, roughness: .22, clearcoat: 1, clearcoatRoughness: .04 }), polish('#031d21', { roughness: .4, metalness: .2 })); /* (Ali: a bright white frame with red trim, like a target: nothing else is white) */ // red forged carbon, a dark radar screen in the recess
     const dz = .045, ring = new THREE.Shape(); ring.absarc(0, 0, .265, 0, Math.PI * 2, false); const hole = new THREE.Path(); hole.absarc(0, 0, .225, 0, Math.PI * 2, true); ring.holes.push(hole);
     const parts = [new THREE.ExtrudeGeometry(ring, { depth: dz - .01, bevelEnabled: true, bevelThickness: .01, bevelSize: .01, bevelSegments: 1, curveSegments: 20 })];
     for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; parts.push(rbox(.1, .04, .1, .015, Math.cos(a) * .3, Math.sin(a) * .3, .05, a)); }
-    sixFaces(g, join(parts), shiny('#ffffff', { roughness: .4 }));
+    sixFaces(g, join(parts), shiny('#e8202a', { roughness: .35 }));
     // the red dot in the middle, glowing
     const dot = new THREE.SphereGeometry(.04, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2).translate(0, 0, .006);
     sixFaces(g, dot, new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff1a1a').multiplyScalar(1.8), toneMapped: false }), false);
@@ -14384,7 +14384,7 @@ function makeBlockKit(THREE, RBOX, MERGE) {
   }
   // power blocks get a glowing neon trim round every window, in their own colour, gently breathing: so they pop, and
   // never look like a flag or a plain block from across the map
-  const TRIM = { bomb: '#ff6a1a', ice: '#5ff2ff', homing: '#3dff8a', sticky: '#b4ff2e', gold: '#ffd23a', star: '#ff4dff' };
+  const TRIM = { bomb: '#ff6a1a', ice: '#5ff2ff', homing: '#ff2a3a', sticky: '#b4ff2e', gold: '#ffd23a', star: '#ff4dff' };
   function trim(g, col) { const h = .5 - F / N + .004, w = .014, z = D / N - .012, parts = [];
     for (const [x, y, W, H] of [[0, h, 2 * h + w, w], [0, -h, 2 * h + w, w], [h, 0, w, 2 * h + w], [-h, 0, w, 2 * h + w]]) parts.push(new THREE.BoxGeometry(W, H, .01).translate(x, y, z));
     const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(1.8), toneMapped: false }); sixFaces(g, join(parts), m, false);
