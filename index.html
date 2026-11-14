@@ -378,7 +378,8 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
       <div class="tog"><label for="sBuzz">Vibration</label><input id="sBuzz" type="checkbox"></div></div>
     <div class="sect"><h3>Playing</h3>
       <div class="tog"><label for="sReplay">Instant replay</label><input id="sReplay" type="checkbox"></div>
-      <div class="tog"><label for="sLand">On-screen controls</label><input id="sLand" type="checkbox"></div></div>
+      <div class="tog"><label for="sLand">On-screen controls</label><input id="sLand" type="checkbox"></div>
+      <div class="tog"><label for="sMaxQ">Max quality</label><input id="sMaxQ" type="checkbox"></div></div>
     <div class="sect"><h3>Testing</h3>
       <div class="tog"><label for="sAllPowers">All powers</label><input id="sAllPowers" type="checkbox"></div>
       <div class="tog"><label for="sFps">Show FPS</label><input id="sFps" type="checkbox"></div></div>
@@ -736,7 +737,7 @@ const plStaticAt = (x, z) => { for (const o of PL_DEF) if (!o.mv && Math.abs(x -
 // ---------------- renderer / scene ----------------
 const stage = $('stage');
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, S.maxq ? 3 : 2)); // (Settings → Max quality: full sharpness on high-res screens)
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // soft shadow edges (no stair-steps)
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -777,7 +778,7 @@ scene.onBeforeRender = (r, s, cam) => skyDome.position.copy(cam.position);
 const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 480); // near .3 (was .1): ~3x the depth precision, so flat things on the grass stop flickering
 scene.add(THEME ? new THREE.HemisphereLight(...THEME.hemi) : DESERT ? new THREE.HemisphereLight(0xffd9b8, 0x8a4a2a, 1.1) : new THREE.HemisphereLight(0xdcecff, 0x5c7a3c, 1.15));
 const sun = new THREE.DirectionalLight(THEME ? THEME.sun[0] : DESERT ? 0xfff0dc : 0xfff1d8, THEME ? THEME.sun[1] : DESERT ? 2.7 : 2.5);
-sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+sun.castShadow = true; sun.shadow.mapSize.set(S.maxq ? 4096 : 1024, S.maxq ? 4096 : 1024); // (max quality: crisp shadows)
 Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 110 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.025;
 scene.add(sun, sun.target);
@@ -6109,8 +6110,8 @@ function playerShield() {
   if (match.state !== 'play' || !canAct(P) || SHIELD.cool > 0) { sfx('denied'); return; }
   const have = P.stack.length > 0; if (!have) { toast('NOTHING TO DROP'); sfx('denied'); return; }
   const blocksToo = P.stack.some(e => e.kind !== 'flag' && e.kind !== 'animal'); if (blocksToo) { SHIELD.cool = SHIELD_CD; SHIELD.stopT = 1.5; } // (just dropping a flag or an animal: no recharge needed)
-  if (NET && NET.client) { NET.act(['sh']); toast(blocksToo ? 'SHIELD UP' : 'DROPPED'); return; }
-  if (shieldFor(P, true)) toast(blocksToo ? 'SHIELD UP' : 'DROPPED');
+  if (NET && NET.client) { NET.act(['sh']); if (blocksToo) toast('SHIELD UP'); return; }
+  if (shieldFor(P, true) && blocksToo) toast('SHIELD UP');
 }
 shieldBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); });
 shieldBtn.addEventListener('pointerup', e => { e.stopPropagation(); playerShield(); });
@@ -7366,7 +7367,7 @@ function restart(auto) {
 }
 const bindRange = (id, key, fmt) => { const el = $(id), v = $(id + 'V'); el.value = S[key]; const sh = () => v.textContent = fmt(S[key]); sh(); el.oninput = () => { S[key] = +el.value; sh(); saveS(); }; };
 S.classic = false; // (the old made-in-code sound set is gone from the settings: always the real sounds)
-for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sOden', 'oden'], ['sAllPowers', 'allPowers'], ['sFps', 'fps'], ['sReplay', 'replay'], ['sLand', 'land']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'allPowers') renderTray(); if (key === 'oden' && S.oden) odenLoad(); }; }
+for (const [id, key] of [['sBuzz', 'buzz'], ['sSound', 'sound'], ['sOden', 'oden'], ['sAllPowers', 'allPowers'], ['sFps', 'fps'], ['sReplay', 'replay'], ['sLand', 'land'], ['sMaxQ', 'maxq']]) { const el = $(id); el.checked = S[key]; el.onchange = () => { S[key] = el.checked; saveS(); if (key === 'maxq') { renderer.setPixelRatio(S.maxq ? Math.min(devicePixelRatio, 3) : Math.min(devicePixelRatio, 2)); perf.level = 0; sun.castShadow = true; resize(); toast(S.maxq ? 'MAX QUALITY ON (FINEST STONES NEXT TIME THE GAME LOADS)' : 'NORMAL QUALITY'); } if (key === 'allPowers') renderTray(); if (key === 'oden' && S.oden) odenLoad(); }; }
 
 let wakeLock = null;
 const INTRO_T = 8.2; // flyover length; the last 5 seconds show the countdown
@@ -7475,6 +7476,7 @@ function frame() {
   // slow phone? drop the resolution a notch (never below 1x)
   perf.sum += raw; perf.n++;
   // slow device? step the quality down: resolution first, then shadows, then a bit more resolution
+  if (perf.n >= 60 && S.maxq) { perf.sum = 0; perf.n = 0; } // (max quality: never step the quality down)
   if (perf.n >= 60) {
     if (perf.sum / perf.n > .021 && perf.level < 4) { // (below ~48 fps)
       perf.level++;
@@ -15902,8 +15904,8 @@ if (CLX) {
   // (or now and then a carved one), and the battlements on top get the lab's shaped tops (ramps, gables, points, round
   // tops, steps...), some taller, some lower. The plain box underneath stops drawing but still does all the physics;
   // each frame its position is copied onto its stone. One draw call per surface material (sandstone, granite, clay...).
-  const LABK = makeFortKit(THREE, RoundedBoxGeometry, mergeGeometries); LABK.setRes(CL_TOUCH ? 10 : 15);
-  const RES = CL_TOUCH ? 6 : 10, hideA = new THREE.InstancedBufferAttribute(new Float32Array(N), 1); geo.setAttribute('aHide', hideA);
+  const LABK = makeFortKit(THREE, RoundedBoxGeometry, mergeGeometries); LABK.setRes(S.maxq ? 26 : CL_TOUCH ? 10 : 15);
+  const RES = S.maxq ? 14 : CL_TOUCH ? 6 : 10, hideA = new THREE.InstancedBufferAttribute(new Float32Array(N), 1); geo.setAttribute('aHide', hideA);
   { const ob = plainIM.material.onBeforeCompile; plainIM.material.onBeforeCompile = sh => { ob(sh); sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aHide;').replace('#include <project_vertex>', '#include <project_vertex>\nif (aHide > .5) gl_Position = vec4(0., 0., 2., 1.);'); }; plainIM.material.customProgramCacheKey = () => 'stone1h'; }
   const TCACHE = {}, SCACHE = {}; const stoneGeoC = (w, h, sd, R, res) => { const key = w.toFixed(2) + 'x' + h.toFixed(2) + '@' + res, L = SCACHE[key] || (SCACHE[key] = []), v = Math.floor(R() * 6);
     if (!L[v]) L[v] = LABK.stoneGeo(w, h, sd, R, res); const g = L[v].clone(); g.userData.crack = L[v].userData.crack; return g; }; // (six shapes per size, reused: much faster to load)
@@ -16049,10 +16051,12 @@ if (CLX) {
   // ---------------- 2d. the pick-up outline follows the real shape (stones, animals) ----------------
   const hullN = new THREE.MeshBasicMaterial({ color: 0xffe14a, side: THREE.BackSide, transparent: true, depthWrite: false });
   hullN.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += normalize(normal) * .07;'); }; hullN.customProgramCacheKey = () => 'hullN';
-  const sHull = new THREE.Mesh(new THREE.BufferGeometry(), hullN); sHull.matrixAutoUpdate = false; sHull.renderOrder = -1; sHull.visible = false; sHull.frustumCulled = false; scene.add(sHull);
+  const RHULL = stoneGeo(2);   const sHull = new THREE.Mesh(new THREE.BufferGeometry(), hullN); sHull.matrixAutoUpdate = false; sHull.renderOrder = -1; sHull.visible = false; sHull.frustumCulled = false; scene.add(sHull);
   for (const p of LAB) p.e._piece = p;
   { const ph = placeHighlight; placeHighlight = function () { ph(); sHull.visible = false; const e = hlE && !hlE.holder && !hlE.dead && hlE.body ? hlE : null;
-      if (e && e._piece && hlHull.visible) { const p = e._piece; hl.visible = hlHull.visible = false; if (sHull.geometry !== p.g) sHull.geometry = p.g; plainIM.getMatrixAt(e.inst, sHull.matrix); sHull.matrix.multiply(p.local); sHull.matrixWorldNeedsUpdate = true; sHull.visible = true; }
+      if (e && !e._piece && e.inst >= 0 && hlHull.visible) { hl.visible = hlHull.visible = false; if (sHull.geometry !== RHULL) sHull.geometry = RHULL; plainIM.getMatrixAt(e.inst, sHull.matrix); sHull.matrixWorldNeedsUpdate = true; sHull.visible = true; } // (trees and other rounded blocks: a rounded outline, not a box)
+      else if (e && e.inst < 0 && e.mesh && e.kind !== 'animal' && hlHull.visible) { hl.visible = hlHull.visible = false; if (sHull.geometry !== RHULL) sHull.geometry = RHULL; e.mesh.updateMatrixWorld(); sHull.matrix.copy(e.mesh.matrixWorld); sHull.matrixWorldNeedsUpdate = true; sHull.visible = true; } // (power blocks and flags: rounded too)
+      else if (e && e._piece && hlHull.visible) { const p = e._piece; hl.visible = hlHull.visible = false; if (sHull.geometry !== p.g) sHull.geometry = p.g; plainIM.getMatrixAt(e.inst, sHull.matrix); sHull.matrix.multiply(p.local); sHull.matrixWorldNeedsUpdate = true; sHull.visible = true; }
       hullN.color.copy(hullMat.color); hullN.opacity = hullMat.opacity; }; }
   { const nb = newBlock; newBlock = function (...a) { const e = nb(...a); const p = e && LAB.find(q_ => q_.e === e); if (p) e._piece = p; return e; }; }
 
@@ -16137,7 +16141,7 @@ if (CLX) {
     for (const h of HUBS) { const [cells, inside] = disc(5.6, 1.3); floor(h.x, .03, h.z, inside, cells); padCol(h.x, h.z, RAPIER.ColliderDesc.cylinder(.045, 5.2)); }
     for (const sp of PORTAL_SPOTS) { const cells = []; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) cells.push([a, b]); const cut = new Set(cells.filter(([a, b]) => Math.abs(a) === 2 && Math.abs(b) === 2 && FR() < .6).map(c => c + '')); floor(Math.round(sp.x), .03, Math.round(sp.z), (x, z) => Math.abs(x) <= 2 && Math.abs(z) <= 2 && !cut.has([x, z] + ''), cells, { miss: .02 }); padCol(Math.round(sp.x), Math.round(sp.z), RAPIER.ColliderDesc.cuboid(2.4, .045, 2.4)); }
     // the forts: the same stone floor inside the walls (a bit simpler, there's a lot of it)
-    FRES = CL_TOUCH ? 4 : 6;
+    FRES = S.maxq ? 9 : CL_TOUCH ? 4 : 6;
     for (const t of ['blue', 'red']) { const F = FORT[t], ix = FORT_RX, iz = FORT_RZ, cells = []; /* (right out under the walls) */ for (let x = -ix; x <= ix; x++) for (let z = -iz; z <= iz; z++) cells.push([x, z]);
       const col = r_ => new THREE.Color(GREYS[Math.floor(r_() * GREYS.length)]).lerp(new THREE.Color(t === 'red' ? '#c08a84' : '#8a98b8'), .25).getStyle();
       floor(Math.round(F.x), .03, Math.round(F.z), (x, z) => Math.abs(x) <= ix && Math.abs(z) <= iz, cells, { miss: .03, col });
@@ -16166,9 +16170,13 @@ if (CLX) {
       // the arch: gold bricks fanned round a half circle from the top of one pillar to the other, high enough for a Nym carrying a flag
       for (const t of ['blue', 'red']) { const G = GATES[t]; if (!G) continue; const gy = G.y || 0, NV = 9;
         world.forEachCollider(cl => { const tr = cl.translation(), he = cl.halfExtents && cl.halfExtents(); if (he && Math.abs(tr.x - G.x) < .3 && Math.abs(tr.z - G.z) < .3 && Math.abs(tr.y - (gy + 3.5)) < .3 && he.z > 2) { byCollider.delete(cl.handle); world.removeCollider(cl, false); } }); // (the old flat top's collider goes)
-        for (let k = 0; k < NV; k++) { const a0 = Math.PI * (k + .5) / NV, cz = Math.cos(a0) * 2, cy = gy + 3 + Math.sin(a0) * 2, sd = Math.floor(FR() * 1e6), R = LABK.rng(sd);
-          const g = clean(LABK.paintStone(stoneGeoC(.72, 1, sd, R, RES), new THREE.Color('#e0b040').offsetHSL((FR() - .5) * .02, 0, (FR() - .5) * .08))); // (each brick: .72 along the arch, 1 deep, 1 from inside to outside)
-          g.rotateY(Math.PI / 2); g.rotateX(-(a0 - Math.PI / 2)); g.translate(G.x, cy, G.z + cz); metal.push(g);
+        for (let k = 0; k < NV; k++) { const a0 = Math.PI * (k + .5) / NV, cz = Math.cos(a0) * 2, cy = gy + 3 + Math.sin(a0) * 2, key = k === (NV - 1) / 2, R = LABK.rng(Math.floor(FR() * 1e6));
+          // a wedge: wider on the outside than the inside, so neighbours fit flush (no gaps); the middle one is the capping stone, standing proud
+          const aA = Math.PI * k / NV + .006, aB = Math.PI * (k + 1) / NV - .006, r1 = 1.5, r2 = key ? 2.85 : 2.5, sh = new THREE.Shape();
+          sh.moveTo(Math.cos(aA) * r1, Math.sin(aA) * r1); sh.absarc(0, 0, r1, aA, aB, false); sh.lineTo(Math.cos(aB) * r2, Math.sin(aB) * r2); sh.absarc(0, 0, r2, aB, aA, true); sh.closePath();
+          let g = new THREE.ExtrudeGeometry(sh, { depth: .9, bevelEnabled: true, bevelThickness: .05, bevelSize: .045, bevelSegments: 2, curveSegments: 6 }); g.translate(0, 0, -.45);
+          g = LABK.lump(g, .012, k * 31 + 7); g = clean(LABK.tint(g, new THREE.Color('#e0b040').offsetHSL((R() - .5) * .02, 0, (R() - .5) * .08))); g.computeVertexNormals();
+          g.rotateY(Math.PI / 2); g.translate(G.x, gy + 3, G.z); metal.push(g);
           const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -(a0 - Math.PI / 2)), c2 = world.createCollider(RAPIER.ColliderDesc.cuboid(.5, .5, .38).setTranslation(G.x, cy, G.z + cz).setRotation(q).setFriction(.8)); byCollider.set(c2.handle, { type: 'static' }); }
         // the glowing screen fills the arch too
         if (G.glow) { const sh = new THREE.Shape(); sh.moveTo(-1.5, -1.5); sh.lineTo(1.5, -1.5); sh.lineTo(1.5, 1.5); sh.absarc(0, 1.5, 1.5, 0, Math.PI, false); sh.lineTo(-1.5, -1.5);
@@ -16313,18 +16321,20 @@ if (CLX) {
     const P = [], C = [], I = [], col = new THREE.Color(), RW = 9; // rows: 0 inner lip, 1 outer lip, 2..8 down the cliff
     for (const [x, z, nx, nz, s_] of pts) { const o = out(s_);
       for (let r = 0; r < RW; r++) { let d, y;
-        if (r === 0) { d = 0; y = .005; } else if (r === 1) { d = o; y = -.04; } else { const t = (r - 1) / (RW - 2); d = o * (1 - t * .55) + (Math.sin(s_ * 1.9 + r * 2.1) * .5 + Math.sin(s_ * .7 + r) * .3) * .35 * (1 - t * .3) - t * .4; y = -.15 - t * 5.8 + Math.sin(s_ * 2.3 + r) * .12; }
+        if (r === 0) { d = 0; y = 0; } else if (r === 1) { d = o; y = -.04; } else { const t = (r - 1) / (RW - 2); d = o * (1 - t * .55) + (Math.sin(s_ * 1.9 + r * 2.1) * .5 + Math.sin(s_ * .7 + r) * .3) * .35 * (1 - t * .3) - t * .4; y = -.15 - t * 5.8 + Math.sin(s_ * 2.3 + r) * .12; }
         P.push(x + nx * d, y, z + nz * d);
         if (r <= 1) col.set('#4f9a2c').offsetHSL(0, 0, (Math.sin(s_ * .9) * .5 + .5) * .05 - .02); else { const t = (r - 1) / (RW - 2), n = Math.sin(s_ * 3.1 + r * 1.7) * .5 + .5; col.set(t < .12 ? '#3f7a24' : t < .45 ? '#8a5e3a' : t < .75 ? '#75553a' : '#6a6460').offsetHSL(0, 0, (n - .5) * .08); }
         C.push(col.r, col.g, col.b); } }
     for (let i = 0; i < pts.length - 1; i++) for (let r = 0; r < RW - 1; r++) { const a = i * RW + r, b = (i + 1) * RW + r; I.push(a, b, a + 1, b, b + 1, a + 1); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setIndex(I); g.computeVertexNormals();
-    const rim = new THREE.Mesh(g, new LiteMat({ vertexColors: true, side: THREE.DoubleSide })); rim.receiveShadow = true; scene.add(rim); }
+    const rim = new THREE.Mesh(g, new LiteMat({ vertexColors: true, side: THREE.DoubleSide })); rim.receiveShadow = true; scene.add(rim);
+    // the old straight striped sides of the island stop drawing (the cliff covers them), so no dark line shows along the edge
+    if (slab && Array.isArray(slab.material)) { const inv = new THREE.MeshBasicMaterial({ visible: false }), M = slab.material.slice(); for (const k of [0, 1, 4, 5]) M[k] = inv; slab.material = M; } }
 
 }
 
 // ---- cows and sheep in proportion (Ali): a cow is a big animal, a sheep a small one ----
-{ const K_ = { cow: 1.18, sheep: .88 }; /* (Ali: cows at their old size, the size they look on your head) */
+{ const K_ = { cow: 1.3, sheep: .97 }; /* (each keeps the weight it always had) */ /* (Ali: cows at their old size, the size they look on your head) */
   for (const e of blocks) if (e.kind === 'animal' && K_[e.animal] && K_[e.animal] !== 1 && e.body) { const k = K_[e.animal], t = e.body.translation(), r = e.body.rotation();
     dropBody(e); e._massK = k * k * k; e.dims.multiplyScalar(k); e.size = Math.max(e.dims.x, e.dims.y, e.dims.z); e.rad = (e.dims.x + e.dims.y + e.dims.z) / 6; e.mesh.scale.multiplyScalar(k);
     makeBody(e, V(t.x, t.y + (k - 1) * e.dims.y / (2 * k), t.z), new THREE.Quaternion(r.x, r.y, r.z, r.w)); if (e.col) e.col.setDensity(9 / e._massK); if (e.upright !== false) { e.upright = true; e.body.setEnabledRotations(false, true, false, true); } } } // (stands upright again, as it did before)
