@@ -374,11 +374,11 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
       <div class="tog"><label for="sSound">Sound effects</label><input id="sSound" type="checkbox"></div>
       <div class="tog"><label for="sBuzz">Vibration</label><input id="sBuzz" type="checkbox"></div></div>
     <div class="sect"><h3>Playing</h3>
-      <div class="tog"><label for="sReplay">Instant replay when you're knocked out <small>off = a replay button while you're down</small></label><input id="sReplay" type="checkbox"></div>
-      <div class="tog"><label for="sLand">Landscape controls <small>joystick + look, keyboard &amp; mouse, gamepad (offline games, still being tried out)</small></label><input id="sLand" type="checkbox"></div></div>
+      <div class="tog"><label for="sReplay">Instant replay</label><input id="sReplay" type="checkbox"></div>
+      <div class="tog"><label for="sLand">On-screen controls</label><input id="sLand" type="checkbox"></div></div>
     <div class="sect"><h3>Testing</h3>
-      <div class="tog"><label for="sAllPowers">All powers <small>every power and the black hole, no streak needed</small></label><input id="sAllPowers" type="checkbox"></div>
-      <div class="tog"><label for="sFps">Show FPS <small>frames per second, and what the game spends its time on</small></label><input id="sFps" type="checkbox"></div></div>
+      <div class="tog"><label for="sAllPowers">All powers</label><input id="sAllPowers" type="checkbox"></div>
+      <div class="tog"><label for="sFps">Show FPS</label><input id="sFps" type="checkbox"></div></div>
     <div class="sect"><h3>Creator tools</h3><p class="rules" style="margin:0 0 8px">Change every sound and texture in the game, paint your own, see them in 3D.</p>
       <div class="menurow" style="grid-template-columns:1fr 1fr"><button class="ghost" id="soundLabBtn">🔊 Sound lab</button><button class="ghost" id="lookLabBtn">🎨 Look lab</button></div></div>
     <div style="display:grid;gap:8px;margin-top:12px"><button class="ghost" id="setBack">Back</button><button class="ghost" id="resetBtn" style="font-size:12px;padding:8px">Reset all my settings on this phone</button></div>
@@ -945,7 +945,7 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
   if (CH) for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) if (inChasm(cx - MX + .5, cz - MZ + .5)) { HOLES.add(cx + ',' + cz); setCell(cx, cz, 255, 255, 255, 0); } // the sky band
   if (!PLAT) for (let i = 0; i < Math.ceil(MX * 2 / GCH); i++) for (let j = 0; j < Math.ceil(MZ * 2 / GCH); j++) buildChunk(i, j);
   // thin yellow line warns you where the island ends
-  const em = new THREE.MeshBasicMaterial({ color: 0xffd400, transparent: true, opacity: .5 });
+  const em = new THREE.MeshBasicMaterial({ color: 0xffd400, transparent: true, opacity: .5, visible: false }); /* (Ali: no yellow border round the island) */
   if (SHAPED) { // the island's sides and the yellow edge line, following its outline square by square
     const inv = new THREE.MeshBasicMaterial({ visible: false }); slab.material = [inv, inv, mTop, mTop, inv, inv];
     const sideG = [], lineG = [], out = (cx, cz) => (!(NM && NM.wrapX) && (cx < 0 || cx >= GW)) || cz < 0 || cz >= GD || SEA.has(cx + ',' + cz);
@@ -2546,13 +2546,16 @@ for (const t of TREES) {
     } else if (MAP === 'classic' && WORLD === 'day' && !NIGHT && !NEO && !HD) { // the classic stage (Ali's blocky tree picture): the top is a stepped heap of whole blocks, some poking out, some missing
       const tr = (() => { let s_ = Math.abs(Math.round(t.x * 73 + t.z * 31)) * 13 + 7; return () => (s_ = (s_ * 16807) % 2147483647) / 2147483647; })();
       const crowd = TREES.some(o => o !== t && Math.hypot(o.x - t.x, o.z - t.z) < 7.5), big = !crowd && tr() < .4, tall = tr() < .45, TH_ = t.h + (tall ? 1 : 0) + (big ? 1 : 0); // (every tree its own: some bigger, some taller; always the same all the way round)
-      mk(V(t.x, TH_ / 2, t.z), V(1, TH_, 1), '#6b4526'); // (the trunk is one solid piece: pulling at it doesn't take the tree apart block by block)
+      { const nP = TH_ <= 2 ? 1 : TH_ <= 4 ? 2 : 3; let y_ = 0; for (let k = 0; k < nP; k++) { const hk = Math.round(TH_ * (k + 1) / nP) - Math.round(TH_ * k / nP); mk(V(t.x, y_ + hk / 2, t.z), V(1, hk, 1), '#6b4526'); y_ += hk; } } // (the trunk in a few long pieces: up to 3)
       // every layer is ONE block resting on the one below (so the tree holds together), all centred: the same all the way round.
       // A few kinds: a cone (wide at the bottom), a bush (narrow, wide in the middle, slim at the top), a round one, a tall slim one
-      let y = TH_; const L = (w, h) => { mk(V(t.x, y + h / 2, t.z), V(w, h, w), '#4aa83c'); y += h; };
+      let y = TH_; const P_ = (x0, x1, z0, z1, h) => mk(V(t.x + (x0 + x1) / 2, y + h / 2, t.z + (z0 + z1) / 2), V(x1 - x0 + 1, h, z1 - z0 + 1), '#4aa83c');
+      const L = (w, h) => { w = Math.min(5, w); // (no piece bigger than 3 across: a wide layer is a pinwheel of 4 pieces round a middle one, still the same all the way round)
+        if (w <= 3) { const r_ = (w - 1) / 2; P_(-r_, r_, -r_, r_, h); } else { P_(0, 0, 0, 0, h); P_(-2, 0, -2, -1, h); P_(1, 2, -2, 0, h); P_(0, 2, 1, 2, h); P_(-2, -1, 0, 2, h); }
+        y += h; };
       const kind = Math.floor(tr() * 4), H = () => tr() < (tall ? .55 : .25) ? 2 : 1;
-      if (kind === 0) { L(big ? 7 : 5, H()); L(big ? 5 : 3, H()); if (big) L(3, 1); L(1, H()); }          // cone
-      else if (kind === 1) { L(3, 1); L(big ? 7 : 5, H()); L(big ? 5 : 3, H()); L(1, 1); }                // bush: narrow, wide, slim
+      if (kind === 0) { L(5, H() + (big ? 1 : 0)); L(3, H()); if (big) L(3, 1); L(1, H()); }          // cone
+      else if (kind === 1) { L(3, 1); L(5, H() + (big ? 1 : 0)); L(3, H()); L(1, 1); }                // bush: narrow, wide, slim
       else if (kind === 2) { L(3, 1); L(5, H() + (big ? 1 : 0)); L(3, 1); }                                // round
       else { L(3, H() + 1); L(3, H()); L(1, H()); }                                                         // tall and slim
     } else {
@@ -12200,6 +12203,7 @@ lookLabRows = function () {
     row.innerHTML = `<b>${name}</b><span class="src">${tip}</span><div class="chips">${opts.map(([v, l]) => `<span class="chip${v === cur ? ' on' : ''}"><button class="cu" data-v="${v}">${l}</button></span>`).join('')}</div>`;
     row.querySelectorAll('.cu').forEach(b => b.onclick = () => { pickFn(b.dataset.v); lookLabRows(); }); box.appendChild(row); };
   optRow('Map floor', 'the colours of the classic map\'s ground', [['classic', 'Grass'], ['mosaic', 'Soft mosaic'], ['lava', 'Grass &amp; lava']], S.floor, v => { S.floor = v; saveS(); if (typeof paintFloor === 'function') paintFloor(); });
+  optRow('Field grass', 'thick grass blowing in the wind on the classic map (heavy: slow phones may lag)', [['on', 'On'], ['off', 'Off']], S.grass ? 'on' : 'off', v => { S.grass = v === 'on'; saveS(); const F = window.__nymbo && window.__nymbo.FIELD; if (F) F.grass.visible = S.grass; });
   optRow('Blast sphere', 'the see-through ball showing what a bomb, freeze or nuke covers', [['on', 'On'], ['off', 'Off']], S.aoe ? 'on' : 'off', v => { S.aoe = v === 'on'; saveS(); });
 };
 
@@ -15739,7 +15743,7 @@ function makeFortKit(THREE, RBOX, MERGE) {
   const SURF = { classic: ['sandstone', 'granite', 'clay', 'concrete', 'slate', 'marble', 'glazed', 'wood'], desert: ['sandstone', 'clay', 'concrete', 'granite'], ice: ['marble', 'glazed', 'slate', 'concrete'] };
   // each world's walls mostly use two or three materials, with the odd different one mixed in
   function surfaces(world, R) { const all = SURF[world] || SURF.classic, main = [...all].sort(() => R() - .5).slice(0, 3); return () => R() < .8 ? main[Math.floor(R() * main.length)] : all[Math.floor(R() * all.length)]; }
-  return { V, T, WORLDS, block, top, wall, teamCol, surfMat, surfaces, stoneGeo, paintStone, carvedPiece, shade, rng, lump, stretch, tint, setRes: r => { CRES = r; } };
+  return { V, T, WORLDS, block, top, wall, teamCol, surfMat, surfaces, stoneGeo, paintStone, carvedPiece, shade, rng, lump, stretch, tint, FAM, NOISE, setRes: r => { CRES = r; } };
 }
 
 // ============================================================
@@ -15893,7 +15897,29 @@ if (CLX) {
   const LABK = makeFortKit(THREE, RoundedBoxGeometry, mergeGeometries); LABK.setRes(CL_TOUCH ? 12 : 20);
   const RES = CL_TOUCH ? 6 : 10, hideA = new THREE.InstancedBufferAttribute(new Float32Array(N), 1); geo.setAttribute('aHide', hideA);
   { const ob = plainIM.material.onBeforeCompile; plainIM.material.onBeforeCompile = sh => { ob(sh); sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aHide;').replace('#include <project_vertex>', '#include <project_vertex>\nif (aHide > .5) gl_Position = vec4(0., 0., 2., 1.);'); }; plainIM.material.customProgramCacheKey = () => 'stone1h'; }
-  const LAB = [], byFam = {}, R2 = LABK.rng(9001), clean = g => { g = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(k)) g.deleteAttribute(k); return g; };
+  const LAB = [], byFam = {}, R2 = LABK.rng(9001), clean = g => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(k)) g.deleteAttribute(k); if (!g.index) g = mergeVertices(g); return g; }; // (shared corners: about a fifth of the memory)
+  // every stone carries its surface material's numbers on its own corners, so ONE material (one object) draws them all
+  const famAttrs = (g, fam) => { const F = LABK.FAM[fam] || LABK.FAM.sandstone, n = g.attributes.position.count, A = [[F.mot[0], F.mot[1], F.grain[0], F.grain[1]], [F.bump, F.pits, F.vein, F.layer], [F.rough[0], F.rough[1], F.wear, F.grainDir || 0]];
+    A.forEach((v, k) => { const a = new Float32Array(n * 4); for (let i = 0; i < n; i++) a.set(v, i * 4); g.setAttribute('aF' + (k + 1), new THREE.BufferAttribute(a, 4)); }); return g; };
+  let UNI = null; const uniMat = () => UNI || (UNI = (() => { const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .8, metalness: 0 });
+    m.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aF1, aF2, aF3; varying vec4 vF1, vF2, vF3; varying vec3 vOP; varying vec3 vON;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOP = position; vON = normal; vF1 = aF1; vF2 = aF2; vF3 = aF3;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vF1, vF2, vF3; varying vec3 vOP; varying vec3 vON;' + LABK.NOISE + `
+        float surfH(vec3 p){ vec3 q = vF3.w > .5 ? vec3(p.x * .15, p.y * 6., p.z * 6.) : p; float h = fbm(q * vF1.w * .25) * .6 + vn(q * vF1.w) * .4; float pit = smoothstep(.78, .86, vn(p * 18.)) * vF2.y; return h - pit * 1.5; }`)
+        .replace('#include <color_fragment>', `#include <color_fragment>
+        { vec3 p = vOP + 13.1; float mot = fbm(p * vF1.y) - .5, g = vn(p * vF1.w) - .5, ly = sin(p.y * 22. + fbm(p * 3.) * 4.) * vF2.w;
+          float vein = vF2.z > 0. ? pow(1. - abs(sin(p.x * 3. + p.y * 2. + fbm(p * 2.5) * 6.)), 14.) * vF2.z : 0.;
+          float pit = smoothstep(.78, .86, vn(p * 18.)) * vF2.y;
+          vec3 n0 = abs(normalize(vON)); float edge = 1. - max(n0.x, max(n0.y, n0.z));
+          diffuseColor.rgb *= 1. + mot * vF1.x * 2. + g * vF1.z + ly * .12 - vein * .35 - pit * .35;
+          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.25 + .05, smoothstep(.08, .3, edge) * vF3.z * (.6 + .8 * vn(p * 9.))); }`)
+        .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = clamp(vF3.x + (fbm((vOP + 7.) * 3.) - .5) * vF3.y * 2., .04, 1.);`)
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        { vec3 p = vOP + 13.1; float H = surfH(p) * vF2.x * .02; vec2 dH = vec2(dFdx(H), dFdy(H));
+          vec3 sX = dFdx(-vViewPosition), sY = dFdy(-vViewPosition), R1 = cross(sY, normal), R2 = cross(normal, sX); float det = dot(sX, R1);
+          normal = normalize(abs(det) * normal - sign(det) * (dH.x * R1 + dH.y * R2)); }`); };
+    m.customProgramCacheKey = () => 'labuni'; return m; })());
   const famPick = { blue: LABK.surfaces('classic', LABK.rng(31)), red: LABK.surfaces('classic', LABK.rng(77)), none: LABK.surfaces('classic', LABK.rng(5)) };
   const _S = new THREE.Matrix4(), _T = new THREE.Matrix4(), _Rm = new THREE.Matrix4();
   const LEAFC = ['#5cc23c', '#6fd14a', '#4fb236', '#7ad655', '#63c843', '#56b93a'];
@@ -15966,7 +15992,7 @@ if (CLX) {
     // the block's matrix has its size in it; the stone is already the right size, so that's taken back out
     const local = new THREE.Matrix4().makeScale(1 / d.x, 1 / d.y, 1 / d.z).multiply(_T.makeTranslation(off.x, off.y, off.z)).multiply(_Rm.makeRotationY(yaw));
     const fam = e.kind === 'fort' ? famPick[e.team === 'red' ? 'red' : 'blue']() : famPick.none();
-    return { e, g, fam, local }; }
+    famAttrs(g, fam); return { e, g, fam, local }; }
   const dressE = blocks.filter(e => e.inst >= 0 && (e.kind === 'fort' || e.kind === 'stone' || e.kind === 'prop') && !e.mazeBrick);
   for (const e of dressE) { const p = labPiece(e); LAB.push(p); (byFam[p.fam] = byFam[p.fam] || []).push(p); hideA.setX(e.inst, 1); }
   hideA.needsUpdate = true;
@@ -15974,17 +16000,17 @@ if (CLX) {
   // Drawing them: every stone that hasn't moved is welded into one big mesh per material (a handful of draw calls for
   // the whole map). The moment a stone's block moves (knocked loose, picked up, blown up), its stone is cut out of the
   // big mesh and becomes a mesh of its own that follows the block.
-  const FAMM = {}; const famMat = fam => FAMM[fam] || (FAMM[fam] = (() => { if (fam === 'tree') return treeMat(); /* (the sculpted trees: smooth shapes, covered in little leaves) */ /* (the tree tops: smooth, a little glossy) */ const m = LABK.surfMat(fam); return m; /* (no studio reflections: lit only by the stage's own light, like everything else) */ })());
+  const FAMM = {}; const famMat = fam => FAMM[fam] || (FAMM[fam] = (() => { if (fam === 'tree') return treeMat(); /* (the sculpted trees: smooth shapes, covered in little leaves) */ /* (the tree tops: smooth, a little glossy) */ return uniMat(); /* (no studio reflections: lit only by the stage's own light, like everything else) */ })());
   const _M = new THREE.Matrix4(), _N3 = new THREE.Matrix3(), _v = new THREE.Vector3();
-  const WELD = [];
-  for (const fam in byFam) { const L = byFam[fam], nv = L.reduce((a, p) => a + p.g.attributes.position.count, 0);
-    const Pa = new Float32Array(nv * 3), Na = new Float32Array(nv * 3), Ca = new Float32Array(nv * 3); let o = 0;
-    for (const p of L) { plainIM.getMatrixAt(p.e.inst, _M); _M.multiply(p.local); p.m0 = _M.clone(); _N3.getNormalMatrix(_M);
-      const gp = p.g.attributes.position, gn = p.g.attributes.normal, gc = p.g.attributes.color; p.o = o; p.n = gp.count;
-      for (let i = 0; i < gp.count; i++) { _v.fromBufferAttribute(gp, i).applyMatrix4(_M); Pa.set([_v.x, _v.y, _v.z], (o + i) * 3); _v.fromBufferAttribute(gn, i).applyMatrix3(_N3).normalize(); Na.set([_v.x, _v.y, _v.z], (o + i) * 3); Ca.set([gc.getX(i), gc.getY(i), gc.getZ(i)], (o + i) * 3); }
-      o += gp.count; }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Pa, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Na, 3)); g.setAttribute('color', new THREE.BufferAttribute(Ca, 3)); g.computeBoundingSphere();
-    const mesh = new THREE.Mesh(g, famMat(fam)); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh); for (const p of L) p.weld = mesh; WELD.push(mesh); }
+  // ONE object for every stone that hasn't moved
+  const WELD = []; { const L = LAB; let nv = 0, ni = 0; for (const p of L) { nv += p.g.attributes.position.count; ni += p.g.index.count; }
+    const A = { position: new Float32Array(nv * 3), normal: new Float32Array(nv * 3), color: new Float32Array(nv * 3), aF1: new Float32Array(nv * 4), aF2: new Float32Array(nv * 4), aF3: new Float32Array(nv * 4) }, I = new Uint32Array(ni); let o = 0, oi = 0;
+    for (const p of L) { plainIM.getMatrixAt(p.e.inst, _M); _M.multiply(p.local); p.m0 = _M.clone(); _N3.getNormalMatrix(_M); const G = p.g.attributes, n = G.position.count; p.o = o; p.n = n;
+      for (let i = 0; i < n; i++) { _v.fromBufferAttribute(G.position, i).applyMatrix4(_M); A.position.set([_v.x, _v.y, _v.z], (o + i) * 3); _v.fromBufferAttribute(G.normal, i).applyMatrix3(_N3).normalize(); A.normal.set([_v.x, _v.y, _v.z], (o + i) * 3); }
+      A.color.set(G.color.array.subarray(0, n * 3), o * 3); for (const k of ['aF1', 'aF2', 'aF3']) A[k].set(G[k].array.subarray(0, n * 4), o * 4);
+      const ix = p.g.index.array; for (let k = 0; k < ix.length; k++) I[oi + k] = ix[k] + o; o += n; oi += ix.length; }
+    const g = new THREE.BufferGeometry(); for (const k in A) g.setAttribute(k, new THREE.BufferAttribute(A[k], k.startsWith('aF') ? 4 : 3)); g.setIndex(new THREE.BufferAttribute(I, 1)); g.computeBoundingSphere();
+    const mesh = new THREE.Mesh(g, uniMat()); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh); for (const p of L) p.weld = mesh; WELD.push(mesh); }
   const detach = p => { const P_ = p.weld.geometry.attributes.position; P_.array.fill(0, p.o * 3, (p.o + p.n) * 3); P_.addUpdateRange(p.o * 3, p.n * 3); P_.needsUpdate = true; p.weld = null;
     const m = new THREE.Mesh(p.g, famMat(p.fam)); m.matrixAutoUpdate = false; m.castShadow = m.receiveShadow = true; scene.add(m); p.mesh = m; };
   const syncLab = () => { for (const p of LAB) { plainIM.getMatrixAt(p.e.inst, _M); _M.multiply(p.local);
@@ -15999,11 +16025,14 @@ if (CLX) {
   // one lab stone as its own mesh (the centre pole, the fence)
   const labMesh = (w, h, d, col, fam, seed, wood) => { const R = LABK.rng(seed); let g = wood ? LABK.tint(LABK.lump(new RoundedBoxGeometry(w, h, d, 2, Math.min(.04, Math.min(w, h, d) * .25)), .04, seed), LABK.shade(new THREE.Color(col), R, .06)) : LABK.paintStone(LABK.stoneGeo(w, h, seed, R, RES), LABK.shade(new THREE.Color(col), R, .05));
     g = clean(g); if (!wood) { g.computeBoundingBox(); const gd = g.boundingBox.max.z - g.boundingBox.min.z; g.scale(1, 1, d / gd); }
-    const M = new THREE.Mesh(g, famMat(fam)); M.castShadow = M.receiveShadow = true; return M; };
+    famAttrs(g, fam); const M = new THREE.Mesh(g, famMat(fam)); M.castShadow = M.receiveShadow = true; return M; };
 
   // ---------------- 2e. the block on your head is the same stone you picked up (not a smooth copy) ----------------
+  let treeHeldMat = null;
   { const rh = refreshHeld; refreshHeld = function (r) { rh(r); const h = r.model && r.model.held; if (!h) return; const e = r.stack[0];
       if (h.userData.labC) { h.remove(h.userData.labC); h.userData.labC = null; }
+      if (e && e.kind === 'tree' && e.inst >= 0 && !r.heldAnimal) { const tm = treeHeldMat || (treeHeldMat = (() => { const m = stoneMaterial(new LiteMat({ roughness: .9 })); m.customProgramCacheKey = () => 'stone1t'; return m; })());
+        const leaf = e.color.g > e.color.r, m = stoneMesh(1, 1, 1, '#' + e.color.getHexString(), [e.id % 97 / 97, 0, 0, leaf ? 3 : 2], [0, 0, 0, 0], [1, 0, 0, 0], tm); h.add(m); h.userData.labC = m; h.material = SKIN.hideM; return; }
       if (e && e._piece && !r.heldAnimal) { const p = e._piece, m = new THREE.Mesh(p.g, famMat(p.fam)); m.matrixAutoUpdate = false; m.matrix.copy(p.local); m.castShadow = true; h.add(m); h.userData.labC = m; h.material = SKIN.hideM; } }; }
 
   // ---------------- 2d. the pick-up outline follows the real shape (stones, animals) ----------------
@@ -16073,7 +16102,7 @@ if (CLX) {
     const GREYS = ['#8e9097', '#9a9ca3', '#83858c', '#a3a39c', '#8a8a92', '#9c968c'];
     let FRES = RES; const slab = (w, d, x, y, z, yaw, tx, tz, col, fam) => { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let g = LABK.paintStone(LABK.stoneGeo(w, d, sd, R, FRES), LABK.shade(new THREE.Color(col), R, .06));
       g = clean(g); g.rotateX(-Math.PI / 2); g.computeBoundingBox(); const t = g.boundingBox.max.y - g.boundingBox.min.y; g.scale(1, .38 / t, 1); g.scale(1.05, 1, 1.05); g.computeBoundingBox(); g.translate(0, -g.boundingBox.max.y, 0);
-      g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(tx, yaw, tz))); g.translate(x, y, z); (parts[fam] = parts[fam] || []).push(g); };
+      g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(tx, yaw, tz))); g.translate(x, y, z); (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); };
     function floor(cx, y, cz, inside, cells, o = {}) { // cells: [x,z] integer offsets; inside(x,z): is this cell part of the floor
       const used = new Set(), K = (a, b) => a + ',' + b, fam = o.fam || LABK.surfaces('classic', LABK.rng(cx * 7 + cz))();
       for (const [x, z] of cells) { if (used.has(K(x, z)) || !inside(x, z)) continue;
@@ -16110,18 +16139,23 @@ if (CLX) {
       for (let k = 0; k < 4; k++) { const Rk = (ISLAND.r - .2) * (1 - k * .24), yk = ISLAND.top - .55 - k * .75;
         for (let x = -5; x <= 5; x++) for (let z = -5; z <= 5; z++) { const dd = Math.hypot(x, z); if (dd > Rk + (FR() - .5) * .8) continue; if (k > 0 && dd < Rk - 1.6) continue; // (only the outer shell shows from below)
           const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd), w = fr(.9, 1.3), h = fr(.7, 1); let g = clean(LABK.paintStone(LABK.stoneGeo(w, h, sd, R, RES), LABK.shade(new THREE.Color(ROCK[Math.floor(FR() * 4)]), R, .06)));
-          g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(fr(-.3, .3), FR() * 6.28, fr(-.3, .3)))); g.translate(x + fr(-.15, .15), yk - fr(0, .3), z + fr(-.15, .15)); (parts[fam] = parts[fam] || []).push(g); } }
-      const tip = clean(LABK.paintStone(LABK.stoneGeo(1.4, 1.2, 77, LABK.rng(77), RES), new THREE.Color('#6f6c6a'))); tip.rotateX(.4); tip.translate(0, ISLAND.top - 3.6, 0); parts.granite.push(tip); }
+          g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(fr(-.3, .3), FR() * 6.28, fr(-.3, .3)))); g.translate(x + fr(-.15, .15), yk - fr(0, .3), z + fr(-.15, .15)); (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); } }
+      const tip = clean(LABK.paintStone(LABK.stoneGeo(1.4, 1.2, 77, LABK.rng(77), RES), new THREE.Color('#6f6c6a'))); tip.rotateX(.4); tip.translate(0, ISLAND.top - 3.6, 0); parts.granite.push(famAttrs(clean(tip), 'granite')); }
     const onFloor = (x, z) => FLOORB.some(b => Math.abs(x - b.x) < b.rx && Math.abs(z - b.z) < b.rz);
     for (const e of blocks) if (e.body && e.kind !== 'fort' && e.kind !== 'tree' && e.kind !== 'animal' && e.kind !== 'flag') { const t = e.body.translation(); if (t.y < 2 && onFloor(t.x, t.z)) { e.body.setTranslation({ x: t.x, y: t.y + .1, z: t.z }, true); if (e.spawnPos) e.spawnPos.y += .1; } }
     for (const sl of slots) if (onFloor(sl.pos.x, sl.pos.z)) sl.baseY = (sl.baseY || 0) + .1;
     // the fixed little structures (the flag gates' frames, the step ledges by the forts, the portals' stone feet): stones too
     for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === cubeGeo && o.instanceColor && !o.castShadow === false && o !== plainIM) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (m.elements[13] < -.4 || m.elements[13] > 12) continue;
       const v = new THREE.Vector3(), c = new THREE.Color();
+      const metal = [], isGate = (x, z) => ['blue', 'red'].some(t => GATES[t] && Math.abs(x - GATES[t].x) < .8 && Math.abs(z - GATES[t].z) < 2.8);
       for (let k = 0; k < o.count; k++) { o.getMatrixAt(k, m); v.setFromMatrixPosition(m); o.getColorAt(k, c); const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd);
-        const g = clean(LABK.paintStone(LABK.stoneGeo(1, 1, sd, R, RES), LABK.shade(c.clone().lerp(new THREE.Color(GREYS[k % GREYS.length]), .5), R, .06))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); const fam = k % 3 ? 'granite' : 'sandstone'; (parts[fam] = parts[fam] || []).push(g); }
+        if (isGate(v.x, v.z)) { // the flag gates' frames: stronger stuff than the walls, a mix of gold and polished steel
+          const g = clean(LABK.paintStone(LABK.stoneGeo(1, 1, sd, R, RES), new THREE.Color(FR() < .55 ? '#e0b040' : '#c4ccd8').offsetHSL(0, 0, (FR() - .5) * .08))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); metal.push(g); continue; }
+        const g = clean(LABK.paintStone(LABK.stoneGeo(1, 1, sd, R, RES), LABK.shade(c.clone().lerp(new THREE.Color(GREYS[k % GREYS.length]), .5), R, .06))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); const fam = k % 3 ? 'granite' : 'sandstone'; (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); }
+      if (metal.length) { const mm = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: .85, roughness: .3 }); if (ENVS) { mm.envMap = ENVS; mm.envMapIntensity = 1; }
+        const g = mergeGeometries(metal), M = new THREE.Mesh(g, mm); M.castShadow = M.receiveShadow = true; scene.add(M); }
       scene.remove(o); }
-    for (const fam in parts) { const g = mergeGeometries(parts[fam]); const m = new THREE.Mesh(g, famMat(fam)); m.castShadow = m.receiveShadow = true; scene.add(m); } }
+    { const all = Object.values(parts).flat(); if (all.length) { const g = mergeGeometries(all); const m = new THREE.Mesh(g, uniMat()); m.castShadow = m.receiveShadow = true; scene.add(m); } } } // (all the floors: one object)
 
   // ---------------- 5. the field: grass with worn paths, tall grass where nobody walks ----------------
   { const W = MX * 2, D = MZ * 2, RES = 2, GW_ = W * RES, GD_ = D * RES, wear = new Float32Array(GW_ * GD_), tall = new Float32Array(GW_ * GD_);
@@ -16230,7 +16264,7 @@ if (CLX) {
         col *= .9 + vC * .2; col = mix(col, col * 1.25 + vec3(.05, .06, 0.), vG * vH);
         diffuseColor.rgb = col;`); };
     gm.customProgramCacheKey = () => 'labgrass';
-    const grass = new THREE.Mesh(blade, gm); grass.frustumCulled = false; grass.receiveShadow = true; scene.add(grass);
+    const grass = new THREE.Mesh(blade, gm); grass.frustumCulled = false; grass.receiveShadow = true; scene.add(grass); grass.visible = !!S.grass; // (off unless turned on in the Look lab: it costs a lot)
     const pH = pulseHalos; let last = 0;
     // a slow phone: the game already steps its quality down (sharpness, then shadows); the grass follows it: the outer
     // rings go first (the distant grass), then the middle one, so only the thick grass right round you is left
@@ -16284,28 +16318,33 @@ if (CLX) {
 { const mb = makeBody; makeBody = function (e, ...a) { mb(e, ...a); if (e.kind === 'animal' && e._massK && e.col) e.col.setDensity(9 / e._massK); }; }
 
 // ---- the portals and the flag gates: a flowing liquid screen (like the gold block's insides), still see-through ----
-function liquidScreen(deep, mid, hi, square) {
-  const m = new THREE.ShaderMaterial({ uniforms: { t: { value: Math.random() * 20 }, op: { value: 1 }, cD: { value: new THREE.Color(deep) }, cM: { value: new THREE.Color(mid) }, cH: { value: new THREE.Color(hi) } }, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+function liquidScreen(deep, mid, hi, square, pal) {
+  const P4 = (pal || [deep, mid, hi, hi]).map(c => new THREE.Color(c));
+  const m = new THREE.ShaderMaterial({ uniforms: { t: { value: Math.random() * 20 }, op: { value: 1 }, cD: { value: new THREE.Color(deep) }, cM: { value: new THREE.Color(mid) }, cH: { value: new THREE.Color(hi) }, p0: { value: P4[0] }, p1: { value: P4[1] }, p2: { value: P4[2] }, p3: { value: P4[3] } }, transparent: true, depthWrite: false, side: THREE.DoubleSide,
     vertexShader: 'varying vec2 vU; void main(){ vU = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
-    fragmentShader: `uniform float t, op; uniform vec3 cD, cM, cH; varying vec2 vU;
+    fragmentShader: `uniform float t, op; uniform vec3 cD, cM, cH, p0, p1, p2, p3; varying vec2 vU;
       float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
       float fb(vec2 p){ return n2(p) * .55 + n2(p * 2.03 + 7.1) * .3 + n2(p * 4.1 - 3.3) * .15; }
-      void main(){ vec2 p = (vU - .5) * 2.; float r = ${square ? 'max(abs(p.x), abs(p.y))' : 'length(p)'}, a = atan(p.y, p.x);
-        float sw = a + t * .3 + (1. - length(p)) * 2.4; vec2 q = ${square ? 'p * 1.6 + vec2(0., -t * .12)' : 'vec2(cos(sw), sin(sw)) * r * 2.3'}; // (portals swirl in; gates pour slowly)
+      void main(){ vec2 p = (vU - .5) * 2.; float r = ${square ? 'max(abs(p.x), abs(p.y))' : 'length(p)'}, rr = length(p), a = atan(p.y, p.x);
+        float sw = a + t * ${pal ? '.55' : '.3'} + (1.5 - rr) * ${pal ? '3.4' : '2.4'}; vec2 q = vec2(cos(sw), sin(sw)) * rr * 2.3; // (swirling in toward the middle)
         vec2 w = vec2(fb(q + vec2(0., t * .16)), fb(q + vec2(5.2, 1.3) - vec2(t * .13, 0.))); // (folded over itself, so it flows like liquid)
         float f = fb(q + w * 2.4 + vec2(t * .05, 0.)), f2 = fb(q * 1.7 + w * 1.6 + 3.);
-        vec3 c = mix(cD, cM, smoothstep(.3, .66, f)); c = mix(c, cH, smoothstep(.6, .82, f * .6 + f2 * .5));
-        c += cH * smoothstep(.025, 0., abs(f - .52)) * .45; // (bright creamy folds)
-        c += cH * pow(max(0., 1. - length(p)), 3.) * .45; // (a glowing heart)
-        float al = (.38 + .4 * smoothstep(.3, .78, f)) * smoothstep(1., ${square ? '.9' : '.86'}, r);
+        vec3 c;
+        ${pal ? `float k = fract(f * 2.2 + sw * .16 + t * .03) * 4.; // (bands of every team member's colour, twisting round)
+        c = k < 1. ? mix(p0, p1, smoothstep(.2, .8, k)) : k < 2. ? mix(p1, p2, smoothstep(1.2, 1.8, k)) : k < 3. ? mix(p2, p3, smoothstep(2.2, 2.8, k)) : mix(p3, p0, smoothstep(3.2, 3.8, k));
+        c = mix(c * .55, c, smoothstep(.25, .6, f)); c += vec3(1.) * smoothstep(.62, .85, f * .6 + f2 * .5) * .35;` : `c = mix(cD, cM, smoothstep(.3, .66, f)); c = mix(c, cH, smoothstep(.6, .82, f * .6 + f2 * .5));`}
+        c += vec3(1.) * smoothstep(.025, 0., abs(f - .52)) * .4; // (bright creamy folds)
+        c += cH * pow(max(0., 1. - rr), 3.) * .45; // (a glowing heart)
+        float al = (.42 + .4 * smoothstep(.3, .78, f)) * smoothstep(1., ${square ? '.9' : '.86'}, r);
         gl_FragColor = vec4(c, al * op); }` });
   return m; }
 { const LIQ = [];
   if (!DESERT && !VOLC && !PLAT) { const pm = liquidScreen('#3d0a8a', '#a44aff', '#ffd0ff'); for (const P of PORTALS) if (P.disc) P.disc.material = pm; LIQ.push([pm, null]); }
-  if (CLX) for (const team of ['blue', 'red']) { const G = GATES[team]; if (!G || !G.glow) continue; const m = team === 'blue' ? liquidScreen('#06246a', '#2a8cff', '#c8f0ff', true) : liquidScreen('#5a0a06', '#ff4a2a', '#ffe0c0', true); m.opacity = G.glow.material.opacity; G.glow.material = m; LIQ.push([m, G.glow]); }
+  if (CLX) for (const team of ['blue', 'red']) { const G = GATES[team]; if (!G || !G.glow) continue; const m = liquidScreen('#000000', '#888888', team === 'blue' ? '#c8f0ff' : '#ffe0c0', true, TEAMS[team].cols); m.opacity = G.glow.material.opacity; G.glow.material = m; LIQ.push([m, G.glow]); }
   const pH = pulseHalos; let last = 0; pulseHalos = function (tm) { pH(tm); const dt = clamp((tm - (last || tm)) / 1000, 0, .05); last = tm; for (const [m] of LIQ) { m.uniforms.t.value += dt; m.uniforms.op.value = Math.min(1, (m.opacity ?? 1) * 1.6); } }; }
-
+// get every material ready while the game loads, so nothing pops in or stutters the first time you see it
+if (CLX) try { renderer.compile(scene, camera); } catch (_) {}
 
 // test hooks for the newer bits (headless checks only)
 Object.assign(window.__nymbo, { nbrPose, nbrAntPose, nbrAntRest, nbrHeld, startReplay: () => startReplay(), drawReplay: () => drawReplay(), onPlayerKO: (...a) => onPlayerKO(...a), nymMeshModel, NBR_SWAPU, NBR_HD, NBR_TS, grabBlock: (...a) => grabBlock(...a), freezeRobot: (...a) => freezeRobot(...a), ragdoll: (...a) => ragdoll(...a), get blocks() { return blocks; }, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
