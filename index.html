@@ -4296,7 +4296,11 @@ function nbrEyes(rig, happy, ec, eyesN, eyesF, eyesX) {
     tex.offset.set((k % 4) * .25, k < 4 ? .5 : 0); };
   rig.add(scr, eyesN, eyesF, eyesX); eyesF.visible = eyesX.visible = false; return scr; }
 // putting him together
-function nymMeshModel(color, happy) {
+// the Nyms wear the same tones as their flags (Ali, 14 Nov: the flag colours looked better): reds a little deeper,
+// pinks and the cool colours slightly richer, oranges and golds left bright. Only the paint: screens, HUD and trails keep the team colours.
+const flagTone = c => { const col = new THREE.Color(c), h = {}; col.getHSL(h); const k = h.h < .03 || h.h > .97 ? .72 : h.h > .85 ? .82 : h.h < .15 ? 1 : .86;
+  col.setHSL(h.h, Math.min(1, h.s * 1.05), h.l * k); return '#' + col.getHexString(); };
+function nymMeshModel(color, happy) { color = flagTone(color);
   const g = new THREE.Group(), hex = '#' + new THREE.Color(color).getHexString(), spare = new LiteMat({ color }), mats = [spare, spare, spare]; // (the game's look tricks repaint mats[0..2]: they get a spare, his own paint stays)
   const gloss = c => new THREE.MeshPhysicalMaterial({ color: c, roughness: .34, clearcoat: .8, clearcoatRoughness: .12 }), paint = () => new THREE.MeshStandardMaterial({ color, roughness: .35 });
   const dark = NBR_DARK || (NBR_DARK = new THREE.MeshStandardMaterial({ color: 0x0c0d11, roughness: .4, side: THREE.DoubleSide })), metal = NBR_EARM || (NBR_EARM = new THREE.MeshStandardMaterial({ color: 0xc8ccd4, metalness: .6, roughness: .3 }));
