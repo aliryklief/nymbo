@@ -665,6 +665,9 @@ const MAX_AMMO = 15;
 const MATCH_TIME = 300;            // 5 minutes
 const WIN_FLAGS = 4;
 const RAG_TIME = 3, GHOST_TIME = 3, FREEZE_TIME = 3, PORTAL_COOL = 3;
+// how hard blasts throw blocks (bombs, semtex at 90%, the nuke, the volcano's bombs). Ali, 14 Nov: blocks fly about 5x as far as
+// before; distance goes with the square of speed, so that's √5 ≈ 2.25 times the push
+const BLAST_FLING = 2.25;
 const BOMB_R = 6.8, BOMB_R0 = BOMB_R, FREEZE_R = 4.2, FREEZE_R0 = FREEZE_R;  // bigger bomb blast
 const DODGE_RELOAD = 1.0;          // two dodges, then about the time of four quick swipes to reload
 
@@ -4409,7 +4412,7 @@ function explode(pos, team, by, scale = 1) {
     const t = e.body.translation(), d = V(t.x - pos.x, t.y - pos.y, t.z - pos.z), dist = d.length();
     if (dist > BOMB_R) continue;
     const k = 1 - dist / BOMB_R, m = e.body.mass();
-    d.y += .9; d.normalize().multiplyScalar((7 + 11 * k) * k * m);
+    d.y += .9; d.normalize().multiplyScalar((7 + 11 * k) * k * m * BLAST_FLING);
     e.body.applyImpulse(d, true); e.body.applyTorqueImpulse({ x: rr(-1, 1) * m, y: rr(-1, 1) * m, z: rr(-1, 1) * m }, true);
     e.live = false;
     if (e.kind === 'animal' && e.upright) { e.body.setEnabledRotations(true, true, true, true); e.upright = false; }
@@ -5880,7 +5883,7 @@ function nukeBlast(pos) {
     // the middle is simply vaporised; further out everything is thrown up and away
     if (dh < NUKE_VAPOR && (e.kind === 'fort' || e.kind === 'tree' || e.kind === 'prop' || e.kind === 'stone')) { destroyBlock(e); continue; }
     const k = 1 - dh / NUKE_R, m = e.body.mass(), d = V(dx, 0, dz).normalize();
-    e.body.applyImpulse({ x: d.x * m * (10 + 22 * k), y: m * (8 + 16 * k) * rr(.7, 1.2), z: d.z * m * (10 + 22 * k) }, true);
+    e.body.applyImpulse({ x: d.x * m * (10 + 22 * k) * BLAST_FLING, y: m * (8 + 16 * k) * rr(.7, 1.2) * BLAST_FLING, z: d.z * m * (10 + 22 * k) * BLAST_FLING }, true);
     e.body.applyTorqueImpulse({ x: rr(-2, 2) * m, y: rr(-2, 2) * m, z: rr(-2, 2) * m }, true);
     e.live = false;
     if (e.kind === 'animal' && e.upright) { e.body.setEnabledRotations(true, true, true, true); e.upright = false; }
@@ -6341,7 +6344,7 @@ function updateDogs(dt) {
       const F = D.fight; F.t -= dt; animFightCloud(F.cloud, dt);
       if ((F.sT = (F.sT || 0) - dt) <= 0) { F.sT = rr(.12, .22); sfx(Math.random() < .4 ? 'bark' : Math.random() < .5 ? 'hit' : 'dodge', F.at); }
       if (F.t <= 0 || tg.state !== 'play') { scene.remove(F.cloud); D.fight = null; tg.inFight = null; D.m.g.visible = true;
-        if (tg.state === 'play') { const a = Math.random() * 6.28; ragdoll(tg, V(Math.cos(a), 0, Math.sin(a)), D.owner, 3); koPop(F.at, 'FETCHED!', '#ffd27a', true); fxBurst(F.at.clone().setY(F.at.y + .6), 0xefe4cf, 2.2, .35); fxDebris(F.at, 0xefe4cf, 20, 7); }
+        if (tg.state === 'play') { const a = Math.random() * 6.28; ragdoll(tg, V(Math.cos(a), 0, Math.sin(a)), D.owner, 3); /* (no words on screen when the dog gets you: Ali, 14 Nov) */ fxBurst(F.at.clone().setY(F.at.y + .6), 0xefe4cf, 2.2, .35); fxDebris(F.at, 0xefe4cf, 20, 7); }
         if (D.bone.parent) D.bone.parent.remove(D.bone); unBone(D);
         // off to the nearest portal, and gone
         const ex = PORTALS.length ? PORTALS.reduce((m, q) => Math.hypot(q.pos.x - D.x, q.pos.z - D.z) < Math.hypot(m.pos.x - D.x, m.pos.z - D.z) ? q : m) : (CH ? gateExit(D.x, D.z) : null); /* (the sky map: home through a fort's flag gateway) */
@@ -8763,7 +8766,7 @@ function bearLeave(B, why) {
 }
 function endBearFight(B, ko) { const F = B.fight; if (!F) return; scene.remove(F.cloud); B.fight = null; B.m.g.visible = true; const tg = F.r; tg.inFight = null;
   B.mode = 'rise'; B.riseT = 3; B.target = null;
-  if (ko && tg.state === 'play') { const a = Math.random() * 6.28; ragdoll(tg, V(Math.cos(a), .6, Math.sin(a)), null, 4); if (tg.isPlayer) koPop(F.at, 'BEAR HUG!', '#e8f4ff', true); /* (the label only shows for whoever actually got hugged) */ fxBurst(F.at.clone().setY(F.at.y + 1), 0xffffff, 3.5, .45); fxDebris(F.at, 0xffffff, 40, 10); B.kills++; B.life = 60; }
+  if (ko && tg.state === 'play') { const a = Math.random() * 6.28; ragdoll(tg, V(Math.cos(a), .6, Math.sin(a)), null, 4); /* (no words on screen when the bear gets you: Ali, 14 Nov) */ fxBurst(F.at.clone().setY(F.at.y + 1), 0xffffff, 3.5, .45); fxDebris(F.at, 0xffffff, 40, 10); B.kills++; B.life = 60; }
 }
 function updateBear(dt) {
   if (NET && NET.client) return;
