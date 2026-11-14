@@ -4247,7 +4247,8 @@ function nbrBurst(r, dt) { const M = r.model, N = M.ant; if (!N) return; const n
   if (M.lastN !== undefined && n < M.lastN && !(r.carryUp > .2)) { M.burstT = .45; sfx('reload', rPos(r));
     if (!M.burst) { M.burst = []; for (let i = 0; i < 9; i++) { const b = new THREE.Mesh(new THREE.BufferGeometry(), NBR_ZAPM.clone()); b.frustumCulled = false; b.renderOrder = 3; scene.add(b); M.burst.push(b); }
       M.burstF = new THREE.Sprite(new THREE.SpriteMaterial({ map: nbrGlowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); M.burstF.renderOrder = 3; scene.add(M.burstF); }
-    const c = new THREE.Color(M.mats[0].color || 0xffffff).lerp(new THREE.Color(0xffffff), .45); for (const b of M.burst) { b.material.color.copy(c).multiplyScalar(2); b.userData.d = new THREE.Vector3(rr(-1, 1), rr(-.25, .9), rr(-1, 1)).normalize().multiplyScalar(rr(1.6, 2.8)); } M.burstF.material.color.copy(c); }
+    const c = new THREE.Color(M.mats[0].color || 0xffffff).lerp(new THREE.Color(0xffffff), .45); for (const b of M.burst) { b.material.color.copy(c).multiplyScalar(2); b.userData.d = new THREE.Vector3(rr(-1, 1), rr(-.25, .9), rr(-1, 1)).normalize().multiplyScalar(rr(1.6, 2.8)); } M.burstF.material.color.copy(c);
+    if (typeof REPLAY !== 'undefined' && !REPLAY.firing && match.state === 'play') REPLAY.events.push({ t: now() / 1000, name: 'nbrZap', args: [robots.indexOf(r), M.burst.map(b => b.userData.d.clone())] }); } // (so the instant replay shows it too)
   M.lastN = n; if (!M.burst) return;
   M.burstT = (M.burstT || 0) - dt; const on = M.burstT > 0, t = 1 - Math.max(0, M.burstT) / .45; for (const b of M.burst) b.visible = on; M.burstF.visible = on; if (!on) return;
   N.tip.getWorldPosition(_zA); for (const b of M.burst) { _zB.copy(_zA).addScaledVector(b.userData.d, .4 + .6 * Math.min(1, t * 3)); nbrBolt(b, _zA, _zB, .045); b.material.opacity = 1 - t; }
@@ -4335,11 +4336,25 @@ function nbrAntRest(M) { const N = M.ant, h = M.held; if (!N || !h.visible || M.
   const edge = Math.atan2(reach, dy), flat = Math.acos(Math.min(1, Math.max(-.3, (dy - N.tipR) / N.len))), lean = N.len * Math.sin(edge) - reach > N.tipR + .01 ? edge : Math.max(edge, flat); // (its tip either pokes out behind the block, or the whole thing lies under it)
   return -Math.max(0, lean - N.tilt0); }
 function nbrAntPose(M) { const N = M.ant; if (N) N.piv.rotation.set(nbrAntRest(M), 0, 0); } // (for replays: no spring, it simply stands where it should; the live spring is left alone and carries on afterwards)
+// THE BLACK HOLE (warning and while it's open): every antenna is pulled towards it, its tip flickers through colours,
+// and little zaps crackle off it towards the hole
+function nbrAntHole(r, dt) { const M = r.model, N = M.ant; if (!N) return; const on = typeof BHW !== 'undefined' && (BHW.on || (typeof BH !== 'undefined' && BH.on)) && r.state === 'play';
+  M.holeK = clamp((M.holeK || 0) + (on ? dt * 2.5 : -dt * 2), 0, 1);
+  if (!on) { if (N.lit === 'hole') N.lit = '~'; if (M.holeBolt) M.holeBolt.visible = false; return; } // (back to its own light next frame)
+  N.lit = 'hole'; const t = performance.now() / 1000, c = new THREE.Color().setHSL((t * 1.7 + r.idx * .13) % 1, 1, .6);
+  N.tipM.color.copy(c); N.tipM.emissive.copy(c); N.tipM.emissiveIntensity = 2.5 + 2 * Math.abs(Math.sin(t * 13)); N.glow.material.color.copy(c); N.glow.visible = true; N.glow.scale.setScalar(.05 + .02 * Math.abs(Math.sin(t * 9)));
+  if (!M.holeBolt) { M.holeBolt = new THREE.Mesh(new THREE.BufferGeometry(), NBR_ZAPM.clone()); M.holeBolt.frustumCulled = false; M.holeBolt.renderOrder = 3; scene.add(M.holeBolt); M.holeZ = 0; }
+  M.holeZ -= dt; if (M.holeZ < -rr(.2, .7)) M.holeZ = .09;
+  const vis = M.holeZ > 0 && !M.seeThru; M.holeBolt.visible = vis; if (!vis) return;
+  N.tip.getWorldPosition(_zA); _zB.set(-_zA.x, 30, -_zA.z).normalize().multiplyScalar(rr(.6, 1.2)).add(_zA); nbrBolt(M.holeBolt, _zA, _zB, .035); M.holeBolt.material.color.copy(c).multiplyScalar(2); }
 function nbrAntSpring(M, dt) { const N = M.ant; if (!N) return; const p = M.g.position; if (!N.last) { N.last = p.clone(); return; }
   // a spring that lags behind when he speeds up, turns or stops, and wobbles back
   const vx = (p.x - N.last.x) / dt, vz = (p.z - N.last.z) / dt, ax = (vx - N.lv.x) / dt, az = (vz - N.lv.z) / dt, ry = M.g.rotation.y, c = Math.cos(ry), sn = Math.sin(ry), lx = ax * c - az * sn, lz = ax * sn + az * c; N.lv.set(vx, 0, vz); N.last.copy(p);
   const fx = clamp(lx, -45, 45) * .9, fz = clamp(lz, -45, 45) * .9, rest = nbrAntRest(M);
-  N.v.x += (-90 * N.o.x - 3.2 * N.v.x - fx) * dt; N.v.y += (-90 * (N.o.y - rest) - 3.2 * N.v.y - fz) * dt; N.o.x = clamp(N.o.x + N.v.x * dt, -.7, .7); N.o.y = Math.max(rest - .5, -1.45, N.o.y + N.v.y * dt); /* (never so far over that it would dip into the back of his head) */
+  // a black hole coming (or open): the antenna is dragged over towards it, trembling
+  let hx = 0, hz = 0; if (M.holeK > 0) { const dx = -p.x, dz = -p.z, L = Math.hypot(dx, dz) || 1, ux = (dx * c - dz * sn) / L, uz = (dx * sn + dz * c) / L, k = M.holeK * .75, t = performance.now() / 1000;
+    hx = ux * k + Math.sin(t * 37 + p.x) * .06 * M.holeK; hz = uz * k + Math.sin(t * 41 + p.z) * .06 * M.holeK; }
+  N.v.x += (-90 * (N.o.x - hx) - 3.2 * N.v.x - fx) * dt; N.v.y += (-90 * (N.o.y - rest - hz) - 3.2 * N.v.y - fz) * dt; N.o.x = clamp(N.o.x + N.v.x * dt, -.7, .7); N.o.y = Math.max(rest - .5, -1.45, N.o.y + N.v.y * dt); /* (never so far over that it would dip into the back of his head) */
   const top = rest < 0 ? rest : .7; if (N.o.y > top) { N.o.y = top; if (N.v.y > 0) N.v.y = 0; } // (it can't rise through the block)
   N.piv.rotation.set(N.o.y, 0, -N.o.x); }
 if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMeshModel(color, happy); };
@@ -4351,7 +4366,7 @@ if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMesh
     const tx = thr || flag ? -1.57 : block ? -2.95 : 0, tz = block && !thr ? .2 : .03; // (all in one plane: up over his head through the front, and a throw brings them straight forward and down)
     M.armX = (M.armX || 0) + (tx - (M.armX || 0)) * k; M.armZ = (M.armZ ?? .12) + (tz - (M.armZ ?? .12)) * k; A.forEach((a, i) => a.rotation.set(M.armX, 0, (i ? 1 : -1) * M.armZ));
     M.heldIn = !!flag; nbrHeld(M);
-    nbrAntLight(r); nbrZap(r, dt); nbrBurst(r, dt); nbrGhost(r); if (r === robots[0]) nbrSuck(dt);
+    nbrAntLight(r); nbrAntHole(r, dt); nbrZap(r, dt); nbrBurst(r, dt); nbrGhost(r); if (r === robots[0]) nbrSuck(dt);
     nbrAntSpring(M, dt); nbrPose(M); return out; };
   // (replays pose the robots themselves: keep the arms' look and the antenna right there too)
   const aP = applyPose; applyPose = function (r, ...a) { aP(r, ...a); const M = r.model; if (M && M.rigged) { M.heldIn = M.held.position.z > .3; nbrHeld(M); nbrPose(M); nbrAntPose(M); } }; }
@@ -6730,7 +6745,7 @@ function updateDug() {
 // ---------------------------------------------------------------- black hole: the warning
 const BHW = { on: false, t: 0, team: null, fov: 0 };
 function bhWarn(team) {
-  BHW.on = true; BHW.t = 3; BHW.team = team; $('bhWarn').hidden = false; sfx('anomaly'); buzz('ko'); shake = Math.max(shake, .3);
+  BHW.on = true; BHW.t = 3; BHW.team = team; sfx('anomaly'); // (nothing round the screen any more: the camera just pulls back for the 3 seconds, and every antenna feels it coming: 05b) buzz('ko'); shake = Math.max(shake, .3);
 }
 { const sbh0 = startBlackHole; startBlackHole = function (team) {
     if (BH.on || BHW.on) return;
@@ -6740,10 +6755,10 @@ function bhWarn(team) {
     BHW.go = () => sbh0(team);
   }; }
 function updateBHWarn(dt) {
-  // the camera widens a touch while the anomaly is coming and while the hole is open
-  const want = BHW.on || BH.on ? 9 : 0; BHW.fov += (want - BHW.fov) * Math.min(1, dt * 1.6);
+  // the camera zooms out for the 3 seconds while the anomaly is coming, then back
+  const want = BHW.on ? 20 : 0; BHW.fov += (want - BHW.fov) * Math.min(1, dt * 2.2);
   if (!BHW.on) return;
-  BHW.t -= dt; const el = $('bhWarn'); el.querySelector('span').textContent = Math.max(1, Math.ceil(BHW.t));
+  BHW.t -= dt; const el = $('bhWarn');
   if (Math.floor(BHW.t * 2) !== BHW.beat) { BHW.beat = Math.floor(BHW.t * 2); shake = Math.max(shake, .15); }
   if (BHW.t <= 0) { BHW.on = false; el.hidden = true; if (BHW.go) { const go = BHW.go; BHW.go = null; go(); } }
 }
@@ -7763,7 +7778,8 @@ function startReplay() {
   REPLAY.on = true; REPLAY.play = REPLAY.frames.slice(); REPLAY.evs = REPLAY.events.slice(); REPLAY.to = REPLAY.play[REPLAY.play.length - 1].t; REPLAY.from = Math.max(REPLAY.play[0].t, REPLAY.koAt - 2.7);
   REPLAY.at = REPLAY.from; REPLAY.evAt = REPLAY.from; REPLAY.last = now(); REPLAY.drawAt = 0; REPLAY.kp = null; REPLAY.sideSgn = 0; $('replayTag').hidden = false; $('hud').classList.add('replaying'); gest = null;
 }
-function stopReplay() { if (!REPLAY.on) return; REPLAY.on = false; REPLAY.play = null; $('replayTag').hidden = true; $('hud').classList.remove('replaying'); snapCamera = true; }
+REPLAY.orig_nbrZap = (j, dirs) => { const r = robots[j]; if (r && r.model) r.model.rpZap = { at: REPLAY.at, dirs }; };
+function stopReplay() { if (!REPLAY.on) return; for (const r of robots) if (r.model) r.model.rpZap = null; REPLAY.on = false; REPLAY.play = null; $('replayTag').hidden = true; $('hud').classList.remove('replaying'); snapCamera = true; }
 // borrow the recorded positions for one picture, then hand the live ones back
 function drawReplay() {
   const n = now(); REPLAY.at += (n - REPLAY.last) / 1000 * (REPLAY.speed || REPLAY_SPEED); REPLAY.last = n;
@@ -7778,6 +7794,11 @@ function drawReplay() {
   const lerpPos = (a, b, out) => { const far = Math.abs(b[0] - a[0]) + Math.abs(b[2] - a[2]) > 4, kk = far ? (k < .5 ? 0 : 1) : k; return out.set(a[0] + (b[0] - a[0]) * kk, a[1] + (b[1] - a[1]) * kk, a[2] + (b[2] - a[2]) * kk); };
   robots.forEach((r, j) => { const a = A.rob[j], b = B.rob[j] || a; if (!a) return; saved[j] = robotPose(r);
     const far = Math.abs(b[0] - a[0]) + Math.abs(b[2] - a[2]) > 4; applyPose(r, a, b, k, far ? (k < .5 ? 0 : 1) : k); });
+  // the big antenna zap when a robot goes down (or loses its blocks): drawn again from the replayed robot's antenna
+  const zapped = [];
+  for (const r of robots) { const M = r.model, Z = M.rpZap; if (!Z || !M.burst || !M.ant) continue; const t = (REPLAY.at - Z.at) / .45; if (t < 0 || t > 1) { if (t > 1) M.rpZap = null; continue; }
+    M.ant.tip.getWorldPosition(_rpP); M.burst.forEach((b, i) => { b.visible = true; const d = Z.dirs[i] || b.userData.d; _rpS.copy(_rpP).addScaledVector(d, .4 + .6 * Math.min(1, t * 3)); nbrBolt(b, _rpP, _rpS, .045); b.material.opacity = 1 - t; });
+    M.burstF.visible = true; M.burstF.position.copy(_rpP); M.burstF.scale.setScalar(3.2 * (1 - t) + .4); M.burstF.material.opacity = 1 - t; zapped.push(M); }
   const savedB = []; let touchedIM = false;
   for (const [e, d0] of A.blk) { const d1 = B.blk.get(e) || d0, far = Math.abs(d1[0] - d0[0]) + Math.abs(d1[2] - d0[2]) > 4, kk = far ? (k < .5 ? 0 : 1) : k;
     _rpP.set(d0[0] + (d1[0] - d0[0]) * kk, d0[1] + (d1[1] - d0[1]) * kk, d0[2] + (d1[2] - d0[2]) * kk); _rpQ.set(d0[3], d0[4], d0[5], d0[6]).slerp(_rpQ2.set(d1[3], d1[4], d1[5], d1[6]), kk); _rpS.set(d0[7], d0[8], d0[9]);
@@ -7825,6 +7846,7 @@ function drawReplay() {
   else { const a = (REPLAY.at - REPLAY.from) * .5; RC.pos.set(vp.x + Math.sin(a) * 9, vp.y + 5, vp.z + Math.cos(a) * 9); RC.look.copy(vp); }
   camera.position.copy(RC.pos); camera.lookAt(RC.look);
   renderer.render(scene, camera);
+  for (const M of zapped) { const on = M.burstT > 0; for (const b of M.burst) b.visible = on; M.burstF.visible = on; } // (back to whatever the live game shows)
   camera.position.copy(liveCam); camera.quaternion.copy(liveQ); camLook.copy(liveLook);
   // put the live picture back
   robots.forEach((r, j) => { const s = saved[j]; if (s) applyPose(r, s, s, 0, 0); });
