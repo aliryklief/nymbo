@@ -2544,12 +2544,17 @@ for (const t of TREES) {
         for (const [fx, fz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) mkS(V(t.x + fx * 1.2, H - .1, t.z + fz * 1.2), V(1.2, .25, 1.2), '#5aab45');
       }
     } else if (MAP === 'classic' && WORLD === 'day' && !NIGHT && !NEO && !HD) { // the classic stage (Ali's blocky tree picture): the top is a stepped heap of whole blocks, some poking out, some missing
-      for (let y = 0; y < t.h; y++) mk(V(t.x, y + .5, t.z), V(1, 1, 1), '#6b4526');
-      // the same all the way round: a wide heavy bottom, each layer narrower, one block on top
-      const y0 = t.h, LAYERS = [(a, b) => Math.max(Math.abs(a), Math.abs(b)) <= 2 && !(Math.abs(a) === 2 && Math.abs(b) === 2), // (5 wide, corners off)
-        (a, b) => Math.max(Math.abs(a), Math.abs(b)) <= 1 || (Math.abs(a) + Math.abs(b) === 2 && (a === 0 || b === 0)), // (3x3 and an arm out each side)
-        (a, b) => Math.abs(a) + Math.abs(b) <= 1, (a, b) => !a && !b]; // (a plus, then the top block)
-      LAYERS.forEach((inL, k) => { for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) if (inL(a, b)) mk(V(t.x + a, y0 + k + .5, t.z + b), V(1, 1, 1), '#4aa83c'); });
+      const tr = (() => { let s_ = Math.abs(Math.round(t.x * 73 + t.z * 31)) * 13 + 7; return () => (s_ = (s_ * 16807) % 2147483647) / 2147483647; })();
+      const crowd = TREES.some(o => o !== t && Math.hypot(o.x - t.x, o.z - t.z) < 7.5), big = !crowd && tr() < .4, tall = tr() < .45, TH_ = t.h + (tall ? 1 : 0) + (big ? 1 : 0); // (every tree its own: some bigger, some taller; always the same all the way round)
+      mk(V(t.x, TH_ / 2, t.z), V(1, TH_, 1), '#6b4526'); // (the trunk is one solid piece: pulling at it doesn't take the tree apart block by block)
+      // every layer is ONE block resting on the one below (so the tree holds together), all centred: the same all the way round.
+      // A few kinds: a cone (wide at the bottom), a bush (narrow, wide in the middle, slim at the top), a round one, a tall slim one
+      let y = TH_; const L = (w, h) => { mk(V(t.x, y + h / 2, t.z), V(w, h, w), '#4aa83c'); y += h; };
+      const kind = Math.floor(tr() * 4), H = () => tr() < (tall ? .55 : .25) ? 2 : 1;
+      if (kind === 0) { L(big ? 7 : 5, H()); L(big ? 5 : 3, H()); if (big) L(3, 1); L(1, H()); }          // cone
+      else if (kind === 1) { L(3, 1); L(big ? 7 : 5, H()); L(big ? 5 : 3, H()); L(1, 1); }                // bush: narrow, wide, slim
+      else if (kind === 2) { L(3, 1); L(5, H() + (big ? 1 : 0)); L(3, 1); }                                // round
+      else { L(3, H() + 1); L(3, H()); L(1, H()); }                                                         // tall and slim
     } else {
     for (let y = 0; y < t.h; y++) mk(V(t.x, y + .5, t.z), V(1, 1, 1), '#6b4526');
     mk(V(t.x, t.h + .5, t.z), V(3, 1, 3), '#3f9a35'); mk(V(t.x, t.h + 1.5, t.z), V(3, 1, 3), '#46a63b'); mk(V(t.x, t.h + 2.5, t.z), V(1, 1, 1), '#4aa83c');
@@ -15769,7 +15774,7 @@ function stoneMaterial(base) {
       attribute vec4 aSt; attribute vec4 aMv; attribute vec4 aEx; varying vec3 vSp; varying vec3 vSm; varying vec4 vSt; varying vec3 vNo;
       ${ST_NOISE}
       vec3 stS; vec3 stD(vec3 p){ // where this point of the box ends up: taller/shorter top, slanted top, a lean, a twist, lumps, pushed out a bit
-        vec3 q = p; if (aSt.w > 1.5 && aSt.w < 3.5) q = clamp(p * 1.4, -.5, .5); /* (trees: crisp block edges, not rounded) */ float up = clamp(q.y + .5, 0., 1.);
+        vec3 q = p; float up = clamp(q.y + .5, 0., 1.);
         q.xz *= aEx.x + (1. - aEx.x) * 0.;
         q.y += aSt.y * up + aSt.z * p.x * up * up;
         q.x += aEx.y * p.y;
@@ -15785,7 +15790,6 @@ function stoneMaterial(base) {
       #endif
       vec3 stN0 = normalize(objectNormal), stT1 = normalize(cross(stN0, abs(stN0.y) < .9 ? vec3(0, 1, 0) : vec3(1, 0, 0))), stT2 = cross(stN0, stT1);
       vec3 stP = stD(position), stA = stD(position + stT1 * .02), stB = stD(position + stT2 * .02), stCr = cross(stA - stP, stB - stP), stNN = dot(stCr, stCr) > 1e-12 ? normalize(stCr) : stN0;
-      if (aSt.w > 1.5 && aSt.w < 3.5) { vec3 aa = abs(stN0); stNN = aa.x > aa.y && aa.x > aa.z ? vec3(sign(stN0.x), 0., 0.) : aa.y > aa.z ? vec3(0., sign(stN0.y), 0.) : vec3(0., 0., sign(stN0.z)); } // (trees: flat block faces)
       if (dot(stNN, stN0) < 0.) stNN = -stNN; objectNormal = stNN;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
       transformed = stP; vSp = position; vSm = stP * stS; vSt = aSt; vNo = stN0;`);
@@ -15794,13 +15798,12 @@ function stoneMaterial(base) {
       ${ST_NOISE}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
       float stHt = 0.; { vec3 b = diffuseColor.rgb; float sd = vSt.x, ty = vSt.w; vec3 P = vSm + sd * 37.;
-        if (ty > 1.5 && ty < 3.5) { // trees, like the blocky picture Ali liked: every face split into little squares, each a slightly different shade
-          vec3 a3 = abs(vNo); vec2 fp = a3.x > a3.y && a3.x > a3.z ? vSm.zy : a3.y > a3.z ? vSm.xz : vSm.xy; // (the face this point is on)
-          vec2 px = floor(fp * 4. + .001); float h1 = stH3(vec3(px, sd * 13. + floor(vNo.x * 2.) + floor(vNo.y * 3.) * 5. + floor(vNo.z * 2.) * 9.)), h2 = stH3(vec3(px * 1.7, sd * 7. + 3.));
-          vec2 big = floor(fp * 1.5); float hb = stH3(vec3(big, sd * 5. + 1.)); // (bigger patches of light and dark)
-          if (ty > 2.5) { b *= 1.28 * (.86 + .2 * h1 + .1 * hb); b = mix(b, b * vec3(1.18, 1.16, .85), step(.82, h2) * .6); }
-          else { b *= .82 + .26 * h1; b *= 1. - step(.85, h2) * .2; }
-          b *= 1. + .08 * clamp(vNo.y, 0., 1.); stHt = 0.; }
+        if (ty > 2.5 && ty < 3.5) { // tree tops: the blocky shape and bright greens, soft corners, a gentle leafy texture (soft clumps, a fine speckle of leaves)
+          float c1 = stF3(P * 1.3 + vec3(P.z, P.x, P.y) * .37), c2 = stF3(P * 3.1 + 5.3);
+          b *= 1.22 * (.88 + .17 * c1 + .05 * c2); // (smooth soft clumps, nothing square) b = mix(b, b * vec3(1.1, 1.08, .88), smoothstep(.62, .82, c1) * .35);
+          b *= 1. + .1 * clamp(vNo.y, 0., 1.) - .12 * clamp(-vNo.y, 0., 1.); stHt = c1 * .25; }
+        else if (ty > 1.5 && ty < 2.5) { // trunks: soft wood grain running up
+          float ang = atan(vSp.z, vSp.x), g = sin(ang * 8. + stF3(vec3(P.x, P.y * .4, P.z)) * 3.) * .5 + .5; b *= .86 + .2 * g; stHt = g * .3; }
         else { // stone: mottled, speckled, worn lighter edges, hairline cracks, a little grime low down
           float n1 = stF3(P * 1.1), n2 = stN3(P * 5.5), n3 = stN3(P * 17.), h = stH1(sd * 91.7);
           b *= 1. + (h - .5) * .2; b = mix(b, b.gbr, (stH1(sd * 47.3) - .5) * .08);
@@ -15902,10 +15905,57 @@ if (CLX) {
       const g = new RoundedBoxGeometry(sz, sz, sz, 2, .1); g.translate(x, y, z); parts.push(LABK.tint(g, new THREE.Color(LEAFC[Math.floor(R() * LEAFC.length)]).offsetHSL(0, 0, (R() - .5) * .06))); }
     if (d.x > 1.5) for (let k = 0; k < 2; k++) { const sz = s0 * (.8 + R() * .2), g = new RoundedBoxGeometry(sz, sz, sz, 2, .1); g.translate((R() - .5) * d.x * .4, d.y / 2 + sz * .2, (R() - .5) * d.z * .4); parts.push(LABK.tint(g, new THREE.Color(LEAFC[Math.floor(R() * LEAFC.length)]))); } // (a few cubes poking up on top)
     return mergeGeometries(parts); }
+  // ---- trees, sculpted (Ali: our sculpting system, no perfect lines or edges, a tree from far, the same colours) ----
+  // every tree block becomes a soft lumpy mass: corners rounded right off, the surface pushed in and out in leafy lumps,
+  // lighter on top where the sun hits, darker underneath; the layers overlap a little so they read as one canopy.
+  // The trunk: a knobbly column with soft ridges running up it.
+  function blobGeo(w, h, d, rad, amp, seed, res, ridges, xzOnly) { const R = LABK.rng(seed), g0 = new THREE.BoxGeometry(w, h, d, Math.max(2, Math.round(w * res)), Math.max(2, Math.round(h * res)), Math.max(2, Math.round(d * res)));
+    g0.deleteAttribute('uv'); g0.deleteAttribute('normal'); const g = mergeVertices(g0), P = g.attributes.position, v = new THREE.Vector3(), c = new THREE.Vector3(), hw = w / 2, hh = h / 2, hd = d / 2, ph = [R() * 9, R() * 9, R() * 9, R() * 9, R() * 9, R() * 9];
+    for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); c.set(Math.max(-hw + rad, Math.min(hw - rad, v.x)), xzOnly ? v.y : Math.max(-hh + rad, Math.min(hh - rad, v.y)), Math.max(-hd + rad, Math.min(hd - rad, v.z))); const dir = v.clone().sub(c); if (dir.lengthSq() < 1e-9) dir.set(0, 1, 0); dir.normalize(); v.copy(c).addScaledVector(dir, rad);
+      let n = Math.sin(v.x * 3.1 + ph[0]) * Math.sin(v.y * 3.7 + ph[1]) * Math.sin(v.z * 3.3 + ph[2]) * .6 + Math.sin(v.x * 7.3 + ph[3]) * Math.sin(v.y * 6.1 + ph[4]) * Math.sin(v.z * 7.9 + ph[5]) * .4;
+      if (ridges) { const a = Math.atan2(v.z, v.x); n = n * .4 + Math.sin(a * 7 + Math.sin(v.y * 2.3 + ph[0]) * .8) * .6; }
+      v.addScaledVector(dir, amp * n); P.setXYZ(i, v.x, v.y, v.z); }
+    g.computeVertexNormals(); return g; }
+  function treeGeo(e) { const d = e.dims, leaf = e.color.g > e.color.r, sd = e.id * 7717 + 11, R = LABK.rng(sd), base = e.color.clone();
+    let g;
+    if (leaf) { // cute and fluffy, still the block's shape: a soft rounded core with puffs all round its edges (like a cartoon cloud)
+      const parts = [blobGeo(d.x * .9, d.y * .84, d.z * .9, Math.min(.3, d.y * .35), 0, sd, 4)], sp = CL_TOUCH ? .95 : .68, seg = CL_TOUCH ? [7, 5] : [10, 7];
+      const hx = d.x / 2, hz = d.z / 2, hy = d.y / 2, nRow = Math.max(2, Math.round(d.y / .55) + 1);
+      const puff = (x, y, z, r) => { const s_ = new THREE.SphereGeometry(r, seg[0], seg[1]); s_.scale(1, .88, 1); s_.translate(x, y, z); s_.deleteAttribute('uv'); parts.push(s_); };
+      for (let k = 0; k < nRow; k++) { const y = -hy + .3 + (d.y - .6) * k / (nRow - 1), r0 = .3;
+        const ix = hx - r0 * .8, iz = hz - r0 * .8, per = 4 * (ix + iz), n = Math.max(4, Math.round(per / sp));
+        for (let q = 0; q < n; q++) { let t = (q + (k % 2) * .5) / n * per, x, z; // (walk round the edge)
+          if (t < 2 * ix) { x = -ix + t; z = -iz; } else if ((t -= 2 * ix) < 2 * iz) { x = ix; z = -iz + t; } else if ((t -= 2 * iz) < 2 * ix) { x = ix - t; z = iz; } else { t -= 2 * ix; x = -ix; z = iz - t; }
+          puff(x, y + (R() - .5) * .06, z, r0 * (.9 + R() * .25)); } }
+      for (let x = -hx + .8; x <= hx - .8 + 1e-6; x += .9) for (let z = -hz + .8; z <= hz - .8 + 1e-6; z += .9) puff(x + (R() - .5) * .2, hy - .26, z + (R() - .5) * .2, .34 + R() * .08); // (soft puffs on top)
+      g = mergeGeometries(parts.map(p_ => { p_ = p_.index ? p_.toNonIndexed() : p_; if (!p_.attributes.normal) p_.computeVertexNormals(); for (const k of Object.keys(p_.attributes)) if (!['position', 'normal'].includes(k)) p_.deleteAttribute(k); return p_; })); }
+    else g = blobGeo(d.x * .84, d.y * 1.04, d.z * .84, .41, .04, sd, 6, true, true).toNonIndexed(); // (the trunk: nearly round, soft ridges, one smooth column)
+    const P = g.attributes.position, N = g.attributes.normal, col = new Float32Array(P.count * 3), c = new THREE.Color();
+    for (let i = 0; i < P.count; i++) { const ny = N.getY(i), x = P.getX(i), y = P.getY(i), z = P.getZ(i), n = .5 + .5 * Math.sin(x * 2.3 + z * 1.9 + y * 1.7 + sd % 7);
+      if (leaf) c.copy(base).multiplyScalar((ny < -.4 ? .72 : .9 + .22 * Math.max(0, ny)) * (.95 + .1 * n)); else c.copy(base).multiplyScalar(.85 + .2 * n);
+      c.toArray(col, i * 3); }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); return g; }
+  // the tree surface: the shape stays smooth; the leaves are in the surface itself, little overlapping leaf shapes
+  // (each one lit on its sunny side, a dark line where it overlaps the next), so up close it's leaves, from far a tree
+  function treeMat() { const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .8, metalness: 0 });
+    m.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTP;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvTP = position;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+        varying vec3 vTP; float tH(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+        vec3 tH3(vec3 p){ return vec3(tH(p), tH(p + 17.3), tH(p + 41.9)); }
+        vec2 vor(vec3 p){ vec3 i = floor(p), f = fract(p); float d1 = 9., d2 = 9.; for (int x = -1; x <= 1; x++) for (int y = -1; y <= 1; y++) for (int z = -1; z <= 1; z++) { vec3 g = vec3(x, y, z), o = tH3(i + g); float d = length(g + o - f); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; } return vec2(d1, d2); }
+        float tLeafH;`)
+        .replace('#include <color_fragment>', `#include <color_fragment>
+        tLeafH = 0.; if (diffuseColor.g > diffuseColor.r * 1.15) { }
+        else { float gr = sin(atan(vTP.z, vTP.x) * 9. + sin(vTP.y * 2.1) * 1.4) * .5 + .5; diffuseColor.rgb *= .88 + .18 * gr; tLeafH = gr * .3; }`)
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        { vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); float hx = dFdx(tLeafH), hy = dFdy(tLeafH); vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
+          normal = normalize(abs(det) * normal - sign(det) * (hx * r1 + hy * r2) * .5); }`); };
+    m.customProgramCacheKey = () => 'treeleaf'; return m; }
   function labPiece(e) { const d = e.dims, o = e._lab || {}, R = LABK.rng(e.id * 131 + 7), along = d.z > d.x + .01, w = along ? d.z : d.x, dep = along ? d.x : d.z, h = d.y, sd = Math.floor(R() * 1e6);
     const base = e.kind === 'fort' ? LABK.teamCol('classic', e.team === 'red' ? '#FF2D2D' : '#008CFF', R) : e.color.clone(), col = LABK.shade(base, R, .05);
     let g, lift = 0, sy = 1;
-    if (e.kind === 'tree') { g = clean(leafCluster(e)); return { e, g, fam: 'leafy', local: new THREE.Matrix4().makeScale(1 / d.x, 1 / d.y, 1 / d.z) }; }
+    if (e.kind === 'tree') { g = clean(treeGeo(e)); return { e, g, fam: 'tree', local: new THREE.Matrix4().makeScale(1 / d.x, 1 / d.y, 1 / d.z) }; }
     if (o.top && !o.tower) { const ks = Object.keys(LABK.T), k = ks[Math.floor(R() * ks.length)]; g = LABK.T[k](col, sd); if (w > 1.05) g = LABK.stretch(g, w); sy = .8 + R() * .6; g.scale(1, sy, 1); lift = (sy - 1) * h / 2; } // (shaped tops, some taller, some lower: a jagged skyline)
     else if (e.kind === 'fort' && !o.tower && h > .9 && R() < .14) g = LABK.carvedPiece(w, h, col, sd, '#' + e.color.getHexString());
     else g = LABK.paintStone(LABK.stoneGeo(w, h, sd, R, RES), LABK.shade(col, R));
@@ -15924,7 +15974,7 @@ if (CLX) {
   // Drawing them: every stone that hasn't moved is welded into one big mesh per material (a handful of draw calls for
   // the whole map). The moment a stone's block moves (knocked loose, picked up, blown up), its stone is cut out of the
   // big mesh and becomes a mesh of its own that follows the block.
-  const FAMM = {}; const famMat = fam => FAMM[fam] || (FAMM[fam] = (() => { if (fam === 'leafy') return new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .42, metalness: 0 }); /* (the tree tops: smooth, a little glossy) */ const m = LABK.surfMat(fam); return m; /* (no studio reflections: lit only by the stage's own light, like everything else) */ })());
+  const FAMM = {}; const famMat = fam => FAMM[fam] || (FAMM[fam] = (() => { if (fam === 'tree') return treeMat(); /* (the sculpted trees: smooth shapes, covered in little leaves) */ /* (the tree tops: smooth, a little glossy) */ const m = LABK.surfMat(fam); return m; /* (no studio reflections: lit only by the stage's own light, like everything else) */ })());
   const _M = new THREE.Matrix4(), _N3 = new THREE.Matrix3(), _v = new THREE.Vector3();
   const WELD = [];
   for (const fam in byFam) { const L = byFam[fam], nv = L.reduce((a, p) => a + p.g.attributes.position.count, 0);
@@ -16048,10 +16098,10 @@ if (CLX) {
     for (const sp of PORTAL_SPOTS) { const cells = []; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) cells.push([a, b]); const cut = new Set(cells.filter(([a, b]) => Math.abs(a) === 2 && Math.abs(b) === 2 && FR() < .6).map(c => c + '')); floor(Math.round(sp.x), .03, Math.round(sp.z), (x, z) => Math.abs(x) <= 2 && Math.abs(z) <= 2 && !cut.has([x, z] + ''), cells, { miss: .02 }); padCol(Math.round(sp.x), Math.round(sp.z), RAPIER.ColliderDesc.cuboid(2.4, .045, 2.4)); }
     // the forts: the same stone floor inside the walls (a bit simpler, there's a lot of it)
     FRES = CL_TOUCH ? 4 : 6;
-    for (const t of ['blue', 'red']) { const F = FORT[t], ix = FORT_RX - 2, iz = FORT_RZ - 2, cells = []; for (let x = -ix; x <= ix; x++) for (let z = -iz; z <= iz; z++) cells.push([x, z]);
+    for (const t of ['blue', 'red']) { const F = FORT[t], ix = FORT_RX, iz = FORT_RZ, cells = []; /* (right out under the walls) */ for (let x = -ix; x <= ix; x++) for (let z = -iz; z <= iz; z++) cells.push([x, z]);
       const col = r_ => new THREE.Color(GREYS[Math.floor(r_() * GREYS.length)]).lerp(new THREE.Color(t === 'red' ? '#c08a84' : '#8a98b8'), .25).getStyle();
       floor(Math.round(F.x), .03, Math.round(F.z), (x, z) => Math.abs(x) <= ix && Math.abs(z) <= iz, cells, { miss: .03, col });
-      padCol(Math.round(F.x), Math.round(F.z), RAPIER.ColliderDesc.cuboid(ix + .5, .045, iz + .5)); }
+      padCol(Math.round(F.x), Math.round(F.z), RAPIER.ColliderDesc.cuboid(ix - 1.5, .045, iz - 1.5)); } // (solid inside the walls; under the walls themselves it's just looks)
     FRES = RES;
     // the sky island: a stone floor on top, and a rough rocky underside hanging below it
     if (ISLAND.on) { for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === cubeGeo && o.count < 80) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (Math.abs(m.elements[13] - (ISLAND.top - .5)) < .05) scene.remove(o); }
@@ -16131,17 +16181,17 @@ if (CLX) {
     const seg = CL_TOUCH ? 3 : 4, bw = .075, pos = [], nor = [], idx = [];
     for (let i = 0; i <= seg; i++) { const t = i / seg, w = bw * (1 - t * .92); for (const s_ of [-1, 1]) { pos.push(s_ * w, t, 0); nor.push(s_ * .5, .3, 1); } }
     for (let i = 0; i < seg; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
-    const RINGS = CL_TOUCH ? [[120, .15], [100, .34]] : [[210, .11], [180, .23], [160, .45]]; // (blades per side, spacing): each ring a square lattice
+    const RINGS = CL_TOUCH ? [[120, .15], [100, .34], [96, .95]] : [[210, .11], [180, .23], [160, .45], [160, .95]]; // (the last ring reaches right across the island, so grass is everywhere you look) // (blades per side, spacing): each ring a square lattice
     let n = 0; for (const [k] of RINGS) n += k * k;
     const aL = new Float32Array(n * 4), aRr = new Float32Array(n); let q = 0;
     RINGS.forEach(([k, c], ri) => { const inner = ri ? RINGS[ri - 1][0] * RINGS[ri - 1][1] / 2 - RINGS[ri - 1][1] : 0; for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) { aL.set([a - k / 2, b - k / 2, c, inner], q * 4); aRr[q] = k * c / 2 - c; q++; } });
     const blade = new THREE.InstancedBufferGeometry(); blade.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); blade.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); blade.setIndex(idx);
     blade.setAttribute('aL', new THREE.InstancedBufferAttribute(aL, 4)); blade.setAttribute('aR', new THREE.InstancedBufferAttribute(aRr, 1)); blade.instanceCount = n;
-    const GU = { uT: { value: 0 }, uWind: { value: new THREE.Vector2(1, .35).normalize() }, uCam: { value: new THREE.Vector3() }, fieldTex: { value: fieldTex }, fieldSz: { value: new THREE.Vector2(MX, MZ) } };
+    const GU = { uThin: { value: 1 }, uT: { value: 0 }, uWind: { value: new THREE.Vector2(1, .35).normalize() }, uCam: { value: new THREE.Vector3() }, fieldTex: { value: fieldTex }, fieldSz: { value: new THREE.Vector2(MX, MZ) } };
     const gm = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .55, side: THREE.DoubleSide, emissive: '#1c3a08', emissiveIntensity: .35 });
     gm.onBeforeCompile = sh => { Object.assign(sh.uniforms, GU);
       sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
-        attribute vec4 aL; attribute float aR; uniform float uT; uniform vec2 uWind; uniform vec3 uCam; uniform sampler2D fieldTex; uniform vec2 fieldSz; varying float vH; varying float vC; varying float vG;
+        attribute vec4 aL; attribute float aR; uniform float uT, uThin; uniform vec2 uWind; uniform vec3 uCam; uniform sampler2D fieldTex; uniform vec2 fieldSz; varying float vH; varying float vC; varying float vG;
         float gH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float gN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(gH(i), gH(i + vec2(1, 0)), f.x), mix(gH(i + vec2(0, 1)), gH(i + vec2(1, 1)), f.x), f.y); }`)
         .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
@@ -16158,6 +16208,7 @@ if (CLX) {
         hgt *= 1. - smoothstep(.12, .45, F.r) * .8; if (F.r > .3 && gH(cell + 12.2) < smoothstep(.3, .7, F.r)) hgt = 0.; // (paths: flattened, short and thin, bare in the middle)
         hgt = min(hgt, .95 + .1 * gH(cell + 1.9)); // (never much taller than a Nym's ball)
         if (hgt < .2) hgt = 0.; // (no tiny spikes: too short to be worth a blade, none at all)
+        if (gH(cell + 31.7) > uThin) hgt = 0.; // (a slow phone: fewer blades everywhere, rather than grass only close by)
         hgt *= 1. - step(.5, F.b); // (nothing in the forts or under the stones)
         if (abs(wp.x) > fieldSz.x - .3 || abs(wp.y) > fieldSz.y - .3) hgt = 0.;
         float ringR = aR; // half the ring's width
@@ -16186,8 +16237,8 @@ if (CLX) {
     const _gd = new THREE.Vector3(), ringN = RINGS.map(([k]) => k * k), upTo = m => ringN.slice(0, m).reduce((a, b) => a + b, 0);
     pulseHalos = function (t) { pH(t); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t; GU.uT.value += dt;
       // the rings are centred a little ahead of the camera, on the ground you're looking at (the camera sits behind and above you)
-      camera.getWorldDirection(_gd); _gd.y = 0; if (_gd.lengthSq() > 1e-6) _gd.normalize(); GU.uCam.value.copy(camera.position).addScaledVector(_gd, 9);
-      const lv = perf.level || 0, keep = lv >= 3 ? 1 : lv >= 2 ? Math.max(1, RINGS.length - 1) : RINGS.length; blade.instanceCount = upTo(keep); };
+      camera.getWorldDirection(_gd); _gd.y = 0; if (_gd.lengthSq() > 1e-6) _gd.normalize(); GU.uCam.value.copy(camera.position).addScaledVector(_gd, 12);
+      const lv = perf.level || 0; GU.uThin.value = lv >= 4 ? .4 : lv >= 3 ? .55 : lv >= 2 ? .75 : 1; };
     window.__nymbo && (window.__nymbo.FIELD = { grass, wear, tall, n, GU }); }
 
   // ---------------- 6. the island's edge: not a ruler-straight box any more ----------------
