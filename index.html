@@ -3804,7 +3804,7 @@ function makeRobotBody(r, p) {
 }
 const rPos = r => { const t = r.body.translation(); return V(t.x, t.y, t.z); };
 var RW_LOCK = false; // (true while time is being rewound: nobody can grab, throw, jump, dodge or use a power)
-const canAct = r => !RW_LOCK && !r.glitchHeld && r.state === 'play' && r.frozenT <= 0 && !(r.peckT > 0) && !(r.flopT > 0); // (chickens on you: no grabbing, throwing, jumping or dodging...)
+const canAct = r => !RW_LOCK && !r.glitchHeld && r.state === 'play' && r.frozenT <= 0 && !(r.peckT > 0) && !(r.flopT > 0) && !(r.rzT > 0); // (chickens on you: no grabbing, throwing, jumping or dodging...)
 const canMove = r => r.state === 'play' && !r.glitchHeld && r.frozenT <= 0 && !(r.flopT > 0);                   // (...but you can still struggle along)
 const hittable = r => r.state === 'play' && r.ghostT <= 0 && !isInvisible(r); // (invisible: nothing can hit you, lock on to you, or home in on you)
 
@@ -3823,8 +3823,13 @@ function refreshHeld(r) {
     if (isPower(e.kind)) { const c = makeInner(e.kind); h.add(c); h.userData.inner = c; h.renderOrder = 2; } }
 }
 // picking up: the new block becomes your active block; the rest move back one place
-function grabBlock(r, e) {
+// HANDS RULES (14 Nov): you can only catch, pick up or throw towards where you're FACING, and not at all while you're
+// sliding (across ice, down a ski run, lying back on a water slide)
+function sliding(r) { if (!r.body || r.state !== 'play') return false; if (r.slLay || r.onSlide || r.skiing) return true; const v = r.body.linvel(); return r.grounded && onIce(rPos(r)) && Math.hypot(v.x, v.z) > 1.2; }
+function facesTo(r, x, z, tol = .75) { const p = rPos(r), dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz); if (d < .7) return true; const f = fwdOf(r.yaw); return (dx * f.x + dz * f.z) / d > Math.cos(tol); }
+function grabBlock(r, e, free = false) {
   if (!e || e.dead || e.holder || e.stuck || e.noGrab || !canAct(r)) return false;
+  if (!free && e.body) { if (sliding(r)) return false; const t = e.body.translation(); if (!facesTo(r, t.x, t.z, 1.25)) return false; } // (behind you, or you're sliding: no)
   if (r.stack.length >= MAX_AMMO && e.kind !== 'flag') return false;
   if (r.stack[0] && r.stack[0].kind === 'flag') return false;           // carrying a flag: hands are full
   if (e.kind === 'flag' && e.team === r.team) return false;
@@ -3841,6 +3846,7 @@ function grabBlock(r, e) {
   return true;
 }
 function grabbable(r, maxD = 2.6, groundOnly = false, ok = null) {
+  if (sliding(r)) return null; // (sliding: hands busy keeping your balance)
   const p = rPos(r), f = fwdOf(r.yaw); let best = null, bs = Infinity;
   for (const e of blocks) {
     if (e.dead || !e.body || e.holder) continue;
@@ -3850,7 +3856,7 @@ function grabbable(r, maxD = 2.6, groundOnly = false, ok = null) {
     const t = e.body.translation(), dx = t.x - p.x, dz = t.z - p.z, d = Math.hypot(dx, dz), dy = t.y - (p.y - .95);
     if (d > maxD || dy < -1.2 || dy > 2.5) continue;
     if (d < 1.1 && dy < -.15) continue; // the block you're standing on isn't something to pick up (no glowing square under your feet)
-    if (d > 1.3 && (dx * f.x + dz * f.z) / d < .2) continue;          // things in front of you (about 75 degrees either side); anything touching you is fine
+    if (d > .7 && (dx * f.x + dz * f.z) / d < .32) continue;          // only things in front of you (about 70 degrees either side), even close up
     if (e.live && e.thrower && e.thrower.team !== r.team) {            // a block flying at you: catchable only in a split second
       if (groundOnly) continue;
       const lv = e.body.linvel(), rel = V(p.x - t.x, p.y - t.y, p.z - t.z), vv = lv.x * lv.x + lv.y * lv.y + lv.z * lv.z;
@@ -3864,8 +3870,9 @@ function grabbable(r, maxD = 2.6, groundOnly = false, ok = null) {
   return best;
 }
 // throwing: active block leaves first. aim = world point; speed = horizontal speed
-function throwAt(r, aim, speed, homingTarget = null) {
+function throwAt(r, aim, speed, homingTarget = null, free = false) {
   if (r.peckT > 0) return null;
+  if (!free && (sliding(r) || !facesTo(r, aim.x, aim.z))) return null; // (only where you're facing, and not while sliding)
   const e = r.stack.shift(); if (!e) return null; e.rolled = null;
   if (isSlowed(r)) speed *= .5; // slow-mo: their throws fly at half speed
   e.holder = null;
@@ -3996,7 +4003,7 @@ function updateRobot(r, dt) {
   r.lastVy = lv.y;
   r.yaw += angDiff(r.yaw, r.yawT) * Math.min(1, dt * (r.isPlayer ? 14 : 9));
   if (r.dashT > 0) r.dashT -= dt; else r.dashV *= Math.pow(.001, dt);
-  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1) * (r.peckT > 0 ? .3 : 1) * (r.spatT > 0 ? .5 : 1) * (r.qsT > 0 && !r.jumps ? .3 : 1) * (r.onCar > now() ? 0 : 1) * (RW_LOCK ? 0 : 1) * (r.goldT > 0 ? 2 : 1) * (r.grounded && onIce(rPos(r)) ? 1.35 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
+  const des = r.want.clone().multiplyScalar(r.wantSpeed * (inWool(rPos(r)) ? .42 : 1) * (isSlowed(r) ? .5 : 1) * (r.gasT > 0 ? .28 : 1) * (r.peckT > 0 ? .3 : 1) * (r.spatT > 0 ? .5 : 1) * (r.qsT > 0 && !r.jumps ? .3 : 1) * (r.onCar > now() ? 0 : 1) * (RW_LOCK ? 0 : 1) * (r.rzT > 0 ? 0 : 1) * (r.goldT > 0 ? 2 : 1) * (r.grounded && onIce(rPos(r)) ? 1.35 : 1)).addScaledVector(rightOf(r.yaw), r.dashT > 0 ? r.dashV : r.dashV * .3);
   if (r.pull) { des.add(r.pull); } // the black hole's drag
   if (r.boost) { des.add(r.boost); r.boost.multiplyScalar(Math.exp(-1.3 * dt)); if (r.boost.lengthSq() < .3) r.boost = null; } // speed arrows
   if (r.gasT > 0) r.gasT -= dt; // (in the stink cloud: crawling)
@@ -4428,8 +4435,8 @@ const iceTileMat = (() => { const c = document.createElement('canvas'); c.width 
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   return new LiteMat({ map: t, color: 0xd8f4ff, emissive: 0x4ab8e8, emissiveIntensity: .35, transparent: true, opacity: .7, depthWrite: false }); })();
 const iceSlickMat = new THREE.MeshBasicMaterial({ color: 0xd8f3ff, map: iceTex(), transparent: true, opacity: .6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
-var RAINSLICK = 0; // (the jungle's downpours make the mud slippery: 09p)
-const onIce = p => (RAINSLICK > .5 && p.y - TH(p.x, p.z) < 1.4 && p.y < 2.2) || (ICEMAP && p.y > -.2 && p.y < 1.8 && lakeD(p.x, p.z) < 1 && !isHole(p.x, p.z)) || p.y - TH(p.x, p.z) < 1.8 && ICE.some(i => Math.hypot(p.x - i.x, p.z - i.z) < i.r);
+var RAINSLICK = 0; // (how hard it's raining in the jungle: 09p. Rain no longer makes you slide; it zaps your antenna now: 09v)
+const onIce = p => (ICEMAP && p.y > -.2 && p.y < 1.8 && lakeD(p.x, p.z) < 1 && !isHole(p.x, p.z)) || p.y - TH(p.x, p.z) < 1.8 && ICE.some(i => Math.hypot(p.x - i.x, p.z - i.z) < i.r);
 function updateIce(dt) {
   for (let k = ICE.length - 1; k >= 0; k--) {
     const i = ICE[k]; i.t -= dt; i.m.material.opacity = .7 * clamp(i.t / 1.2, 0, 1); // clear ice: you see the ground through it
@@ -5000,15 +5007,14 @@ function updateAI(r, dt) {
     const eye = V(p.x, p.y + 1.2, p.z);
     if (ai.mode === 'topple' && ai.tower && ai.tower.body && (!target || rPos(target).distanceTo(p) > 9)) {
       const tt = ai.tower.body.translation(), tp = V(tt.x, tt.y, tt.z);
-      if (tp.distanceTo(p) < 15) { throwAt(r, tp, D.tSpeed); ai.cool = rr(...D.cool) * .6; }
+      if (tp.distanceTo(p) < 15 && throwAt(r, tp, D.tSpeed)) ai.cool = rr(...D.cool) * .6; // (not facing it yet: turns, throws a moment later)
     } else if (target) {
       const c = rPos(target), d = c.distanceTo(p);
       if (d < (isBlinded(r) ? 7 : D.range * (NIGHT ? .6 : 1)) && d > 2 && lineOfSight(r, eye, V(c.x, c.y + .6, c.z))) {
         let aim = c.clone();
         for (let k = 0; k < 2; k++) { const tt = Math.hypot(aim.x - p.x, aim.z - p.z) / D.tSpeed; aim = c.clone().addScaledVector(target.vel, tt * D.lead); }
         aim.x += rr(-D.err, D.err); aim.z += rr(-D.err, D.err); aim.y = c.y;
-        throwAt(r, aim, D.tSpeed, r.stack[0].kind === 'homing' ? target : null);
-        ai.cool = rr(...D.cool);
+        if (throwAt(r, aim, D.tSpeed, r.stack[0].kind === 'homing' ? target : null)) ai.cool = rr(...D.cool); // (not facing them yet: no throw, it turns first)
       }
     }
   }
@@ -5172,6 +5178,7 @@ function playerThrow(power) {
 // throwing for any robot (yours, or a friend's robot on the host); lock = the robot your crosshair is locked on
 function throwFor(P, power, lineTarget, homingTarget) {
   const e = P.stack[0]; if (!e) return;
+  if (sliding(P)) { if (P.isPlayer) toast('CAN\'T THROW WHILE SLIDING'); return; } // (a player's throw always goes where they face: straight ahead, or onto a lock in front)
   const p = rPos(P), f = fwdOf(P.yaw);
   let aim, target = null, assist = false;
   if (e.kind === 'homing' && homingTarget) { target = homingTarget; aim = rPos(target); }
@@ -5187,7 +5194,7 @@ function throwFor(P, power, lineTarget, homingTarget) {
   } else if (P.isPlayer && typeof landOn === 'function' && landOn()) aim = landAim(power); /* (landscape controls: wherever the crosshair points, up or down) */
   else { const D = 4 + power * 24; aim = V(p.x + f.x * D, p.y - .3, p.z + f.z * D); }
   endInvis(); // throwing gives you away
-  const thrown = throwAt(P, aim, THROW_H, assist ? null : target);
+  const thrown = throwAt(P, aim, THROW_H, assist ? null : target, true);
   if (assist && thrown) thrown.assist = target; // a locked throw gets gently guided onto them
   if (e.kind === 'flag' && P.isPlayer) toast('FLAG THROWN');
 }
@@ -7319,7 +7326,7 @@ function pickRandomSeat() {
 function startCountdown() {
   if (!NET && !match.seatPicked) { match.seatPicked = true; pickRandomSeat(); }
   netEv(['count']);
-  if (!(NET && NET.client)) for (const r of robots) if (!r.stack.some(e => e.kind === 'sticky')) { const w = newBlock('sticky', V(rPos(r).x, 2, rPos(r).z), { dims: V(1, 1, 1) }); w.anchored = false; grabBlock(r, w); } // everyone's one start block: a sticky grenade
+  if (!(NET && NET.client)) for (const r of robots) if (!r.stack.some(e => e.kind === 'sticky')) { const w = newBlock('sticky', V(rPos(r).x, 2, rPos(r).z), { dims: V(1, 1, 1) }); w.anchored = false; grabBlock(r, w, true); } // everyone's one start block: a sticky grenade
   show(null); match.state = 'count'; match.count = INTRO_T; match.lastBeep = 6; match.swooped = false; sfx('intro'); $('hud').hidden = false;
   try { navigator.wakeLock?.request('screen').then(w => wakeLock = w).catch(() => {}); } catch (e) {}
 }
@@ -8586,7 +8593,7 @@ function pengDive(e, Gl) { // in it goes, head first
 function pengPoolRelease() { // holding a penguin and you land in the pool at the top of a water slide: it wriggles free and goes down the slide
   for (const r of robots) { const e = r.stack[0]; if (!e || e.animal !== 'penguin' || !e.peng || r.state !== 'play' || !r.body) continue; const p = r.body.translation();
     const Sp = SLIDES.find(S_ => S_.plat && Math.hypot(p.x - S_.plat.c.x, p.z - S_.plat.c.z) < 4.6 && p.y > S_.plat.c.y - .3 && p.y < S_.plat.c.y + 2.2); if (!Sp) continue;
-    const s0 = Sp.at(.02), s1 = Sp.at(.05); throwAt(r, V(s1.x, s1.y, s1.z), 10);
+    const s0 = Sp.at(.02), s1 = Sp.at(.05); throwAt(r, V(s1.x, s1.y, s1.z), 10, null, true);
     if (e.body) { e.body.setTranslation({ x: s0.x, y: s0.y + .6, z: s0.z }, true); e.peng.slide = { dir: V(s1.x - s0.x, 0, s1.z - s0.z).normalize(), sp: 17, by: r, hit: new Set([r]), t: 0 }; e.peng.ride = { S: Sp, s: .02, rb: false, hit: e.peng.slide.hit, by: r }; }
     sfx('honk', V(p.x, p.y, p.z)); if (r.isPlayer) toast('THE PENGUIN SLID OFF DOWN THE SLIDE!'); }
 }
@@ -8597,7 +8604,7 @@ function pengRandom(dt) { if (MAP !== 'sky' || match.state !== 'play' || (NET &&
 function pengRainbowRelease() { // holding a penguin when you get on the rainbow: it wriggles free and whizzes across ahead of you
   if (!RBW.on) return;
   for (const r of robots) { const e = r.stack[0]; if (!e || e.animal !== 'penguin' || !e.peng || !r.rb || r.state !== 'play') continue;
-    const s0 = clamp(r.rb.s + r.rb.dir * .03, 0, 1), at_ = RBW.at(s0); throwAt(r, at_, 10);
+    const s0 = clamp(r.rb.s + r.rb.dir * .03, 0, 1), at_ = RBW.at(s0); throwAt(r, at_, 10, null, true);
     if (e.body) { e.body.setTranslation({ x: at_.x, y: at_.y + .5, z: at_.z }, true); const hit = new Set([r]);
       e.peng.slide = { dir: V(RBW.B.x - RBW.A.x, 0, RBW.B.z - RBW.A.z).normalize().multiplyScalar(r.rb.dir), sp: 0, by: r, hit, t: 0 }; e.peng.ride = { s: s0, rb: true, dir: r.rb.dir, hit, by: r }; }
     sfx('honk', at_); }
@@ -9584,7 +9591,7 @@ if (VOLC && S.mummy !== false) { for (const r of robots) sootify(r.model); const
 //  - QUICKSAND: stand in it and you sink. Jump out quick, or it swallows you
 //  - the BOULDER: every so often a giant stone ball comes rolling along its lane, squashing anyone in the way
 //  - MONKEYS: they snatch the block off your head and run off with it (hit them with a block and they drop it)
-//  - DOWNPOURS: the rain makes the mud slippery
+//  - DOWNPOURS: rain (it zaps robots' antennas now, 09v; no more sliding)
 //  - LEAFY ROBOTS (Look lab → map outfits)
 // ============================================================
 const JG = { bananas: [], rain: 0, rainT: 50, boulder: null, boulderT: 30, dir: 1, monkeys: [], star: null, starT: 0, vines: [], darts: [], qs: [] };
@@ -9728,7 +9735,7 @@ function updateJungle(dt) {
 }
 Object.assign(SFX_SYNTH, { dart: () => { noiseHit(.12, 'highpass', 3000, .5, 0, true, 1200, 1); }, gulp: () => { thump(70, .6, .02, .4); noiseHit(.5, 'lowpass', 400, .5, .05, true, 120, 1); } });
 // ============================================================
-// DOWNPOURS: rain streaks, a darker sky, slippery mud
+// DOWNPOURS: rain streaks, a darker sky
 // ============================================================
 if (JUNGLE) { const N = 900, im = new THREE.InstancedMesh(new THREE.PlaneGeometry(.025, .7), new THREE.MeshBasicMaterial({ color: 0xcfe4ff, transparent: true, opacity: .55, depthWrite: false, side: THREE.DoubleSide, fog: false }), N);
   im.frustumCulled = false; im.visible = false; im.renderOrder = 5; scene.add(im); JG.rainP = { im, p: Array.from({ length: N }, () => V(rr(-22, 22), rr(-4, 16), rr(-22, 22))) }; }
@@ -11449,6 +11456,28 @@ if (MAP === 'cylinder') {
     if ((cullT -= dt) <= 0) { cullT = .5; scene.traverse(o => { o.frustumCulled = false; }); }
   });
 }
+
+// ============================================================
+// RAIN ZAPS (14 Nov): rain no longer makes anyone slide. Instead, out in the rain, every few seconds (at random) a
+// robot's antenna is swamped: so many raindrops pinging it at once that it overloads and ZAPS, and the robot stops
+// dead for a split second before carrying on. (Not because water and robots don't mix: it's just too much for the
+// antenna to read at once.)
+// Rain is: the jungle's downpours, and the sky map's rain and ice storms.
+// ============================================================
+const RZ_STOP = .38;
+function rainNow() { let k = typeof RAINSLICK === 'number' ? RAINSLICK : 0; if (typeof WX !== 'undefined' && WX.on && !WX.sunny) k = Math.max(k, clamp(WX.gloom / .35, 0, 1)); return k; }
+function updateRainZaps(dt) {
+  const k = rainNow();
+  for (const r of robots) { if (r.rzT > 0) r.rzT -= dt;
+    if (k < .5 || r.state !== 'play' || !r.body || match.state !== 'play' || (NET && NET.client)) { r.rzNext = undefined; continue; }
+    if (r.rzNext === undefined) r.rzNext = rr(2, 7);
+    if ((r.rzNext -= dt) > 0) continue; r.rzNext = rr(3, 9);
+    const p = rPos(r), h = V(p.x, p.y + 1.9, p.z); r.rzT = RZ_STOP; const v = r.body.linvel(); r.body.setLinvel({ x: v.x * .1, y: v.y, z: v.z * .1 }, true);
+    fxBurst(h, 0x9fe4ff, .7, .18); for (let i = 0; i < 10; i++) emit(h.clone(), i % 2 ? 0xffffff : 0x7fd8ff, V(rr(-3, 3), rr(1, 4), rr(-3, 3)), .07, .25, 1);
+    if (r.model) { r.model.sqv = (r.model.sqv || 0) - .25; if (r.model.zapPend !== undefined || r.model.held) r.model.zapPend = true; }
+    sfx('zap', p); if (r.isPlayer) buzz('hit'); }
+}
+{ const umRZ = updateMorePowers; updateMorePowers = function (dt) { umRZ(dt); updateRainZaps(dt); }; }
 
 // ============================================================
 // ONLINE PLAY (test version, no game server needed)
