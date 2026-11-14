@@ -14349,8 +14349,16 @@ function makeBlockKit(THREE, RBOX, MERGE) {
       for (let i = 0; i < NB; i++) { bp[i * 3 + 1] += bs[i] * dt; bp[i * 3] += Math.sin(t * 2 + i) * .01 * dt; if (bp[i * 3 + 1] > .38) bp[i * 3 + 1] = -.38; } bgeo.attributes.position.needsUpdate = true; };
     return g;
   }
+  // power blocks get a glowing neon trim round every window, in their own colour, gently breathing: so they pop, and
+  // never look like a flag or a plain block from across the map
+  const TRIM = { bomb: '#ff6a1a', ice: '#5ff2ff', homing: '#3dff8a', sticky: '#b4ff2e', gold: '#ffd23a', star: '#ff4dff' };
+  function trim(g, col) { const h = .5 - F / N + .004, w = .014, z = D / N - .012, parts = [];
+    for (const [x, y, W, H] of [[0, h, 2 * h + w, w], [0, -h, 2 * h + w, w], [h, 0, w, 2 * h + w], [-h, 0, w, 2 * h + w]]) parts.push(new THREE.BoxGeometry(W, H, .01).translate(x, y, z));
+    const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(1.8), toneMapped: false }); sixFaces(g, join(parts), m, false);
+    let t = Math.random() * 6; const base = new THREE.Color(col), up0 = g.userData.update; g.userData.update = dt => { t += dt; m.color.copy(base).multiplyScalar(1.4 + .7 * (.5 + .5 * Math.sin(t * 2.4))); up0 && up0(dt); }; }
   kit.make = (kind, o = {}) => { MK = kind + (o.color || '') + (o.parity || 0); MN = 0;
     const g = kind === 'bomb' ? bomb() : kind === 'ice' ? ice() : kind === 'homing' ? homing() : kind === 'sticky' ? sticky() : kind === 'gold' ? gold() : kind === 'star' ? star() : kind === 'flag' ? flag(o.color || '#008CFF', o.parity || 0) : chonk(o.color || '#008CFF', o.parity || 0);
+    if (TRIM[kind]) trim(g, TRIM[kind]);
     return g; };
   kit.update = dt => { for (const g of kit.list) g.userData.update(dt); };
   kit.PAIRS = [['#008CFF', '#FF2D2D'], ['#00E5FF', '#FF7A00'], ['#39FF14', '#FFD400'], ['#8A2BE2', '#FF1493']];
@@ -14417,13 +14425,15 @@ function makeAnimals(THREE, MERGE_) {
   function blob(r, sx, sy, sz, seg = 40) { return new THREE.SphereGeometry(r, seg, Math.round(seg * .7)).scale(sx, sy, sz); }
   // patches drawn per pixel (smooth round edges at any size): the shell's colour switches to the spot colour inside a few
   // blobs given by centre and radius (in the shape's own space)
-  function patchy(base, spots, spotCol, o = {}) { const m = shell(base, o), sp = spots.slice(0, 8);
+  function patchy(base, spots, spotCol, o = {}) { const st = (o.stripes || []).slice(0, 6), stC = o.stripeCol || spotCol; o = Object.assign({}, o); delete o.stripes; delete o.stripeCol; const m = shell(base, o), sp = spots.slice(0, 8);
+    while (st.length < 6) st.push({ p: new THREE.Vector3(99, 99, 99), n: new THREE.Vector3(1, 0, 0), w: 0, len: 0 });
     while (sp.length < 8) sp.push({ p: new THREE.Vector3(99, 99, 99), r: .001 });
     m.onBeforeCompile = sh => { sh.uniforms.uSp = { value: sp.map(s => new THREE.Vector4(s.p.x, s.p.y, s.p.z, s.r)) }; sh.uniforms.uSpC = { value: new THREE.Color(spotCol) };
+      sh.uniforms.uSt = { value: st.map(s => new THREE.Vector4(s.p.x, s.p.y, s.p.z, s.w)) }; sh.uniforms.uStN = { value: st.map(s => new THREE.Vector4(s.n.x, s.n.y, s.n.z, s.len)) }; sh.uniforms.uStC = { value: new THREE.Color(stC) };
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLocal;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLocal = position;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vLocal; uniform vec4 uSp[8]; uniform vec3 uSpC;')
-        .replace('#include <color_fragment>', '#include <color_fragment>\n{ float k = 0.; for (int i = 0; i < 8; i++) { float d = length(vLocal - uSp[i].xyz) / uSp[i].w; k = max(k, 1. - smoothstep(.96, 1., d)); } diffuseColor.rgb = mix(diffuseColor.rgb, uSpC, k); }'); };
-    m.customProgramCacheKey = () => 'patchy' + spots.length; return m; }
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vLocal; uniform vec4 uSp[8]; uniform vec3 uSpC; uniform vec4 uSt[6]; uniform vec4 uStN[6]; uniform vec3 uStC;')
+        .replace('#include <color_fragment>', '#include <color_fragment>\n{ float k = 0.; for (int i = 0; i < 8; i++) { float d = length(vLocal - uSp[i].xyz) / uSp[i].w; k = max(k, 1. - smoothstep(.96, 1., d)); } diffuseColor.rgb = mix(diffuseColor.rgb, uSpC, k);\n float q = 0.; for (int i = 0; i < 6; i++) { vec3 r = vLocal - uSt[i].xyz; float a = abs(dot(r, uStN[i].xyz)), L = length(r - uStN[i].xyz * dot(r, uStN[i].xyz)); q = max(q, (1. - smoothstep(uSt[i].w * .8, uSt[i].w, a)) * (1. - smoothstep(uStN[i].w * .8, uStN[i].w, L))); } diffuseColor.rgb = mix(diffuseColor.rgb, uStC, q); }'); };
+    m.customProgramCacheKey = () => 'patchy2'; return m; }
   function paint(geo, base, spots, spotCol) { const P = geo.attributes.position, ca = new Float32Array(P.count * 3), A = new THREE.Color(base), B = new THREE.Color(spotCol), c = new THREE.Color(), v = new THREE.Vector3();
     for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); let k = 0; for (const s of spots) { const d = v.distanceTo(s.p) / s.r; k = Math.max(k, 1 - THREE.MathUtils.smoothstep(d, .9, 1)); } c.copy(A).lerp(B, k); ca.set([c.r, c.g, c.b], i * 3); }
     geo.setAttribute('color', new THREE.BufferAttribute(ca, 3)); return geo; }
@@ -14527,7 +14537,7 @@ function makeAnimals(THREE, MERGE_) {
     // the antenna on top of the head
     const ant = antenna('#ffb84a'); ant.position.set(0, .3, -.08); head.add(ant);
     // the cowbell: a little gold bell hanging from the neck ring (it's a tiny speaker)
-    const bell = new THREE.Group(); bell.position.set(0, -.3, .02); head.add(bell);
+    const bell = new THREE.Group(); bell.position.set(0, -.27, .13); bell.rotation.x = .45; head.add(bell); // (tipped forwards so it hangs clear of the chest)
     bell.add(mesh(new THREE.LatheGeometry([[0, 0], [.055, .0], [.05, .02], [.04, .07], [.025, .095], [0, .1]].map(([x, y]) => new THREE.Vector2(x, y)), 24).translate(0, -.1, 0), new THREE.MeshPhysicalMaterial({ color: '#e8b13a', metalness: 1, roughness: .2 })));
     bell.add(mesh(new THREE.SphereGeometry(.018, 10, 8), visorM, 0, -.1, 0));
     // stubby legs at the four corners of the belly
@@ -14541,7 +14551,7 @@ function makeAnimals(THREE, MERGE_) {
     let t = Math.random() * 10;
     g.userData = { face: F, legs, head, update(dt) { t += dt; F.update(dt); ant.userData.update(dt);
       B.scale.set(1 + Math.sin(t * 2) * .012, 1 + Math.sin(t * 2) * .02, 1); head.rotation.x = Math.sin(t * 1.3) * .05; head.rotation.z = Math.sin(t * .7) * .06;
-      tail.rotation.z = Math.sin(t * 3.2) * .5; bell.rotation.z = Math.sin(t * 2.6) * .15; } };
+      tail.rotation.z = Math.sin(t * 3.2) * .5; bell.rotation.z = Math.sin(t * 2.6) * .15; bell.rotation.x = .45 + Math.sin(t * 2.1) * .06; } };
     return g;
   }
 
@@ -14655,7 +14665,7 @@ function makeAnimals(THREE, MERGE_) {
     H.add(mesh(new THREE.SphereGeometry(.03, 12, 8).scale(1, 1.4, .8), shell('#ff3b2f'), 0, -.13, .16));
     for (const s of [-1, 1]) { const w = new THREE.Group(); w.position.set(s * .2, .5, -.02); w.rotation.z = s * .2; g.add(w); w.name = 'wing' + s; w.add(mesh(blob(.12, .35, .8, 1.1, 20), shell(W), s * .065, -.08, 0)); } // (hung from the shoulder, so it can flap)
     const legs = []; for (const s of [-1, 1]) { const l = new THREE.Group(); l.position.set(s * .1, .14, 0); g.add(l); l.add(mesh(new THREE.CylinderGeometry(.018, .018, .14, 8).translate(0, -.07, 0), shell(Y)));
-      for (const a of [-.5, 0, .5]) { const toe = mesh(new THREE.CapsuleGeometry(.014, .06, 3, 6).rotateX(PI / 2).translate(0, -.14, .04), shell(Y)); toe.rotation.y = a; l.add(toe); } legs.push(l); }
+      for (const a of [-.5, 0, .5]) { const toe = mesh(new THREE.CapsuleGeometry(.014, .06, 3, 6).rotateX(PI / 2).translate(0, -.14, .04), shell(Y)); toe.rotation.y = a; l.add(toe); } l.add(mesh(new THREE.SphereGeometry(.024, 14, 10).scale(1, .8, 1), shell(Y), 0, -.137, .005)); legs.push(l); } // (a round ankle where the toes meet the leg)
     const wings = [g.getObjectByName('wing-1'), g.getObjectByName('wing1')];
     return life(g, { body, wings, face: H.userData.face, head: H, legs, extra: t => { const f = Math.max(0, Math.sin(t * 3)) ** 8; wings[0].rotation.z = -.2 - f * .8; wings[1].rotation.z = .2 + f * .8; H.position.z = .12 + Math.max(0, Math.sin(t * 2.2)) ** 6 * .06; } }); }
 
@@ -14686,7 +14696,7 @@ function makeAnimals(THREE, MERGE_) {
     const body = mesh(blob(.3, .92, 1.25, .9, 40), patchy(K, [{ p: V3(0, -.05, .28), r: .27 }, { p: V3(0, .12, .26), r: .2 }], W)); body.position.y = .4; g.add(body);
     const H = head(.22, 1, .95, .95, patchy(K, [], K)); H.position.set(0, .78, .03); g.add(H);
     H.add(at(cone(.045, .1, shell(O)).rotateX(PI / 2), 0, -.1, .165));
-    const fl = []; for (const s of [-1, 1]) { const f = new THREE.Group(); f.position.set(s * .2, .62, 0); g.add(f); f.add(mesh(blob(.25, .23, 1, .52, 20).translate(0, -.25, 0), shell(K), s * .065, 0, 0)); /* (hinged inside the body) */ f.rotation.z = s * .25; fl.push(f); }
+    const fl = []; for (const s of [-1, 1]) { const f = new THREE.Group(); f.position.set(s * .19, .62, 0); g.add(f); f.add(mesh(blob(.25, .23, 1, .52, 20).translate(0, -.25, 0), shell(K), s * .01, .02, 0)); /* (hinged inside the body, its top tucked in) */ f.rotation.z = s * .25; fl.push(f); }
     const legs = []; for (const s of [-1, 1]) { const ft = mesh(blob(.07, 1, .55, 1.5, 16), shell(O), s * .1, .045, .06); g.add(ft); legs.push(ft); }
     const ant = antenna('#9ff0ff'); ant.position.set(0, .23, -.06); H.add(ant);
     return life(g, { body, flip: fl, face: H.userData.face, head: H, ant, legs, extra: t => { fl.forEach((f, i) => f.rotation.z = (i ? 1 : -1) * (.25 + Math.max(0, Math.sin(t * 2.5)) ** 4 * .5)); g.children[0].rotation.z = Math.sin(t * 3) * .04; } }); }
@@ -14724,10 +14734,10 @@ function makeAnimals(THREE, MERGE_) {
     const legs = [-1, 1].map(s => legAt(g, s * .1, .03, B, F, .06, .065));
     return life(g, { body, arms, tail, face: H.userData.face, head: H, ant, legs, extra: t => { arms.forEach((a, i) => a.rotation.x = Math.sin(t * 2.4 + i * PI) * .5); tail.rotation.y = Math.sin(t * 1.5) * .3; } }); }
 
-  function cat() { const g = new THREE.Group(), O = '#f29b46', CR = '#fff1dc';
-    const stripes = [-.3, -.12, .06, .24].map(z => ({ p: V3(0, .32, z), r: .1 }));
-    const body = mesh(blob(.34, .82, .74, 1.12, 40), patchy(O, [{ p: V3(0, -.2, .15), r: .22 }, ...stripes.map(s => ({ p: s.p, r: .09 }))], '#d06a1c')); body.position.y = .44; g.add(body);
-    const H = head(.28, 1.08, .92, .92, patchy(O, [{ p: V3(0, -.14, .2), r: .13 }], CR)); H.position.set(0, .76, .36); g.add(H);
+  function cat() { const g = new THREE.Group(), O = '#f39a3c', CR = '#fff1dc', TS = '#c2560f'; // a ginger tabby
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const body = mesh(blob(.34, .82, .74, 1.12, 40), patchy(O, [{ p: V3(0, -.2, .15), r: .22 }], CR, { stripes: [-.17, 0, .17].map(z => ({ p: V(0, .25, z), n: V(0, 0, 1), w: .045, len: .25 })), stripeCol: TS })); body.position.y = .44; g.add(body); // (three stripes across the back, down the sides)
+    const H = head(.28, 1.08, .92, .92, patchy(O, [{ p: V3(0, -.14, .2), r: .13 }], CR, { stripes: [-.075, 0, .075].map(x => ({ p: V(x, .25, -.02), n: V(1, 0, 0), w: .024, len: .19 })), stripeCol: TS })); H.position.set(0, .76, .36); g.add(H); // (three stripes over the top of the head)
     // the snout: a soft white muzzle sitting on top of the bottom of the visor, with the pink nose on it and the whiskers out of its sides
     for (const s of [-1, 1]) H.add(mesh(blob(.075, 1.1, .85, .8, 22), shell(CR), s * .055, -.125, .235));
     H.add(mesh(new THREE.SphereGeometry(.03, 12, 8).scale(1.3, .8, .8), shell('#ff7a9a'), 0, -.09, .285));
@@ -14763,11 +14773,11 @@ function makeAnimals(THREE, MERGE_) {
       const parts = [], C1 = new THREE.Color('#f1dcc0'), C2 = new THREE.Color('#c98b5a'), N = 90;
       for (let i = 0; i <= N; i++) { const k = i / N, a = k * PI * 5, R = .15 * (1 - k) ** 1.1, rr = .135 * (1 - k) ** 1.2 + .012, y = k * .42;
         const sp = new THREE.SphereGeometry(rr, 20, 14).translate(Math.cos(a) * R, y, Math.sin(a) * R).toNonIndexed(); const c = (Math.sin(a * 2) > .55 ? C2 : C1), n = sp.attributes.position.count, ca = new Float32Array(n * 3); for (let j = 0; j < n; j++) c.toArray(ca, j * 3); sp.setAttribute('color', new THREE.BufferAttribute(ca, 3)); sp.deleteAttribute('uv'); parts.push(sp); }
-      const sh = mesh(MERGE_(parts), shell('#ffffff', { vertexColors: true })); sh.position.set(0, .22, -.08); sh.rotation.x = -.55; g.add(sh); body.scale.set(.75, .9, .7);
-      sh.add(mesh(new THREE.TorusGeometry(.12, .035, 12, 32).rotateX(PI / 2), shell('#e9c9a4'), 0, -.02, 0)); } // (the lip of the opening, where the crab sits inside)
+      const sh = mesh(MERGE_(parts), shell('#ffffff', { vertexColors: true })); sh.position.set(0, .2, -.15); sh.rotation.x = -.7; /* (sat further back, so the face and eye stalks stay out in front) */ g.add(sh); body.scale.set(.75, .9, .7);
+      sh.add(mesh(new THREE.TorusGeometry(.12, .035, 12, 32).rotateX(PI / 2), shell('#e9c9a4'), 0, -.02, 0)); sh.add(mesh(new THREE.SphereGeometry(.16, 28, 16).scale(1, .55, 1), shell('#e9c9a4'), 0, -.01, 0)); } // (the lip of the opening, and the shell closed underneath, round the crab's back)
     // eyes: two stalks standing up from the front, each with its own little screen
-    const stalks = new THREE.Group(); g.add(stalks); const eyeList = [];
-    for (const sd of [-1, 1]) { const st = new THREE.Group(); st.position.set(sd * .08, .3, .16); st.rotation.z = sd * -.2; stalks.add(st);
+    const stalks = new THREE.Group(); stalks.userData.noPull = 1; g.add(stalks); const eyeList = [];
+    for (const sd of [-1, 1]) { const st = new THREE.Group(); st.position.set(sd * .08, hermit ? .26 : .3, hermit ? .12 : .16); /* (the hermit's body is smaller: its stalks sit lower, on it) */ st.rotation.z = sd * -.2; stalks.add(st);
       st.add(mesh(new THREE.CylinderGeometry(.016, .02, .16, 10).translate(0, .06, 0), shell(R))); st.add(at(ring(.022, .008).rotateX(PI / 2), 0, .0, 0));
       st.add(mesh(new THREE.SphereGeometry(.05, 16, 12), shell(R), 0, .17, 0)); eyeList.push({ parent: st, pos: V3(0, .17, .035), dir: V3(0, 0, 1), r: .042 }); }
     const F = miniEyes(eyeList);
@@ -14802,6 +14812,16 @@ function makeAnimals(THREE, MERGE_) {
     const legs = []; for (const s of [-1, 1]) for (const z of [-.15, 0, .15]) { const l = tube([[0, 0, 0], [s * .1, -.04, 0], [s * .12, -.1, 0]], .015, shell(K), 8); l.position.set(s * .22, .1, z); g.add(l); legs.push(l); }
     return life(g, { body, face: H.userData.face, head: H, legs, extra: (t, dt) => ants.forEach(a => a.userData.update(dt)) }); }
 
+  function ant() { const g = new THREE.Group(), K = '#3a2418', K2 = '#5a3826';
+    // three shiny segments in a row: a big round abdomen at the back, a small waist, the head with its visor at the front
+    const abd = mesh(blob(.2, .9, .82, 1.25, 36), patchy(K, [{ p: V3(0, .12, -.05), r: .1 }], K2)); abd.position.set(0, .24, -.27); abd.rotation.x = -.25; g.add(abd);
+    const body = mesh(blob(.11, .9, .85, 1.3, 28), shell(K)); body.position.set(0, .22, 0); g.add(body);
+    g.add(tube([[0, .22, -.12], [0, .23, -.06], [0, .22, .02]], .04, shell(K), 10)); // (the waist, joining them)
+    const H = head(.16, 1.05, .95, 1, shell(K)); H.position.set(0, .27, .2); g.add(H);
+    const ants = []; for (const s of [-1, 1]) { const a = antenna('#ffb24a'); a.position.set(s * .07, .13, -.01); a.rotation.z = s * -.45; H.add(a); ants.push(a); }
+    for (const s of [-1, 1]) { const md = mesh(new THREE.CapsuleGeometry(.014, .06, 4, 8).rotateX(PI / 2).rotateY(s * -.6), shell(K2), s * .045, -.11, .11); H.add(md); } // (little jaws under the visor)
+    const legs = []; for (const s of [-1, 1]) for (const z of [-.06, .01, .08]) { const l = tube([[0, 0, 0], [s * .14, .06, 0], [s * .22, -.2, 0]], .016, shell(K), 10); l.position.set(s * .06, .2, z); g.add(l); legs.push(l); }
+    return life(g, { body, face: H.userData.face, head: H, legs, extra: (t, dt) => { ants.forEach(a => a.userData.update(dt)); abd.rotation.x = -.25 + Math.sin(t * 2) * .04; } }); }
   function chameleon() { const g = new THREE.Group(), m = shell('#4fcf5c'), dk = shell('#2f9a3e');
     const body = mesh(blob(.24, .75, .8, 1.3, 40), patchy('#4fcf5c', [{ p: V3(0, -.15, 0), r: .2 }], '#c8f06a')); body.position.y = .3; g.add(body);
     for (let i = 0; i < 6; i++) { const z = .2 - i * .08, y = .3 + .24 * .8 * Math.sqrt(Math.max(0, 1 - (z / .31) ** 2)) - .01; g.add(mesh(new THREE.SphereGeometry(.035 - i * .002, 12, 8).scale(.6, 1, 1), dk, 0, y, z)); }
@@ -14810,7 +14830,7 @@ function makeAnimals(THREE, MERGE_) {
     const eyeList = []; for (const sd of [-1, 1]) { const tur = mesh(new THREE.SphereGeometry(.075, 20, 14), m, sd * .16, .04, .02); H.add(tur); eyeList.push({ parent: tur, pos: V3(sd * .06, 0, .01), dir: V3(sd, 0, .35), r: .05 }); tur.userData.turret = 1; }
     const F = useMiniEyes(H, miniEyes(eyeList));
     // the tail: out from the back, then a tight curl rolling under (a proper spiral)
-    const pts = [[0, .3, .02], [0, .3, -.12], [0, .3, -.28]]; for (let i = 0; i <= 50; i++) { const k = i / 50, a = k * PI * 2.6, r = .13 * (1 - k * .82); pts.push([0, .2 + Math.cos(a) * r, -.33 - Math.sin(a) * r]); }
+    const pts = [[0, .3, .02], [0, .3, -.12], [0, .31, -.3], [0, .3, -.4]]; for (let i = 0; i <= 50; i++) { const k = i / 50, a = k * PI * 2.6, r = .13 * (1 - k * .82); pts.push([0, .22 + Math.cos(a) * r, -.46 - Math.sin(a) * r]); } // (out of the back, then curled up well behind the body)
     const tail = mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => V3(...p))), 120, .03, 10), m); g.add(tail);
     const legs = [[-.14, .18], [.14, .18], [-.14, -.16], [.14, -.16]].map(([x, z]) => legAt(g, x, z, '#4fcf5c', '#2f9a3e', .07, .05));
     return life(g, { body, tail, turrets: H.children.filter(c => c.userData.turret), face: F, head: H, legs, extra: (t, dt) => { F.update(dt); } }); }
@@ -14911,12 +14931,12 @@ function makeAnimals(THREE, MERGE_) {
     return G; }
 
   // sizes: about how big each is next to a Nym (a Nym is about 1.05 tall); the cow is the yardstick
-  const SIZES = { cow: 1, sheep: .95, goat: .85, chicken: .6, dog: .85, polarBear: 2.1, penguin: .8, seal: 1.1, camel: 1.5, monkey: .75, cat: 1, owl: .6, pigeon: .5, crab: .7, hermit: .65, snail: .9, ladybug: .85, chameleon: .8, jellyfish: 1, hamster: .55, dragon: 5 };
-  const MAKERS = { cow, sheep, goat, chicken, dog, polarBear, penguin, seal, camel, monkey, cat, owl, pigeon, crab: () => crab(false), hermit: () => crab(true), snail, ladybug, chameleon, jellyfish, hamster, dragon };
-  const EYES = { cow: 'dash', sheep: 'dash', goat: 'dash', chicken: 'dot', dog: 'happy', polarBear: 'baddie', penguin: 'happy', seal: 'happy', camel: 'moon', monkey: 'happy', cat: 'moon', owl: 'pupil', pigeon: 'dash', crab: 'dot', hermit: 'oval', snail: 'happy', ladybug: 'round', chameleon: 'big', jellyfish: 'happy', hamster: 'pupil', dragon: 'baddie' };
+  const SIZES = { cow: 1, sheep: .95, goat: .85, chicken: .6, dog: .85, polarBear: 2.1, penguin: .8, seal: 1.1, camel: 1.5, monkey: .75, cat: 1, owl: .6, pigeon: .5, crab: .7, hermit: .65, snail: .9, ladybug: .85, chameleon: .8, jellyfish: 1, hamster: .55, ant: .6, dragon: 5 };
+  const MAKERS = { cow, sheep, goat, chicken, dog, polarBear, penguin, seal, camel, monkey, cat, owl, pigeon, crab: () => crab(false), hermit: () => crab(true), snail, ladybug, chameleon, jellyfish, hamster, ant, dragon };
+  const EYES = { cow: 'dash', sheep: 'dash', goat: 'dash', chicken: 'dot', dog: 'happy', polarBear: 'baddie', penguin: 'happy', seal: 'happy', camel: 'moon', monkey: 'happy', cat: 'moon', owl: 'pupil', pigeon: 'dash', crab: 'dot', hermit: 'oval', snail: 'happy', ladybug: 'round', chameleon: 'big', jellyfish: 'happy', hamster: 'pupil', ant: 'round', dragon: 'baddie' };
   const EYEAT = { polarBear: { x: .33, y: .05 }, cat: { x: .33, y: .02 }, camel: { x: .38, y: .05 }, sheep: { x: .6, y: .1 }, pigeon: { x: .6, y: .12 } }; // (predators: eyes closer together and a bit lower)
   const EYECOL = { cow: '#ffffff', sheep: '#fff2d8', goat: '#fff4e4', chicken: '#ffffff', dog: '#ffb25a', polarBear: '#e6f4ff', penguin: '#ffffff', seal: '#cfdcf0', camel: '#ffd08a', monkey: '#e8a46a', cat: '#ffa24a', owl: '#e8b47a',
-    pigeon: '#d2dcec', crab: '#ff6a52', hermit: '#ff9e6e', snail: '#dcff9e', ladybug: '#ff4a3a', chameleon: '#7dff8a', jellyfish: '#ffb0e8', hamster: '#ffc272', dragon: '#ff3a24' }; // (the eyes glow in each animal's own body colour)
+    pigeon: '#d2dcec', crab: '#ff6a52', hermit: '#ff9e6e', snail: '#dcff9e', ladybug: '#ff4a3a', chameleon: '#7dff8a', jellyfish: '#ffb0e8', hamster: '#ffc272', ant: '#ffb24a', dragon: '#ff3a24' }; // (the eyes glow in each animal's own body colour)
   const make = k => { EYE = EYES[k] || 'dash'; EYEPOS = EYEAT[k] || {}; EYEC = EYECOL[k] || null; const a = sized(MAKERS[k](), SIZES[k]); EYE = 'dash'; EYEPOS = {}; EYEC = null; return a; };
   return { cow, make, SIZES, KINDS: Object.keys(MAKERS) };
 
@@ -14946,7 +14966,7 @@ const ZOO = (() => {
     polarBear: Q(['walk', 'walk', 'gallop'], [1, 1.7], { bear: 1 }), chameleon: Q(['walk', 'walk', 'walk'], [9, 9], { creep: 1, amp: .32 }), hamster: Q(['trot', 'trot', 'trot'], [9, 9], { feet: 1, stride: .6 }),
     chicken: { type: 'bird', bob: 1, peck: 1, stride: .7 }, pigeon: { type: 'bird', bob: 1, tilt: 1, stride: .7, fly: 1 }, owl: { type: 'bird', tilt: 1, swivel: 1, stride: .8, fly: 1, hop: 1 },
     penguin: { type: 'penguin', stride: .55 }, seal: { type: 'seal', stride: .8 }, monkey: { type: 'monkey', stride: .8 },
-    crab: { type: 'six', stride: .5 }, hermit: { type: 'six', stride: .5 }, ladybug: { type: 'six', stride: .5 }, snail: { type: 'snail', stride: 1 }, jellyfish: { type: 'none' } };
+    crab: { type: 'six', stride: .5 }, hermit: { type: 'six', stride: .5 }, ladybug: { type: 'six', stride: .5 }, ant: { type: 'six', stride: .45 }, snail: { type: 'snail', stride: 1 }, jellyfish: { type: 'none' } };
   const hid = m => { const c = m.clone(); c.visible = false; return c; };
   const sm = (a, b, k) => a + (b - a) * Math.min(1, k);
   // ---- dress a rig in a new animal ----
@@ -15110,6 +15130,7 @@ for (const c of TD.hermits) ZOO.dress(c.m, 'hermit', { keep: [c.m.userData.cube]
 for (const o of DN.owls) if (o.m) ZOO.dress(o.m, 'owl', { flap: zooFlap(o.m), mood: g => g.userData.shut && g.userData.shut.visible ? 'happy' : 'calm', angry: () => false });
 for (const b of GR.bugs) ZOO.dress(b.m, 'ladybug', { angry: () => false });
 for (const s of GR.snails) if (s.m) ZOO.dress(s.m, 'snail', { angry: () => false });
+for (const a of GR.ants) if (a.m) ZOO.dress(a.m, 'ant', { keep: [a.m.userData.load], angry: () => false });
 for (const pg of TN.pigeons) ZOO.dress(pg.m, 'pigeon', { keep: [pg.m.userData.load], flap: zooFlap(pg.m), angry: () => false });
 for (const c of PN.chams) ZOO.dress(c.m, 'chameleon', { keep: [c.m.userData.tongue], paint: c.m.userData.m ? c.m.userData.m.color.clone() : new THREE.Color('#4fcf5c'), paintSrc: g => g.userData.m && g.userData.m.color, angry: () => false });
 for (const B of CB.balls) ZOO.dress(B.h, 'hamster', { angry: () => false, fit: 'l' });
@@ -15135,8 +15156,11 @@ function makeMeatBone(THREE, MERGE_) {
   // the meat: a fat barrel, round in the middle and narrowing to a flat cut at each end (lathe along the length)
   const pts = []; for (let i = 0; i <= 32; i++) { const t = i / 32, y = -H + t * 2 * H; pts.push(new THREE.Vector2(RC + (RM - RC) * Math.sin(t * Math.PI) ** .55, y)); }
   const body = new THREE.LatheGeometry(pts, 48).rotateZ(-Math.PI / 2); // (its length runs along x)
-  const top = new THREE.Color('#f6a85a'), mid = new THREE.Color('#e5843a'), low = new THREE.Color('#b65a24'), rim = new THREE.Color('#c96a2e');
-  parts.push(paint(body, (p, c) => { const h = p.y / RM; c.copy(h > 0 ? mid.clone().lerp(top, h * .9) : mid.clone().lerp(low, -h * .9)); if (Math.abs(p.x) > H - .025) c.lerp(rim, .5); }));
+  const top = new THREE.Color('#a8481a'), mid = new THREE.Color('#c8642a'), low = new THREE.Color('#6e2a10'), rim = new THREE.Color('#5a2410'), char = new THREE.Color('#3a1608'), glaze = new THREE.Color('#e08a3c'); // (well roasted: deep brown top, darker underneath, a glossy glaze, a few charred spots)
+  parts.push(paint(body, (p, c) => { const h = p.y / RM; c.copy(h > 0 ? mid.clone().lerp(top, h * .9) : mid.clone().lerp(low, -h * .9));
+    const n = Math.sin(p.x * 61 + p.z * 23) * Math.sin(p.z * 47 - p.y * 31) * Math.sin(p.y * 53 + p.x * 17); if (n > .35) c.lerp(char, Math.min(.85, (n - .35) * 3)); /* (charred bits) */
+    if (h > .35 && Math.abs(p.z) < .1) c.lerp(glaze, .3 * (1 - Math.abs(p.z) / .1)); /* (a shine of glaze along the top) */
+    if (Math.abs(p.x) > H - .025) c.lerp(rim, .6); }));
   // the two cut faces: rings of pink meat, a paler middle
   const pk1 = new THREE.Color('#e47c86'), pk2 = new THREE.Color('#f7b4b0'), pk3 = new THREE.Color('#ffd6cf');
   for (const sx of [-1, 1]) parts.push(paint(new THREE.RingGeometry(.001, RC, 48, 6).rotateY(sx * Math.PI / 2).translate(sx * H, 0, 0),
@@ -15227,7 +15251,7 @@ function drawBoneIcon(cv, size) { const dpr = Math.min(2, devicePixelRatio || 1)
 // ============================================================
 const LOOKNOW = (() => {
   const NYMS = [['#008CFF', 'Nymbus', 1], ['#00E5FF', 'Cronym', 1], ['#39FF14', 'Penzonym', 1], ['#8A2BE2', 'Vionym', 1], ['#FF2D2D', 'Rezinym', 0], ['#FF7A00', 'Fernym', 0], ['#FFD400', 'Aurinym', 0], ['#FF1493', 'Piconym', 0]];
-  const ANAMES = { cow: 'Cow', sheep: 'Sheep', goat: 'Goat', chicken: 'Chicken', dog: 'Dog', polarBear: 'Polar bear', penguin: 'Penguin', seal: 'Seal', camel: 'Camel', monkey: 'Monkey', cat: 'Cat', owl: 'Owl', pigeon: 'Pigeon', crab: 'Crab', hermit: 'Hermit crab', snail: 'Snail', ladybug: 'Ladybug', chameleon: 'Chameleon', jellyfish: 'Jellyfish', hamster: 'Hamster', dragon: 'Dragon' };
+  const ANAMES = { cow: 'Cow', sheep: 'Sheep', goat: 'Goat', chicken: 'Chicken', dog: 'Dog', polarBear: 'Polar bear', penguin: 'Penguin', seal: 'Seal', camel: 'Camel', monkey: 'Monkey', cat: 'Cat', owl: 'Owl', pigeon: 'Pigeon', crab: 'Crab', hermit: 'Hermit crab', snail: 'Snail', ladybug: 'Ladybug', chameleon: 'Chameleon', jellyfish: 'Jellyfish', hamster: 'Hamster', ant: 'Ant', dragon: 'Dragon' };
   const plain = () => { const g = new THREE.Group(); g.add(new THREE.Mesh(new RoundedBoxGeometry(1, 1, 1, 3, .08), new THREE.MeshStandardMaterial({ color: '#9aa0a8', roughness: .6 }))); return g; };
   const GROUPS = [
     ['Blocks', [['Plain block', plain], ['Bomb', () => SKIN.make('bomb', '#ffffff')], ['Ice', () => SKIN.make('freeze', '#ffffff')], ['Homing', () => SKIN.make('homing', '#ffffff')], ['Semtex', () => SKIN.make('sticky', '#ffffff')], ['Gold', () => SKIN.make('gold', '#ffffff')], ['Star', () => SKIN.make('streak', '#ffffff')], ['Meat bone (Fetch!)', () => { const g = new THREE.Group(); g.add(new THREE.Mesh(BIG_BONE, boneMat)); return g; }],
