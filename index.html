@@ -14376,7 +14376,7 @@ const SKIN = (() => {
   function strip(M) { if (M && M.userData.skin) { if (M.userData.skin.parent === M) M.remove(M.userData.skin); M.userData.skin = null; M.userData.skinKey = null; } }
   // build one of each kind now, while the game loads, so the first one in a match doesn't stutter
   try { for (const k of ['bomb', 'freeze', 'homing', 'sticky', 'gold', 'streak']) make(k, '#ffffff', null); for (const t of ['blue', 'red']) for (const c of TEAMS[t].cols) make('flag', c, t); } catch (err) { console.warn('block skins', err); }
-  return { KIND, wear, strip, hideM };
+  return { KIND, wear, strip, hideM, make };
 })();
 
 // every frame: dress the special blocks, keep their insides moving, set the semtex timers
@@ -15168,6 +15168,105 @@ updateGoggles = function (on) {
   if (nvBeam) nvBeam.visible = on;
   if (on !== !!PW.nvWasOn) { PW.nvWasOn = on; if (on) sfx('nvon'); }
 };
+// Fetch!: the moment you're picked, your antenna zaps (the bad signal going in), everything on your head and in your
+// pile turns to bones, and it startles you: a little jump, a shiver, and you stand still for a second and a half
+// before you can move on.
+{ const sd = sendDog; sendDog = function (owner, pick) { const before = new Set(DOGS), out = sd(owner, pick), D = DOGS.find(d => !before.has(d));
+    if (D && D.target) { const r = D.target; r.startleT = 1.6; if (r.body && r.state === 'play') { const v = r.body.linvel(); r.body.setLinvel({ x: 0, y: Math.max(v.y, 4.5), z: 0 }, true); } sfx('denied', rPos(r)); }
+    return out; }; }
+{ const pH = pulseHalos; let last = 0; pulseHalos = function (t) { pH(t); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t;
+    for (const r of robots) { if (!(r.startleT > 0)) continue; const M = r.model;
+      // the zap: the antenna tip flashes white and spits sparks, and the bone pops in on your head (flickering, a little overshoot)
+      if (M && r.startleT > 1.2) { const z = (1.6 - r.startleT) / .4, N = M.ant;
+        if (N && N.glow) { N.glow.visible = Math.random() > .3; N.glow.material.color.set(0xffffff); const tp = N.glow.getWorldPosition(new THREE.Vector3()); if (Math.random() < .5) emit(tp, 0xe8f6ff, new THREE.Vector3(rr(-2, 2), rr(1, 3), rr(-2, 2)), .18, .3); }
+        if (M.bone && M.bone.visible) M.bone.scale.setScalar(Math.max(.05, z < .7 ? z / .7 * 1.12 : 1.12 - .12 * (z - .7) / .3)); }
+      else if (M && M.bone) M.bone.scale.setScalar(1);
+      const k = Math.max(0, r.startleT - .9) / .7; if (r.model && r.model.g) r.model.g.rotation.z = Math.sin(t / 1000 * 55) * .12 * k; } }; }
+{ const ur = updateRobot; updateRobot = function (r, dt) { ur(r, dt); if (!(r.startleT > 0)) return; r.startleT -= dt; if (r.state !== 'play' || !r.body) { r.startleT = 0; return; }
+    const v = r.body.linvel(); r.body.setLinvel({ x: 0, y: v.y, z: 0 }, true); }; } // (frozen to the spot for a moment: after its own moving, before the physics step)
+// Your pile matches what's on your head: while you're boned, every block in the ammo stack shows as a meat bone too
+// (flags and animals stay themselves, the same as on your head).
+const isBoned = r => !!(r && r.boneDog && DOGS.includes(r.boneDog) && (r.boneDog.eaten || 0) < 3);
+function drawBoneIcon(cv, size) { const dpr = Math.min(2, devicePixelRatio || 1), S = Math.round(size * dpr); if (cv.width !== S) cv.width = cv.height = S; const g = cv.getContext('2d'); g.clearRect(0, 0, S, S);
+  g.save(); g.translate(S / 2, S / 2); g.rotate(-.5); const u = S / 100; g.lineJoin = 'round'; g.lineWidth = 3 * u; g.strokeStyle = 'rgba(10,14,26,.55)';
+  const knob = (x, y) => { g.beginPath(); g.arc(x, y, 8.5 * u, 0, 7); g.fillStyle = '#fffaf0'; g.fill(); g.stroke(); };
+  g.fillStyle = '#fffaf0'; g.fillRect(-40 * u, -5 * u, 80 * u, 10 * u); g.strokeRect(-40 * u, -5 * u, 80 * u, 10 * u); for (const x of [-42, 42]) for (const y of [-7, 7]) knob(x * u, y * u);
+  g.beginPath(); g.ellipse(0, 0, 25 * u, 21 * u, 0, 0, 7); const gr = g.createLinearGradient(0, -21 * u, 0, 21 * u); gr.addColorStop(0, '#f6a85a'); gr.addColorStop(.55, '#e5843a'); gr.addColorStop(1, '#b65a24'); g.fillStyle = gr; g.fill(); g.stroke();
+  for (const sx of [-1, 1]) { g.beginPath(); g.ellipse(sx * 23 * u, 0, 5 * u, 15 * u, 0, 0, 7); g.fillStyle = '#f2a3a6'; g.fill(); g.stroke(); g.beginPath(); g.arc(sx * 23 * u, 0, 4 * u, 0, 7); g.fillStyle = '#fffaf0'; g.fill(); }
+  g.restore(); }
+{ const dp = drawPiece; drawPiece = function (cv, e, size) { if (e && isBoned(P) && e.kind !== 'flag' && e.kind !== 'animal') return drawBoneIcon(cv, size); return dp(cv, e, size); }; }
+{ const rh = renderHud; let was = false; renderHud = function (force) { const b = isBoned(P); if (b !== was) { was = b; renderHud.sig = null; } return rh(force); }; }
+// Replays show it too: the bone on your head, and the startled shiver (the jump is already in where you were)
+{ const rp = robotPose; robotPose = function (r) { const a = rp(r), m = r.model; a.push(m.bone && m.bone.visible ? 1 : 0, r.startleT > 0 ? r.startleT : 0); return a; }; }
+{ const ap = applyPose; applyPose = function (r, a, b, k, kp) { ap(r, a, b, k, kp); const m = r.model, n = a.length, A = k < .5 ? a : b, on = !!A[n - 2];
+    if (on && !m.bone && m.held && m.held.parent) { const bn = new THREE.Mesh(BIG_BONE, boneMat); bn.castShadow = true; m.held.parent.add(bn); m.bone = bn; }
+    if (m.bone) { m.bone.visible = on; if (on) { m.held.visible = false; m.bone.position.copy(m.held.position); m.bone.rotation.set(0, Math.PI / 2, .2); } }
+    const st = A[n - 1], kk = Math.max(0, st - .9) / .7; if (kk > 0) m.g.rotateZ(Math.sin(st * 55) * .12 * kk); }; }
+
+// ============================================================
+// LOOK LAB, the new layout (Ali, 14 Nov): what's in the game NOW sits on top, everything else under "Old".
+//   Now: every block, every animal and every Nym, as little pictures. Tap one to open it big: drag to turn it round,
+//   pinch or scroll to zoom; animals can show their moods (calm, angry, stressed). This is for deciding what to change.
+//   Old: the world styles, the robot picker, the texture packs and the painting tools (they don't work on the new
+//   models, so they're kept there for now).
+// ============================================================
+const LOOKNOW = (() => {
+  const NYMS = [['#008CFF', 'Nymbus', 1], ['#00E5FF', 'Cronym', 1], ['#39FF14', 'Penzonym', 1], ['#8A2BE2', 'Vionym', 1], ['#FF2D2D', 'Rezinym', 0], ['#FF7A00', 'Fernym', 0], ['#FFD400', 'Aurinym', 0], ['#FF1493', 'Piconym', 0]];
+  const ANAMES = { cow: 'Cow', sheep: 'Sheep', goat: 'Goat', chicken: 'Chicken', dog: 'Dog', polarBear: 'Polar bear', penguin: 'Penguin', seal: 'Seal', camel: 'Camel', monkey: 'Monkey', cat: 'Cat', owl: 'Owl', pigeon: 'Pigeon', crab: 'Crab', hermit: 'Hermit crab', snail: 'Snail', ladybug: 'Ladybug', chameleon: 'Chameleon', jellyfish: 'Jellyfish', hamster: 'Hamster', dragon: 'Dragon' };
+  const plain = () => { const g = new THREE.Group(); g.add(new THREE.Mesh(new RoundedBoxGeometry(1, 1, 1, 3, .08), new THREE.MeshStandardMaterial({ color: '#9aa0a8', roughness: .6 }))); return g; };
+  const GROUPS = [
+    ['Blocks', [['Plain block', plain], ['Bomb', () => SKIN.make('bomb', '#ffffff')], ['Ice', () => SKIN.make('freeze', '#ffffff')], ['Homing', () => SKIN.make('homing', '#ffffff')], ['Semtex', () => SKIN.make('sticky', '#ffffff')], ['Gold', () => SKIN.make('gold', '#ffffff')], ['Star', () => SKIN.make('streak', '#ffffff')], ['Meat bone (Fetch!)', () => { const g = new THREE.Group(); g.add(new THREE.Mesh(BIG_BONE, boneMat)); return g; }],
+      ...['blue', 'red'].flatMap(t => TEAMS[t].cols.map((c, i) => [`Flag: ${NYMS[(t === 'red' ? 4 : 0) + i][1]}`, () => SKIN.make('flag', c, t)]))]],
+    ['Animals', ZOO.kit.KINDS.map(k => [ANAMES[k] || k, () => ZOO.kit.make(k), k])],
+    ['Nyms', NYMS.map(([c, n, h]) => [n, () => { const M = nymMeshModel(c, !!h); scene.remove(M.g); M.blob.visible = false; if (M.ice) M.ice.visible = false; M.g.userData.nym = M; return M.g; }])]];
+  let R = null, S = null, cam = null; const cache = new Map();
+  function setup() { if (R) return; R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(Math.min(2, devicePixelRatio || 1)); R.toneMapping = THREE.ACESFilmicToneMapping; R.outputColorSpace = THREE.SRGBColorSpace;
+    S = new THREE.Scene(); try { const pm = new THREE.PMREMGenerator(R); S.environment = pm.fromScene(new RoomEnvironment(), .04).texture; S.environmentIntensity = .7; } catch (_) {}
+    S.add(new THREE.HemisphereLight('#ffffff', '#5a6070', 1.1)); const d = new THREE.DirectionalLight('#ffffff', 2); d.position.set(3, 6, 5); S.add(d); cam = new THREE.PerspectiveCamera(30, 1, .01, 200); }
+  function get(item) { if (!cache.has(item[0])) { let g; try { g = item[1](); } catch (e) { console.warn('look', item[0], e); g = new THREE.Group(); } const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+      const w = new THREE.Group(); g.position.sub(c); w.add(g); w.userData.r = sz.length() * .5 || .5; w.userData.inner = g; cache.set(item[0], w); } return cache.get(item[0]); }
+  function frame(w, yaw, pitch, zoom = 1) { const r = w.userData.r, d = r / Math.sin(cam.fov * Math.PI / 360) * 1.05 * zoom; cam.position.set(Math.sin(yaw) * Math.cos(pitch) * d, Math.sin(pitch) * d, Math.cos(yaw) * Math.cos(pitch) * d); cam.lookAt(0, 0, 0); }
+  function shot(item) { setup(); const w = get(item); S.add(w); R.setSize(150, 150, false); cam.aspect = 1; cam.updateProjectionMatrix(); frame(w, .7, .32); R.render(S, cam); const url = R.domElement.toDataURL(); S.remove(w); return url; }
+  // the big viewer
+  let V = null;
+  function open(item) { setup(); const w = get(item), inner = w.userData.inner, ud = inner.userData;
+    if (!V) { V = document.createElement('div'); V.id = 'lookView'; V.style.cssText = 'position:fixed;inset:0;z-index:80;background:radial-gradient(#2a3140,#10131a);display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none';
+      V.innerHTML = '<div id="lvName" style="position:absolute;top:58px;left:0;right:0;text-align:center;font:700 16px var(--body);color:#fff;letter-spacing:.08em"></div><div id="lvMood" style="position:absolute;bottom:18px;display:flex;gap:8px"></div><button class="ghost" id="lvClose" style="position:absolute;top:10px;right:10px;width:auto;padding:6px 14px;z-index:2">✕</button>';
+      document.body.appendChild(V); }
+    V.hidden = false; V.insertBefore(R.domElement, V.firstChild); R.domElement.style.cssText = 'width:100%;height:100%;display:block';
+    V.querySelector('#lvName').textContent = item[0].toUpperCase();
+    const mb = V.querySelector('#lvMood'); mb.innerHTML = ''; if (ud.face && ud.face.setMood && item[2] !== 'jellyfish') for (const m of ['calm', 'angry', 'stressed']) { const b = document.createElement('button'); b.className = 'ghost'; b.textContent = m; b.onclick = () => ud.face.setMood(m); mb.appendChild(b); }
+    if (item[2] === 'dragon' && ud.fire) { const b = document.createElement('button'); b.className = 'ghost'; b.textContent = 'fire!'; let on = false; b.onclick = () => { on = !on; ud.fire(on); }; mb.appendChild(b); }
+    S.add(w); let yaw = .7, pitch = .25, zoom = 1, run = true, last = performance.now(); const ptr = new Map(); let pd = 0;
+    const size = () => { const W = innerWidth, H = innerHeight; R.setSize(W, H, false); cam.aspect = W / H; cam.updateProjectionMatrix(); }; size(); addEventListener('resize', size);
+    const el = R.domElement;
+    el.onpointerdown = e => { el.setPointerCapture(e.pointerId); ptr.set(e.pointerId, [e.clientX, e.clientY]); if (ptr.size === 2) { const [a, b] = [...ptr.values()]; pd = Math.hypot(a[0] - b[0], a[1] - b[1]); } };
+    el.onpointermove = e => { const p = ptr.get(e.pointerId); if (!p) return; if (ptr.size === 1) { yaw -= (e.clientX - p[0]) * .01; pitch = Math.max(-1.2, Math.min(1.3, pitch + (e.clientY - p[1]) * .01)); } p[0] = e.clientX; p[1] = e.clientY;
+      if (ptr.size === 2) { const [a, b] = [...ptr.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pd) zoom = Math.max(.35, Math.min(3, zoom * pd / d)); pd = d; } };
+    el.onpointerup = el.onpointercancel = e => { ptr.delete(e.pointerId); pd = 0; };
+    el.onwheel = e => { e.preventDefault(); zoom = Math.max(.35, Math.min(3, zoom * (1 + e.deltaY * .001))); };
+    const loop = () => { if (!run) return; const t = performance.now(), dt = Math.min(.05, (t - last) / 1000); last = t; try { if (ud.update) ud.update(dt); } catch (_) {} frame(w, yaw, pitch, zoom); R.render(S, cam); requestAnimationFrame(loop); }; loop();
+    V.querySelector('#lvClose').onclick = () => { run = false; V.hidden = true; S.remove(w); removeEventListener('resize', size); if (ud.fire) ud.fire(false); if (ud.face && ud.face.setMood) ud.face.setMood('calm'); };
+  }
+  // the page: "now" on top, the rest folded away under "Old"
+  function layout() { const lab = $('looklab'); if (!lab || lab.dataset.v2) return; lab.dataset.v2 = 1; const panel = lab.querySelector('.panel'), kids = [...panel.children];
+    const intro = kids.find(k => k.matches('p.rules')); if (intro) intro.textContent = 'Everything in the game right now: every block, every animal and every Nym. Tap one to look at it big and turn it round. Older things and the painting tools are under Old.';
+    const first = kids.findIndex(k => k.classList.contains('sub')), list = kids.indexOf($('lookList'));
+    const det = document.createElement('details'); det.style.cssText = 'margin-top:14px;border-top:1px solid rgba(255,255,255,.12);padding-top:8px';
+    det.innerHTML = '<summary style="cursor:pointer;font:700 12px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Old: worlds, robots, textures and painting tools</summary>';
+    const now = document.createElement('div'); now.id = 'lookNow'; panel.insertBefore(now, kids[first]); panel.insertBefore(det, now.nextSibling);
+    for (const k of kids.slice(first, list + 1)) det.appendChild(k); }
+  function fill() { layout(); const box = $('lookNow'); if (!box || box.dataset.done) return; box.dataset.done = 1;
+    const jobs = [];
+    for (const [title, items] of GROUPS) { const h = document.createElement('div'); h.className = 'sub'; h.style.marginTop = '12px'; h.textContent = title; box.appendChild(h);
+      const grid = document.createElement('div'); grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px'; box.appendChild(grid);
+      for (const it of items) { const c = document.createElement('button'); c.className = 'ghost'; c.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:4px;gap:2px;font-size:11px;min-height:0';
+        c.innerHTML = `<i style="width:76px;height:76px;border-radius:10px;background:rgba(255,255,255,.06) center/cover no-repeat;display:block"></i><span>${it[0]}</span>`; c.onclick = () => open(it); grid.appendChild(c); jobs.push([c.firstChild, it]); } }
+    const step = () => { const j = jobs.shift(); if (!j) return; try { j[0].style.backgroundImage = `url(${shot(j[1])})`; } catch (e) { console.warn(e); } setTimeout(step, 10); }; step(); }
+  return { fill, layout, open, GROUPS };
+})();
+{ const ll = lookLabRows; lookLabRows = function () { ll(); try { LOOKNOW.fill(); } catch (e) { console.warn('look now', e); } }; }
+try { LOOKNOW.layout(); } catch (e) {}
 
 // test hooks for the newer bits (headless checks only)
 Object.assign(window.__nymbo, { nbrPose, nbrAntPose, nbrAntRest, nbrHeld, startReplay: () => startReplay(), drawReplay: () => drawReplay(), onPlayerKO: (...a) => onPlayerKO(...a), nymMeshModel, NBR_SWAPU, NBR_HD, NBR_TS, grabBlock: (...a) => grabBlock(...a), freezeRobot: (...a) => freezeRobot(...a), ragdoll: (...a) => ragdoll(...a), get blocks() { return blocks; }, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
