@@ -289,7 +289,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 #loading .bot .wheel svg{display:block;width:100%}
 /* (every moving part is its own box turned by the browser itself, so it keeps bouncing and spinning while the game loads) */
 #loading .bot::after{content:'';position:absolute;left:18%;right:18%;bottom:-6px;height:8px;border-radius:50%;background:rgba(10,30,10,.35)}
-#loading .tag{position:absolute;left:0;right:0;bottom:22%;text-align:center;font-size:clamp(14px,4vw,22px);letter-spacing:.08em;text-shadow:0 3px 0 #1a2340}
+#loading .tag{position:absolute;left:0;right:0;bottom:22%;text-align:center;font-family:'Fredoka','Arial Rounded MT Bold','Trebuchet MS',system-ui,sans-serif;font-weight:700;font-size:clamp(18px,5vw,30px);letter-spacing:.12em;text-shadow:0 3px 0 #1a2340}
 #loading .tag i{display:inline-block;animation:ldDot 1.2s infinite;font-style:normal}#loading .tag i:nth-child(2){animation-delay:.2s}#loading .tag i:nth-child(3){animation-delay:.4s}
 #loading .puff{position:absolute;bottom:2px;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.7);animation:ldPuff .5s ease-out infinite}
 @keyframes ldRun{from{transform:translateX(-20vw)}to{transform:translateX(120vw)}}
@@ -16305,7 +16305,7 @@ if (CLX) {
 }
 
 // ---- cows and sheep in proportion (Ali): a cow is a big animal, a sheep a small one ----
-{ const K_ = { cow: VOLC ? 1 : 1.22, sheep: .74 };
+{ const K_ = { cow: VOLC ? 1 : 1.22, sheep: .88 };
   for (const e of blocks) if (e.kind === 'animal' && K_[e.animal] && K_[e.animal] !== 1 && e.body) { const k = K_[e.animal], t = e.body.translation(), r = e.body.rotation();
     dropBody(e); e._massK = k * k * k; e.dims.multiplyScalar(k); e.size = Math.max(e.dims.x, e.dims.y, e.dims.z); e.rad = (e.dims.x + e.dims.y + e.dims.z) / 6; e.mesh.scale.multiplyScalar(k);
     makeBody(e, V(t.x, t.y + (k - 1) * e.dims.y / (2 * k), t.z), new THREE.Quaternion(r.x, r.y, r.z, r.w)); if (e.col) e.col.setDensity(9 / e._massK); if (e.upright !== false) { e.upright = true; e.body.setEnabledRotations(false, true, false, true); } } } // (stands upright again, as it did before)
@@ -16317,6 +16317,9 @@ if (CLX) {
       for (const o of src) { const h = new THREE.Mesh(o.geometry, hullA); h.renderOrder = -1; h.visible = false; o.add(h); list.push(h); }
       e._hullA = list.length ? list : ah(e); }
     hullA.color.copy(hullMat.color); hullA.opacity = hullMat.opacity; return e._hullA; }; }
+// carried on your head, a cow or sheep goes back to its old size (a big cow on your head blocked the view)
+{ const rh = refreshHeld; refreshHeld = function (r) { rh(r); for (const x of r.stack) if (x.kind === 'animal' && x._massK && x.mesh) x._carried = true;
+    for (const e of blocks) if (e.kind === 'animal' && e._massK && e.mesh) { const held = robots.some(q => q.heldAnimal === e), k = Math.cbrt(e._massK), want = held ? 1 : k; if (Math.abs(e.mesh.scale.x - want) > 1e-3) e.mesh.scale.setScalar(want); } }; }
 // a bigger cow isn't a heavier wrecking ball, a smaller sheep isn't lighter: every animal keeps the weight it always had
 { const mb = makeBody; makeBody = function (e, ...a) { mb(e, ...a); if (e.kind === 'animal' && e._massK && e.col) e.col.setDensity(9 / e._massK); }; }
 
