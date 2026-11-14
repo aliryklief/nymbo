@@ -12422,24 +12422,57 @@ $('setBtn').onclick = () => { setFrom = 'menu'; show('settings'); };
 $('pSet').onclick = () => { setFrom = 'pause'; show('settings'); };
 $('setBack').onclick = () => show(match.menu ? 'pause' : setFrom);
 const powerIcon = id => { const p = POWERS.find(q => q.id === id); return p ? `<svg viewBox="0 0 24 24" fill="currentColor" style="color:${p.col}">${p.icon}</svg>` : '⭐'; };
+// guide icons: little drawings instead of letters and emoji (Ali: better arrows)
+const GSV = (b) => `<svg viewBox="0 0 32 32" width="30" height="30" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${b}</svg>`;
+const GARROW = (x1, y1, x2, y2) => { const a = Math.atan2(y2 - y1, x2 - x1), h = 6, p = (k) => `${(x2 - Math.cos(a + k) * h).toFixed(1)},${(y2 - Math.sin(a + k) * h).toFixed(1)}`; return `<path d="M${x1} ${y1}L${x2} ${y2}"/><path d="M${p(.55)}L${x2},${y2}L${p(-.55)}" />`; };
+const GFINGER = '<circle cx="16" cy="16" r="3.4" fill="#ffd23a" stroke="none"/>';
+const GCUBE = (top, left, right, extra = '') => `<svg viewBox="0 0 32 32" width="30" height="30"><path d="M16 4l11 6-11 6-11-6z" fill="${top}"/><path d="M5 10l11 6v12L5 22z" fill="${left}"/><path d="M27 10l-11 6v12l11-6z" fill="${right}"/><path d="M16 4l11 6v12l-11 6-11-6V10z" fill="none" stroke="#1a2340" stroke-width="1.6" stroke-linejoin="round"/>${extra}</svg>`;
+const GIC = {
+  tap: GSV('<circle cx="16" cy="16" r="9" stroke-opacity=".45"/><circle cx="16" cy="16" r="4.2" fill="#ffd23a" stroke="none"/>'),
+  hold: GSV('<circle cx="16" cy="16" r="10.5" stroke-dasharray="4 3"/><circle cx="16" cy="16" r="4.2" fill="#ffd23a" stroke="none"/>'),
+  turn: GSV(GARROW(15, 16, 4, 16) + GARROW(17, 16, 28, 16) + GFINGER),
+  dodge: GSV('<path d="M5 9v14"/>' + GARROW(9, 16, 24, 16) + '<path d="M27 9v14" stroke-opacity=".45"/>'),
+  grab: GSV(GARROW(16, 4, 16, 22) + '<path d="M9 27h14"/>'),
+  throw: GSV('<path d="M9 27h14"/>' + GARROW(16, 24, 16, 5)),
+  clock: GSV('<circle cx="16" cy="17" r="10"/><path d="M16 11v6l4 3"/><path d="M13 4h6"/>'),
+  grey: GCUBE('#d9dbe0', '#a9adb6', '#8f939d'),
+  bomb: GCUBE('#3a3d45', '#22242a', '#16171c', '<circle cx="16" cy="18" r="3" fill="#ff6a1a"/>'),
+  freeze: GCUBE('#e8f7ff', '#9fd8f5', '#6fbde8', '<path d="M16 13v10M11.7 15.5l8.6 5M11.7 20.5l8.6-5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>'),
+  homing: GCUBE('#ffffff', '#e8e9ee', '#cfd2da', '<circle cx="16" cy="18" r="4" fill="none" stroke="#e8202a" stroke-width="1.8"/><circle cx="16" cy="18" r="1.3" fill="#e8202a"/>'),
+  flag: GSV('<path d="M9 28V5"/><path d="M10 6c5-2 8 2 14 0v10c-6 2-9-2-14 0z" fill="#ff2d2d" stroke="#fff"/>'),
+  star: GCUBE('#b46bff', '#7a3ad8', '#5a22b0', '<path d="M16 13l1.5 3 3.3.4-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.3 3.3-.4z" fill="#fff"/>'),
+  gold: GCUBE('#ffe17a', '#e8b83a', '#c8941f'),
+  ice: GSV('<path d="M4 22c4-3 8 3 12 0s8-3 12 0" stroke="#bfefff"/><path d="M6 14l3-3M12 12l3-3M18 13l3-3" stroke="#fff"/>'),
+};
 const GI = (ic, name, txt) => `<div class="gi"><div class="ic">${ic}</div><div><b>${name}</b><span>${txt}</span></div></div>`;
 const GUIDE = {
   story: () => `<div class="story"><p style="font-size:11px;opacity:.7;margin:0 0 8px">For the people building Nymbo: the story so far (not shown to players yet).</p>
 <h3 style="margin:4px 0 8px">NYMBO: The Lost Nym</h3>
-<p>Far away, on a mysterious planet called <b>Nymora</b>, lived the Nym: small, intelligent, white robotic beings.</p>
-<p>One day, a colossal living anomaly known as <b>the Tardigrade</b> swallowed them. After carrying them across several light-years, the creature rejected them and expelled them into the unknown.</p>
-<p>But something strange had happened.</p>
-<p>Like white light separating into different colours, each Nym had split into two coloured beings, losing all memory of their original identity.</p>
-<p>Scattered across different planets and forgotten worlds, the Nym began building bases and protecting mysterious devices known as <b>chonks</b>.</p>
-<p>Nobody knows what the chonks contain, but every Nym feels an irresistible signal drawing them towards the chonks of others.</p>
-<p>Unable to explain this connection, the Nym battle one another, throwing blocks to defeat their rivals, defending their bases, and stealing enemy chonks.</p>
-<p>Their battles take place across abandoned cities, floating islands, alien landscapes, and mysterious worlds.</p>
-<p><b>But the Nym are unaware of one extraordinary truth…</b></p>
-<p>The rivals they fight may be more connected than they could ever imagine.</p>
+<h4 style="margin:10px 0 4px">1. The mirror in space</h4>
+<p>Long ago, the space probes Voyager and Pioneer left Earth and flew out past the planets. Far out in the dark they passed something nobody has ever seen: an invisible disc that works like an <b>atomic mirror</b>. It doesn't reflect light. It copies things atom by atom and stores them as information, so it understands everything it copies inside and out, in 3D. It isn't alive and it doesn't think. It just keeps copies, and it had already copied many things before the probes came along.</p>
+<p>The disc copied both probes. It also copied a stowaway: a tiny <b>tardigrade</b> riding on one of them. The disc did its best to rebuild the tardigrade as information, and turned it into a strange 3D form that held everything about it.</p>
+<h4 style="margin:10px 0 4px">2. The black hole</h4>
+<p>Then the disc drifted into a black hole. The tardigrade was pulled in first. While it stretched and grew and fought to get out, everything else stored in the disc was sucked into it and rebuilt the way the disc had kept it. The tardigrade became the new disc: a huge <b>electronic tardigrade</b>, full of copies, and around 10,000 years old today.</p>
+<p>It wanders from planet to planet, "eating" information, looking for the one place it remembers as home: <b>Earth</b>.</p>
+<h4 style="margin:10px 0 4px">3. Nymora</h4>
+<p>The black hole's light stretched the probes' information across space and printed it, like a stencil, onto a bare planet of metal and copper. That planet slowly grew into one giant computer shaped like a sphere. It is very clever, but it is a machine doing what it was made to do, not a living thing.</p>
+<p>The first and biggest thing printed was a label from a probe's antenna, printed wrong (like the Kragle in The LEGO Movie). It came out as <b>"Nymora"</b>, and so the planet called itself Nymora. It is about 700 years old.</p>
+<p>From the probes' memories, Nymora learned that Earth was where it came from, its motherland. Using what it knew, it built the closest thing to people it could: the <b>Nym</b>. It built robot animals too: cows, sheep, dogs, and the rest.</p>
+<h4 style="margin:10px 0 4px">4. The Nym</h4>
+<p>The Nym are small white robots you can almost see through. Inside, two matching colours run through them like the veins and arteries in a heart: blue and red, green and purple, and so on. They try to say "Nymora", but it always comes out as <b>"Nym"</b>, and that's their name.</p>
+<p>Every Nym has an antenna, and inside every antenna is a tiny black hole that does what it's told. It can shrink things down to information and let them back out again. That's how a Nym zaps blocks in and out, and where all its powers come from.</p>
+<h4 style="margin:10px 0 4px">5. Swallowed</h4>
+<p>The electronic tardigrade picked up Nymora's signals and followed them, hoping they would lead home. On the way it swallowed the Nym.</p>
+<p>The tardigrade can copy things, but it can't put them back together properly, because it doesn't understand which parts belong together. So every Nym that came out of it came out <b>split into two halves</b>, each with one of its two colours. Each half has a <b>chonk</b>, and each half only knows one thing: it needs the other half's chonk. It doesn't know why. Nobody has worked out yet that if the two matching chonks clicked together, the two halves would be one Nym again.</p>
+<h4 style="margin:10px 0 4px">6. The battles</h4>
+<p>The tardigrade drops the Nym on ordinary planets along its way (that's why our maps only show the edges of each world). Most of it happens on Earth, around the year 5000. A few battles, like the portal planet, happen on the way there.</p>
+<p>The reddish halves are drawn to the blueish halves, but none of them knows which one is its exact match. So they team up, and build forts out of whatever each world gives them: mismatched bricks and stones of all sizes, picked close to their own colours like a mosaic, already worn from the start. There they guard their chonks on high towers, and they throw blocks to knock out their rivals and steal theirs.</p>
+<p>The <b>gateway</b> in each fort is a portal to a safe place where stolen chonks are kept. A portal takes whoever goes through it wherever they want to go. That's why Nym keep their chonks close to one, and why the animals end up wherever they please.</p>
+<p><b>But the Nym don't know one extraordinary truth…</b> the rival they're fighting might be the other half of themselves.</p>
 <p><i>NYMBO: Every Rival Has a Secret.</i></p>
+<p style="font-size:11px;opacity:.7">Still to decide: why the tardigrade (about 10,000 years) is so much older than Nymora (about 700 years), without using black-hole time.</p>
 <h3 style="margin:14px 0 8px">The chonks</h3>
 <p>Core, then piece, then chunk, then chonk. Each one looks like a fat piece of a motherboard block with metal parts. Two matching chonks click together like a puzzle: a rectangle broken in half, with cuboids sticking out of each half that lock into the other, painted over with circuit boards and lights to hide that they fit.</p>
-<p>When they landed, each Nym was holding one, and each wanted another Nym's. The reddish ones are drawn to the blueish ones, but none of them knows which one is their exact match. So they teamed up, and defended theirs with walls and high towers.</p>
 <h3 style="margin:14px 0 8px">Where the powers come from</h3>
 <p>Every power comes from a Nym's <b>antenna</b>. Inside it is a tiny black hole: it can pull things in, keep them, and let them out again.</p>
 <p><b>Nuke:</b> a Nym gathers so much energy that it starts making more of it, and builds one bomb, a really big one.</p>
@@ -12456,23 +12489,23 @@ const GUIDE = {
 <h3 style="margin:14px 0 8px">The Nymbots</h3>
 <p>Nymbus (blue), Cronym (cyan), Penzonym (lime), Vionym (violet), Rezinym (red), Fernym (blaze), Aurinym (gold), Piconym (pink).</p></div>`,
   controls: () => [
-    GI('•', 'Tap: jump', 'Tap again in the air to double jump (about 3 blocks up)'),
-    GI('✋', 'Hold: stop · keep holding: back up', 'You run forward on your own. Hold and slide to turn on the spot'),
-    GI('↔', 'Swipe left or right: turn', 'Anywhere on the screen'),
-    GI('⇆', 'Double-tap an edge: dodge', 'Two dodges, then a quick reload'),
-    GI('↓', 'Swipe down: grab', 'The block you grab becomes your active block'),
-    GI('↑', 'Swipe up: throw', 'Harder swipe, further throw. A red ring means you\'re locked on'),
-    GI('⏱', 'Tap the clock', 'The map, settings and the guide (the match keeps running)'),
+    GI(GIC.tap, 'Tap: jump', 'Tap again in the air to double jump (about 3 blocks up)'),
+    GI(GIC.hold, 'Hold: stop · keep holding: back up', 'You run forward on your own. Hold and slide to turn on the spot'),
+    GI(GIC.turn, 'Swipe left or right: turn', 'Anywhere on the screen'),
+    GI(GIC.dodge, 'Double-tap an edge: dodge', 'Two dodges, then a quick reload'),
+    GI(GIC.grab, 'Swipe down: grab', 'The block you grab becomes your active block'),
+    GI(GIC.throw, 'Swipe up: throw', 'Harder swipe, further throw. A red ring means you\'re locked on'),
+    GI(GIC.clock, 'Tap the clock', 'The map, settings and the guide (the match keeps running)'),
     `<p class="rules">Knock down their towers, grab one of their 4 flags and carry it into the glowing gateway in your fort. First to 4 flags wins, or most flags when time runs out. Touch your own loose flag to send it home. Hit people in a row to earn powers.</p>`].join(''),
   blocks: () => [
-    GI('⬜', 'Grey blocks', 'Your ammo. Throw them to knock robots out and knock fort walls down'),
-    GI('💣', 'Bomb block', 'Blasts everything nearby. Walls in the way protect you'),
-    GI('❄', 'Freeze block', 'Freezes everything it lands on for a few seconds (robots slide)'),
-    GI('🎯', 'Homing block', 'Chases whoever you\'re locked on to'),
-    GI('🚩', 'Flags', 'Four per team on their towers. Carry an enemy flag home to score'),
-    GI('⭐', 'Star block', 'Grab it for a random power. On a sky island (Classic) or on the rain clouds (Sky bridge)'),
-    GI('🟨', 'Gold block', 'Sky bridge: appears at the end of the rainbow now and then. 2x speed and 2x jump for 10 seconds'),
-    GI('🧊', 'Ice patches', 'Slippery: you slide and spin a little'),
+    GI(GIC.grey, 'Grey blocks', 'Your ammo (pale stones in all colours). Throw them to knock robots out and knock fort walls down'),
+    GI(GIC.bomb, 'Bomb block', 'Blasts everything nearby. Walls in the way protect you'),
+    GI(GIC.freeze, 'Freeze block', 'Freezes everything it lands on for a few seconds (robots slide)'),
+    GI(GIC.homing, 'Homing block', 'Chases whoever you\'re locked on to'),
+    GI(GIC.flag, 'Flags', 'Four per team on their towers. Carry an enemy flag home to score'),
+    GI(GIC.star, 'Star block', 'Grab it for a random power. On a sky island (Classic) or on the rain clouds (Sky bridge)'),
+    GI(GIC.gold, 'Gold block', 'Sky bridge: appears at the end of the rainbow now and then. 2x speed and 2x jump for 10 seconds'),
+    GI(GIC.ice, 'Ice patches', 'Slippery: you slide and spin a little'),
   ].join(''),
   powers: () => [
     `<div class="gh">EARN THEM WITH HITS IN A ROW</div>`,
@@ -16164,6 +16197,7 @@ if (CLX) {
       const v = new THREE.Vector3(), c = new THREE.Color();
       const metal = [], isGate = (x, z) => ['blue', 'red'].some(t => GATES[t] && Math.abs(x - GATES[t].x) < .8 && Math.abs(z - GATES[t].z) < 2.8);
       for (let k = 0; k < o.count; k++) { o.getMatrixAt(k, m); v.setFromMatrixPosition(m); o.getColorAt(k, c); const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd);
+        if (PORTALS.some(Q => Math.hypot(v.x - Q.pos.x, v.z - Q.pos.z) < 3)) continue; // (the portals' old feet: the portals are arches now, below)
         if (isGate(v.x, v.z)) { if (v.y > 3) continue; // the flag gates: gold bricks only; the flat top becomes an arch (built below)
           const g = clean(LABK.paintStone(stoneGeoC(1, 1, sd, R, RES), new THREE.Color('#e0b040').offsetHSL((FR() - .5) * .02, 0, (FR() - .5) * .08))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); metal.push(g); continue; }
         const g = clean(LABK.paintStone(stoneGeoC(1, 1, sd, R, RES), LABK.shade(c.clone().lerp(new THREE.Color(GREYS[k % GREYS.length]), .5), R, .06))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); const fam = k % 3 ? 'granite' : 'sandstone'; (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); }
@@ -16171,17 +16205,28 @@ if (CLX) {
       for (const t of ['blue', 'red']) { const G = GATES[t]; if (!G) continue; const gy = G.y || 0, NV = 9;
         world.forEachCollider(cl => { const tr = cl.translation(), he = cl.halfExtents && cl.halfExtents(); if (he && Math.abs(tr.x - G.x) < .3 && Math.abs(tr.z - G.z) < .3 && Math.abs(tr.y - (gy + 3.5)) < .3 && he.z > 2) { byCollider.delete(cl.handle); world.removeCollider(cl, false); } }); // (the old flat top's collider goes)
         for (let k = 0; k < NV; k++) { const a0 = Math.PI * (k + .5) / NV, cz = Math.cos(a0) * 2, cy = gy + 3 + Math.sin(a0) * 2, key = k === (NV - 1) / 2, R = LABK.rng(Math.floor(FR() * 1e6));
-          // a wedge: wider on the outside than the inside, so neighbours fit flush (no gaps); the middle one is the capping stone, standing proud
-          const aA = Math.PI * k / NV + .006, aB = Math.PI * (k + 1) / NV - .006, r1 = 1.5, r2 = key ? 2.85 : 2.5, sh = new THREE.Shape();
-          sh.moveTo(Math.cos(aA) * r1, Math.sin(aA) * r1); sh.absarc(0, 0, r1, aA, aB, false); sh.lineTo(Math.cos(aB) * r2, Math.sin(aB) * r2); sh.absarc(0, 0, r2, aB, aA, true); sh.closePath();
-          let g = new THREE.ExtrudeGeometry(sh, { depth: .9, bevelEnabled: true, bevelThickness: .05, bevelSize: .045, bevelSegments: 2, curveSegments: 6 }); g.translate(0, 0, -.45);
-          g = LABK.lump(g, .012, k * 31 + 7); g = clean(LABK.tint(g, new THREE.Color('#e0b040').offsetHSL((R() - .5) * .02, 0, (R() - .5) * .08))); g.computeVertexNormals();
+          // a wedge made from the same carved stone as the pillars (pillowy face, chips, hairline cracks), bent round the curve:
+          // wider on the outside than the inside, so neighbours fit flush (no gaps); the middle one is the capping stone, standing proud
+          const hh = key ? 1.35 : 1, sd = Math.floor(R() * 1e6); let g = LABK.paintStone(stoneGeoC(.7, hh, sd, R, RES), new THREE.Color('#e0b040').offsetHSL((R() - .5) * .02, 0, (R() - .5) * .08));
+          { const P_ = g.attributes.position; for (let i = 0; i < P_.count; i++) { const x = P_.getX(i), y = P_.getY(i), rr_ = 2 + (y + hh / 2) - .5, an = a0 - x / 2; P_.setXYZ(i, Math.cos(an) * rr_, Math.sin(an) * rr_, P_.getZ(i)); } g.computeVertexNormals(); }
+          g = clean(g);
           g.rotateY(Math.PI / 2); g.translate(G.x, gy + 3, G.z); metal.push(g);
           const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -(a0 - Math.PI / 2)), c2 = world.createCollider(RAPIER.ColliderDesc.cuboid(.5, .5, .38).setTranslation(G.x, cy, G.z + cz).setRotation(q).setFriction(.8)); byCollider.set(c2.handle, { type: 'static' }); }
         // the glowing screen fills the arch too
         if (G.glow) { const sh = new THREE.Shape(); sh.moveTo(-1.5, -1.5); sh.lineTo(1.5, -1.5); sh.lineTo(1.5, 1.5); sh.absarc(0, 1.5, 1.5, 0, Math.PI, false); sh.lineTo(-1.5, -1.5);
           const sg = new THREE.ShapeGeometry(sh, 24), P_ = sg.attributes.position, U = new Float32Array(P_.count * 2); for (let i = 0; i < P_.count; i++) { U[i * 2] = (P_.getX(i) + 1.5) / 3; U[i * 2 + 1] = (P_.getY(i) + 1.5) / 4.5; } sg.setAttribute('uv', new THREE.BufferAttribute(U, 2));
           G.glow.geometry = sg; } }
+      // the portals: slim stone arches (about as thick as the old glowing ring), a screen filling the arch
+      for (const Q of PORTALS) { if (!Q.g) continue; Q.g.updateMatrixWorld(true); const W = Q.g.matrixWorld, LIL = ['#b8a6e0', '#a996d6', '#c4b4ea', '#9f8fcf'], push = gq => { gq.applyMatrix4(W); (parts.granite = parts.granite || []).push(famAttrs(gq, 'granite')); };
+        for (const sg of [-1, 1]) { let y = -2.05; const hs = [.62 + FR() * .2, .62 + FR() * .2]; hs.push(2.05 - hs[0] - hs[1]); for (const hk of hs) { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); const gq = clean(LABK.paintStone(stoneGeoC(.4, hk, sd, R, RES), LABK.shade(new THREE.Color(LIL[Math.floor(FR() * 4)]), R, .05)));
+            gq.computeBoundingBox(); gq.scale(1, 1, .45 / (gq.boundingBox.max.z - gq.boundingBox.min.z)); gq.translate(sg * 1.75, y + hk / 2, 0); push(gq); y += hk; } } // (three slim stones up each side)
+        const NV = 9; for (let k = 0; k < NV; k++) { const a0 = Math.PI * (k + .5) / NV, sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let gq = LABK.paintStone(stoneGeoC(.6, .4, sd, R, RES), LABK.shade(new THREE.Color(LIL[k % 4]), R, .05));
+          { const P_ = gq.attributes.position; for (let i = 0; i < P_.count; i++) { const x = P_.getX(i), y = P_.getY(i), rr_ = 1.75 + y, an = a0 - x / 1.75; P_.setXYZ(i, Math.cos(an) * rr_, Math.sin(an) * rr_, P_.getZ(i) * .49); } gq.computeVertexNormals(); }
+          push(clean(gq)); }
+        if (Q.ring) Q.ring.visible = false;
+        const sh = new THREE.Shape(); sh.moveTo(-1.55, -2.05); sh.lineTo(1.55, -2.05); sh.lineTo(1.55, 0); sh.absarc(0, 0, 1.55, 0, Math.PI, false); sh.lineTo(-1.55, -2.05);
+        const sgm = new THREE.ShapeGeometry(sh, 24), P2 = sgm.attributes.position, U = new Float32Array(P2.count * 2); for (let i = 0; i < P2.count; i++) { U[i * 2] = (P2.getX(i) + 1.55) / 3.1; U[i * 2 + 1] = (P2.getY(i) + 2.05) / 3.6; } sgm.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+        const scr = new THREE.Mesh(sgm, Q.disc ? Q.disc.material : new THREE.MeshBasicMaterial()); scr.renderOrder = 1; Q.g.add(scr); Q.arch = scr; if (Q.disc) Q.disc.visible = false; }
       if (metal.length) { const mm = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: .8, roughness: .28 }); /* (polished gold) */ if (ENVS) { mm.envMap = ENVS; mm.envMapIntensity = 1; }
         const g = mergeGeometries(metal), M = new THREE.Mesh(g, mm); M.castShadow = M.receiveShadow = true; scene.add(M); }
       scene.remove(o); }
@@ -16325,9 +16370,14 @@ if (CLX) {
         P.push(x + nx * d, y, z + nz * d);
         if (r <= 1) col.set('#4f9a2c').offsetHSL(0, 0, (Math.sin(s_ * .9) * .5 + .5) * .05 - .02); else { const t = (r - 1) / (RW - 2), n = Math.sin(s_ * 3.1 + r * 1.7) * .5 + .5; col.set(t < .12 ? '#3f7a24' : t < .45 ? '#8a5e3a' : t < .75 ? '#75553a' : '#6a6460').offsetHSL(0, 0, (n - .5) * .08); }
         C.push(col.r, col.g, col.b); } }
-    for (let i = 0; i < pts.length - 1; i++) for (let r = 0; r < RW - 1; r++) { const a = i * RW + r, b = (i + 1) * RW + r; I.push(a, b, a + 1, b, b + 1, a + 1); }
+    const IL = []; // (the grassy lip is drawn with the ground's own material, so its colour matches exactly: no line where they meet)
+    for (let i = 0; i < pts.length - 1; i++) for (let r = 0; r < RW - 1; r++) { const a = i * RW + r, b = (i + 1) * RW + r; (r === 0 ? IL : I).push(a, b, a + 1, b, b + 1, a + 1); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setIndex(I); g.computeVertexNormals();
-    const rim = new THREE.Mesh(g, new LiteMat({ vertexColors: true, side: THREE.DoubleSide })); rim.receiveShadow = true; scene.add(rim);
+    const rim = new THREE.Mesh(g, new LiteMat({ vertexColors: true, side: THREE.DoubleSide, emissive: 0x2a1c14, emissiveIntensity: .6 })); rim.receiveShadow = true; scene.add(rim);
+    if (mTop) { const U = new Float32Array(P.length / 3 * 2); for (let i = 0; i < P.length / 3; i++) { U[i * 2] = (P[i * 3] + MX) / (2 * MX); U[i * 2 + 1] = 1 - (P[i * 3 + 2] + MZ) / (2 * MZ); }
+      const gl = new THREE.BufferGeometry(); gl.setAttribute('position', g.attributes.position); gl.setAttribute('normal', g.attributes.normal); gl.setAttribute('uv', new THREE.BufferAttribute(U, 2)); gl.setIndex(IL);
+      const lm = mTop.clone(); lm.onBeforeCompile = mTop.onBeforeCompile; lm.customProgramCacheKey = mTop.customProgramCacheKey; lm.side = THREE.DoubleSide; lm.polygonOffset = true; lm.polygonOffsetFactor = -1; lm.polygonOffsetUnits = -1;
+      const lip = new THREE.Mesh(gl, lm); lip.receiveShadow = true; scene.add(lip); }
     // the old straight striped sides of the island stop drawing (the cliff covers them), so no dark line shows along the edge
     if (slab && Array.isArray(slab.material)) { const inv = new THREE.MeshBasicMaterial({ visible: false }), M = slab.material.slice(); for (const k of [0, 1, 4, 5]) M[k] = inv; slab.material = M; } }
 
@@ -16375,7 +16425,7 @@ function liquidScreen(deep, mid, hi, square, pal) {
         gl_FragColor = vec4(c, al * op); }` });
   return m; }
 { const LIQ = [];
-  if (!DESERT && !VOLC && !PLAT) { const pm = liquidScreen('#3d0a8a', '#a44aff', '#ffd0ff'); for (const P of PORTALS) if (P.disc) P.disc.material = pm; LIQ.push([pm, null]); }
+  if (!DESERT && !VOLC && !PLAT) { const pm = liquidScreen('#3d0a8a', '#a44aff', '#ffd0ff', CLX); for (const P of PORTALS) { if (P.disc) P.disc.material = pm; if (P.arch) P.arch.material = pm; } LIQ.push([pm, null]); } // (classic: the screen fills an arch, so its edge fades square)
   if (CLX) for (const team of ['blue', 'red']) { const G = GATES[team]; if (!G || !G.glow) continue; const m = liquidScreen('#000000', '#888888', team === 'blue' ? '#c8f0ff' : '#ffe0c0', true, TEAMS[team].cols); m.opacity = G.glow.material.opacity; G.glow.material = m; LIQ.push([m, G.glow]); }
   const pH = pulseHalos; let last = 0; pulseHalos = function (tm) { pH(tm); const dt = clamp((tm - (last || tm)) / 1000, 0, .05); last = tm; for (const [m] of LIQ) { m.uniforms.t.value += dt; m.uniforms.op.value = Math.min(1, (m.opacity ?? 1) * 1.6); } }; }
 // get every material ready while the game loads, so nothing pops in or stutters the first time you see it
