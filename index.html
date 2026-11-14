@@ -41,6 +41,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(-
 #aNowBox{position:relative;width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);background:rgba(10,14,26,.62);display:grid;place-items:center;box-shadow:0 3px 0 rgba(0,0,0,.3);transition:border-color .2s,box-shadow .2s;touch-action:none;-webkit-tap-highlight-color:transparent}
 #aNowBox.has{border-color:var(--yellow);box-shadow:0 3px 0 rgba(0,0,0,.3),0 0 12px var(--yellow)}
 #aNowBox:after{content:"";position:absolute;inset:-2.5px;border-radius:50%;background:conic-gradient(rgba(10,14,26,.78) calc(var(--k,0)*360deg),transparent 0);pointer-events:none} /* the shield recharging */
+#aNowBox.full,#aNowBox.has.full{border-color:#ff3b30;box-shadow:0 3px 0 rgba(0,0,0,.3),0 0 14px #ff3b30}
 #aNowBox.cool{border-color:rgba(255,255,255,.35);box-shadow:0 3px 0 rgba(0,0,0,.3)}
 #aNow{width:42px;height:42px;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))}
 #aNowBox.bump{animation:apop .22s ease-out}
@@ -3904,6 +3905,16 @@ function dropAnimals(r) {
   }
   refreshHeld(r);
 }
+// full hands (15 blocks) and you go for a cow or sheep: the block in your hand drops beside you and you take the animal
+function roomForAnimal(r, e) {
+  if (!e || e.kind !== 'animal' || r.stack.length < MAX_AMMO) return;
+  const b = r.stack[0]; if (!b || b.kind === 'flag' || b.kind === 'animal') return;
+  r.stack.shift(); const p = rPos(r), side = rightOf(r.yaw);
+  b.holder = null; b.live = false; b.atHome = false; b.rolled = null; b.thrower = null;
+  makeBody(b, V(p.x - side.x * 1.2, p.y + .4, p.z - side.z * 1.2), null, { x: -side.x * 1.5, y: 1.5, z: -side.z * 1.5 });
+  if (b.inst < 0 && b.mesh) b.mesh.visible = true;
+  refreshHeld(r); sfx('throw', p);
+}
 function dropFlags(r) {
   const p = rPos(r);
   const fl = r.stack.filter(x => x.kind === 'flag'); if (fl.length) sfx('flagDrop', p);
@@ -5167,7 +5178,7 @@ function placeHighlight() {
   if (hlAnimal && hlAnimal !== e) { for (const h of animalHull(hlAnimal)) h.visible = false; hlAnimal = null; }
   hl.visible = hlHull.visible = !!e && e.kind !== 'animal';
   if (!e) return;
-  const blocked = P.stack.length >= MAX_AMMO && e.kind !== 'flag' || (P.stack[0] && P.stack[0].kind === 'flag');
+  const blocked = P.stack.length >= MAX_AMMO && e.kind !== 'flag' && e.kind !== 'animal' || (P.stack[0] && P.stack[0].kind === 'flag'); // (animals: full hands just swap)
   hullMat.color.set(blocked ? 0xff4a3a : 0xffe14a); hl.material.color.set(blocked ? 0xff4a3a : 0xfff3a0);
   hullMat.opacity = .8 + Math.sin(now() / 140) * .2;
   if (e.kind === 'animal') { for (const h of animalHull(e)) h.visible = true; hlAnimal = e; return; }
@@ -5180,6 +5191,7 @@ function playerGrab() {
   if (NET && NET.client) { NET.act(['g']); return; }
   const e = grabbable(P), bonus = e && (e.kind === 'streak' || e.kind === 'gold'); // (hit-streak and gold blocks: you can grab those even with a flag or full hands)
   if (!bonus && P.stack[0] && P.stack[0].kind === 'flag') { toast('HANDS FULL · CARRYING A FLAG'); return; }
+  if (e && e.kind === 'animal' && !(P.stack[0] && P.stack[0].kind === 'flag')) roomForAnimal(P, e); // (full hands: the block in your hand drops, you take the animal)
   if (!bonus && P.stack.length >= MAX_AMMO) { toast('FULL · 15 BLOCKS'); buzz('full'); sfx('full'); return; } // strong buzz so you know
   if (!e) { toast('NOTHING IN REACH'); return; }
   grabBlock(P, e); if (!P.caught) sfx(isPower(e.kind) ? 'grab_' + e.kind : 'grab'); P.caught = false;
@@ -5395,7 +5407,7 @@ function renderHud(force) {
     const sw = e => e ? (e.kind === 'animal' ? 'background:#f2f2ee;box-shadow:inset 0 0 0 3px #2b2b2b' : e.kind === 'flag' ? `background:${'#' + e.color.getHexString()};box-shadow:inset 0 0 0 2px #fff` : isPower(e.kind) ? `background:${KIND_CSS[e.kind]}` : `background:#${e.color.getHexString()}`) : 'opacity:.18;background:#fff';
     if ((st[0] && st[0].id) !== renderHud.top) { renderHud.top = st[0] && st[0].id; const b = $('aNowBox'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
     drawPiece($('aNow'), st[0], 42); drawPiece($('aN1'), st[1], 46); drawPiece($('aN2'), st[2], 46); drawPiece($('aN3'), st[3], 46);
-    $('aNowBox').classList.toggle('has', !!st[0]);
+    $('aNowBox').classList.toggle('has', !!st[0]); $('aNowBox').classList.toggle('full', st.length >= MAX_AMMO); // (full: the ring goes red)
   }
   // reload spinner by your robot's head, only after you tried to dodge while reloading
   if (P.charges > 0 || P.state !== 'play') showReload = false;
@@ -11614,7 +11626,8 @@ function controlRemote(R, dt) {
   R.wantSpeed = mv > 0 ? RUN * (nearEdge ? .35 : 1) * (R.stack[0] && R.stack[0].kind === 'flag' ? 1.2 : 1) : mv < 0 ? REVERSE_SPEED * mv * (nearEdge ? .35 : 1) : 0;
 }
 function grabFor(r) {
-  if (!canAct(r) || (r.stack[0] && r.stack[0].kind === 'flag') || r.stack.length >= MAX_AMMO) return;
+  if (!canAct(r) || (r.stack[0] && r.stack[0].kind === 'flag')) return;
+  { const a = grabbable(r); if (a && a.kind === 'animal') roomForAnimal(r, a); } if (r.stack.length >= MAX_AMMO) return;
   const e = grabbable(r); if (!e) { NET.sendTo(r, ['toast', 'NOTHING IN REACH']); return; }
   grabBlock(r, e); if (!r.caught) sfx(isPower(e.kind) ? 'grab_' + e.kind : 'grab', rPos(r)); r.caught = false;
 }
@@ -13758,12 +13771,12 @@ float rN3(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); 
 // ============================================================
 // THE NEW SPECIAL BLOCKS (14 Nov, Ali's designs): every special block is carved out of one solid cube in small steps,
 // with one shared look — a rounded, polished frame round each face, little square holes near its corners, a recess, and a symbol.
-//   bomb    brushed black frame, smoky glass walls packed with gunpowder, a white dome on each face that throbs like a
-//           heartbeat, a red fuse spitting slow sparks
+//   bomb    a black frame segmented like a pineapple grenade (its grooves glow orange with every heartbeat), smoky
+//           glass walls packed with gunpowder, a white dome on each face that throbs like a heartbeat, a red fuse with slow sparks
 //   freeze  glacier ice (deep blue below, pale above), see-through walls with thick icy slush inside, white snowflakes
 //           slowly turning, frost flakes, glints, cold steam
 //   homing  a radar in a red forged-carbon frame: a white target ring, a red dot, a green sweep going round with blips
-//   sticky  semtex in an army-green frame: living green goo behind glass, slime dripping and wobbling, a timer that counts down once stuck
+//   sticky  semtex in an army-camo frame: living green goo behind glass, slime dripping and wobbling, a timer that counts down once stuck
 //   gold    rounded Damascus-gold frame, glass set back into it, thick molten gold flowing inside with glitter
 //   streak  (the star) rounded purple Damascus box, a straight-edged star window, a flowing galaxy inside
 //   flag    the chonk: a circuit-board half-cube in its Nym's colour, drifting in water (a soft version of its colour)
@@ -13922,12 +13935,14 @@ function makeBlockKit(THREE, RBOX, MERGE) {
   const shiny = (c, o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: c, roughness: .35, clearcoat: .6, clearcoatRoughness: .2 }, o));
 
   function bomb() {
-    const g = solidRound(polish('#3a3c44', { map: BRUSH(), metalness: .6 }), polish('#2a2c33', { roughness: .05, metalness: .2, transparent: true, opacity: .35, depthWrite: false }));
+    const [crackMap, crackGlow, crackBump] = CRACKS(), frameM = polish('#ffffff', { map: crackMap, bumpMap: crackBump, bumpScale: 3, metalness: .55, roughness: .32, emissive: '#ff8a20', emissiveMap: crackGlow, emissiveIntensity: .12 });
+    const g = solidRound(frameM, polish('#2a2c33', { roughness: .05, metalness: .2, transparent: true, opacity: .35, depthWrite: false }));
     g.children[g.children.length - 1].renderOrder = 2; // (smoky see-through walls)
     const powder = liquid(.396, 5); g.add(powder);
     // the bomb: a piece of a sphere pushing out of the recess, up to the face of the cube
     const h = .1, A = .25, R = (A * A + h * h) / (2 * h), th = Math.acos((R - h) / R);
-    const cap = new THREE.SphereGeometry(R, 22, 5, 0, Math.PI * 2, 0, th).rotateX(Math.PI / 2).translate(-.025, -.03, h - R);
+    const cap = memo('cap', () => { const c = new THREE.SphereGeometry(R, 22, 5, 0, Math.PI * 2, 0, th).rotateX(Math.PI / 2).translate(-.025, -.03, h - R);
+      const P = c.attributes.position, uv = c.attributes.uv; for (let i = 0; i < P.count; i++) uv.setXY(i, (P.getX(i) + .025) / (2 * A) + .5, (P.getY(i) + .03) / (2 * A) + .5); return c; }); // (flat-on UVs, for the cracks)
     const domeM = shiny('#ecebe8', { roughness: .3, clearcoat: 1, emissive: '#ff1a0a', emissiveIntensity: 0 });
     const domes = []; for (let f = 0; f < 6; f++) { const o = faceObj(f, 10, 10, PF); const m = new THREE.Mesh(cap, domeM); m.castShadow = true; o.add(m); g.add(o); domes.push(m); }
     g.userData.tris += cap.index ? cap.index.count / 3 * 6 : cap.attributes.position.count / 3 * 6;
@@ -13953,7 +13968,7 @@ function makeBlockKit(THREE, RBOX, MERGE) {
       rate = 1.1 + (t % 12) / 12 * 1.6; beatT = (beatT + dt * rate) % 1;
       const thump = Math.exp(-((beatT - .08) ** 2) / .002) + .6 * Math.exp(-((beatT - .26) ** 2) / .002);
       for (const d of domes) d.scale.set(1 + thump * .035, 1 + thump * .035, 1 + thump * .22);
-      domeM.emissiveIntensity = thump * .55; ringM.opacity = .15 + thump * .85;
+      domeM.emissiveIntensity = thump * .55; frameM.emissiveIntensity = .12 + thump * 2.6; ringM.opacity = .15 + thump * .85;
       const fl = .5 + .25 * Math.sin(t * 7) + .25 * Math.sin(t * 11.3); spark.material.color.setRGB(1, .1 + .18 * fl, .04); spark.scale.setScalar(.9 + .2 * fl);
       for (let i = 0; i < 6 * NS; i++) { const f = (i / NS) | 0; life[i] -= dt * .9;
         if (life[i] <= 0) { life[i] = .4 + Math.random() * .6; vel[i].set(Math.random() - .5, Math.random() - .5, Math.random() - .5).multiplyScalar(.18).addScaledVector(nrm[f], .1); sp.set([tips[f].x, tips[f].y, tips[f].z], i * 3); }
@@ -14046,7 +14061,7 @@ function makeBlockKit(THREE, RBOX, MERGE) {
     return g;
   }
   function sticky() {
-    const g = roundCage(polish('#56662c', { map: NOISE, metalness: .25, roughness: .3 })); // army green, so the bright slime stands out
+    const g = roundCage(polish('#ffffff', { map: CAMO(), metalness: .15, roughness: .45, clearcoat: .5 })); // army camo, so the bright slime stands out
     const goo = liquid(PF, 2); g.add(goo);
     // a glossy wet film over the goo
     const film = glassMat('#d8ffb0', .12), pg = new THREE.PlaneGeometry(14 / N, 14 / N);
@@ -14194,6 +14209,28 @@ function makeBlockKit(THREE, RBOX, MERGE) {
       g.closePath(); g.fill();
       for (const dx of [-S, S]) for (const dy of [-S, S]) {} }
     g.globalAlpha = 1; const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; })());
+  // the bomb's frame: black, segmented like a pineapple grenade — a grid of raised squares with deep grooves between
+  // them (a bump map gives them real relief); the grooves glow orange from inside with every heartbeat
+  let _ck; const CRACKS = () => _ck || (_ck = (() => { const S = 512, C = 14, cs = S / C; // 14 segments across a face, about 2 across each bar
+    const mk = () => { const c = document.createElement('canvas'); c.width = c.height = S; return [c, c.getContext('2d')]; };
+    const [a, g] = mk(), [b, e] = mk(), [h, hb] = mk(), R = mulberry(31);
+    g.fillStyle = '#060607'; g.fillRect(0, 0, S, S); e.fillStyle = '#000'; e.fillRect(0, 0, S, S); hb.fillStyle = '#000'; hb.fillRect(0, 0, S, S);
+    const gap = 4.5, rad = 6;
+    const rr = (c, x, y, w, hh, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + hh, r); c.arcTo(x + w, y + hh, x, y + hh, r); c.arcTo(x, y + hh, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+    for (let j = 0; j < C; j++) for (let i = 0; i < C; i++) { const x = i * cs + gap, y = j * cs + gap, w = cs - 2 * gap, v = 18 + R() * 10;
+      rr(g, x, y, w, w, rad); const gr = g.createLinearGradient(x, y, x + w, y + w); gr.addColorStop(0, `rgb(${v + 22},${v + 23},${v + 26})`); gr.addColorStop(.5, `rgb(${v},${v},${v + 2})`); gr.addColorStop(1, `rgb(${v - 10},${v - 10},${v - 9})`); g.fillStyle = gr; g.fill();
+      rr(hb, x, y, w, w, rad); hb.fillStyle = '#fff'; hb.fill(); }
+    // the grooves glow (everything that isn't a raised square)
+    e.fillStyle = '#ff7a18'; e.fillRect(0, 0, S, S); e.globalCompositeOperation = 'destination-out'; e.drawImage(h, 0, 0); e.globalCompositeOperation = 'source-over';
+    const out = [a, b, h].map(c => { const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t; }); out[0].colorSpace = out[1].colorSpace = THREE.SRGBColorSpace; return out; })());
+  // woodland army camo: blobs of olive, khaki, brown and near-black
+  let _cm; const CAMO = () => _cm || (_cm = (() => { const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), R = mulberry(12);
+    g.fillStyle = '#5d6b34'; g.fillRect(0, 0, S, S);
+    for (const [col, n, sz] of [['#8a8a52', 26, 34], ['#4a3a24', 30, 30], ['#2f3a1c', 24, 28], ['#1c1e14', 20, 20]]) for (let i = 0; i < n; i++) {
+      const x = R() * S, y = R() * S, r = sz * (.5 + R() * .7); g.fillStyle = col; g.beginPath();
+      for (let k = 0; k < 9; k++) { const a = k / 9 * 6.28, rr = r * (.55 + R() * .6); g.lineTo(x + Math.cos(a) * rr * 1.4, y + Math.sin(a) * rr); }
+      g.closePath(); g.fill(); for (const [dx, dy] of [[S, 0], [-S, 0], [0, S], [0, -S]]) { g.save(); g.translate(dx, dy); g.fill(); g.restore(); } }
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; })());
   function gold() {
     const g = roundCage(new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: .22, metalness: .8, envMapIntensity: 1.3, clearcoat: .8, clearcoatRoughness: .2, map: DAM_GOLD() }));
     const fill = liquid(.398, 1); g.add(fill);
@@ -14275,12 +14312,13 @@ function makeBlockKit(THREE, RBOX, MERGE) {
   }
 
   function flag(hex, parity = 0) {
-    const g = roundCage(new THREE.MeshPhysicalMaterial({ color: '#e4f0ff', roughness: .06, metalness: .1, clearcoat: 1, clearcoatRoughness: .05, transparent: true, opacity: .5, envMapIntensity: 1.8, depthWrite: false }));
-    g.children[0].castShadow = false; g.children[0].renderOrder = 3;
     const soft = new THREE.Color(hex), hsl = {}; soft.getHSL(hsl); soft.setHSL(hsl.h, hsl.s * .5, .55);
+    // the frame is glass too: clear, just lightly shaded the colour of the water, so you can spot it from far away
+    const g = roundCage(new THREE.MeshPhysicalMaterial({ color: soft.clone().lerp(new THREE.Color('#ffffff'), .1), roughness: .04, metalness: .1, clearcoat: 1, clearcoatRoughness: .04, transparent: true, opacity: .45, envMapIntensity: 1.8, depthWrite: false }));
+    g.children[0].castShadow = false; g.children[0].renderOrder = 3;
     const c = chonk(hex, parity), pivot = new THREE.Group(); c.scale.setScalar(.6); pivot.add(c); g.add(pivot);
     const water = liquid(.398, 3, soft); water.renderOrder = 1; g.add(water);
-    const gm = glassMat('#ffffff', .1), pg = new THREE.PlaneGeometry(14 / N, 14 / N);
+    const gm = glassMat(soft.clone().lerp(new THREE.Color('#ffffff'), .5), .1), pg = new THREE.PlaneGeometry(14 / N, 14 / N);
     for (let f = 0; f < 6; f++) { const o = faceObj(f, 10, 10, .5 - D / N); const m = new THREE.Mesh(pg, gm); m.renderOrder = 2; o.add(m); g.add(o); }
     // bubbles drifting up through the water
     const NB = 14, bp = new Float32Array(NB * 3), bs = []; for (let i = 0; i < NB; i++) { bp.set([(Math.random() - .5) * .66, (Math.random() - .5) * .76, (Math.random() - .5) * .66], i * 3); bs.push(.05 + Math.random() * .08); }
