@@ -12412,6 +12412,19 @@ const GUIDE = {
 <h3 style="margin:14px 0 8px">The chonks</h3>
 <p>Core, then piece, then chunk, then chonk. Each one looks like a fat piece of a motherboard block with metal parts. Two matching chonks click together like a puzzle: a rectangle broken in half, with cuboids sticking out of each half that lock into the other, painted over with circuit boards and lights to hide that they fit.</p>
 <p>When they landed, each Nym was holding one, and each wanted another Nym's. The reddish ones are drawn to the blueish ones, but none of them knows which one is their exact match. So they teamed up, and defended theirs with walls and high towers.</p>
+<h3 style="margin:14px 0 8px">Where the powers come from</h3>
+<p>Every power comes from a Nym's <b>antenna</b>. Inside it is a tiny black hole: it can pull things in, keep them, and let them out again.</p>
+<p><b>Nuke:</b> a Nym gathers so much energy that it starts making more of it, and builds one bomb, a really big one.</p>
+<p><b>Ice strike:</b> the same story, but with ice blocks.</p>
+<p><b>Blackout:</b> the Nym uses all its energy to black-hole every bit of light out of the air. Its own antenna caused the dark, so it knows exactly which light still works: a green night-vision light shines from its visor, and only that Nym can see it.</p>
+<p><b>Rewind:</b> a black hole for time, pulling everything back to where it was.</p>
+<p><b>Invisible:</b> the Nym sucks the light out of its own body, so nobody can see it. It works like an atomic mirror, showing what is behind it.</p>
+<p><b>Tornado:</b> things being sucked into a black hole, spinning round like a whirlpool.</p>
+<p><b>Fetch!:</b> some Nym had a dog back on Nymora. It is kept in the antenna's black hole and can be called out any time. The Nym sends a bad signal into a rival's antenna, and after that the rival's antenna can only make bones: everything they hold turns into meat on the bone, and the dog comes running.</p>
+<p><b>Springtrap:</b> a Nym simply setting a trap.</p>
+<p><b>Chicken coop:</b> the Nym calls chickens out of its portal.</p>
+<p><b>Shovel:</b> the Nym sucks up lots of blocks from under itself all at once.</p>
+<p><b>Black hole:</b> the power stored inside the portal. Only one Nym can use it. It was never meant to be used: it is the very last resort.</p>
 <h3 style="margin:14px 0 8px">The Nymbots</h3>
 <p>Nymbus (blue), Cronym (cyan), Penzonym (lime), Vionym (violet), Rezinym (red), Fernym (blaze), Aurinym (gold), Piconym (pink).</p></div>`,
   controls: () => [
@@ -12437,7 +12450,7 @@ const GUIDE = {
     `<div class="gh">EARN THEM WITH HITS IN A ROW</div>`,
     GI(powerIcon('nuke'), 'Nuke', 'Pick a spot on the map: a huge blast'),
     GI(powerIcon('air'), 'Ice strike', 'Three icy blasts in a row across the map'),
-    GI(powerIcon('dark'), 'Blackout', 'Lights out for everyone else. You get night-vision goggles'),
+    GI(powerIcon('dark'), 'Blackout', 'Lights out for everyone else. A green night-vision light shines from your visor, and only you can see it'),
     GI(powerIcon('rewind'), 'Rewind', 'Time slows to a stop, then runs backwards 10 seconds (sound too): everyone, goals too (not the clock). Once a round per team'),
     GI(powerIcon('invis'), 'Invisible', 'For 8 seconds nobody can see you, chase you or hurt you. Throwing ends it'),
     GI(powerIcon('tornado'), 'Tornado', 'A twister that picks up blocks and robots'),
@@ -15096,6 +15109,65 @@ for (const B of CB.balls) ZOO.dress(B.h, 'hamster', { angry: () => false, fit: '
 for (const J of RF.jellies) ZOO.dress(J.g, 'jellyfish', { paint: J.bell.material.color.clone(), angry: () => false });
 { const pH = pulseHalos; let last = 0; pulseHalos = function (t) { pH(t); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t; if (dt > 0) ZOO.tick(dt, now()); }; }
 if (window.__nymbo) window.__nymbo.ZOO = ZOO;
+
+// ============================================================
+// FETCH's NEW BONE and BLACKOUT's NIGHT-VISION LIGHT (Ali's story for the powers: see the guide's story tab).
+//   The bone: a Nym hit by Fetch! gets a bad signal into its antenna that can only make bones, so everything it holds
+//   becomes meat on the bone: a plump glossy roast with pink cut ends and the bone sticking out of both sides.
+//   (The same shapes as before are swapped in place, so every bone in the game changes: in hand, thrown, in the dog's mouth.)
+//   Night vision: no more goggles. The Nym whose antenna caused the blackout knows exactly which light to use: a green
+//   night-vision beam shines from its visor. It's only drawn on that player's own screen, so only they can see it.
+// ============================================================
+// MEAT ON THE BONE (the cartoon kind): a plump, glossy roast, rounded in the middle and cut flat at both ends, each cut
+// showing pink meat in rings, with the white bone running right through and sticking out of both sides (two knobs on
+// each end). Symmetrical. One geometry with the colours painted in, so it can share one material like the old bone.
+function makeMeatBone(THREE, MERGE_) {
+  const paint = (g, fn) => { g = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+    const P = g.attributes.position, c = new Float32Array(P.count * 3), col = new THREE.Color(), v = new THREE.Vector3(); for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); fn(v, col); col.toArray(c, i * 3); } g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g; };
+  const H = .22, RC = .14, RM = .21, parts = []; // (half the meat's length, the radius at the cuts, the radius in the middle)
+  // the meat: a fat barrel, round in the middle and narrowing to a flat cut at each end (lathe along the length)
+  const pts = []; for (let i = 0; i <= 32; i++) { const t = i / 32, y = -H + t * 2 * H; pts.push(new THREE.Vector2(RC + (RM - RC) * Math.sin(t * Math.PI) ** .55, y)); }
+  const body = new THREE.LatheGeometry(pts, 48).rotateZ(-Math.PI / 2); // (its length runs along x)
+  const top = new THREE.Color('#f6a85a'), mid = new THREE.Color('#e5843a'), low = new THREE.Color('#b65a24'), rim = new THREE.Color('#c96a2e');
+  parts.push(paint(body, (p, c) => { const h = p.y / RM; c.copy(h > 0 ? mid.clone().lerp(top, h * .9) : mid.clone().lerp(low, -h * .9)); if (Math.abs(p.x) > H - .025) c.lerp(rim, .5); }));
+  // the two cut faces: rings of pink meat, a paler middle
+  const pk1 = new THREE.Color('#e47c86'), pk2 = new THREE.Color('#f7b4b0'), pk3 = new THREE.Color('#ffd6cf');
+  for (const sx of [-1, 1]) parts.push(paint(new THREE.RingGeometry(.001, RC, 48, 6).rotateY(sx * Math.PI / 2).translate(sx * H, 0, 0),
+    (p, c) => { const d = Math.hypot(p.y, p.z) / RC; c.copy(d > .82 ? pk1 : d > .45 ? pk2.clone().lerp(pk1, (d - .45) / .37 * .4) : pk3.clone().lerp(pk2, d / .45)); }));
+  // the bone: one smooth cartoon bone right through, out of both cuts: the shaft flares into a rounded end with two lobes
+  // (drawn as one outline and puffed up with a deep rounded edge, so the ends are part of the bone, not balls stuck on)
+  const BONE = new THREE.Color('#fffaf0'), BONE2 = new THREE.Color('#e6d6ba'), bc = (p, c) => c.copy(BONE).lerp(BONE2, Math.max(0, -p.y) * 6);
+  const X0 = H + .1, cx = H + .2, r = .052, ly = .045, w = .028, sh = new THREE.Shape();
+  sh.moveTo(-X0, w); sh.lineTo(X0, w);
+  for (const sx of [1, -1]) { const c = sx * cx; // (round one end, then along the other side to the far end)
+    if (sx === 1) { sh.quadraticCurveTo(c - .07, w, c - .062, ly + .02); sh.absarc(c, ly, r, 2.6, -1.0, true); sh.absarc(c, -ly, r, 1.0, -2.6, true); sh.quadraticCurveTo(c - .07, -w, X0, -w); sh.lineTo(-X0, -w); }
+    else { sh.quadraticCurveTo(c + .07, -w, c + .062, -ly - .02); sh.absarc(c, -ly, r, -0.54, 2.14, true); sh.absarc(c, ly, r, -2.14 + Math.PI * 2, .54, true); sh.quadraticCurveTo(c + .07, w, -X0, w); } }
+  const D = .03, bone = new THREE.ExtrudeGeometry(sh, { depth: D, bevelEnabled: true, bevelThickness: .03, bevelSize: .022, bevelSegments: 6, curveSegments: 24 }).translate(0, 0, -D / 2).rotateX(Math.PI / 2);
+  bone.computeVertexNormals(); parts.push(paint(bone, bc));
+  const g = MERGE_(parts); g.computeBoundingSphere(); return g;
+}
+{ const mb = makeMeatBone(THREE, mergeGeometries); mb.scale(1, 1, 1);
+  boneGeo.copy(mb); const big = mb.clone(); big.scale(2.1, 2.1, 2.1); BIG_BONE.copy(big); boneGeo.computeBoundingSphere(); BIG_BONE.computeBoundingSphere();
+  boneMat.vertexColors = true; boneMat.color.set(0xffffff); boneMat.emissive.set(0xffb070); boneMat.emissiveIntensity = .12; boneMat.needsUpdate = true; }
+// the green night-vision beam out of the visor (replaces the goggles)
+let nvBeam = null;
+updateGoggles = function (on) {
+  const scr = P && P.model && P.model.scr;
+  if (on && !nvBeam && scr && scr.parent) { const rig = scr.parent; rig.updateMatrixWorld(true);
+    const bb = new THREE.Box3(), inv = rig.matrixWorld.clone().invert(); scr.traverse(o => { if (o.isMesh && o.geometry) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(inv.clone().multiply(o.matrixWorld))); } });
+    const c = bb.getCenter(new THREE.Vector3()), ws = rig.getWorldScale(new THREE.Vector3()).y || 1, L = 14 / ws, R = 4.2 / ws;
+    nvBeam = new THREE.Group(); nvBeam.position.set(c.x, c.y, bb.max.z); rig.add(nvBeam);
+    // a soft cone of green light, brightest at the visor and fading out along its length and towards its edge
+    const cone = new THREE.ConeGeometry(R, L, 40, 1, true).translate(0, -L / 2, 0).rotateX(-Math.PI / 2);
+    const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
+      uniforms: { uC: { value: new THREE.Color(0x5dff6a) }, uL: { value: L } },
+      vertexShader: 'varying float vZ; varying vec3 vN, vV; void main(){ vZ = position.z; vec4 mv = modelViewMatrix * vec4(position,1.); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform vec3 uC; uniform float uL; varying float vZ; varying vec3 vN, vV; void main(){ float k = 1. - clamp(vZ / uL, 0., 1.); float rim = pow(abs(dot(normalize(vN), normalize(vV))), 1.5); gl_FragColor = vec4(uC * k * k * rim * .55, 1.); }' });
+    nvBeam.add(new THREE.Mesh(cone, mat));
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(cv); })(), color: 0x7dff8a, transparent: true, opacity: .7, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); glow.scale.setScalar(.9 / ws); glow.position.z = .02 / ws; nvBeam.add(glow); }
+  if (nvBeam) nvBeam.visible = on;
+  if (on !== !!PW.nvWasOn) { PW.nvWasOn = on; if (on) sfx('nvon'); }
+};
 
 // test hooks for the newer bits (headless checks only)
 Object.assign(window.__nymbo, { nbrPose, nbrAntPose, nbrAntRest, nbrHeld, startReplay: () => startReplay(), drawReplay: () => drawReplay(), onPlayerKO: (...a) => onPlayerKO(...a), nymMeshModel, NBR_SWAPU, NBR_HD, NBR_TS, grabBlock: (...a) => grabBlock(...a), freezeRobot: (...a) => freezeRobot(...a), ragdoll: (...a) => ragdoll(...a), get blocks() { return blocks; }, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
