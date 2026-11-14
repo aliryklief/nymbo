@@ -4218,7 +4218,7 @@ function nbrZap(r, dt) { const M = r.model, N = M.ant; if (!N) return;
 // picking up works the other way round: the block on the ground is zapped up into his antenna (a bolt from the block to
 // the tip while it shrinks away into it), then it's zapped back out onto his head like a reload
 const NBR_SUCK = [];
-if (BOT_KIND === 'ball') { const gB = grabBlock; grabBlock = function (r, e) { const from = e && e.body && !e.dead ? (() => { const t = e.body.translation(); return new THREE.Vector3(t.x, t.y, t.z); })() : null, rot = from ? e.body.rotation() : null, ok = gB(r, e);
+if (BOT_KIND === 'ball') { const gB = grabBlock; grabBlock = function (r, e, free) { const from = e && e.body && !e.dead ? (() => { const t = e.body.translation(); return new THREE.Vector3(t.x, t.y, t.z); })() : null, rot = from ? e.body.rotation() : null, ok = gB(r, e, free);
     if (ok && from && r.model && r.model.ant && e.kind !== 'flag' && e.kind !== 'animal') { const g = new THREE.Mesh(cubeGeo, r.model.held.material); g.position.copy(from); g.quaternion.set(rot.x, rot.y, rot.z, rot.w); g.scale.copy(e.dims); /* (its own shape, lying the way it lay) */ scene.add(g); const b = new THREE.Mesh(new THREE.BufferGeometry(), NBR_ZAPM.clone()); b.frustumCulled = false; b.renderOrder = 3; scene.add(b);
       b.material.color.set(0xbfe6ff).multiplyScalar(2); NBR_SUCK.push({ r, g, b, from, dims: e.dims.clone(), t: 0 }); r.heldHideT = now() + 280; r.model.held.visible = false; sfx('reload', from); }
     return ok; }; }
@@ -13754,6 +13754,549 @@ float rN3(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); 
   // ---- every frame ----
   { const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam, rt) => { if (prev) prev(r, s, cam, rt); shimU.t.value = now() / 1000; shimU.dim.value = portalCool > 0 ? 1 : 0; }; }
 }
+
+// ============================================================
+// THE NEW SPECIAL BLOCKS (14 Nov, Ali's designs): every special block is carved out of one solid cube in small steps,
+// with one shared look — a frame round each face, little square holes near its corners, a recess, and a symbol.
+//   bomb    black block, a white dome pushing out of each face that throbs like a heartbeat, a red fuse spitting sparks
+//   freeze  glacier ice (deep blue below, pale above), white snowflakes slowly turning, frost flakes, glints, cold steam
+//   homing  deep teal radar: a white target ring, a red dot, a green sweep going round with blips
+//   sticky  lime semtex: living green goo behind glass, slime dripping and wobbling, a timer that counts down once stuck
+//   gold    rounded Damascus-gold frame, glass set back into it, thick molten gold flowing inside with glitter
+//   streak  (the star) rounded purple Damascus box, a straight-edged star window, a flowing galaxy inside
+//   flag    the chonk: a circuit-board half-cube in its Nym's colour, spinning inside a glass box. Two twins (a cool half
+//           and a warm half) have checkerboard teeth that slot together into one whole cube.
+// Only how they look has changed: the game still uses the same blocks underneath (same size, same physics, same rules).
+// The old mesh stays as the block's handle (position, size, being hidden); it just stops drawing, and the new model
+// rides inside it. Blocks on robots' heads get the same model.
+// ============================================================
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+// NYMBO SPECIAL BLOCKS — carved from one solid cube of 20×20×20 little steps (voxels), then merged into as few flat
+// faces as possible (greedy meshing), so each block is a few hundred triangles.
+// Every block shares one design: a 3-step frame round each face, a small square hole near each corner of the frame,
+// a recess 2 steps deep inside the frame, and a symbol that either fills the recess back up (raised) or is cut through.
+// All six faces are the same. The flags (chonks) are the exception: half-cubes with checkerboard teeth that
+// interlock with their twin to make one whole cube.
+function makeBlockKit(THREE, RBOX, MERGE) {
+  const N = 20, F = 3, D = 2; // size, frame width, recess depth
+  const kit = { list: [] };
+  // reuse: every block of a kind is built the same way, so the shapes made for the first one are kept and shared
+  let MK = '', MN = 0; const GC = new Map();
+  const memo = (tag, build) => { const k = MK + '|' + tag + (MN++); let v = GC.get(k); if (!v) GC.set(k, v = build()); return v; };
+
+  // ---------- small textures ----------
+  function noiseTex() { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), im = g.createImageData(64, 64);
+    for (let i = 0; i < 64 * 64; i++) { const v = 228 + Math.random() * 27; im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; }
+    g.putImageData(im, 0, 0); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t; }
+  const NOISE = noiseTex();
+  // Damascus: folded layers of light and dark metal, like a forged blade (wavy bands bent by smooth noise)
+  function damascus(light, dark, seed = 3) {
+    const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), im = g.createImageData(S, S), R = mulberry(seed);
+    const G = 16, grid = Array.from({ length: (G + 1) * (G + 1) }, () => R());
+    const vn = (x, y) => { x = ((x % G) + G) % G; y = ((y % G) + G) % G; const xi = x | 0, yi = y | 0, xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), at = (i, j) => grid[(i % G) + (G + 1) * (j % G)];
+      return (at(xi, yi) * (1 - u) + at(xi + 1, yi) * u) * (1 - v) + (at(xi, yi + 1) * (1 - u) + at(xi + 1, yi + 1) * u) * v; };
+    const fb = (x, y) => vn(x, y) * .55 + vn(x * 2, y * 2) * .3 + vn(x * 4, y * 4) * .15;
+    const L = new THREE.Color(light), Dk = new THREE.Color(dark);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const fx = x / S * G, fy = y / S * G, w = fb(fx * .2, fy * .3) * 7 + fb(fx * .6 + 3, fy * .6) * 1.5;
+      const b = .5 + .5 * Math.sin((fy * 1.6 + w * 1.4) * 6.5), k = .25 + .75 * Math.pow(b, 2.2), i = (x + y * S) * 4;
+      im.data[i] = (Dk.r + (L.r - Dk.r) * k) * 255; im.data[i + 1] = (Dk.g + (L.g - Dk.g) * k) * 255; im.data[i + 2] = (Dk.b + (L.b - Dk.b) * k) * 255; im.data[i + 3] = 255; }
+    g.putImageData(im, 0, 0); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
+  const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+  // ---------- voxels → mesh (greedy) ----------
+  // vox: Uint8Array of palette index+1; pal: [{c, grad:[c0,c1], r, m, glow, map}]
+  function mesh(vox, X, Y, Z, pal, opts = {}) { return memo('mesh', () => meshBuild(vox, X, Y, Z, pal, opts)).clone(); }
+  function meshBuild(vox, X, Y, Z, pal, opts = {}) {
+    const get = (x, y, z) => (x < 0 || y < 0 || z < 0 || x >= X || y >= Y || z >= Z) ? 0 : vox[x + X * (y + Y * z)];
+    const S = Math.max(X, Y, Z), byMat = new Map(), col = new THREE.Color(), c0 = new THREE.Color(), c1 = new THREE.Color();
+    const keyOf = p => p.glow ? 'glow' : `${p.r ?? .7}|${p.m ?? 0}|${p.map === false ? 0 : 1}|${p.tex ? p.tex.uuid : ''}`;
+    const dims = [X, Y, Z];
+    for (let d = 0; d < 3; d++) {
+      const u = (d + 1) % 3, v = (d + 2) % 3, x = [0, 0, 0], q = [0, 0, 0]; q[d] = 1;
+      const mask = new Int32Array(dims[u] * dims[v]);
+      for (x[d] = -1; x[d] < dims[d];) {
+        let n = 0;
+        for (x[v] = 0; x[v] < dims[v]; x[v]++) for (x[u] = 0; x[u] < dims[u]; x[u]++) {
+          const a = x[d] >= 0 ? get(x[0], x[1], x[2]) : 0, b = x[d] < dims[d] - 1 ? get(x[0] + q[0], x[1] + q[1], x[2] + q[2]) : 0;
+          if (!!a === !!b) { mask[n++] = 0; continue; }
+          // ambient occlusion: how many solid neighbours crowd each corner of this face (darker in corners and recesses)
+          const e = [x[0], x[1], x[2]]; if (a) e[d]++; let ao = 0;
+          if (opts.ao !== false) for (let cI = 0; cI < 4; cI++) { const su = cI === 1 || cI === 2 ? 1 : -1, sv = cI >= 2 ? 1 : -1;
+            const A = [...e], B2 = [...e], Cc = [...e]; A[u] += su; B2[v] += sv; Cc[u] += su; Cc[v] += sv;
+            const s1 = get(...A) ? 1 : 0, s2 = get(...B2) ? 1 : 0, cc = get(...Cc) ? 1 : 0;
+            ao |= (s1 && s2 ? 0 : 3 - (s1 + s2 + cc)) << (8 + cI * 2); }
+          else ao = 0xff00;
+          mask[n++] = a ? (a | ao) : -(b | ao);
+        }
+        x[d]++; n = 0;
+        for (let j = 0; j < dims[v]; j++) for (let i = 0; i < dims[u];) {
+          const c = mask[n]; if (!c) { i++; n++; continue; }
+          let w = 1; while (i + w < dims[u] && mask[n + w] === c) w++;
+          let h = 1; out: for (; j + h < dims[v]; h++) for (let k = 0; k < w; k++) if (mask[n + k + h * dims[u]] !== c) break out;
+          x[u] = i; x[v] = j; const du = [0, 0, 0], dv = [0, 0, 0]; du[u] = w; dv[v] = h;
+          const p0 = [...x], p1 = [x[0] + du[0], x[1] + du[1], x[2] + du[2]], p2 = [p1[0] + dv[0], p1[1] + dv[1], p1[2] + dv[2]], p3 = [x[0] + dv[0], x[1] + dv[1], x[2] + dv[2]];
+          const cc = Math.abs(c), P = pal[(cc & 0xff) - 1], k = keyOf(P), AOV = [0, 1, 2, 3].map(i => [.42, .62, .82, 1][(cc >> (8 + i * 2)) & 3]); if (!byMat.has(k)) byMat.set(k, { P, pos: [], nor: [], col: [], uv: [] });
+          const B = byMat.get(k), nrm = [0, 0, 0]; nrm[d] = c > 0 ? 1 : -1;
+          const flip = AOV[0] + AOV[2] < AOV[1] + AOV[3]; // turn the diagonal so the shading doesn't streak
+          const ids = flip ? (c > 0 ? [0, 1, 3, 1, 2, 3] : [0, 3, 1, 1, 3, 2]) : (c > 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2]);
+          const PS = [p0, p1, p2, p3];
+          for (const id of ids) { const p = PS[id];
+            B.pos.push(p[0] / S - X / S / 2, p[1] / S - Y / S / 2, p[2] / S - Z / S / 2); B.nor.push(...nrm);
+            if (P.grad) { c0.set(P.grad[0]); c1.set(P.grad[1]); col.copy(c0).lerp(c1, p[1] / Y); } else col.set(P.c);
+            const o = AOV[id]; B.col.push(col.r * o, col.g * o, col.b * o);
+            const uu = d === 0 ? p[2] : p[0], vv = d === 1 ? p[2] : p[1]; B.uv.push(uu / S * (opts.uvScale || 2), vv / S * (opts.uvScale || 2));
+          }
+          for (let l = 0; l < h; l++) for (let kk = 0; kk < w; kk++) mask[n + kk + l * dims[u]] = 0;
+          i += w; n += w;
+        }
+      }
+    }
+    const g = new THREE.Group(); let tris = 0;
+    for (const [k, B] of byMat) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(B.nor, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(B.col, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(B.uv, 2));
+      const P = B.P, mat = opts.material ? opts.material : P.glow ? new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })
+        : new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: P.r ?? .7, metalness: P.m ?? 0, map: P.tex || (P.map === false ? null : NOISE), envMapIntensity: P.env ?? 1, clearcoat: P.cc ?? .35, clearcoatRoughness: .25 });
+      const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; g.add(m); tris += B.pos.length / 9;
+    }
+    g.userData.tris = tris; return g;
+  }
+
+  // ---------- the shared carved cube ----------
+  // face mapping: layer L (0 = surface) and face coords (u right, v up) → voxel
+  const FACES = [
+    (L, u, v) => [u, v, N - 1 - L],          // +z front
+    (L, u, v) => [N - 1 - u, v, L],          // -z back
+    (L, u, v) => [N - 1 - L, v, N - 1 - u],  // +x right
+    (L, u, v) => [L, v, u],                  // -x left
+    (L, u, v) => [u, N - 1 - L, N - 1 - v],  // +y top
+    (L, u, v) => [u, L, v],                  // -y bottom
+  ];
+  const AX = [ // u axis, v axis, normal — for placing flat extras (screens, glass) on each face
+    [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[-1, 0, 0], [0, 1, 0], [0, 0, -1]], [[0, 0, -1], [0, 1, 0], [1, 0, 0]],
+    [[0, 0, 1], [0, 1, 0], [-1, 0, 0]], [[1, 0, 0], [0, 0, -1], [0, 1, 0]], [[1, 0, 0], [0, 0, 1], [0, -1, 0]]];
+  function faceObj(f, uc, vc, out) { const [a, b, n] = AX[f].map(v => new THREE.Vector3(...v)), o = new THREE.Object3D();
+    o.matrixAutoUpdate = false; o.matrix.makeBasis(a, b, n).setPosition(a.multiplyScalar(uc / N - .5).add(b.multiplyScalar(vc / N - .5)).add(n.multiplyScalar(out))); return o; }
+
+  // spec: { body, panel, sym:(u,v)=>palette|0 (raised), cut:(u,v)=>bool (cut through the panel), window:true (whole panel open), hollow, holes }
+  function carve(spec) {
+    const vox = new Uint8Array(N * N * N), set = (p, i) => { vox[p[0] + N * (p[1] + N * p[2])] = i; };
+    vox.fill(spec.body);
+    if (spec.hollow) for (let z = F; z < N - F; z++) for (let y = F; y < N - F; y++) for (let x = F; x < N - F; x++) set([x, y, z], 0);
+    for (const fm of FACES) {
+      for (const [u, v] of [[1, 1], [1, N - 2], [N - 2, 1], [N - 2, N - 2]]) { set(fm(0, u, v), 0); set(fm(1, u, v), 0); } // corner holes
+      for (let v = F; v < N - F; v++) for (let u = F; u < N - F; u++) {
+        const su = u - F, sv = v - F; // symbol coords 0..13
+        for (let L = 0; L < D; L++) set(fm(L, u, v), 0);
+        if (spec.window) { set(fm(D, u, v), 0); continue; }
+        if (spec.cut && spec.cut(su, sv)) { set(fm(D, u, v), 0); continue; }
+        if (spec.panel) set(fm(D, u, v), spec.panel);
+        const s = spec.sym ? spec.sym(su, sv) : 0;
+        if (s) for (let L = spec.symL ?? 0; L < D; L++) set(fm(L, u, v), s);
+        if (spec.extra) spec.extra(su, sv, (L, i) => set(fm(L, u, v), i));
+      }
+    }
+    return vox;
+  }
+  // symbols are drawn on a 14×14 grid; c = centred coords (−6.5..6.5)
+  const C = s => s - 6.5;
+  const fromRows = (rows, key) => (u, v) => { const r = rows[13 - v]; return r ? (key[r[u]] || 0) : 0; };
+
+  // ---------- the blocks ----------
+  // ---------- smooth symbols: built once in face space (x right, y up, z out; z = 0 is the panel floor), copied to all six faces ----------
+  const PF = .5 - D / N; // how far the panel floor is from the centre
+  const FM = [0, 1, 2, 3, 4, 5].map(f => { const [a, b, n] = AX[f].map(v => new THREE.Vector3(...v)); return new THREE.Matrix4().makeBasis(a, b, n).setPosition(n.clone().multiplyScalar(PF)); });
+  function sixFaces(g, geo, mat, cast = true) {
+    const merged = memo('six', () => { const gs = FM.map(m => geo.clone().applyMatrix4(m)), M = MERGE(gs.map(x => x.index ? x.toNonIndexed() : x)); for (const k of Object.keys(M.attributes)) if (!['position', 'normal', 'uv'].includes(k)) M.deleteAttribute(k); return M; });
+    const m = new THREE.Mesh(merged, mat); m.castShadow = cast; m.receiveShadow = true; g.add(m); g.userData.tris += merged.attributes.position.count / 3; return m; }
+  const prep = g => { const x = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(x.attributes)) if (!['position', 'normal', 'uv'].includes(k)) x.deleteAttribute(k); if (!x.attributes.uv) x.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(x.attributes.position.count * 2), 2)); return x; };
+  const join = list => memo('join', () => MERGE(list.map(prep)));
+  const rbox = (w, h, d, r, x = 0, y = 0, z = 0, rz = 0) => { // a box with chamfered edges (cheap: about 40 triangles)
+    const b = Math.min(r, .012, w / 3, h / 3), sh = new THREE.Shape(); sh.moveTo(-w / 2 + b, -h / 2 + b); sh.lineTo(w / 2 - b, -h / 2 + b); sh.lineTo(w / 2 - b, h / 2 - b); sh.lineTo(-w / 2 + b, h / 2 - b);
+    return new THREE.ExtrudeGeometry(sh, { depth: d - 2 * b, bevelEnabled: true, bevelThickness: b, bevelSize: b, bevelSegments: 1 }).translate(0, 0, -(d - 2 * b) / 2).rotateZ(rz).translate(x, y, z); };
+  const shiny = (c, o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color: c, roughness: .35, clearcoat: .6, clearcoatRoughness: .2 }, o));
+
+  function bomb() {
+    const pal = [{ c: '#26272c', r: .8 }, { c: '#18191d', r: .85 }];
+    const g = mesh(carve({ body: 1, panel: 2 }), N, N, N, pal);
+    // the bomb: a piece of a sphere pushing out of the recess, up to the face of the cube
+    const h = .1, A = .25, R = (A * A + h * h) / (2 * h), th = Math.acos((R - h) / R);
+    const cap = new THREE.SphereGeometry(R, 22, 5, 0, Math.PI * 2, 0, th).rotateX(Math.PI / 2).translate(-.025, -.03, h - R);
+    const domeM = shiny('#ecebe8', { roughness: .3, clearcoat: 1, emissive: '#ff1a0a', emissiveIntensity: 0 });
+    const domes = []; for (let f = 0; f < 6; f++) { const o = faceObj(f, 10, 10, PF); const m = new THREE.Mesh(cap, domeM); m.castShadow = true; o.add(m); g.add(o); domes.push(m); }
+    g.userData.tris += cap.index ? cap.index.count / 3 * 6 : cap.attributes.position.count / 3 * 6;
+    // a warning ring round the base of each dome, pulsing red with the beat
+    const ringM = new THREE.MeshBasicMaterial({ color: '#ff2a12', transparent: true, opacity: 0, toneMapped: false, depthWrite: false, blending: THREE.AdditiveBlending });
+    sixFaces(g, new THREE.RingGeometry(A - .005, A + .03, 40).translate(-.025, -.03, .003), ringM, false);
+    // the fuse: a collar, a curl of cord and the spark
+    const col = new THREE.CylinderGeometry(.045, .05, .05, 14).rotateX(Math.PI / 2).rotateZ(-Math.PI / 4).translate(.13, .12, .06);
+    sixFaces(g, col, shiny('#9b9ea6', { metalness: .7, roughness: .3 }));
+    const cord = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(.14, .13, .07), new THREE.Vector3(.2, .2, .085), new THREE.Vector3(.24, .26, .07)]), 8, .02, 8);
+    sixFaces(g, cord, shiny('#d81e14', { roughness: .45, clearcoat: .6, emissive: '#5a0400', emissiveIntensity: .6 }));
+    const spark = new THREE.Mesh(join(FM.map(m => new THREE.OctahedronGeometry(.06, 0).applyMatrix4(new THREE.Matrix4().makeTranslation(.25, .275, .07)).applyMatrix4(m))), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff3a1a').multiplyScalar(2), toneMapped: false }));
+    g.add(spark); let t = 0;
+    // little red sparks flying off the tip of each fuse
+    const NS = 8, tips = FM.map(m => new THREE.Vector3(.25, .275, .07).applyMatrix4(m)), sp = new Float32Array(6 * NS * 3), life = new Float32Array(6 * NS), vel = [];
+    for (let i = 0; i < 6 * NS; i++) { life[i] = Math.random(); vel.push(new THREE.Vector3()); }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+    const sparks = new THREE.Points(sg, new THREE.PointsMaterial({ color: new THREE.Color('#ff2a10'), size: .045, transparent: true, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }));
+    g.add(sparks); const nrm = FM.map(m => new THREE.Vector3(0, 0, 1).transformDirection(m));
+    let beatT = 0, rate = 1.1;
+    g.userData.update = dt => { t += dt; const k = Math.random();
+      // the heartbeat: a double thump, getting a little faster all the time (wraps round so it never runs away)
+      rate = 1.1 + (t % 12) / 12 * 1.6; beatT = (beatT + dt * rate) % 1;
+      const thump = Math.exp(-((beatT - .08) ** 2) / .002) + .6 * Math.exp(-((beatT - .26) ** 2) / .002);
+      for (const d of domes) d.scale.set(1 + thump * .035, 1 + thump * .035, 1 + thump * .22);
+      domeM.emissiveIntensity = thump * .55; ringM.opacity = .15 + thump * .85;
+      spark.material.color.setRGB(1, .1 + .2 * k, .04); spark.scale.setScalar(.85 + .35 * k);
+      for (let i = 0; i < 6 * NS; i++) { const f = (i / NS) | 0; life[i] -= dt * 2.2;
+        if (life[i] <= 0) { life[i] = .4 + Math.random() * .6; vel[i].set(Math.random() - .5, Math.random() - .5, Math.random() - .5).multiplyScalar(.5).addScaledVector(nrm[f], .25); sp.set([tips[f].x, tips[f].y, tips[f].z], i * 3); }
+        else { sp[i * 3] += vel[i].x * dt; sp[i * 3 + 1] += vel[i].y * dt; sp[i * 3 + 2] += vel[i].z * dt; } }
+      sg.attributes.position.needsUpdate = true; };
+    return g;
+  }
+  function ice() {
+    const pal = [{ grad: ['#1f6fd0', '#a6e2ff'], r: .3, env: 1.3 }, { grad: ['#2a86e8', '#c4eeff'], r: .15, map: false, env: 1.5 }];
+    const g = mesh(carve({ body: 1, panel: 2 }), N, N, N, pal);
+    // a smooth snowflake: six arms with little branches, filling the recess up to the face
+    const parts = [], dz = .1;
+    for (let k = 0; k < 3; k++) parts.push(rbox(.6, .05, dz, .02, 0, 0, dz / 2, k * Math.PI / 3));
+    for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3, cx = Math.cos(a), cy = Math.sin(a);
+      for (const [d, L] of [[.17, .1], [.24, .07]]) for (const s of [-1, 1]) { const b = rbox(L, .036, dz, .015, 0, 0, dz / 2, a + s * Math.PI / 3.2); b.translate(cx * d + Math.cos(a + s * Math.PI / 3.2) * L / 2, cy * d + Math.sin(a + s * Math.PI / 3.2) * L / 2, 0); parts.push(b); } }
+    parts.push(new THREE.CylinderGeometry(.07, .07, dz, 6).rotateX(Math.PI / 2).translate(0, 0, dz / 2));
+    const flakeG = join(parts), flakeM = shiny('#ffffff', { roughness: .45, clearcoat: .5 }), flakes = [];
+    for (let f = 0; f < 6; f++) { const o = faceObj(f, 10, 10, PF); const m = new THREE.Mesh(flakeG, flakeM); m.castShadow = true; o.add(m); g.add(o); flakes.push(m); }
+    g.userData.tris += flakeG.attributes.position.count / 3 * 6;
+    // glints: tiny sparkles that wink on and off across the frosty surface
+    const NG = 60, gp = new Float32Array(NG * 3), gph = new Float32Array(NG), RG = mulberry(21);
+    for (let i = 0; i < NG; i++) { const f = (RG() * 6) | 0, v = new THREE.Vector3((RG() - .5) * .94, (RG() - .5) * .94, .5 - PF + .006); if (Math.max(Math.abs(v.x), Math.abs(v.y)) < .35) v.z = .105; v.applyMatrix4(FM[f]); gp.set([v.x, v.y, v.z], i * 3); gph[i] = RG() * 50; }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.BufferAttribute(gp, 3)); gg.setAttribute('ph', new THREE.BufferAttribute(gph, 1));
+    const glint = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { t: { value: 0 } },
+      vertexShader: 'attribute float ph; uniform float t; varying float vb; void main(){ vb = pow(max(0., sin(t * 2.3 + ph)), 14.); vec4 mv = modelViewMatrix * vec4(position,1.); gl_PointSize = (6. + 30. * vb) * 3. / -mv.z; gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'varying float vb; void main(){ vec2 d = gl_PointCoord - .5; float c = max(0., 1. - abs(d.x) * 12. - abs(d.y) * 2.) + max(0., 1. - abs(d.y) * 12. - abs(d.x) * 2.) + max(0., .5 - length(d) * 3.); gl_FragColor = vec4(vec3(.85, .95, 1.) * c * vb * 1.6, 1.); }' });
+    g.add(new THREE.Points(gg, glint));
+    // frost: little ice flakes stuck all over, flat against the faces so nothing pokes out of the cube
+    const R = mulberry(11), fl = [];
+    for (let f = 0; f < 6; f++) for (let i = 0; i < 28; i++) {
+      let u = (R() - .5) * .96, v = (R() - .5) * .96; const r = .02 + R() * .035, th = .007; u = Math.max(-.5 + r, Math.min(.5 - r, u)); v = Math.max(-.5 + r, Math.min(.5 - r, v)); const onFrame = Math.max(Math.abs(u), Math.abs(v)) > .36;
+      const z = onFrame ? .5 - th / 2 : PF + th / 2 - .5 + .5; // on the frame face, or lying on the panel floor
+      const p = new THREE.CircleGeometry(r, 6).rotateZ(R() * 3).translate(u, v, z - PF + th / 2 + .001);
+      fl.push(p.applyMatrix4(FM[f]));
+    }
+    const frost = new THREE.Mesh(join(fl), new THREE.MeshPhysicalMaterial({ color: '#e6f6ff', roughness: .15, transparent: true, opacity: .92, emissive: '#9fd8ff', emissiveIntensity: .25, clearcoat: 1 }));
+    g.add(frost); g.userData.tris += frost.geometry.attributes.position.count / 3;
+    // cold steam: soft white mist curling off the snowflakes and the top corners, sinking and fading like fog off ice
+    const pc = document.createElement('canvas'); pc.width = pc.height = 64; const px = pc.getContext('2d'), gr = px.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(.4, 'rgba(235,248,255,.45)'); gr.addColorStop(1, 'rgba(235,248,255,0)'); px.fillStyle = gr; px.fillRect(0, 0, 64, 64);
+    const puffTex = new THREE.CanvasTexture(pc), NM = 72, mp = new Float32Array(NM * 3), ma = new Float32Array(NM), ms = new Float32Array(NM), mv = [], ml = new Float32Array(NM), src = [];
+    for (let f = 0; f < 5; f++) src.push(new THREE.Vector3(0, 0, .1).applyMatrix4(FM[f === 4 ? 4 : f])); // the snowflakes (sides and top)
+    for (const x of [-.46, .46]) for (const z of [-.46, .46]) src.push(new THREE.Vector3(x, .46, z)); // the top corners
+    for (let i = 0; i < NM; i++) { ml[i] = Math.random() * 2.5; mv.push(new THREE.Vector3()); }
+    const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(mp, 3)); mg.setAttribute('alpha', new THREE.BufferAttribute(ma, 1)); mg.setAttribute('size', new THREE.BufferAttribute(ms, 1));
+    const mm = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { map: { value: puffTex }, scale: { value: 1000 } },
+      vertexShader: 'attribute float alpha; attribute float size; varying float va; uniform float scale; void main(){ va = alpha; vec4 mv = modelViewMatrix * vec4(position,1.); gl_PointSize = size * scale / -mv.z; gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform sampler2D map; varying float va; void main(){ vec4 c = texture2D(map, gl_PointCoord); gl_FragColor = vec4(c.rgb, c.a * va); }' });
+    const mist = new THREE.Points(mg, mm); mist.renderOrder = 4; g.add(mist);
+    const spawn = i => { const o = src[(Math.random() * src.length) | 0], out = o.clone().normalize(); out.y = Math.max(out.y, 0);
+      mp.set([o.x + (Math.random() - .5) * .12, o.y + (Math.random() - .5) * .1, o.z + (Math.random() - .5) * .12], i * 3);
+      mv[i].set(out.x * .06 + (Math.random() - .5) * .04, .03 + Math.random() * .03, out.z * .06 + (Math.random() - .5) * .04); ml[i] = 0; };
+    for (let i = 0; i < NM; i++) { spawn(i); ml[i] = Math.random() * 2.5; }
+    let it = 0;
+    g.userData.update = dt => { it += dt; glint.uniforms.t.value = it; for (const m of flakes) m.rotation.z = it * .25;
+      for (let i = 0; i < NM; i++) { ml[i] += dt; const k = ml[i] / 2.5; if (k >= 1) { spawn(i); continue; }
+        mv[i].y -= dt * .05; mv[i].multiplyScalar(1 - dt * .4); // it rises a little, then cold air sinks
+        mp[i * 3] += mv[i].x * dt; mp[i * 3 + 1] += mv[i].y * dt; mp[i * 3 + 2] += mv[i].z * dt;
+        ma[i] = Math.sin(Math.min(1, k) * Math.PI) * .5; ms[i] = .08 + k * .26; }
+      mg.attributes.position.needsUpdate = mg.attributes.alpha.needsUpdate = mg.attributes.size.needsUpdate = true; };
+    return g;
+  }
+  function homing() {
+    const pal = [{ c: '#0f6b73', r: .5, cc: .6 }, { c: '#031d21', r: .6 }]; // deep teal, a dark radar screen in the recess
+    const g = mesh(carve({ body: 1, panel: 2 }), N, N, N, pal);
+    const dz = .045, ring = new THREE.Shape(); ring.absarc(0, 0, .265, 0, Math.PI * 2, false); const hole = new THREE.Path(); hole.absarc(0, 0, .225, 0, Math.PI * 2, true); ring.holes.push(hole);
+    const parts = [new THREE.ExtrudeGeometry(ring, { depth: dz - .01, bevelEnabled: true, bevelThickness: .01, bevelSize: .01, bevelSegments: 1, curveSegments: 20 })];
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; parts.push(rbox(.1, .04, .1, .015, Math.cos(a) * .3, Math.sin(a) * .3, .05, a)); }
+    sixFaces(g, join(parts), shiny('#ffffff', { roughness: .4 }));
+    // the red dot in the middle, glowing
+    const dot = new THREE.SphereGeometry(.04, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2).translate(0, 0, .006);
+    sixFaces(g, dot, new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff1a1a').multiplyScalar(1.8), toneMapped: false }), false);
+    // the radar: a glowing sweep turning round inside the ring, with faint range rings and blips that light up as it passes
+    const sweep = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { t: { value: 0 } },
+      vertexShader: 'varying vec2 vu; void main(){ vu = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+      fragmentShader: `uniform float t; varying vec2 vu;
+        void main(){ float r = length(vu) / .225, a = atan(vu.y, vu.x), s = mod(t * 2.2 - a, 6.2832);
+          float beam = exp(-s * 1.6) * smoothstep(1., .9, r);
+          float rings = smoothstep(.43, .49, abs(fract(r * 3.) - .5)) * .3 * step(r, 1.) + smoothstep(.012, .0, min(abs(vu.x), abs(vu.y))) * .12 * step(r, 1.);
+          vec2 b1 = vec2(.11, .07), b2 = vec2(-.07, -.13), b3 = vec2(-.14, .08);
+          float blip = 0.;
+          for (int i = 0; i < 3; i++) { vec2 b = i == 0 ? b1 : i == 1 ? b2 : b3; float ba = mod(t * 2.2 - atan(b.y, b.x), 6.2832);
+            blip += smoothstep(.022, .008, length(vu - b)) * exp(-ba * .9); }
+          vec3 c = vec3(.2, 1., .75) * (beam * 1.6 + rings * 1.4) + vec3(.6, 1., .8) * blip * 1.5;
+          gl_FragColor = vec4(c, 1.); }` });
+    const disc = new THREE.CircleGeometry(.225, 40).translate(0, 0, .004);
+    sixFaces(g, disc, sweep, false).renderOrder = 2;
+    g.userData.update = dt => { sweep.uniforms.t.value += dt; };
+    return g;
+  }
+  function sticky() {
+    const pal = [{ c: '#7cd61a', r: .5, cc: .6 }];
+    const g = mesh(carve({ body: 1, window: true, hollow: true }), N, N, N, pal);
+    const goo = liquid(PF, 2); g.add(goo);
+    // a glossy wet film over the goo
+    const film = glassMat('#d8ffb0', .12), pg = new THREE.PlaneGeometry(14 / N, 14 / N);
+    for (let f = 0; f < 6; f++) { const o = faceObj(f, 10, 10, PF + .001); const m = new THREE.Mesh(pg, film); m.renderOrder = 2; o.add(m); g.add(o); }
+    const slime = shiny('#36c814', { roughness: .06, clearcoat: 1, emissive: '#145200', emissiveIntensity: .5, envMapIntensity: .55 });
+    // a thick roll of slime under the top of the frame, with drips that stretch and wobble
+    sixFaces(g, rbox(.68, .07, .07, .03, 0, .31, .035), slime);
+    const drips = [];
+    for (let f = 0; f < 6; f++) { const o = faceObj(f, 10, 10, PF); g.add(o);
+      for (const [x, len, r] of [[-.27, .16, .038], [-.14, .08, .032], [-.02, .2, .04], [.12, .1, .034], [.25, .18, .038]]) {
+        const piv = new THREE.Group(); piv.position.set(x, .31, .035); o.add(piv);
+        const d = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 3, 7).translate(0, -len / 2, 0), slime); d.castShadow = true; piv.add(d);
+        const bead = new THREE.Mesh(new THREE.SphereGeometry(r * 1.15, 10, 6), slime); bead.position.y = -len - r * .4; piv.add(bead);
+        drips.push({ piv, bead, len, ph: Math.random() * 6, sp: .7 + Math.random() * .8 }); g.userData.tris += 140; } }
+    let tt = 0;
+    // the timer: a rounded dark case with red wires going into the frame
+    sixFaces(g, rbox(.46, .26, .1, .045, 0, 0, .05), shiny('#36373c', { roughness: .5 }));
+    sixFaces(g, join([new THREE.CylinderGeometry(.022, .022, .14, 8).rotateZ(Math.PI / 2).translate(-.29, .03, .05), new THREE.CylinderGeometry(.022, .022, .14, 8).rotateZ(Math.PI / 2).translate(.29, .03, .05),
+      new THREE.CylinderGeometry(.022, .022, .14, 8).rotateZ(Math.PI / 2).translate(-.29, -.04, .05), new THREE.CylinderGeometry(.022, .022, .14, 8).rotateZ(Math.PI / 2).translate(.29, -.04, .05)]), shiny('#e0261c'));
+    // the screen: red 7-segment digits, counting down once it is thrown
+    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const scrG = new THREE.PlaneGeometry(.36, .17).translate(0, 0, .101);
+    g.add(new THREE.Mesh(join(FM.map(m => scrG.clone().applyMatrix4(m))), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })));
+    const SEG = { 0: 'abcdef', 1: 'bc', 2: 'abdeg', 3: 'abcdg', 4: 'bcfg', 5: 'acdfg', 6: 'acdefg', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg' };
+    let shown = '';
+    function draw(sec) { const s = Math.max(0, Math.ceil(sec)), txt = String(Math.floor(s / 60)).padStart(2, '0') + String(s % 60).padStart(2, '0'); if (txt === shown) return; shown = txt;
+      const c = cv.getContext('2d'); c.fillStyle = '#120404'; c.fillRect(0, 0, 128, 64);
+      const dig = (d, x) => { const w = 18, h = 40, t = 5, y = 12; const R = (a, b, cw, ch) => c.fillRect(x + a, y + b, cw, ch);
+        for (const sg of 'abcdefg') { c.fillStyle = SEG[d].includes(sg) ? '#ff2a1a' : '#2a0806';
+          ({ a: () => R(t, 0, w - 2 * t, t), b: () => R(w - t, t, t, h / 2 - t), c: () => R(w - t, h / 2, t, h / 2 - t), d: () => R(t, h - t, w - 2 * t, t), e: () => R(0, h / 2, t, h / 2 - t), f: () => R(0, t, t, h / 2 - t), g: () => R(t, h / 2 - t / 2, w - 2 * t, t) })[sg](); } };
+      [...txt].forEach((d, i) => dig(+d, 10 + i * 26 + (i > 1 ? 10 : 0)));
+      c.fillStyle = '#ff2a1a'; c.fillRect(62, 24, 4, 4); c.fillRect(62, 38, 4, 4); tex.needsUpdate = true; }
+    let left = 7, armed = false; draw(left);
+    g.userData.arm = (secs = 7) => { left = secs; armed = true; draw(left); };
+    g.userData.reset = (secs = 7) => { left = secs; armed = false; draw(left); };
+    g.userData.update = dt => { tt += dt; goo.userData.update(dt); if (armed) { left -= dt; draw(left); }
+      for (const d of drips) { const k = Math.sin(tt * d.sp + d.ph); d.piv.scale.set(1 - k * .08, 1 + k * .22, 1); d.bead.scale.setScalar(1 + Math.max(0, k) * .25); } };
+    return g;
+  }
+
+  // ---------- liquid filling (seen through glass): a few steps through flowing, folded noise ----------
+  // mode 0: killstreak colours (every colour, flowing like paint in water); mode 1: liquid gold with glitter
+  function liquid(half, mode) {
+    const m = new THREE.ShaderMaterial({ side: THREE.FrontSide, uniforms: { t: { value: Math.random() * 20 }, hs: { value: half } },
+      vertexShader: `varying vec3 vp; varying vec3 co; void main(){ vp = position; co = (inverse(modelMatrix) * vec4(cameraPosition, 1.)).xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+      fragmentShader: `uniform float t, hs; varying vec3 vp; varying vec3 co;
+        float h(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7)))*43758.5453); }
+        float n(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+          return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z); }
+        float fb(vec3 p){ return n(p)*.55 + n(p*2.03+7.1)*.3 + n(p*4.1-3.3)*.15; }
+        void main(){
+          vec3 rd = normalize(vp - co);
+          // where the ray enters the box
+          // from where the ray meets the front of the liquid to where it leaves at the back
+          vec3 t0 = (-hs - co) / rd, t1 = (hs - co) / rd, tf = max(t0, t1);
+          float ta = length(vp - co), tb = min(min(tf.x, tf.y), tf.z);
+          vec3 acc = vec3(0.); float wsum = 0.;
+          for (int i = 0; i < 6; i++) {
+            float k = (float(i) + .5) / 6.; vec3 p = co + rd * mix(ta, tb, k);
+            vec3 q = p * ${['3.2', '2.3', '3.'][mode]}; float ts = ${['.7', '.45', '.5'][mode]};
+            // fold the space with itself so it flows like liquid
+            vec3 w = vec3(fb(q + vec3(0., 0., t*.25*ts)), fb(q + vec3(5.2, 1.3, -t*.22*ts)), fb(q + vec3(-3.1, 7.7, t*.2*ts)));
+            float f = fb(q + w * 2.4 + vec3(0., t*.12*ts, 0.));
+            vec3 c;
+            ${[`// a flowing galaxy: deep space, clouds of pink, violet and cyan nebula swirling round, a bright core, and stars
+            vec3 sp = vec3(.015,.01,.05);
+            float neb = smoothstep(.28, .72, f);
+            vec3 nc = mix(vec3(.55,.08,.75), vec3(1.,.25,.6), smoothstep(.3,.7,w.x));
+            nc = mix(nc, vec3(.1,.65,1.), smoothstep(.45,.7,w.y));
+            nc = mix(nc, vec3(1.,.55,.2), smoothstep(.7,.9,w.z) * .6);
+            c = sp + nc * neb * 1.7;
+            float arm = sin(atan(p.z, p.x) * 2. - length(p.xz) * 18. + t * .5 + f * 3.) * .5 + .5;
+            c += nc * arm * smoothstep(.3, .0, length(p.xz)) * smoothstep(.2, .0, abs(p.y)) * .9;
+            c += vec3(1.,.9,.75) * smoothstep(.1, .0, length(p)) * 1.4;
+            vec3 sc = p * 55.; float sh = h(floor(sc));
+            c += vec3(.9,.95,1.) * step(.965, sh) * smoothstep(.45, .1, length(fract(sc) - .5)) * (.6 + .4 * sin(t * 4. + sh * 50.)) * 2.;`, `// thick molten gold: big slow folds, deep amber in the valleys, bright creamy bands on the ridges
+            float ridge = 1. - abs(f - .52) * 7.;
+            c = mix(vec3(.32,.13,.0), vec3(.95,.55,.05), smoothstep(.2,.62,f));
+            c += vec3(1.,.86,.45) * pow(clamp(ridge, 0., 1.), 3.) * .9;
+            c += vec3(1.,.95,.75) * pow(clamp(1. - abs(w.y - .5) * 9., 0., 1.), 4.) * .35;
+            float g = h(floor(p * 120. + w * 3. + vec3(0., t * .4, 0.)));
+            c += vec3(1.,.95,.7) * step(.985, g) * (.5 + .5*sin(t*6. + g*60.));`, `// thick sticky goo: dark green in the folds, bright lime on the ridges, glossy streaks and trapped bubbles
+            float ridge = 1. - abs(f - .5) * 6.;
+            c = mix(vec3(.05,.22,.0), vec3(.45,.95,.08), smoothstep(.22,.66,f));
+            c += vec3(.85,1.,.55) * pow(clamp(ridge, 0., 1.), 4.) * .7;
+            c += vec3(.9,1.,.8) * pow(clamp(1. - abs(w.z - .5) * 10., 0., 1.), 5.) * .4;
+            vec3 bc = p * 26. + vec3(0., t * .3, 0.), bi = floor(bc); float bh = h(bi);
+            float bd = length(fract(bc) - .5 - (vec3(h(bi + 1.), h(bi + 2.), h(bi + 3.)) - .5) * .4);
+            if (bh > .93) c += vec3(.8,1.,.6) * smoothstep(.2, .14, bd) * smoothstep(.06, .12, bd) * .8;`][mode]}
+            float wt = exp(-k * ${['3.', '7.', '9.'][mode]}); acc += c * wt; wsum += wt;
+          }
+          gl_FragColor = vec4(acc / wsum * ${['1.15', '1.25', '1.1'][mode]}, 1.);
+        }` });
+    const box = new THREE.Mesh(new THREE.BoxGeometry(half * 2, half * 2, half * 2), m);
+    box.userData.update = dt => { m.uniforms.t.value += dt; };
+    return box;
+  }
+  const glassMat = (tint = '#ffffff', op = .12) => new THREE.MeshPhysicalMaterial({ color: tint, transparent: true, opacity: op, roughness: .03, metalness: .1, clearcoat: 1, clearcoatRoughness: .02, depthWrite: false, envMapIntensity: 1.6 });
+  let _dg, _dp; const DAM_GOLD = () => _dg || (_dg = damascus('#ffe58a', '#d99a2e', 5)), DAM_PURPLE = () => _dp || (_dp = damascus('#d3a8ff', '#8a4fe0', 9)), DAM_PURPLE_DK = () => _dpk || (_dpk = damascus('#9a5ef0', '#3a1078', 9)); let _dpk;
+  // a rounded frame: twelve bars along the edges with soft, rounded corners (used by the glass-window blocks)
+  function roundCage(mat) {
+    const t = F / N, r = .045, c = .5 - t / 2, bars = [];
+    for (const a of [-c, c]) for (const b of [-c, c]) {
+      bars.push(new RBOX(1, t, t, 2, r).translate(0, a, b));
+      bars.push(new RBOX(t, 1, t, 2, r).translate(a, 0, b));
+      bars.push(new RBOX(t, t, 1, 2, r).translate(a, b, 0)); } // (they overlap only in the corners, where they match exactly)
+    const geo = join(bars), P = geo.attributes.position, Nn = geo.attributes.normal, uv = geo.attributes.uv;
+    if (!geo.userData.uvd) for (let i = 0; i < P.count; i++) { const ax = Math.abs(Nn.getX(i)), ay = Math.abs(Nn.getY(i)), az = Math.abs(Nn.getZ(i)), x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+      if (ax >= ay && ax >= az) uv.setXY(i, z + .5, y + .5); else if (ay >= az) uv.setXY(i, x + .5, z + .5); else uv.setXY(i, x + .5, y + .5); }
+    geo.userData.uvd = 1;
+    const g = new THREE.Group(), m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; g.add(m);
+    // the little corner holes, as dark squares set into the frame
+    const hole = new THREE.PlaneGeometry(.045, .045), hs = [];
+    for (let f = 0; f < 6; f++) for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) hs.push(hole.clone().translate(u * (.5 - t / 2), v * (.5 - t / 2), .5 - PF + .001).applyMatrix4(FM[f]));
+    g.add(new THREE.Mesh(join(hs), new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: .55, depthWrite: false })));
+    g.userData.tris = geo.attributes.position.count / 3 + 48; return g; }
+  function gold() {
+    const g = roundCage(new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: .22, metalness: .8, envMapIntensity: 1.3, clearcoat: .8, clearcoatRoughness: .2, map: DAM_GOLD() }));
+    const fill = liquid(.398, 1); g.add(fill);
+    // glass set back into the frame, where the other blocks have their panel
+    const gm = glassMat('#ffe9a8', .16), pg = new THREE.PlaneGeometry(14 / N, 14 / N);
+    for (let f = 0; f < 6; f++) { const o = faceObj(f, 10, 10, .5 - D / N); const m = new THREE.Mesh(pg, gm); m.renderOrder = 2; o.add(m); g.add(o); }
+    g.userData.update = dt => fill.userData.update(dt);
+    return g;
+  }
+  function star() {
+    const dam = DAM_PURPLE();
+    const g = roundCage(new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: .35, metalness: .35, clearcoat: .7, clearcoatRoughness: .2, map: DAM_PURPLE_DK() }));
+    // the panel: a flat plate with a clean, straight-edged star cut out of it
+    const sq = 7 / N, star = new THREE.Shape(), hole = new THREE.Path();
+    star.moveTo(-sq, -sq); star.lineTo(sq, -sq); star.lineTo(sq, sq); star.lineTo(-sq, sq); star.lineTo(-sq, -sq);
+    const sp = []; for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = (i % 2 ? 2.55 : 6.2) / N; sp.push([Math.cos(a) * r, Math.sin(a) * r - .2 / N]); }
+    hole.moveTo(...sp[0]); for (let i = sp.length - 1; i > 0; i--) hole.lineTo(...sp[i]); hole.lineTo(...sp[0]); star.holes.push(hole);
+    const plate = new THREE.ExtrudeGeometry(star, { depth: 1 / N - .008, bevelEnabled: true, bevelThickness: .004, bevelSize: .004, bevelSegments: 1, steps: 1 });
+    plate.translate(0, 0, -1 / N + .004);
+    const pm = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: .3, metalness: .2, clearcoat: .8, clearcoatRoughness: .15, map: dam, transparent: true, opacity: .7 }); // slightly see-through: the galaxy glows behind it
+    const sg = new THREE.ShapeGeometry(new THREE.Shape(sp.map(p => new THREE.Vector2(...p)))), gm = glassMat('#f1e6ff', .14);
+    for (let f = 0; f < 6; f++) { const o = faceObj(f, 10, 10, .5 - D / N); const pl = new THREE.Mesh(plate, pm); pl.castShadow = pl.receiveShadow = true; o.add(pl);
+      const gl = new THREE.Mesh(sg, gm); gl.position.z = -.002; gl.renderOrder = 2; o.add(gl); g.add(o); }
+    const fill = liquid(.345, 0); g.add(fill);
+    g.userData.update = dt => fill.userData.update(dt);
+    g.userData.tris += (plate.index ? plate.index.count : plate.attributes.position.count) / 3 * 6;
+    return g;
+  }
+
+  // ---------- the flags (chonks): circuit-board half cubes that interlock ----------
+  const CT = {}; function circuitTex(hex) { return CT[hex] || (CT[hex] = circuitTexBuild(hex)); }
+  function circuitTexBuild(hex) {
+    const S = 512, c = document.createElement('canvas'), e = document.createElement('canvas'); c.width = c.height = e.width = e.height = S;
+    const g = c.getContext('2d'), ge = e.getContext('2d'), col = new THREE.Color(hex), R = mulberry(7);
+    const css = (k, l = 1) => { const q = col.clone().multiplyScalar(k); return `rgb(${Math.min(255, q.r * 255 * l) | 0},${Math.min(255, q.g * 255 * l) | 0},${Math.min(255, q.b * 255 * l) | 0})`; };
+    g.fillStyle = css(.62); g.fillRect(0, 0, S, S); ge.fillStyle = '#000'; ge.fillRect(0, 0, S, S);
+    // traces: little Manhattan paths with 45° corners
+    for (let i = 0; i < 46; i++) {
+      let x = (R() * 32 | 0) * 16, y = (R() * 32 | 0) * 16; const glow = i < 7;
+      g.strokeStyle = css(.95); g.lineWidth = glow ? 6 : 3; g.beginPath(); g.moveTo(x, y);
+      if (glow) { ge.strokeStyle = css(1.4, 1.2); ge.lineWidth = 5; ge.beginPath(); ge.moveTo(x, y); }
+      for (let s = 0; s < 4; s++) { const dir = R() * 4 | 0, L = 32 + (R() * 6 | 0) * 16; if (dir === 0) x += L; else if (dir === 1) y += L; else if (dir === 2) { x += L * .7; y += L * .7; } else y -= L;
+        g.lineTo(x, y); if (glow) ge.lineTo(x, y); }
+      g.stroke(); if (glow) ge.stroke();
+      g.fillStyle = '#d9a640'; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); g.fillStyle = css(.4); g.beginPath(); g.arc(x, y, 2.5, 0, 7); g.fill();
+    }
+    // chips with pins, small parts
+    for (let i = 0; i < 9; i++) { const w = 40 + R() * 50, h = 30 + R() * 40, x = R() * (S - w), y = R() * (S - h);
+      g.fillStyle = '#9a9aa0'; for (let k = 6; k < w - 4; k += 8) { g.fillRect(x + k, y - 5, 3, 5); g.fillRect(x + k, y + h, 3, 5); }
+      g.fillStyle = '#16161a'; g.fillRect(x, y, w, h); g.fillStyle = '#26262c'; g.fillRect(x + 4, y + 4, w - 8, 3); }
+    for (let i = 0; i < 40; i++) { const x = R() * S, y = R() * S; g.fillStyle = R() < .5 ? '#2a2a30' : '#c9a24a'; g.fillRect(x, y, 10, 5); }
+    const t = new THREE.CanvasTexture(c), te = new THREE.CanvasTexture(e); t.colorSpace = te.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return [t, te];
+  }
+  // (both halves use the same shape: turning the twin half way round puts its teeth exactly in the other's gaps)
+  // one half: a solid body 7 steps wide, then a zone 6 steps wide of 5×5 teeth in a checkerboard (parity 0 or 1).
+  // The twin uses the other parity and sits mirrored, so the two together fill the 20×20×20 cube exactly.
+  const BODY = 7, TEETH = 6, T = 5;
+  function chonkVox(parity) { const X = BODY + TEETH, vox = new Uint8Array(X * N * N);
+    for (let z = 0; z < N; z++) for (let y = 0; y < N; y++) for (let x = 0; x < X; x++) {
+      const on = x < BODY || ((((y / T) | 0) + ((z / T) | 0)) % 2 === parity); vox[x + X * (y + N * z)] = on ? 1 : 0; }
+    return vox; }
+  function chonk(hex, parity = 0) {
+    const [map, emi] = circuitTex(hex), X = BODY + TEETH;
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map, emissiveMap: emi, emissive: '#ffffff', emissiveIntensity: 1.2, roughness: .35, metalness: .15 });
+    const g = mesh(chonkVox(0), X, N, N, [{ c: '#ffffff' }], { material: mat, uvScale: 1 });
+    // the mesh is centred on its own box; shift so it sits in the left part of the shared cube
+    g.children.forEach(m => m.position.x = (X / 2 - N / 2) / N);
+    // the chip on top, with its glowing core
+    const chip = new THREE.Mesh(new THREE.BoxGeometry(.22, .035, .22), new THREE.MeshStandardMaterial({ color: '#141418', roughness: .4 }));
+    chip.position.set((BODY / 2 - N / 2) / N, .5 + .0175, 0); g.add(chip);
+    const core = new THREE.Mesh(new THREE.PlaneGeometry(.08, .08), new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(1.6), toneMapped: false }));
+    core.rotation.x = -Math.PI / 2; core.position.set(chip.position.x, .5 + .036, 0); g.add(core);
+    const pinM = new THREE.MeshStandardMaterial({ color: '#b8b8c0', metalness: .8, roughness: .3 }), pinG = new THREE.BoxGeometry(.012, .01, .03);
+    for (let i = 0; i < 6; i++) for (const s of [-1, 1]) { const p = new THREE.Mesh(pinG, pinM); p.position.set(chip.position.x - .09 + i * .036, .5 + .005, s * .125); g.add(p); const q = p.clone(); q.rotation.y = Math.PI / 2; q.position.set(chip.position.x + s * .125, .5 + .005, -.09 + i * .036); g.add(q); }
+    g.userData.tris += 12 + 2 + 24 * 12;
+    // the twin (warm half) is turned half way round so its teeth face this one's
+    if (parity) g.rotation.y = Math.PI;
+    return g;
+  }
+
+  function flag(hex, parity = 0) {
+    const g = mesh(carve({ body: 1, window: true, hollow: true }), N, N, N, [{ c: '#d4e4ff', r: .12, map: false, cc: 1, env: 1.8 }]);
+    g.children.forEach(m => { m.material.transparent = true; m.material.opacity = .62; m.castShadow = false; m.renderOrder = 3; });
+    const gm = glassMat(new THREE.Color(hex).lerp(new THREE.Color('#ffffff'), .55), .16), pg = new THREE.PlaneGeometry(14 / N, 14 / N);
+    for (let f = 0; f < 6; f++) { const o = faceObj(f, 10, 10, .5 - D / N); const m = new THREE.Mesh(pg, gm); m.renderOrder = 2; o.add(m); g.add(o); }
+    const c = chonk(hex, parity), pivot = new THREE.Group(); c.scale.setScalar(.64); pivot.add(c); g.add(pivot);
+    let t = Math.random() * 10;
+    g.userData.tris += c.userData.tris; g.userData.chonk = c;
+    g.userData.update = dt => { t += dt; pivot.rotation.y += dt * 1.4; pivot.rotation.x = Math.sin(t * .9) * .5; pivot.rotation.z = Math.cos(t * .7) * .35; pivot.position.y = Math.sin(t * 1.6) * .035; };
+    return g;
+  }
+  kit.make = (kind, o = {}) => { MK = kind + (o.color || '') + (o.parity || 0); MN = 0;
+    const g = kind === 'bomb' ? bomb() : kind === 'ice' ? ice() : kind === 'homing' ? homing() : kind === 'sticky' ? sticky() : kind === 'gold' ? gold() : kind === 'star' ? star() : kind === 'flag' ? flag(o.color || '#008CFF', o.parity || 0) : chonk(o.color || '#008CFF', o.parity || 0);
+    return g; }; // (the game keeps them moving itself: nothing is kept here)
+  kit.update = dt => { for (const g of kit.list) g.userData.update(dt); };
+  kit.PAIRS = [['#008CFF', '#FF2D2D'], ['#00E5FF', '#FF7A00'], ['#39FF14', '#FFD400'], ['#8A2BE2', '#FF1493']];
+  return kit;
+}
+
+const SKIN = (() => {
+  const kit = makeBlockKit(THREE, RoundedBoxGeometry, mergeGeometries);
+  const KIND = { bomb: 'bomb', freeze: 'ice', homing: 'homing', sticky: 'sticky', gold: 'gold', streak: 'star', flag: 'flag' };
+  let ENV = null; // the shiny bits need something to reflect; the HD look has its own, otherwise a soft studio
+  const env = () => { if (scene.environment) return null; if (!ENV) try { const pm = new THREE.PMREMGenerator(renderer); ENV = pm.fromScene(new RoomEnvironment(), .04).texture; pm.dispose(); } catch (_) { ENV = false; } return ENV || null; };
+  const hideM = new THREE.MeshBasicMaterial({ visible: false });
+  function make(kind, hex, team) {
+    const k = KIND[kind], g = k === 'flag' ? kit.make('flag', { color: hex, parity: team === 'red' ? 1 : 0 }) : kit.make(k), E = env();
+    g.traverse(o => { const m = o.material; if (m && m.isMeshStandardMaterial && !m.userData.kitEnv) { m.userData.kitEnv = 1; if (E) { m.envMap = E; m.envMapIntensity = (m.envMapIntensity ?? 1) * .75; m.needsUpdate = true; } } });
+    g.userData.kind = kind; return g; }
+  const keyOf = e => e.kind + (e.kind === 'flag' ? '#' + e.color.getHexString() + (e.team || '') : '');
+  function wear(M, e) { // put the new model inside this mesh (a block, or the one on a robot's head)
+    const key = keyOf(e);
+    if (M.userData.skinKey !== key || !M.userData.skin || M.userData.skin.parent !== M) {
+      if (M.userData.skin && M.userData.skin.parent === M) M.remove(M.userData.skin);
+      const g = make(e.kind, '#' + e.color.getHexString(), e.team); M.add(g); M.userData.skin = g; M.userData.skinKey = key; }
+    if (M.material !== hideM) M.material = hideM;
+    return M.userData.skin; }
+  function strip(M) { if (M && M.userData.skin) { if (M.userData.skin.parent === M) M.remove(M.userData.skin); M.userData.skin = null; M.userData.skinKey = null; } }
+  // build one of each kind now, while the game loads, so the first one in a match doesn't stutter
+  try { for (const k of ['bomb', 'freeze', 'homing', 'sticky', 'gold', 'streak']) make(k, '#ffffff', null); for (const t of ['blue', 'red']) for (const c of TEAMS[t].cols) make('flag', c, t); } catch (err) { console.warn('block skins', err); }
+  return { KIND, wear, strip, hideM };
+})();
+
+// every frame: dress the special blocks, keep their insides moving, set the semtex timers
+{ const pH = pulseHalos; let last = 0;
+  pulseHalos = function (t) { pH(t); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t;
+    for (const e of blocks) { if (e.dead || !e.mesh || !SKIN.KIND[e.kind]) continue;
+      if (e.core) { e.mesh.remove(e.core); e.core = null; } // (the old insides: gunpowder, water, arrow, web)
+      const g = SKIN.wear(e.mesh, e); if (!e.mesh.visible || e.frozenT > 0) continue;
+      if (g.userData.reset && e.kind === 'sticky') { if (!g.userData.init) { g.userData.init = 1; g.userData.reset(2.5); } if (e.stuck) { if (!g.userData.on) { g.userData.on = 1; g.userData.arm(e.stuck.fuse); } } else if (g.userData.on) { g.userData.on = 0; g.userData.reset(2.5); } }
+      if (g.userData.update) g.userData.update(dt); }
+    for (const r of robots) { const h = r.model && r.model.held; if (!h) continue; const g = h.userData.skin;
+      if (g && h.visible && g.userData.update && !(r.frozenT > 0)) g.userData.update(dt); } };
+}
+// the block on a robot's head wears the new model too (instead of the old see-through box with something inside)
+{ const rhS = refreshHeld; refreshHeld = function (r) { rhS(r); const h = r.model && r.model.held, e = r.stack[0]; if (!h) return;
+    if (e && SKIN.KIND[e.kind] && !r.heldAnimal) { if (h.userData.inner) { h.remove(h.userData.inner); h.userData.inner = null; } SKIN.wear(h, e); }
+    else SKIN.strip(h); }; }
 
 // test hooks for the newer bits (headless checks only)
 Object.assign(window.__nymbo, { nbrPose, nbrAntPose, nbrAntRest, nbrHeld, startReplay: () => startReplay(), drawReplay: () => drawReplay(), onPlayerKO: (...a) => onPlayerKO(...a), nymMeshModel, NBR_SWAPU, NBR_HD, NBR_TS, grabBlock: (...a) => grabBlock(...a), freezeRobot: (...a) => freezeRobot(...a), ragdoll: (...a) => ragdoll(...a), get blocks() { return blocks; }, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
