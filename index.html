@@ -1151,17 +1151,18 @@ if (!DESERT && !JUNGLE && !TOY && !PLAT && !NEON) { ledges(FORT.blue.x, FORT.blu
 // clouds (drawing only)
 // a sea of clouds far below the island (look over the edge): the world floats in the sky
 {
-  const geo = new RoundedBoxGeometry(1, 1, 1, 2, .3), mat = new LiteMat({ color: 0xffffff, emissive: 0xdbe8fa, emissiveIntensity: .55 });
-  const puffs = [];
-  for (let i = 0; i < 260; i++) {
-    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 230, x = Math.cos(a) * r, z = Math.sin(a) * r;
-    const w = rr(8, 22), d = rr(8, 22), h = rr(3, 7);
-    const dn = PLAT ? -38 : 0; // (portal platforms: the clouds are far, far below)
-    puffs.push([x, rr(-17, -11) + dn, z, w, h, d]);
-    if (rnd() < .6) puffs.push([x + rr(-6, 6), rr(-12, -8) + dn, z + rr(-6, 6), w * .6, h * .9, d * .6]); // bumpy tops
+  // soft, lumpy cumulus (not pillows): each cloud is a flat-bottomed base with a few round heaps piled on top
+  const geo = new THREE.SphereGeometry(1, 14, 9), mat = new LiteMat({ color: 0xffffff, emissive: 0xc9d8f0, emissiveIntensity: .38 });
+  const puffs = [], dn = PLAT ? -38 : 0; // (portal platforms: the clouds are far, far below)
+  for (let i = 0; i < 190; i++) {
+    const a = rnd() * Math.PI * 2, r = 30 + Math.sqrt(rnd()) * 205, x = Math.cos(a) * r, z = Math.sin(a) * r, y0 = rr(-17, -12) + dn;
+    const w = rr(9, 20), d = rr(8, 17), ang = rnd() * 3;
+    puffs.push([x, y0, z, w, rr(2.2, 3.2), d, ang]); // (the wide, flattish base)
+    const n = 2 + Math.floor(rnd() * 3);
+    for (let k = 0; k < n; k++) { const s = rr(.35, .6), ox = rr(-.5, .5) * w, oz = rr(-.45, .45) * d; puffs.push([x + ox, y0 + rr(.5, 1.5), z + oz, w * s, w * s * rr(.28, .42), w * s * rr(.8, 1.1), ang]); }
   }
   const cm = new THREE.InstancedMesh(geo, mat, puffs.length);
-  puffs.forEach(([x, y, z, w, h, d], i) => { tmpM.compose(tmpV.set(x, y, z), tmpQ.setFromAxisAngle(V(0, 1, 0), rnd() * 3), tmpS.set(w, h, d)); cm.setMatrixAt(i, tmpM); });
+  puffs.forEach(([x, y, z, w, h, d, ang], i) => { tmpM.compose(tmpV.set(x, y, z), tmpQ.setFromAxisAngle(V(0, 1, 0), ang), tmpS.set(w * .55, h, d * .55)); cm.setMatrixAt(i, tmpM); });
   if (!NEON) scene.add(cm); // (Neon City floats over a grid of light, not a sea of cloud)
 }
 const cloudCells = [];
@@ -15466,10 +15467,18 @@ if (!TOY && !PLAT && !REEF && !(NM && NM.noMountains)) {
       puffMats.push([m, m.opacity]); const s = new THREE.Sprite(m), sz = (top ? 14 : 18) + cr() * 12; s.scale.set(sz * 1.3, sz, 1); s.position.set((cr() - .5) * wid, top ? cr() * 8 + 3 : -2 - cr() * 3, (cr() - .5) * 8); s.renderOrder = -4; cl.add(s); }
     clouds.add(cl); }
   scene.add(clouds);
+  // ---- the little clouds over the island were stacks of cubes: swap them for soft puffs ----
+  for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === boxGeo && o.count === cloudCells.length) scene.remove(o);
+  const near = new THREE.Group(), nr = prng(23);
+  if (!NEON) for (let i = 0; i < cloudCells.length; i += 10) { const [x0, y0, z0] = cloudCells[i], cl = new THREE.Group(); cl.position.set(x0, y0 + 2, z0);
+    for (let k = 0; k < 7; k++) { const top = k < 5, m = new THREE.SpriteMaterial({ map: puffT, color: top ? 0xffffff : new THREE.Color().copy(haze).lerp(new THREE.Color('#9aa6c2'), .45), transparent: true, opacity: top ? .9 : .75, depthWrite: false, fog: false });
+      puffMats.push([m, m.opacity]); const s = new THREE.Sprite(m), sz = (top ? 6 : 8) + nr() * 5; s.scale.set(sz * 1.35, sz, 1); s.position.set((nr() - .5) * 14, top ? nr() * 3 + 1 : -1 - nr() * 1.5, (nr() - .5) * 5); s.renderOrder = -3; cl.add(s); }
+    near.add(cl); }
+  scene.add(near);
   // ---- every frame: clouds drift, the sky's clouds move, the blackout darkens it all ----
   const pH = pulseHalos; let last = 0;
   pulseHalos = function (t) { pH(t); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t;
-    skyDome.material.uniforms.uT.value += dt; mistU.uT.value += dt; clouds.rotation.y += dt * .0016;
+    skyDome.material.uniforms.uT.value += dt; mistU.uT.value += dt; clouds.rotation.y += dt * .0016; near.rotation.y += dt * .003;
     const k = 1 - .95 * skyU.dark.value; landU.uK.value = k; for (const [m, o] of puffMats) m.opacity = o * k; };
 }
 
