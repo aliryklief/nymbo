@@ -15406,15 +15406,19 @@ if (!TOY && !PLAT && !REEF && !(NM && NM.noMountains)) {
     let mx = 0; for (let m = 0; m <= M; m++) mx = Math.max(mx, base1[m]); for (let m = 0; m <= M; m++) base1[m] /= mx;
     const feats = []; for (let k = 0; k < (layer === 2 ? 10 : 22); k++) { const r = rnd(); feats.push({ a: rnd() * Math.PI * 2, w: layer === 2 ? .08 + rnd() * .15 : (r < .35 ? .025 + rnd() * .03 : .035 + rnd() * .07), h: (.25 + rnd() * .75) * (layer === 2 ? .35 : 1), kind: layer === 2 ? 'hump' : r < .35 ? 'spire' : r < .55 ? 'mesa' : r < .8 ? 'crag' : 'saddle' }); }
     const jag = a => { const m = Math.floor(((a / (Math.PI * 2)) % 1 + 1) % 1 * M); return base1[m]; };
-    const ridge = a => { let h = Math.pow(jag(a), rough) * .55;
-      const rag = Math.max(0, Math.sin(a * 3 + ph[1]) * Math.sin(a * 7 + ph[2])) * (layer === 2 ? .02 : .14); h += rag * (jag(a * 37 + ph[3]) * .7 + jag(a * 91 + ph[4]) * .3); /* (rough, uneven teeth) */ // (ragged teeth along some stretches only)
-      for (const f of feats) { let d = Math.abs(a - f.a); d = Math.min(d, Math.PI * 2 - d); if (d > f.w * 3) continue; const u = d / f.w;
-        if (f.kind === 'spire') h += f.h * .42 * Math.pow(Math.max(0, 1 - u), 1.3);
-        else if (f.kind === 'mesa') h = Math.max(h, f.h * .55 * (1 - THREE.MathUtils.smoothstep(u, .6, 1.15)) + h * THREE.MathUtils.smoothstep(u, .6, 1.15));
-        else if (f.kind === 'crag') h += f.h * .35 * Math.max(0, 1 - u) * (.6 + .4 * Math.abs(Math.sin(d * 900)));
-        else if (f.kind === 'saddle') h *= 1 - .45 * Math.max(0, 1 - u * u);
-        else h += f.h * .5 * Math.max(0, 1 - u * u); }
-      return lo + (hi - lo) * Math.min(1.25, h); };
+    // ridged noise (the way real mountain skylines look: sharp crests, rounded valleys, detail at every size, never
+    // repeating), with its input bent by more noise so nothing lines up; the scattered features ride on top of it
+    const T = Array.from({ length: 4096 }, () => rnd()), vn = x => { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return T[((i % 4096) + 4096) % 4096] * (1 - u) + T[(((i + 1) % 4096) + 4096) % 4096] * u; };
+    const ridged = x => { let s = 0, amp = .55, fr = 1, w = 1; for (let o = 0; o < 7; o++) { const n = 1 - Math.abs(2 * vn(x * fr + o * 31.7) - 1), r = n * n * w; s += r * amp; w = Math.min(1, r * 2.2); fr *= 2.13; amp *= .52; } return s; };
+    const ridge = a => { const x = a / (Math.PI * 2) * (layer === 2 ? 26 : 42), wx = x + (vn(x * .37 + 5) - .5) * 3.2; // (the input is bent, so peaks don't fall in rows)
+      let h = (vn(wx * .22 + 3) * .6 + vn(wx * .55 + 9) * .4) * .5 + Math.pow(ridged(wx), rough) * (layer === 2 ? .55 : .6); /* (broad masses, with ragged crests on top) */
+      const calm = vn(x * .11 + 17); h *= .55 + .65 * calm; // (some stretches high and jagged, some low and calm)
+      for (const f of feats) { let d = Math.abs(a - f.a); d = Math.min(d, Math.PI * 2 - d); if (d > f.w * 3) continue; const u = d / f.w * (.8 + .4 * vn(a * 300 + f.a)), jitter = .85 + .3 * vn(a * 900 + f.a * 7);
+        if (f.kind === 'spire') h += f.h * .38 * Math.pow(Math.max(0, 1 - u), 1.3) * jitter;
+        else if (f.kind === 'mesa') { const top = f.h * .5 + (vn(a * 520 + f.a) - .5) * .05, e = THREE.MathUtils.smoothstep(u, .5 + .2 * vn(a * 40), 1.2); h = Math.max(h, top * (1 - e) + h * e); }
+        else if (f.kind === 'crag') h += f.h * .3 * Math.max(0, 1 - u) * jitter;
+        else if (f.kind === 'saddle') h *= 1 - .4 * Math.max(0, 1 - u * u); else h += f.h * .45 * Math.max(0, 1 - u * u) * jitter; }
+      return lo + (hi - lo) * Math.min(1.3, h); };
     const pos = [], tt = [], ll = [], idx = [];
     for (let j = 0; j <= N; j++) { const a = j / N * Math.PI * 2, H = ridge(a);
       for (let k = 0; k <= rows; k++) { const t = k / rows, y = base + (H - base) * Math.pow(t, .85), r = R + (1 - t) * (1 - t) * 30; pos.push(Math.cos(a) * r, y, Math.sin(a) * r * .94); tt.push(t * (H - base) / (hi - base)); ll.push(layer); } }
@@ -15433,12 +15437,12 @@ if (!TOY && !PLAT && !REEF && !(NM && NM.noMountains)) {
       float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
       float fb(vec2 p){ float s = 0., a = .5; for (int i = 0; i < 5; i++) { s += a * n2(p); p = p * 2.07 + 1.3; a *= .5; } return s; }
       void main(){ float ang = atan(vP.z, vP.x); vec2 q = vec2(ang * 40., vP.y * .12);
-        vec3 N = normalize(vN); float streak = fb(vec2(ang * 120., vP.y * .05)), det = fb(q), lay = vL;
+        vec3 N = normalize(vN); float streak = fb(vec2(ang * 70., vP.y * .32)) * .6 + fb(vec2(ang * 190., vP.y * .9) + 3.) * .4, det = fb(q), lay = vL; /* (rock texture with no direction to it) */
         vec3 col; float hz;
         if (lay > 1.5) { col = mix(uHill2, uHill, smoothstep(0., 1., vT)) * (.85 + .3 * det);                       // hills
           float wd = smoothstep(.52, .6, fb(vec2(ang * 26., vP.y * .25) + 7.)) * (1. - smoothstep(.55, .9, vT)); col = mix(col, uWoods * (.8 + .4 * det), wd * .85); hz = .04; }
         else { col = mix(uMtn2, lay < .5 ? uPeak : uMtn, smoothstep(.1, .9, vT)) * (.7 + .5 * streak) * (.9 + .2 * det); // rock with streaks running down
-          float sl = lay < .5 ? .62 : .82; float sn = smoothstep(sl - .04, sl + .03, vT + (streak - .5) * .22 + N.y * .1); col = mix(col, uSnow * (.92 + .1 * det), sn); hz = lay < .5 ? .24 : .1; }
+          float sl = lay < .5 ? .62 : .82; float sn = smoothstep(sl - .05, sl + .05, vT + (fb(vec2(ang * 45., vP.y * .5) + 9.) - .5) * .35 + (fb(vec2(ang * 160., vP.y * 1.4)) - .5) * .12 + N.y * .12); /* (a patchy snow line, ragged at every scale) */ col = mix(col, uSnow * (.92 + .1 * det), sn); hz = lay < .5 ? .24 : .1; }
         float lit = .42 + .85 * max(dot(N, uSun), 0.) + .1 * N.y; col *= lit;
         col = mix(col, uHaze, clamp(hz + (1. - vT) * .28, 0., 1.)); // (the blue haze of distance, thicker low down)
         gl_FragColor = vec4(col * uK, 1.);
