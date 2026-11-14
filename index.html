@@ -15762,12 +15762,12 @@ const CL_TOUCH = matchMedia('(pointer: coarse)').matches; // (phones and tablets
 // shared GLSL: hash + value noise in 3D and 2D
 const ST_NOISE = `
   float stH1(float n){ return fract(sin(n) * 43758.5453); }
-  float stH3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+  float stH3(vec3 p){ p = fract(p * .1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); } // (no sin(): phones get stripes from it)
   float stN3(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
     return mix(mix(mix(stH3(i), stH3(i + vec3(1, 0, 0)), f.x), mix(stH3(i + vec3(0, 1, 0)), stH3(i + vec3(1, 1, 0)), f.x), f.y),
                mix(mix(stH3(i + vec3(0, 0, 1)), stH3(i + vec3(1, 0, 1)), f.x), mix(stH3(i + vec3(0, 1, 1)), stH3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
   float stF3(vec3 p){ return stN3(p) * .55 + stN3(p * 2.1 + 3.1) * .3 + stN3(p * 4.3 + 7.7) * .15; }
-  float stH2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float stH2(vec2 p){ vec3 q = fract(vec3(p.xyx) * .1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
   float stN2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(stH2(i), stH2(i + vec2(1, 0)), f.x), mix(stH2(i + vec2(0, 1)), stH2(i + vec2(1, 1)), f.x), f.y); }
   float stF2(vec2 p){ float s = 0., a = .5; for (int i = 0; i < 4; i++) { s += a * stN2(p); p = p * 2.07 + 1.7; a *= .5; } return s; }
 `;
@@ -15782,6 +15782,7 @@ function stoneMaterial(base) {
       ${ST_NOISE}
       vec3 stS; vec3 stD(vec3 p){ // where this point of the box ends up: taller/shorter top, slanted top, a lean, a twist, lumps, pushed out a bit
         vec3 q = p; float up = clamp(q.y + .5, 0., 1.);
+        if (aSt.w > 1.5 && aSt.w < 3.5) q *= vec3(1.05, 1.07, 1.05); // (tree pieces overlap a little: no lines where they meet)
         q.xz *= aEx.x + (1. - aEx.x) * 0.;
         q.y += aSt.y * up + aSt.z * p.x * up * up;
         q.x += aEx.y * p.y;
@@ -15836,6 +15837,7 @@ function stoneMesh(w, h, d, col, st, mv, ex, mat) {
   const M = new THREE.Mesh(g, mat); M.scale.set(w, h, d); M.castShadow = M.receiveShadow = true; if (col) { M.material = mat.clone(); M.material.color.set(col); M.material.onBeforeCompile = mat.onBeforeCompile; M.material.customProgramCacheKey = mat.customProgramCacheKey; } return M;
 }
 
+const CL_T0 = performance.now();
 if (CLX) {
   // ---------------- 1. candy-dream light ----------------
   { const C = c => new THREE.Color(c);
@@ -15898,9 +15900,11 @@ if (CLX) {
   // (or now and then a carved one), and the battlements on top get the lab's shaped tops (ramps, gables, points, round
   // tops, steps...), some taller, some lower. The plain box underneath stops drawing but still does all the physics;
   // each frame its position is copied onto its stone. One draw call per surface material (sandstone, granite, clay...).
-  const LABK = makeFortKit(THREE, RoundedBoxGeometry, mergeGeometries); LABK.setRes(CL_TOUCH ? 12 : 20);
+  const LABK = makeFortKit(THREE, RoundedBoxGeometry, mergeGeometries); LABK.setRes(CL_TOUCH ? 10 : 15);
   const RES = CL_TOUCH ? 6 : 10, hideA = new THREE.InstancedBufferAttribute(new Float32Array(N), 1); geo.setAttribute('aHide', hideA);
   { const ob = plainIM.material.onBeforeCompile; plainIM.material.onBeforeCompile = sh => { ob(sh); sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aHide;').replace('#include <project_vertex>', '#include <project_vertex>\nif (aHide > .5) gl_Position = vec4(0., 0., 2., 1.);'); }; plainIM.material.customProgramCacheKey = () => 'stone1h'; }
+  const TCACHE = {}, SCACHE = {}; const stoneGeoC = (w, h, sd, R, res) => { const key = w.toFixed(2) + 'x' + h.toFixed(2) + '@' + res, L = SCACHE[key] || (SCACHE[key] = []), v = Math.floor(R() * 6);
+    if (!L[v]) L[v] = LABK.stoneGeo(w, h, sd, R, res); const g = L[v].clone(); g.userData.crack = L[v].userData.crack; return g; }; // (six shapes per size, reused: much faster to load)
   const LAB = [], byFam = {}, R2 = LABK.rng(9001), clean = g => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(k)) g.deleteAttribute(k); if (!g.index) g = mergeVertices(g); return g; }; // (shared corners: about a fifth of the memory)
   // every stone carries its surface material's numbers on its own corners, so ONE material (one object) draws them all
   const famAttrs = (g, fam) => { const F = LABK.FAM[fam] || LABK.FAM.sandstone, n = g.attributes.position.count, A = [[F.mot[0], F.mot[1], F.grain[0], F.grain[1]], [F.bump, F.pits, F.vein, F.layer], [F.rough[0], F.rough[1], F.wear, F.grainDir || 0]];
@@ -15986,9 +15990,9 @@ if (CLX) {
     const base = e.kind === 'fort' ? LABK.teamCol('classic', e.team === 'red' ? '#FF2D2D' : '#008CFF', R) : e.color.clone(), col = LABK.shade(base, R, .05);
     let g, lift = 0, sy = 1;
     if (e.kind === 'tree') { g = clean(treeGeo(e)); return { e, g, fam: 'tree', local: new THREE.Matrix4().makeScale(1 / d.x, 1 / d.y, 1 / d.z) }; }
-    if (o.top && !o.tower) { const ks = Object.keys(LABK.T), k = ks[Math.floor(R() * ks.length)]; g = LABK.T[k](col, sd); if (w > 1.05) g = LABK.stretch(g, w); sy = .8 + R() * .6; g.scale(1, sy, 1); lift = (sy - 1) * h / 2; } // (shaped tops, some taller, some lower: a jagged skyline)
-    else if (e.kind === 'fort' && !o.tower && h > .9 && R() < .14) g = LABK.carvedPiece(w, h, col, sd, '#' + e.color.getHexString());
-    else g = LABK.paintStone(LABK.stoneGeo(w, h, sd, R, RES), LABK.shade(col, R));
+    if (o.top && !o.tower) { const ks = Object.keys(LABK.T), k = ks[Math.floor(R() * ks.length)]; { const key = k + w.toFixed(2) + '#' + Math.floor(R() * 3); if (!TCACHE[key]) { let t_ = LABK.T[k](col, sd); if (w > 1.05) t_ = LABK.stretch(t_, w); TCACHE[key] = clean(t_); } g = TCACHE[key].clone(); const ca = g.attributes.color.array; for (let q = 0; q < ca.length; q += 3) col.toArray(ca, q); } sy = .8 + R() * .6; /* (each top shape made once, then copied and recoloured) */ g.scale(1, sy, 1); lift = (sy - 1) * h / 2; } // (shaped tops, some taller, some lower: a jagged skyline)
+    else if (e.kind === 'fort' && !o.tower && h > .9 && R() < .09) g = LABK.carvedPiece(w, h, col, sd, '#' + e.color.getHexString());
+    else g = LABK.paintStone(stoneGeoC(w, h, sd, R, RES), LABK.shade(col, R));
     g = clean(g); g.computeBoundingBox(); const bb = g.boundingBox, gd = bb.max.z - bb.min.z; if (Math.abs(gd - dep) > .08) g.scale(1, 1, dep / gd * (o.top ? 1 : 1.02)); // (made exactly as deep as the block)
     let off = new THREE.Vector3(0, lift, 0), yaw = along ? Math.PI / 2 : 0;
     if (o.stick) { off.x += Math.cos(o.stickDir) * o.stick; off.z += Math.sin(o.stickDir) * o.stick; }
@@ -16027,7 +16031,7 @@ if (CLX) {
       return e; }; }
   window.__nymbo && (window.__nymbo.LAB = LAB);
   // one lab stone as its own mesh (the centre pole, the fence)
-  const labMesh = (w, h, d, col, fam, seed, wood) => { const R = LABK.rng(seed); let g = wood ? LABK.tint(LABK.lump(new RoundedBoxGeometry(w, h, d, 2, Math.min(.04, Math.min(w, h, d) * .25)), .04, seed), LABK.shade(new THREE.Color(col), R, .06)) : LABK.paintStone(LABK.stoneGeo(w, h, seed, R, RES), LABK.shade(new THREE.Color(col), R, .05));
+  const labMesh = (w, h, d, col, fam, seed, wood) => { const R = LABK.rng(seed); let g = wood ? LABK.tint(LABK.lump(new RoundedBoxGeometry(w, h, d, 2, Math.min(.04, Math.min(w, h, d) * .25)), .04, seed), LABK.shade(new THREE.Color(col), R, .06)) : LABK.paintStone(stoneGeoC(w, h, seed, R, RES), LABK.shade(new THREE.Color(col), R, .05));
     g = clean(g); if (!wood) { g.computeBoundingBox(); const gd = g.boundingBox.max.z - g.boundingBox.min.z; g.scale(1, 1, d / gd); }
     famAttrs(g, fam); const M = new THREE.Mesh(g, famMat(fam)); M.castShadow = M.receiveShadow = true; return M; };
 
@@ -16104,7 +16108,7 @@ if (CLX) {
   const FLOORB = []; // (where the floors are: no grass grows there)
   { const FR = LABK.rng(2024), fr = (a, b) => a + (b - a) * FR(), parts = {};
     const GREYS = ['#8e9097', '#9a9ca3', '#83858c', '#a3a39c', '#8a8a92', '#9c968c'];
-    let FRES = RES; const slab = (w, d, x, y, z, yaw, tx, tz, col, fam) => { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let g = LABK.paintStone(LABK.stoneGeo(w, d, sd, R, FRES), LABK.shade(new THREE.Color(col), R, .06));
+    let FRES = RES; const slab = (w, d, x, y, z, yaw, tx, tz, col, fam) => { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let g = LABK.paintStone(stoneGeoC(w, d, sd, R, FRES), LABK.shade(new THREE.Color(col), R, .06));
       g = clean(g); g.rotateX(-Math.PI / 2); g.computeBoundingBox(); const t = g.boundingBox.max.y - g.boundingBox.min.y; g.scale(1, .38 / t, 1); g.scale(1.05, 1, 1.05); g.computeBoundingBox(); g.translate(0, -g.boundingBox.max.y, 0);
       g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(tx, yaw, tz))); g.translate(x, y, z); (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); };
     function floor(cx, y, cz, inside, cells, o = {}) { // cells: [x,z] integer offsets; inside(x,z): is this cell part of the floor
@@ -16142,9 +16146,9 @@ if (CLX) {
       const fam = 'granite', ROCK = ['#7d7a78', '#6f6c6a', '#86817a', '#75716e'];
       for (let k = 0; k < 4; k++) { const Rk = (ISLAND.r - .2) * (1 - k * .24), yk = ISLAND.top - .55 - k * .75;
         for (let x = -5; x <= 5; x++) for (let z = -5; z <= 5; z++) { const dd = Math.hypot(x, z); if (dd > Rk + (FR() - .5) * .8) continue; if (k > 0 && dd < Rk - 1.6) continue; // (only the outer shell shows from below)
-          const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd), w = fr(.9, 1.3), h = fr(.7, 1); let g = clean(LABK.paintStone(LABK.stoneGeo(w, h, sd, R, RES), LABK.shade(new THREE.Color(ROCK[Math.floor(FR() * 4)]), R, .06)));
+          const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd), w = fr(.9, 1.3), h = fr(.7, 1); let g = clean(LABK.paintStone(stoneGeoC(w, h, sd, R, RES), LABK.shade(new THREE.Color(ROCK[Math.floor(FR() * 4)]), R, .06)));
           g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(fr(-.3, .3), FR() * 6.28, fr(-.3, .3)))); g.translate(x + fr(-.15, .15), yk - fr(0, .3), z + fr(-.15, .15)); (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); } }
-      const tip = clean(LABK.paintStone(LABK.stoneGeo(1.4, 1.2, 77, LABK.rng(77), RES), new THREE.Color('#6f6c6a'))); tip.rotateX(.4); tip.translate(0, ISLAND.top - 3.6, 0); parts.granite.push(famAttrs(clean(tip), 'granite')); }
+      const tip = clean(LABK.paintStone(stoneGeoC(1.4, 1.2, 77, LABK.rng(77), RES), new THREE.Color('#6f6c6a'))); tip.rotateX(.4); tip.translate(0, ISLAND.top - 3.6, 0); parts.granite.push(famAttrs(clean(tip), 'granite')); }
     const onFloor = (x, z) => FLOORB.some(b => Math.abs(x - b.x) < b.rx && Math.abs(z - b.z) < b.rz);
     for (const e of blocks) if (e.body && e.kind !== 'fort' && e.kind !== 'tree' && e.kind !== 'animal' && e.kind !== 'flag') { const t = e.body.translation(); if (t.y < 2 && onFloor(t.x, t.z)) { e.body.setTranslation({ x: t.x, y: t.y + .1, z: t.z }, true); if (e.spawnPos) e.spawnPos.y += .1; } }
     for (const sl of slots) if (onFloor(sl.pos.x, sl.pos.z)) sl.baseY = (sl.baseY || 0) + .1;
@@ -16153,10 +16157,21 @@ if (CLX) {
       const v = new THREE.Vector3(), c = new THREE.Color();
       const metal = [], isGate = (x, z) => ['blue', 'red'].some(t => GATES[t] && Math.abs(x - GATES[t].x) < .8 && Math.abs(z - GATES[t].z) < 2.8);
       for (let k = 0; k < o.count; k++) { o.getMatrixAt(k, m); v.setFromMatrixPosition(m); o.getColorAt(k, c); const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd);
-        if (isGate(v.x, v.z)) { // the flag gates' frames: stronger stuff than the walls, a mix of gold and polished steel
-          const g = clean(LABK.paintStone(LABK.stoneGeo(1, 1, sd, R, RES), new THREE.Color(FR() < .55 ? '#e0b040' : '#c4ccd8').offsetHSL(0, 0, (FR() - .5) * .08))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); metal.push(g); continue; }
-        const g = clean(LABK.paintStone(LABK.stoneGeo(1, 1, sd, R, RES), LABK.shade(c.clone().lerp(new THREE.Color(GREYS[k % GREYS.length]), .5), R, .06))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); const fam = k % 3 ? 'granite' : 'sandstone'; (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); }
-      if (metal.length) { const mm = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: .85, roughness: .3 }); if (ENVS) { mm.envMap = ENVS; mm.envMapIntensity = 1; }
+        if (isGate(v.x, v.z)) { if (v.y > 3) continue; // the flag gates: gold bricks only; the flat top becomes an arch (built below)
+          const g = clean(LABK.paintStone(stoneGeoC(1, 1, sd, R, RES), new THREE.Color('#e0b040').offsetHSL((FR() - .5) * .02, 0, (FR() - .5) * .08))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); metal.push(g); continue; }
+        const g = clean(LABK.paintStone(stoneGeoC(1, 1, sd, R, RES), LABK.shade(c.clone().lerp(new THREE.Color(GREYS[k % GREYS.length]), .5), R, .06))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); const fam = k % 3 ? 'granite' : 'sandstone'; (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); }
+      // the arch: gold bricks fanned round a half circle from the top of one pillar to the other, high enough for a Nym carrying a flag
+      for (const t of ['blue', 'red']) { const G = GATES[t]; if (!G) continue; const gy = G.y || 0, NV = 9;
+        world.forEachCollider(cl => { const tr = cl.translation(), he = cl.halfExtents && cl.halfExtents(); if (he && Math.abs(tr.x - G.x) < .3 && Math.abs(tr.z - G.z) < .3 && Math.abs(tr.y - (gy + 3.5)) < .3 && he.z > 2) { byCollider.delete(cl.handle); world.removeCollider(cl, false); } }); // (the old flat top's collider goes)
+        for (let k = 0; k < NV; k++) { const a0 = Math.PI * (k + .5) / NV, cz = Math.cos(a0) * 2, cy = gy + 3 + Math.sin(a0) * 2, sd = Math.floor(FR() * 1e6), R = LABK.rng(sd);
+          const g = clean(LABK.paintStone(stoneGeoC(.72, 1, sd, R, RES), new THREE.Color('#e0b040').offsetHSL((FR() - .5) * .02, 0, (FR() - .5) * .08))); // (each brick: .72 along the arch, 1 deep, 1 from inside to outside)
+          g.rotateY(Math.PI / 2); g.rotateX(-(a0 - Math.PI / 2)); g.translate(G.x, cy, G.z + cz); metal.push(g);
+          const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -(a0 - Math.PI / 2)), c2 = world.createCollider(RAPIER.ColliderDesc.cuboid(.5, .5, .38).setTranslation(G.x, cy, G.z + cz).setRotation(q).setFriction(.8)); byCollider.set(c2.handle, { type: 'static' }); }
+        // the glowing screen fills the arch too
+        if (G.glow) { const sh = new THREE.Shape(); sh.moveTo(-1.5, -1.5); sh.lineTo(1.5, -1.5); sh.lineTo(1.5, 1.5); sh.absarc(0, 1.5, 1.5, 0, Math.PI, false); sh.lineTo(-1.5, -1.5);
+          const sg = new THREE.ShapeGeometry(sh, 24), P_ = sg.attributes.position, U = new Float32Array(P_.count * 2); for (let i = 0; i < P_.count; i++) { U[i * 2] = (P_.getX(i) + 1.5) / 3; U[i * 2 + 1] = (P_.getY(i) + 1.5) / 4.5; } sg.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+          G.glow.geometry = sg; } }
+      if (metal.length) { const mm = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: .8, roughness: .28 }); /* (polished gold) */ if (ENVS) { mm.envMap = ENVS; mm.envMapIntensity = 1; }
         const g = mergeGeometries(metal), M = new THREE.Mesh(g, mm); M.castShadow = M.receiveShadow = true; scene.add(M); }
       scene.remove(o); }
     { const all = Object.values(parts).flat(); if (all.length) { const g = mergeGeometries(all); const m = new THREE.Mesh(g, uniMat()); m.castShadow = m.receiveShadow = true; scene.add(m); } } } // (all the floors: one object)
@@ -16306,7 +16321,7 @@ if (CLX) {
 }
 
 // ---- cows and sheep in proportion (Ali): a cow is a big animal, a sheep a small one ----
-{ const K_ = { cow: 1, sheep: .88 }; /* (Ali: cows at their old size, the size they look on your head) */
+{ const K_ = { cow: 1.18, sheep: .88 }; /* (Ali: cows at their old size, the size they look on your head) */
   for (const e of blocks) if (e.kind === 'animal' && K_[e.animal] && K_[e.animal] !== 1 && e.body) { const k = K_[e.animal], t = e.body.translation(), r = e.body.rotation();
     dropBody(e); e._massK = k * k * k; e.dims.multiplyScalar(k); e.size = Math.max(e.dims.x, e.dims.y, e.dims.z); e.rad = (e.dims.x + e.dims.y + e.dims.z) / 6; e.mesh.scale.multiplyScalar(k);
     makeBody(e, V(t.x, t.y + (k - 1) * e.dims.y / (2 * k), t.z), new THREE.Quaternion(r.x, r.y, r.z, r.w)); if (e.col) e.col.setDensity(9 / e._massK); if (e.upright !== false) { e.upright = true; e.body.setEnabledRotations(false, true, false, true); } } } // (stands upright again, as it did before)
@@ -16351,10 +16366,12 @@ function liquidScreen(deep, mid, hi, square, pal) {
   if (CLX) for (const team of ['blue', 'red']) { const G = GATES[team]; if (!G || !G.glow) continue; const m = liquidScreen('#000000', '#888888', team === 'blue' ? '#c8f0ff' : '#ffe0c0', true, TEAMS[team].cols); m.opacity = G.glow.material.opacity; G.glow.material = m; LIQ.push([m, G.glow]); }
   const pH = pulseHalos; let last = 0; pulseHalos = function (tm) { pH(tm); const dt = clamp((tm - (last || tm)) / 1000, 0, .05); last = tm; for (const [m] of LIQ) { m.uniforms.t.value += dt; m.uniforms.op.value = Math.min(1, (m.opacity ?? 1) * 1.6); } }; }
 // get every material ready while the game loads, so nothing pops in or stutters the first time you see it
+window.__clt0 = performance.now() - CL_T0;
 if (CLX) try { renderer.compile(scene, camera); } catch (_) {}
 // a hazier distance on the classic stage: the haze starts closer and is thicker by the far edge (whatever the camera does)
 if (CLX) { const ob = scene.onBeforeRender; scene.onBeforeRender = function (...a) { if (ob) ob.apply(this, a); if (scene.fog && !(PW && PW.dark > 0)) { scene.fog.near *= .62; scene.fog.far *= .78; } };
   const ar = scene.onAfterRender; scene.onAfterRender = function (...a) { if (ar) ar.apply(this, a); if (scene.fog && !(PW && PW.dark > 0)) { scene.fog.near /= .62; scene.fog.far /= .78; } }; }
+window.__clt = performance.now() - CL_T0;
 
 
 // test hooks for the newer bits (headless checks only)
