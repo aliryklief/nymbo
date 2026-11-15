@@ -14726,10 +14726,10 @@ function makeAnimals(THREE, MERGE_) {
 
   function sheep() { const g = new THREE.Group(), DK = '#3b3e48', WOOL = '#f4efe2';
     const body = mesh(blob(.42, 1, .82, 1.12, 40), shell(DK)); body.position.y = .5; g.add(body); const sheepBody = body;
-    const R = mrng(5), woolM = shell(WOOL, { roughness: .55, clearcoat: .2 }), wool = [];
+    const R = mrng(5), woolM = shell(WOOL, { roughness: .55, clearcoat: .2 }), wool = []; const WSEG = matchMedia('(pointer: coarse)').matches ? [11, 8] : [16, 12]; // (phones: each little wool puff a bit simpler, you can't tell at that size)
     { const N = 110, ga = PI * (3 - Math.sqrt(5)); for (let i = 0; i < N; i++) { const y = 1 - (i + .5) / N * 2, rr = Math.sqrt(1 - y * y), a = i * ga, r = .12 + R() * .045;
-      wool.push(new THREE.SphereGeometry(r, 16, 12).translate(Math.cos(a) * rr * .42, .5 + y * .35, Math.sin(a) * rr * .47)); } } // (an even coat over the whole body)
-    for (let i = 0; i < 26; i++) { const k = i / 25, x = (R() - .5) * .34, y = .66 + k * .14 + R() * .04, z = .26 + k * .26 + (R() - .5) * .05; wool.push(new THREE.SphereGeometry(.1 + R() * .04, 16, 12).translate(x, y, z)); } // (the neck: wool from the back up to the head)
+      wool.push(new THREE.SphereGeometry(r, ...WSEG).translate(Math.cos(a) * rr * .42, .5 + y * .35, Math.sin(a) * rr * .47)); } } // (an even coat over the whole body)
+    for (let i = 0; i < 26; i++) { const k = i / 25, x = (R() - .5) * .34, y = .66 + k * .14 + R() * .04, z = .26 + k * .26 + (R() - .5) * .05; wool.push(new THREE.SphereGeometry(.1 + R() * .04, ...WSEG).translate(x, y, z)); } // (the neck: wool from the back up to the head)
     { const hc = V3(0, .7, .6), bb = new THREE.Box3(), c = V3(); for (let i = wool.length - 1; i >= 0; i--) { wool[i].computeBoundingBox(); wool[i].boundingBox.getCenter(c); if (c.distanceTo(hc) < .36) wool.splice(i, 1); } } // (no wool on the head: anything reaching over it is left off)
     const W = mesh(MERGE_(wool), woolM); g.add(W);
     const H = head(.27, 1, .95, .92, shell(DK)); H.position.set(0, .7, .6); g.add(H);
@@ -15941,6 +15941,8 @@ if (CLX) {
   const LABK = makeFortKit(THREE, RoundedBoxGeometry, mergeGeometries); LABK.setRes(S.maxq ? 26 : CL_TOUCH ? 10 : 15);
   const RES = S.maxq ? 14 : CL_TOUCH ? 6 : 10, hideA = new THREE.InstancedBufferAttribute(new Float32Array(N), 1); geo.setAttribute('aHide', hideA);
   { const ob = plainIM.material.onBeforeCompile; plainIM.material.onBeforeCompile = sh => { ob(sh); sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aHide;').replace('#include <project_vertex>', '#include <project_vertex>\nif (aHide > .5) gl_Position = vec4(0., 0., 2., 1.);'); }; plainIM.material.customProgramCacheKey = () => 'stone1h'; }
+  { const dm = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); /* (the hidden boxes under the stones stop casting shadows too: they used to, as plain boxes) */
+    dm.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aHide;').replace('#include <project_vertex>', '#include <project_vertex>\nif (aHide > .5) gl_Position = vec4(0., 0., 2., 1.);'); }; dm.customProgramCacheKey = () => 'stone1hd'; plainIM.customDepthMaterial = dm; }
   const TCACHE = {}, SCACHE = {}; const stoneGeoC = (w, h, sd, R, res) => { const key = w.toFixed(2) + 'x' + h.toFixed(2) + '@' + res, L = SCACHE[key] || (SCACHE[key] = []), v = Math.floor(R() * 6);
     if (!L[v]) L[v] = LABK.stoneGeo(w, h, sd, R, res); const g = L[v].clone(); g.userData.crack = L[v].userData.crack; return g; }; // (six shapes per size, reused: much faster to load)
   const LAB = [], byFam = {}, R2 = LABK.rng(9001), clean = g => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(k)) g.deleteAttribute(k); if (!g.index) g = mergeVertices(g); return g; }; // (shared corners: about a fifth of the memory)
@@ -15953,19 +15955,20 @@ if (CLX) {
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vF1, vF2, vF3; varying vec3 vOP; varying vec3 vON;' + LABK.NOISE + `
         float surfH(vec3 p){ vec3 q = vF3.w > .5 ? vec3(p.x * .15, p.y * 6., p.z * 6.) : p; float h = fbm(q * vF1.w * .25) * .6 + vn(q * vF1.w) * .4; float pit = smoothstep(.78, .86, vn(p * 18.)) * vF2.y; return h - pit * 1.5; }`)
         .replace('#include <color_fragment>', `#include <color_fragment>
-        { vec3 p = vOP + 13.1; float mot = fbm(p * vF1.y) - .5, g = vn(p * vF1.w) - .5, ly = sin(p.y * 22. + fbm(p * 3.) * 4.) * vF2.w;
+        float fd = 1. - smoothstep(38., 55., length(vViewPosition)); /* (fine detail fades out far away, and isn't worked out at all past that) */
+        if (fd > 0.) { vec3 p = vOP + 13.1; float mot = fbm(p * vF1.y) - .5, g = vn(p * vF1.w) - .5, ly = sin(p.y * 22. + fbm(p * 3.) * 4.) * vF2.w;
           float vein = vF2.z > 0. ? pow(1. - abs(sin(p.x * 3. + p.y * 2. + fbm(p * 2.5) * 6.)), 14.) * vF2.z : 0.;
           float pit = smoothstep(.78, .86, vn(p * 18.)) * vF2.y;
           vec3 n0 = abs(normalize(vON)); float edge = 1. - max(n0.x, max(n0.y, n0.z));
           float aa = clamp(1. - length(fwidth(p * vF1.w)) * .8, 0., 1.); // (fine grain fades out when it's too small to see: no shimmering lines as you move)
-          diffuseColor.rgb *= 1. + mot * vF1.x * 2. + g * vF1.z * aa + ly * .12 * clamp(1. - length(fwidth(p * 22.)) * .8, 0., 1.) - vein * .35 - pit * .35 * aa;
-          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.25 + .05, smoothstep(.08, .3, edge) * vF3.z * (.6 + .8 * vn(p * 9.))); }`)
+          diffuseColor.rgb *= 1. + fd * (mot * vF1.x * 2. + g * vF1.z * aa + ly * .12 * clamp(1. - length(fwidth(p * 22.)) * .8, 0., 1.) - vein * .35 - pit * .35 * aa);
+          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.25 + .05, smoothstep(.08, .3, edge) * vF3.z * (.6 + .8 * vn(p * 9.)) * fd); }`)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        roughnessFactor = clamp(vF3.x + (fbm((vOP + 7.) * 3.) - .5) * vF3.y * 2., .04, 1.);`)
+        { float fr_ = 1. - smoothstep(38., 55., length(vViewPosition)); roughnessFactor = fr_ > 0. ? clamp(vF3.x + (fbm((vOP + 7.) * 3.) - .5) * vF3.y * 2. * fr_, .04, 1.) : vF3.x; }`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-        { vec3 p = vOP + 13.1; float H = surfH(p) * vF2.x * .02 * clamp(1. - length(fwidth(p * vF1.w)) * .8, 0., 1.); vec2 dH = vec2(dFdx(H), dFdy(H));
+        { float fn_ = 1. - smoothstep(26., 40., length(vViewPosition)); if (fn_ > 0.) { vec3 p = vOP + 13.1; float H = fn_ * surfH(p) * vF2.x * .02 * clamp(1. - length(fwidth(p * vF1.w)) * .8, 0., 1.); vec2 dH = vec2(dFdx(H), dFdy(H));
           vec3 sX = dFdx(-vViewPosition), sY = dFdy(-vViewPosition), R1 = cross(sY, normal), R2 = cross(normal, sX); float det = dot(sX, R1);
-          normal = normalize(abs(det) * normal - sign(det) * (dH.x * R1 + dH.y * R2)); }`); };
+          normal = normalize(abs(det) * normal - sign(det) * (dH.x * R1 + dH.y * R2)); } }`); };
     m.customProgramCacheKey = () => 'labuni'; return m; })());
   const famPick = { blue: LABK.surfaces('classic', LABK.rng(31)), red: LABK.surfaces('classic', LABK.rng(77)), none: LABK.surfaces('classic', LABK.rng(5)) };
   const _S = new THREE.Matrix4(), _T = new THREE.Matrix4(), _Rm = new THREE.Matrix4();
@@ -16050,7 +16053,10 @@ if (CLX) {
   const FAMM = {}; const famMat = fam => FAMM[fam] || (FAMM[fam] = (() => { if (fam === 'tree') return treeMat(); /* (the sculpted trees: smooth shapes, covered in little leaves) */ /* (the tree tops: smooth, a little glossy) */ return uniMat(); /* (no studio reflections: lit only by the stage's own light, like everything else) */ })());
   const _M = new THREE.Matrix4(), _N3 = new THREE.Matrix3(), _v = new THREE.Vector3();
   // ONE object for every stone that hasn't moved
-  const WELD = []; { const L = LAB; let nv = 0, ni = 0; for (const p of L) { nv += p.g.attributes.position.count; ni += p.g.index.count; }
+  // (welded in map tiles, not one piece: tiles off the screen, or outside the sun's shadow area round you, are skipped)
+  const WELD = [], TILE = 27, tileOf = (x, z) => Math.floor(x / TILE) + ',' + Math.floor(z / TILE), TILES = {};
+  for (const p of LAB) { plainIM.getMatrixAt(p.e.inst, _M); (TILES[tileOf(_M.elements[12], _M.elements[14])] = TILES[tileOf(_M.elements[12], _M.elements[14])] || []).push(p); }
+  for (const L of Object.values(TILES)) { let nv = 0, ni = 0; for (const p of L) { nv += p.g.attributes.position.count; ni += p.g.index.count; }
     const A = { position: new Float32Array(nv * 3), normal: new Float32Array(nv * 3), color: new Float32Array(nv * 3), aF1: new Float32Array(nv * 4), aF2: new Float32Array(nv * 4), aF3: new Float32Array(nv * 4) }, I = new Uint32Array(ni); let o = 0, oi = 0;
     for (const p of L) { plainIM.getMatrixAt(p.e.inst, _M); _M.multiply(p.local); p.m0 = _M.clone(); _N3.getNormalMatrix(_M); const G = p.g.attributes, n = G.position.count; p.o = o; p.n = n;
       for (let i = 0; i < n; i++) { _v.fromBufferAttribute(G.position, i).applyMatrix4(_M); A.position.set([_v.x, _v.y, _v.z], (o + i) * 3); _v.fromBufferAttribute(G.normal, i).applyMatrix3(_N3).normalize(); A.normal.set([_v.x, _v.y, _v.z], (o + i) * 3); }
@@ -16231,7 +16237,8 @@ if (CLX) {
       if (metal.length) { const mm = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: .8, roughness: .28 }); /* (polished gold) */ if (ENVS) { mm.envMap = ENVS; mm.envMapIntensity = 1; }
         const g = mergeGeometries(metal), M = new THREE.Mesh(g, mm); M.castShadow = M.receiveShadow = true; scene.add(M); }
       scene.remove(o); }
-    { const all = Object.values(parts).flat(); if (all.length) { const g = mergeGeometries(all); const m = new THREE.Mesh(g, uniMat()); m.castShadow = m.receiveShadow = true; scene.add(m); } } } // (all the floors: one object)
+    { const all = Object.values(parts).flat(), T_ = {}; for (const g of all) { if (!g.boundingSphere) g.computeBoundingSphere(); const c = g.boundingSphere.center, k = Math.floor(c.x / 27) + "," + Math.floor(c.z / 27) + (c.y > 6 ? 'up' : ''); (T_[k] = T_[k] || []).push(g); }
+      for (const L of Object.values(T_)) { const g = mergeGeometries(L); const m = new THREE.Mesh(g, uniMat()); m.castShadow = m.receiveShadow = true; scene.add(m); } } } // (all the floors: welded in map tiles, so what's off screen is skipped)
 
   // ---------------- 5. the field: grass with worn paths, tall grass where nobody walks ----------------
   { const W = MX * 2, D = MZ * 2, RES = 2, GW_ = W * RES, GD_ = D * RES, wear = new Float32Array(GW_ * GD_), tall = new Float32Array(GW_ * GD_);
@@ -16443,6 +16450,39 @@ if (CLX) { sun.shadow.bias = -0.0009; sun.shadow.normalBias = 0.06; }
 { const nm = nymMeshModel; nymMeshModel = function (...a) { const m = nm(...a); if (m && m.g) m.g.traverse(o => { if (o.isMesh && o.material && o.material.visible !== false && !o.material.transparent) o.castShadow = true; }); if (m && m.held) m.held.castShadow = true; return m; };
   for (const r of robots) if (r.model && r.model.g) r.model.g.traverse(o => { if (o.isMesh && o.material && o.material.visible !== false && !o.material.transparent) o.castShadow = true; }); }
 
+// every solid thing casts a sun shadow: power blocks and flag blocks (their glassy / liquid cores too, not just the frame),
+// whatever a Nym carries, and the centre pole's scoreboard. Glows, outlines and see-through screens stay shadowless.
+{ const solid = o => { if (!o.isMesh || o.castShadow) return false; const m = Array.isArray(o.material) ? o.material[0] : o.material; return m && m.visible !== false && !m.transparent && m.type !== 'MeshBasicMaterial' && !(m.emissiveIntensity > 1); };
+  const cast = root => root && root.traverse(o => { if (solid(o)) o.castShadow = true; });
+  if (MONUMENT.g) cast(MONUMENT.g);
+  let k = 0; const pH = pulseHalos; pulseHalos = function (t) { pH(t); if (++k % 20) return; if (!sun.castShadow) return;
+    for (const e of blocks) if (e.mesh && !e.animal) cast(e.mesh);
+    for (const r of robots) if (r.model && r.model.g) cast(r.model.g); }; }
+// simpler far away: a Nym or an animal more than ~18 m off swaps its round parts (ball, body, arms, legs) for versions
+// with fewer corners; up close they swap straight back. At that distance you can't see the difference, the phone can.
+{ const LOW = new Map(), FAR = 18 * 18, _c = new THREE.Vector3(), _p = new THREE.Vector3();
+  const remake = (g, kk) => { const P = g.parameters, t = g.type, k = kk || .4; if (!P) return null;
+    if (t === 'SphereGeometry') return new THREE.SphereGeometry(P.radius, kk ? P.widthSegments : Math.max(10, Math.round(P.widthSegments * k)), kk ? P.heightSegments : Math.max(6, Math.round(P.heightSegments * k)), P.phiStart, P.phiLength, P.thetaStart, P.thetaLength);
+    if (t === 'LatheGeometry') return new THREE.LatheGeometry(P.points.map(v => new THREE.Vector2(v.x, v.y)), kk ? P.segments : Math.max(10, Math.round(P.segments * k)), P.phiStart, P.phiLength);
+    if (t === 'CylinderGeometry') return new THREE.CylinderGeometry(P.radiusTop, P.radiusBottom, P.height, kk ? P.radialSegments : Math.max(8, Math.round(P.radialSegments * k)), P.heightSegments, P.openEnded, P.thetaStart, P.thetaLength);
+    if (t === 'TorusGeometry') return new THREE.TorusGeometry(P.radius, P.tube, kk ? P.radialSegments : Math.max(6, Math.round(P.radialSegments * k)), kk ? P.tubularSegments : Math.max(10, Math.round(P.tubularSegments * k)), P.arc);
+    if (t === 'CapsuleGeometry') return new THREE.CapsuleGeometry(P.radius, P.length, kk ? P.capSegments : Math.max(2, Math.round(P.capSegments * k)), kk ? P.radialSegments : Math.max(8, Math.round(P.radialSegments * k)));
+    return null; };
+  const low = g => { if (LOW.has(g)) return LOW.get(g); let L = null;
+    try { const n = (g.index ? g.index.count : g.attributes.position.count) / 3; if (n > 500 && !g.morphAttributes.position) { L = remake(g);
+        if (L) { const F = remake(Object.assign({}, g, { parameters: g.parameters, type: g.type }), 1), G = g.attributes.position, Q = F && F.attributes.position; let ok = !!Q && Q.count === G.count;
+          // (some parts were stretched or moved after they were made: work that out by comparing every corner with a fresh
+          //  full copy, and do the same to the simple one; anything bent some other way just keeps its full shape)
+          const A = [1, 1, 1], B = [0, 0, 0];
+          if (ok) { F.computeBoundingBox(); g.computeBoundingBox(); const fb = F.boundingBox, gb = g.boundingBox; for (let ax = 0; ax < 3; ax++) { const c = 'xyz'[ax], fs = fb.max[c] - fb.min[c]; A[ax] = fs > 1e-6 ? (gb.max[c] - gb.min[c]) / fs : 1; B[ax] = gb.min[c] - fb.min[c] * A[ax]; }
+            const tol = 1e-3 * (gb.getSize(_c).length() + .01); for (let i = 0; i < G.count && ok; i++) for (let ax = 0; ax < 3; ax++) if (Math.abs(Q.getComponent(i, ax) * A[ax] + B[ax] - G.getComponent(i, ax)) > tol) { ok = false; break; } }
+          if (F) F.dispose(); if (ok) L.applyMatrix4(new THREE.Matrix4().makeScale(A[0], A[1], A[2]).setPosition(B[0], B[1], B[2])); else { L.dispose(); L = null; } } } } catch (_) { L = null; }
+    LOW.set(g, L); return L; };
+  const setFar = (root, far) => { if (root.userData._far === far) return; root.userData._far = far;
+    root.traverse(o => { if (!o.isMesh || o.isInstancedMesh) return; if (far) { const L = low(o.geometry); if (L) { o.userData._g0 = o.geometry; o.geometry = L; } } else if (o.userData._g0) { o.geometry = o.userData._g0; o.userData._g0 = null; } }); };
+  let k = 0; const pH = pulseHalos; pulseHalos = function (t) { pH(t); if (++k % 15) return; camera.getWorldPosition(_c);
+    for (const r of robots) { const g = r.model && r.model.g; if (!g) continue; g.getWorldPosition(_p); setFar(g, r !== P && _p.distanceToSquared(_c) > FAR); }
+    for (const e of blocks) if (e.animal && e.mesh) { e.mesh.getWorldPosition(_p); setFar(e.mesh, _p.distanceToSquared(_c) > FAR); } }; }
 
 // test hooks for the newer bits (headless checks only)
 Object.assign(window.__nymbo, { nbrPose, nbrAntPose, nbrAntRest, nbrHeld, startReplay: () => startReplay(), drawReplay: () => drawReplay(), onPlayerKO: (...a) => onPlayerKO(...a), nymMeshModel, NBR_SWAPU, NBR_HD, NBR_TS, grabBlock: (...a) => grabBlock(...a), freezeRobot: (...a) => freezeRobot(...a), ragdoll: (...a) => ragdoll(...a), get blocks() { return blocks; }, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
