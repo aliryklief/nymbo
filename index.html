@@ -16438,6 +16438,10 @@ if (CLX) { const ob = scene.onBeforeRender; scene.onBeforeRender = function (...
 window.__clt = performance.now() - CL_T0;
 // shadows on the rounded stones: a little more offset so they don't streak with lines (shadow acne)
 if (CLX) { sun.shadow.bias = -0.0009; sun.shadow.normalBias = 0.06; }
+// the Nym casts a real sun shadow (body, arms, ball and whatever it carries), so its shadow matches the trees' and joins
+// up with the block on its head (they used to cast none; only the round patch underneath stood in for one)
+{ const nm = nymMeshModel; nymMeshModel = function (...a) { const m = nm(...a); if (m && m.g) m.g.traverse(o => { if (o.isMesh && o.material && o.material.visible !== false && !o.material.transparent) o.castShadow = true; }); if (m && m.held) m.held.castShadow = true; return m; };
+  for (const r of robots) if (r.model && r.model.g) r.model.g.traverse(o => { if (o.isMesh && o.material && o.material.visible !== false && !o.material.transparent) o.castShadow = true; }); }
 
 
 // test hooks for the newer bits (headless checks only)
