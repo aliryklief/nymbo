@@ -4084,7 +4084,7 @@ function syncRobot(r) {
     const gp = m.g.position; blobRay.origin = { x: gp.x, y: gp.y, z: gp.z };
     const h = world.castRay(blobRay, 30, true, undefined, undefined, r.col, undefined, c => { const o = byCollider.get(c.handle); return !o || o.type !== 'robot'; });
     const d = h ? h.toi : 30, k = clamp(1 - (d - .95) / 6, 0, 1);
-    m.blob.visible = !!h && k > 0 && !inv; m.blob.position.set(gp.x, gp.y - d + .03, gp.z); m.blob.scale.setScalar(.75 + .35 * k); m.blob.material.opacity = (r.state === 'rag' ? .6 : 1) * k * (see ? .5 : 1);
+    m.blob.visible = !!h && k > 0 && !inv; m.blob.position.set(gp.x, gp.y - d + .03, gp.z); const real = sun.castShadow; m.blob.scale.setScalar((.75 + .35 * k) * (real ? .55 : 1)); m.blob.material.opacity = (r.state === 'rag' ? .6 : 1) * k * (see ? .5 : 1) * (real ? .3 : 1); // (with real sun shadows on, the round one shrinks to a faint touch under the ball, so it doesn't fight the real shadow)
   }
   if (!!m.inv !== inv) { m.inv = inv; m.g.traverse(o => { if (!o.isMesh) return; if (o.userData.cs === undefined) o.userData.cs = o.castShadow; o.castShadow = inv ? false : o.userData.cs; }); } // no shadow to give you away
   const lv = r.body.linvel(), sp = r.state === 'play' && r.frozenT <= 0 && r.grounded ? Math.hypot(lv.x, lv.z) : 0;
