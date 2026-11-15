@@ -7473,20 +7473,21 @@ function drawScene() {
 function frame() {
   if (window.HOLD) { last = now(); requestAnimationFrame(frame); return; } // (test hook)
   const t = now(), raw = (t - last) / 1000, dt = Math.min(.05, raw); last = t;
-  // slow phone? drop the resolution a notch (never below 1x)
-  perf.sum += raw; perf.n++;
-  // slow device? step the quality down: resolution first, then shadows, then a bit more resolution
-  if (perf.n >= 60 && S.maxq) { perf.sum = 0; perf.n = 0; } // (max quality: never step the quality down)
-  if (perf.n >= 60) {
-    if (perf.sum / perf.n > .021 && perf.level < 4) { // (below ~48 fps)
-      perf.level++;
-      // keep the picture sharp as long as possible: cheaper shadows first, then a little resolution, never below 1x
-      if (perf.level <= 2) renderer.setPixelRatio(Math.max(Math.min(devicePixelRatio, 1.25), renderer.getPixelRatio() - .25));
-      else if (perf.level === 3) sun.castShadow = false;
-      else renderer.setPixelRatio(1);
-      resize();
-    }
-    perf.sum = 0; perf.n = 0;
+  // automatic quality: only judged on real play (not while loading, not on one-off hiccups like a shader warming up or the
+  // app coming back from the background), only stepped down when it's slow for a good while, and stepped back UP when
+  // the device copes again. (It used to drop on a few slow frames at the start and never come back: even a top phone
+  // ended up with shadows off.)
+  const playing = typeof match !== 'undefined' && match.state === 'play';
+  if (playing && raw < .25) { perf.play = (perf.play || 0) + raw; if (perf.play > 8) { perf.sum += raw; perf.n++; } }
+  if (perf.n >= 90 && S.maxq) { perf.sum = 0; perf.n = 0; perf.slow = perf.fast = 0; } // (max quality: never step the quality down)
+  if (perf.n >= 90) {
+    const avg = perf.sum / perf.n; perf.sum = 0; perf.n = 0;
+    if (avg > .021) { perf.slow = (perf.slow || 0) + 1; perf.fast = 0; } else if (avg < .0175) { perf.fast = (perf.fast || 0) + 1; perf.slow = 0; } else perf.slow = perf.fast = 0;
+    const apply = l => { perf.level = l; const base = Math.min(devicePixelRatio, S.maxq ? 3 : 2);
+      renderer.setPixelRatio(l === 0 ? base : l <= 2 ? Math.max(Math.min(devicePixelRatio, 1.25), base - .25 * l) : l === 3 ? Math.max(Math.min(devicePixelRatio, 1.25), base - .5) : 1);
+      sun.castShadow = l < 3; resize(); };
+    if (perf.slow >= 2 && perf.level < 4) { apply(perf.level + 1); perf.slow = 0; } // (slow for ~3 seconds of play in a row)
+    else if (perf.fast >= 4 && perf.level > 0) { apply(perf.level - 1); perf.fast = 0; } // (smooth for ~6 seconds: try a notch better again)
   }
   const t1 = performance.now(); tick(dt, t); const t2 = performance.now();
   if (match.state !== 'menu') { placeCross(); placeHighlight(); updateWarnings(); renderHud(); }
