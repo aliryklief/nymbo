@@ -290,6 +290,8 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 /* (every moving part is its own box turned by the browser itself, so it keeps bouncing and spinning while the game loads) */
 #loading .bot::after{content:'';position:absolute;left:18%;right:18%;bottom:-6px;height:8px;border-radius:50%;background:rgba(10,30,10,.35)}
 #loading .tag{position:absolute;left:0;right:0;bottom:22%;text-align:center;font-family:'Fredoka','Arial Rounded MT Bold','Trebuchet MS',system-ui,sans-serif;font-weight:700;font-size:clamp(18px,5vw,30px);letter-spacing:.12em;text-shadow:0 3px 0 #1a2340}
+#loading .ldbar{width:min(62vw,340px);height:clamp(12px,2.2vw,18px);margin:clamp(8px,1.6vw,14px) auto 0;border:3px solid #1a2340;border-radius:99px;background:rgba(255,255,255,.35);overflow:hidden;box-shadow:0 3px 0 rgba(10,30,10,.25)}
+#loading .ldbar b{display:block;height:100%;width:3%;border-radius:99px;background:linear-gradient(#ffe46b,#ffc21a);box-shadow:inset 0 -3px 0 rgba(0,0,0,.12),inset 0 3px 0 rgba(255,255,255,.45);transition:width .3s ease-out}
 #loading .tag i{display:inline-block;animation:ldDot 1.2s infinite;font-style:normal}#loading .tag i:nth-child(2){animation-delay:.2s}#loading .tag i:nth-child(3){animation-delay:.4s}
 #loading .puff{position:absolute;bottom:2px;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.7);animation:ldPuff .5s ease-out infinite}
 @keyframes ldRun{from{transform:translateX(-20vw)}to{transform:translateX(120vw)}}
@@ -470,7 +472,7 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
   </div>
   <div id="endBoard"></div>
 </div>
-<div id="loading"><div class="ld" id="ldRun"></div><div class="tag">LOADING<i>.</i><i>.</i><i>.</i></div></div>
+<div id="loading"><div class="ld" id="ldRun"></div><div class="tag">LOADING<i>.</i><i>.</i><i>.</i><div class="ldbar"><b id="ldFill"></b></div></div></div>
 <script>
 // the loading screen: a blue robot runs off with the red flag, the four red robots chase it, and its three teammates chase them
 (function () {
@@ -494,6 +496,16 @@ input[type=range]{width:100%;accent-color:var(--yellow)}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/","rapier":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/rapier.es.js"}}</script>
 <script>window.NYMBO_FILES=["alert", "alert_2", "alert_3", "amb_bed", "amb_birds", "amb_grass", "amb_night", "amb_night_2", "amb_night_3", "amb_trees", "amb_wind", "amb_wind_2", "amb_wind_3", "baa1", "baa2", "baa3", "baa4", "baa5", "baa6", "baa7", "baa8", "baa9", "beep", "blackout", "blackout_2", "blackout_3", "boom", "boom1", "boom2", "boom_2", "boom_3", "boom_big", "boom_big_2", "boom_big_3", "boom_tail", "boom_tail_2", "boost", "boost_2", "boost_3", "catch", "catch_2", "catch_3", "cheer", "chimes", "chirp_blue", "chirp_blue_2", "chirp_blue_3", "chirp_red", "chirp_red_2", "chirp_red_3", "clonk", "clonk1", "clonk2", "clonk3", "clonk_2", "clonk_3", "clonk_big", "clonk_big_2", "clonk_big_3", "cloth", "confirm", "crow", "crow_2", "crow_3", "crumble", "crumble1", "crumble2", "crumble_2", "crumble_3", "defeat", "defeat_2", "denied", "denied_2", "denied_3", "dodge", "dodge_2", "dodge_3", "flagDrop", "flagDrop_2", "flagDrop_3", "flagGrab", "flagGrab_2", "flagGrab_3", "flagdrop", "freeze", "freeze_2", "freeze_3", "full", "full_2", "full_3", "glock", "go", "go_2", "go_3", "gong", "grab", "grab1", "grab2", "grab3", "grab_2", "grab_3", "grab_bomb", "grab_bomb_2", "grab_bomb_3", "grab_freeze", "grab_freeze_2", "grab_freeze_3", "grab_homing", "grab_homing_2", "heart", "hit", "hit1", "hit2", "hit3", "hit_2", "hit_3", "hole", "hoof", "hoof_2", "hoof_3", "ice_crack", "ice_crack_2", "ice_crack_3", "impact_stone", "impact_stone_2", "impact_stone_3", "impact_wood", "impact_wood_2", "impact_wood_3", "intro", "intro_2", "intro_3", "invis", "invis_2", "invis_3", "jet", "jet_2", "jump", "jump2", "jump_2", "jump_3", "ko", "ko_2", "ko_3", "land", "land2", "land_2", "land_3", "lightsOn", "lightsOn_2", "lightsOn_3", "lock", "lose", "lose_2", "lose_3", "moo1", "moo2", "moo3", "moo4", "moo5", "nuke", "nuke_rumble", "oden_ann_countdown", "oden_ann_critical_hit", "oden_ann_defeat", "oden_ann_draw", "oden_ann_final_countdown", "oden_ann_first_hit", "oden_ann_game_opening", "oden_ann_match_start", "oden_ann_nex_recovered", "oden_ann_nex_returned", "oden_ann_nex_stolen", "oden_ann_prepare", "oden_ann_sixty_seconds", "oden_ann_victory", "oden_bot_aurinym_01", "oden_bot_aurinym_02", "oden_bot_aurinym_03", "oden_bot_aurinym_04", "oden_bot_aurinym_05", "oden_bot_cronym_01", "oden_bot_cronym_02", "oden_bot_cronym_03", "oden_bot_cronym_04", "oden_bot_cronym_05", "oden_bot_fernym_01", "oden_bot_fernym_02", "oden_bot_fernym_03", "oden_bot_fernym_04", "oden_bot_fernym_05", "oden_bot_nymbus_01", "oden_bot_nymbus_02", "oden_bot_nymbus_03", "oden_bot_nymbus_04", "oden_bot_nymbus_05", "oden_bot_penzonym_01", "oden_bot_penzonym_02", "oden_bot_penzonym_03", "oden_bot_penzonym_04", "oden_bot_penzonym_05", "oden_bot_piconym_01", "oden_bot_piconym_02", "oden_bot_piconym_03", "oden_bot_piconym_04", "oden_bot_piconym_05", "oden_bot_rezinym_01", "oden_bot_rezinym_02", "oden_bot_rezinym_03", "oden_bot_rezinym_04", "oden_bot_rezinym_05", "oden_bot_vionym_01", "oden_bot_vionym_02", "oden_bot_vionym_03", "oden_bot_vionym_04", "oden_bot_vionym_05", "oden_cv_blackhole", "oden_cv_bomb", "oden_cv_dodge", "oden_cv_freeze", "oden_cv_hit_opponent", "oden_cv_homing", "oden_cv_miss_throw", "oden_cv_pickup_block", "oden_cv_respawn", "oden_cv_take_damage", "oden_cv_throw_block", "oden_cv_win", "oden_nex_01", "oden_nex_02", "oden_nex_03", "oden_nex_04", "oden_nex_05", "oden_nex_06", "oden_nex_07", "oden_nex_08", "oden_sfx_blackhole_vortex", "oden_sfx_block_impact", "oden_sfx_block_throw", "oden_sfx_bomb_explosion", "oden_sfx_defeat_shutdown", "oden_sfx_dodge_dash", "oden_sfx_freeze_burst", "oden_sfx_homing_lock", "oden_sfx_magnetic_pickup", "oden_sfx_menu_select", "oden_sfx_nex_capture", "oden_sfx_nex_signal", "oden_sfx_respawn", "oden_sfx_victory_fanfare", "pad", "pad_2", "pad_3", "plop", "pop", "portal", "portal_2", "portal_3", "portal_hum", "powerdown", "powerup", "reload", "reload_2", "reload_3", "repair", "repair_2", "repair_3", "respawn", "respawn_2", "respawn_3", "roll", "score", "score_2", "score_3", "servo", "servo_2", "servo_3", "shatter", "shatter1", "shatter2", "shatter_2", "shatter_3", "siren", "slide", "slide_2", "slowmo", "slowmo_2", "streak", "streak_2", "streak_3", "swoop", "throw", "throw1", "throw2", "throw3", "throw_2", "throw_3", "tick", "tornado", "tramp", "ui", "v2_alert", "v2_amb_bed", "v2_amb_grass", "v2_amb_trees", "v2_baa1", "v2_baa2", "v2_baa3", "v2_baa4", "v2_baa5", "v2_baa6", "v2_baa7", "v2_baa8", "v2_baa9", "v2_boom1", "v2_boom2", "v2_boom_tail", "v2_cheer", "v2_chimes", "v2_clonk1", "v2_clonk2", "v2_clonk3", "v2_clonk_big", "v2_cloth", "v2_confirm", "v2_crumble1", "v2_crumble2", "v2_denied", "v2_dodge", "v2_flagdrop", "v2_freeze", "v2_full", "v2_glock", "v2_gong", "v2_grab1", "v2_grab2", "v2_grab3", "v2_grab_bomb", "v2_grab_freeze", "v2_grab_homing", "v2_heart", "v2_hit1", "v2_hit2", "v2_hit3", "v2_hoof", "v2_ice_crack", "v2_impact_stone", "v2_impact_wood", "v2_jump", "v2_jump2", "v2_ko", "v2_land", "v2_land2", "v2_lock", "v2_moo1", "v2_moo2", "v2_moo3", "v2_moo4", "v2_moo5", "v2_nuke_rumble", "v2_plop", "v2_pop", "v2_portal", "v2_powerdown", "v2_powerup", "v2_reload", "v2_respawn", "v2_roll", "v2_shatter1", "v2_shatter2", "v2_siren", "v2_throw1", "v2_throw2", "v2_throw3", "v2_tick", "v2_tramp", "v2_ui", "v2_v_cow", "v2_v_dark", "v2_v_frozen", "v2_v_gotit", "v2_v_ice", "v2_v_invis", "v2_v_nuke", "v2_v_oops", "v2_v_ouch", "v2_v_returned", "v2_v_run", "v2_v_scored", "v2_v_slow", "v2_v_stolen", "v2_v_theyscored", "v2_v_tornado", "v2_v_visible", "v2_vjump1", "v2_vjump2", "v2_vjump3", "v2_whoosh_big", "v2_whoosh_long", "v_cow", "v_dark", "v_frozen", "v_gotit", "v_ice", "v_invis", "v_nuke", "v_oops", "v_ouch", "v_returned", "v_run", "v_scored", "v_slow", "v_stolen", "v_theyscored", "v_tornado", "v_visible", "visible", "visible_2", "vjump1", "vjump2", "vjump3", "whoosh_big", "whoosh_big_2", "whoosh_big_3", "whoosh_long", "win", "win_2"]</script>
 <script type="module">
+const __LD = { t: performance.now(), f: 0, next: 0, shown: 0, T: [] };
+const __ldBar = f => { if (f <= __LD.shown) return; __LD.shown = f; const el = document.getElementById('ldFill'); if (el) el.style.width = (8 + f * 92).toFixed(1) + '%'; };
+const __ldYield = () => { const g = performance.now() - __LD.t; if (g > (__LD.gmax || 0)) { __LD.gmax = g; __LD.gat = __LD.cur + '#' + (__LD.k || 0); } return __ldYield0(); };
+const __ldYield0 = () => new Promise(r => { let d = 0; const go = () => { if (!d) { d = 1; __LD.t = performance.now(); r(); } }; requestAnimationFrame(() => setTimeout(go, 0)); setTimeout(go, 120); });
+const __ldDue = () => performance.now() - __LD.t > 40;
+async function __ldStep(i, f0, f1) { __LD.cur = i; __LD.k = 0; __LD.T.push([i, performance.now()]); __LD.f = f0; __LD.next = f1; __ldBar(f0); if (__ldDue()) await __ldYield(); }
+async function __ldY() { __LD.k = (__LD.k || 0) + 1; __LD.f += (__LD.next - __LD.f) * .3; __ldBar(__LD.f); if (__ldDue()) await __ldYield(); }
+window.__LD = __LD;
+
+await __ldStep("01_core.js", 0.0000, 0.0393);
 // ============================================================
 // NYMBO · match test build
 // One file built from src/*.js parts (concatenated in order).
@@ -798,6 +810,7 @@ const byCollider = new Map();      // collider handle -> { type:'block'|'robot'|
 const cubeGeo = NEO ? (() => { const g = new RoundedBoxGeometry(1, 1, 1, matchMedia('(pointer: coarse)').matches ? 1 : 2, .13), n = g.attributes.position.count, f = new Float32Array(n); for (let i = 0; i < n; i++) f[i] = Math.floor(i / (n / 6)); g.setAttribute('aFace', new THREE.BufferAttribute(f, 1)); return g; })() : HD ? new RoundedBoxGeometry(1, 1, 1, 2, .1) : WORLD === 'jelly' ? new RoundedBoxGeometry(1, 1, 1, 2, .3) : WORLD === 'clay' ? new RoundedBoxGeometry(1, 1, 1, 2, .2) : WORLD === 'circuit' ? new RoundedBoxGeometry(1, 1, 1, 1, .03) : new RoundedBoxGeometry(1, 1, 1, 1, .07); /* (world styles: squishy jelly, soft clay, sharp chips) */ // // 1 segment: 108 triangles a block instead of 300 (≈1,960 blocks on screen), same soft edges
 const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
+await __ldStep("02_world.js", 0.0393, 0.1448);
 // ============================================================
 // WORLD: grass island, fixed scenery (trees, ledges, middle ring), gateways, portals, animals
 // Scenery here never moves and can't be picked up.
@@ -914,6 +927,7 @@ function sideTint(cx, cz) {
   const P_ = FLOOR_PALS.mosaic, i = Math.round(clamp((t + 1) / 2, 0, 1) * (P_.length - 1)); return c255(P_[i]);
 }
 function paintFloor() { for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const i = ((GD - 1 - cz) * GW + cx) * 4; if (cellData[i + 3] === 0 || (cellData[i] === 170 && cellData[i + 1] === 215)) continue; const [r, g, b] = sideTint(cx, cz); cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; } if (typeof cellTex !== 'undefined') cellTex.needsUpdate = true; }
+await __ldY();
 for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const [r, g, b] = sideTint(cx, cz), i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; }
 const cellTex = new THREE.DataTexture(cellData, GW, GD, THREE.RGBAFormat); cellTex.magFilter = cellTex.minFilter = THREE.NearestFilter; cellTex.needsUpdate = true;
 function setCell(cx, cz, r, g, b, a) { if (cx < 0 || cz < 0 || cx >= GW || cz >= GD) return; const i = ((GD - 1 - cz) * GW + cx) * 4; cellData[i] = r; cellData[i + 1] = g; cellData[i + 2] = b; cellData[i + 3] = a; cellTex.needsUpdate = true; }
@@ -1117,6 +1131,7 @@ function tree(x, z, h) {
 // trees: two groves on the flanks give cover for sneaking round, plus a few loners. The middle stays open.
 // same 27 trees as before, spread wider: smaller groves, a few round each pasture (the corners looked empty), more loners
 const GROVES = (NM ? (NM.groves || []) : TOY ? [{ x: -58.6, z: 21.4, n: 3 }, { x: 58.6, z: -21.4, n: 3 }, { x: -16, z: -16, n: 2 }, { x: 16, z: 16, n: 2 }] : JUNGLE ? [{ x: -90, z: 23, n: 2 }, { x: 90, z: -23, n: 2 }, { x: -90, z: -23, n: 2 }, { x: 90, z: 23, n: 2 }] : VOLC ? [{ x: -62, z: -38, n: 5 }, { x: 62, z: 38, n: 5 }, { x: -36, z: 44, n: 4 }, { x: 36, z: -44, n: 4 }] : ICEMAP ? [{ x: -64, z: -38, n: 4 }, { x: 64, z: 38, n: 4 }, { x: -28, z: 46, n: 3 }, { x: 28, z: -46, n: 3 }] : DESERT ? [{ x: 42, z: 26, n: 4 }, { x: -42, z: -26, n: 4 }, { x: -54, z: 20, n: 3 }, { x: 54, z: -20, n: 3 }] : [{ x: -20, z: -23, n: 5 }, { x: 20, z: 23, n: 5 }, { x: -5, z: 33, n: 3 }, { x: 5, z: -33, n: 3 }]).map(g => ({ x: Math.round(g.x * MS), z: Math.round(g.z * MS), n: Math.round(g.n * MS) }));
+await __ldY();
 for (const p of (ICEMAP || (NM && !NM.portalTrees) ? [] : PORTAL_SPOTS)) { const L = Math.hypot(p.x, p.z), pa = { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5 }; // trees scattered round the pasture fence, never in the portal's way
   for (let i = 0, n = 0; i < 120 && n < 4; i++) { const a = rnd() * Math.PI * 2, d = rr(11, 16), x = Math.round(pa.x + Math.cos(a) * d), z = Math.round(pa.z + Math.sin(a) * d);
     if (Math.hypot(x - p.x, z - p.z) < 7 || !clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue; tree(x, z, 2 + Math.floor(rnd() * 3)); n++; } }
@@ -1125,6 +1140,7 @@ for (const gv of GROVES) for (let i = 0, n = 0; i < 80 && n < gv.n; i++) {
   if (!clearAt(x, z, 2) || staticBoxes.some(b => Math.abs(b.x0 - x) < 4.5 && Math.abs(b.z0 - z) < 4.5)) continue;
   tree(x, z, 2 + Math.floor(rnd() * 3)); n++;
 }
+await __ldY();
 for (let i = 0, n = 0; i < 400 && n < 3; i++) {
   const x = Math.round(rr(-MX + 6, MX - 6)), z = Math.round(rr(-MZ + 6, MZ - 6));
   if (!clearAt(x, z, 6) || staticBoxes.some(b => Math.abs(b.x0 - x) < 9 && Math.abs(b.z0 - z) < 9)) continue;
@@ -1170,6 +1186,7 @@ if (!DESERT && !JUNGLE && !TOY && !PLAT && !NEON) { ledges(FORT.blue.x, FORT.blu
   if (!NEON) scene.add(cm); // (Neon City floats over a grid of light, not a sea of cloud)
 }
 const cloudCells = [];
+await __ldY();
 for (const [x, y, z] of [[-60, 24, -70], [10, 28, -85], [55, 22, -60], [-85, 20, -30], [85, 26, -20], [-40, 26, 70], [40, 22, 75]])
   for (let i = 0; i < 10; i++) cloudCells.push([x + Math.round(rr(-4, 4)) * 2, y + Math.round(rr(0, 1)) * 2, z + Math.round(rr(-1, 1)) * 2]);
 
@@ -1348,6 +1365,7 @@ const ANIMAL_SPOTS = [];
 // pastures: one fenced meadow next to each portal. Its animals live there and always try to walk back home.
 const PASTURE_R = 7.5, PASTURES = NM && NM.pastures ? NM.pastures.map(p => V(p.x, 0, p.z)) : (ICEMAP || REEF || (NM && NM.noPasture) ? [] /* (the seals live out on the lake: 09s; the reef has its own sea life: 09t) */ : PORTAL_SPOTS).map(p => { const L = Math.hypot(p.x, p.z); return V(p.x - p.x / L * 8.5, 0, p.z - p.z / L * 8.5); });
 PASTURES.forEach((pa, i) => (VOLC ? ['cow', 'cow', 'cow'] /* (the volcano: goats only) */ : ['cow', 'cow', 'sheep', 'sheep']).forEach(kind => ANIMAL_SPOTS.push({ kind, pasture: pa, home: V(pa.x + rr(-4, 4), 0, pa.z + rr(-4, 4)) })));
+await __ldY();
 { // meadow patch (clover and little flowers) and a ring of short wooden fence posts with wide gaps
   const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
   const gr = g.createRadialGradient(128, 128, 60, 128, 128, 128); gr.addColorStop(0, NIGHT ? 'rgba(220,232,255,.55)' : 'rgba(132,214,92,.9)'); gr.addColorStop(.85, NIGHT ? 'rgba(220,232,255,.35)' : 'rgba(132,214,92,.6)'); gr.addColorStop(1, 'rgba(132,214,92,0)');
@@ -1370,6 +1388,7 @@ PASTURES.forEach((pa, i) => (VOLC ? ['cow', 'cow', 'cow'] /* (the volcano: goats
   }
 }
 
+await __ldStep("02b_launch.js", 0.1448, 0.1462);
 // ============================================================
 // HIDDEN TRAMPOLINES and SPEED STRIPS (kept off the middle: that's where the carnage happens)
 //  - trampolines: round black mats set flush into the ground, yellow-and-black rim, tucked inside the two big tree groves.
@@ -1518,6 +1537,7 @@ function updateLaunchers(dt, visualOnly = false) {
   }
 }
 
+await __ldStep("02c_monument.js", 0.1462, 0.1500);
 // ============================================================
 // THE CENTRE POLE: a tall tower of stacked blocks in the middle of the map (a 360° camera point on top). The round-start flyover
 // uses the camera, swallowed players spectate from it, and the Camera menu lets you look around the level from it.
@@ -1598,6 +1618,7 @@ function updatePole(dt, t) { // the weathervane swings slowly round with the win
   if (MONUMENT.vane) { const s_ = t / 1000, want = Math.sin(s_ * .05) * 2.2 + Math.sin(s_ * .13 + 1) * .9 + Math.sin(s_ * 1.7) * .06; MONUMENT.vane.rotation.y += (want - MONUMENT.vane.rotation.y) * Math.min(1, dt * 1.5); }
 }
 
+await __ldStep("02d_platforms.js", 0.1500, 0.1518);
 // ============================================================
 // PORTAL PLATFORMS (map): the floating platforms themselves. No ground anywhere: just platforms hanging in a strange sky,
 // some fixed, most drifting slowly side to side, up and down, or round in little circles. Built here (before the forts
@@ -1659,6 +1680,7 @@ function plPlace(t, now_) {
 }
 if (PLAT) { plPlace(0, true); for (const o of PL) o.dx = o.dy = o.dz = 0; } // (everything starts where it'll be at time 0)
 
+await __ldStep("02e_jungle.js", 0.1518, 0.1519);
 // ============================================================
 // THE JUNGLE (map), part 1: built before the forts and the ammo.
 //  - THE MAZE fills the middle: mossy stone walls too tall to jump, the same both ways round (turned about the middle) so
@@ -1880,6 +1902,7 @@ function jmMend(dt) {
     jmBanana(Bn); Bn.t = 0; }
 }
 
+await __ldStep("02f_ice.js", 0.1519, 0.1520);
 // ============================================================
 // THE FROZEN LAKE (map), part 1: each team's base is a big IGLOO of real snow blocks on its mountain top (knock it
 // about: it rebuilds like any fort). The dome is open at the very top (it's all seen from above), with a tunnel into
@@ -1904,6 +1927,7 @@ function buildIgloo(team) {
     const home = V(F.x + x, 3.5, F.z + z); const fl = newBlock('flag', home.clone(), { team, color: T.cols[i], home, owner: i }); FLAGS[team].push(fl); });
 }
 
+await __ldStep("02g_neon.js", 0.1520, 0.1521);
 // ============================================================
 // NEON CITY: what it is built from (the forts and the scrap heaps). Its look is in 12d_neo.js (the block kit) and
 // 12e_neon.js (the deck, the sky, the gates, the signs).
@@ -2020,6 +2044,7 @@ function neonScrap() {
   ANCH.dirty = true;
 }
 
+await __ldStep("03_blocks.js", 0.1521, 0.1809);
 // ============================================================
 // BLOCKS: every movable block is a physics body. Forts, towers, flags, ammo, power blocks.
 // ============================================================
@@ -2717,6 +2742,7 @@ function updateBlocks(dt) {
   plainIM.instanceMatrix.needsUpdate = true;
 }
 
+await __ldStep("03c_repair.js", 0.1809, 0.1832);
 // ============================================================
 // FORT REPAIR: forts slowly rebuild themselves, bottom-up, in the quiet moments.
 //  - every fort block remembers its home spot; a spot is "missing" when its block isn't sitting there any more
@@ -2858,6 +2884,7 @@ function clearRubble(s) {
   }
 }
 
+await __ldStep("04_fx.js", 0.1832, 0.1849);
 // ============================================================
 // EFFECTS: light trails, explosions, freeze bursts, respawn beams, screen shake
 // No point lights at all (each one costs on every pixel); glows come from additive effects.
@@ -2941,6 +2968,7 @@ const buzz = name => {
   try { navigator.vibrate && navigator.vibrate(pat); } catch (e) {}
 };
 
+await __ldStep("04b_audio.js", 0.1849, 0.1850);
 // ============================================================
 // NYMBO SOUND (v2): one family of sounds so the game is recognisable by ear.
 //  - "Toy block" clacks: wooden/plastic modal hits with a body "thock"
@@ -3279,6 +3307,7 @@ function updateAmbience(dt) {
   }
 }
 
+await __ldStep("04c_audio_real.js", 0.1850, 0.1855);
 // ============================================================
 // REAL SOUNDS: recorded, CC0 (public-domain) sound files from OpenGameArt, BigSoundBank and Kenney
 // (full list with links in SOUNDS_CREDITS.md). They play through the same 3D field as before.
@@ -3413,6 +3442,7 @@ function updateAmbienceReal(dt) {
   ambR.g.roll.gain.setTargetAtTime(0, t, .08); // rolling noise off (motor hum instead)
 }
 
+await __ldStep("04d_mood.js", 0.1855, 0.1856);
 // ============================================================
 // MOOD SOUNDSCAPE (no music, just sound): the field itself changes with how you're doing.
 //  - HAPPY   with team-mates around you: lively birdsong all round, chirpy and bright
@@ -3523,6 +3553,7 @@ function updateMood(dt) {
   }
 }
 
+await __ldStep("04e_sfx3.js", 0.1856, 0.1857);
 // ============================================================
 // SOUND SET 3: the AI-made sounds (Stable Audio Open Small, polished by tools/pick.py).
 // Every sound has up to three takes (name, name_2, name_3) played round-robin with a little pitch wobble, so
@@ -3650,6 +3681,7 @@ happyBird = function () {}; // (birdsong comes from the recorded bed now)
 // portals hum for real: the generated loop, placed at each portal
 { const hum0 = startAmbienceReal; startAmbienceReal = function () { hum0(); setTimeout(() => { if (!BUF.portal_hum || !ambR) return; for (const Q of PORTALS) { const pn = AC.createPanner(); pn.panningModel = 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 4; pn.rolloffFactor = 1.4; pn.connect(ambR.bus); setPos(pn, Q.pos); loopSrc('portal_hum', pn, .22); } }, 4000); }; }
 
+await __ldStep("04f_mix.js", 0.1857, 0.1858);
 // ============================================================
 // THE MIX: what makes the sound feel like a place and like a body, not a list of samples.
 //  - every in-world sound goes through one "world" channel: a low-pass (the world goes muffled when you're
@@ -3727,6 +3759,7 @@ function updateMix(dt) {
 }
 function stopIncoming(e, w) { const t = AC.currentTime; w.g.gain.setTargetAtTime(0, t, .04); try { w.s.stop(t + .25); } catch (x) {} MIX.incoming.delete(e); }
 
+await __ldStep("05_robots.js", 0.1858, 0.1871);
 // ============================================================
 // ROBOTS: round robots (refs 6/7), legs never move. Physics capsule bodies.
 // Hit = ragdoll 3s, then respawn near your flags, see-through for 3s.
@@ -4112,6 +4145,7 @@ function syncRobot(r) {
   });
 }
 
+await __ldStep("05b_nymbots.js", 0.1871, 0.1940);
 // ============================================================
 // THE ROBOTS YOU CAN PICK (Look lab → Robots; the page reloads with the chosen robots for everyone in the game):
 //  - Nym: a glossy white robot that rolls on a ball: a round head with a black visor and a little screen for a face,
@@ -4409,6 +4443,7 @@ if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMesh
   // (replays pose the robots themselves: keep the arms' look and the antenna right there too)
   const aP = applyPose; applyPose = function (r, ...a) { aP(r, ...a); const M = r.model; if (M && M.rigged) { M.heldIn = M.held.position.z > .3; nbrHeld(M); nbrPose(M); nbrAntPose(M); } }; }
 
+await __ldStep("06_rules.js", 0.1940, 0.1944);
 // ============================================================
 // RULES: thrown blocks hitting robots, bombs, freeze, homing, flags and scoring
 // ============================================================
@@ -4663,6 +4698,7 @@ function scoreFlag(team, f, by) {
   if (score[team] >= WIN_FLAGS) endMatch();
 }
 
+await __ldStep("06b_holes.js", 0.1944, 0.1944);
 // ============================================================
 // FROZEN GROUND and HOLES
 // When the ground freezes, the grass squares under the ice-glass turn icy too. A bomb landing on frozen ground
@@ -4737,6 +4773,7 @@ function updateHoles(dt) {
   }
 }
 
+await __ldStep("06c_sticky.js", 0.1944, 0.1945);
 // ============================================================
 // STICKY THINGS + THE BIRDS
 //  sticky grenade (your one start block): sticks to whatever it hits first, a robot included, and goes off 2.5 s later.
@@ -4856,6 +4893,7 @@ function updateGas(dt) {
   }
 }
 
+await __ldStep("07_ai.js", 0.1945, 0.1946);
 // ============================================================
 // BOTS: same rules as you (same speed cap, same throws, same physics). No cheating, no walking through walls.
 // Roles: attack (steal flags / knock towers), mid (power blocks, fights), defend (guards, returns flags)
@@ -5073,6 +5111,7 @@ function updateAI(r, dt) {
   }
 }
 
+await __ldStep("08_input_hud.js", 0.1946, 0.1947);
 // ============================================================
 // INPUT (your swipes) and the minimal HUD
 // ============================================================
@@ -5460,6 +5499,7 @@ function drawTrail() {
   }
 }
 
+await __ldStep("08b_fun.js", 0.1947, 0.1948);
 // ============================================================
 // FUN LAYER: the two best feelings in the game, turned up.
 //  1) knocking someone out: a tiny hit-stop, a KO pop where they got hit, KO streaks
@@ -5645,6 +5685,7 @@ function updateWool(dt) {
   }
 }
 
+await __ldStep("08c_powers.js", 0.1948, 0.1949);
 // ============================================================
 // POWER-UPS (practice mode: you have all five, each one recharges after use)
 //  NUKE          pick a spot on the map: vaporises the middle, rips a quarter of a fort loose, knocks out anyone near
@@ -6074,6 +6115,7 @@ function skyMapBits(g, X, s, U) {
   if (RBW.on) rainbowCols.forEach((c, j) => { g.strokeStyle = c; g.lineWidth = 1.6 * U; g.beginPath(); for (let k = 0; k <= 40; k++) { const p = RBW.at(k / 40), o = (j - 3) * .55; const [px, py] = X.to(p.x + RBW.side.x * o, p.z + RBW.side.z * o); k ? g.lineTo(px, py) : g.moveTo(px, py); } g.stroke(); });
 }
 
+await __ldStep("08d_shield.js", 0.1949, 0.1950);
 // ============================================================
 // DEFENSE SHIELD: everyone has it. Tap it and every block you carry drops in a ring around you at once,
 // a quick wall to hide behind. Then it recharges (like the powers), so you can't spam it.
@@ -6120,6 +6162,7 @@ function updateShield(dt) {
   const k = SHIELD.cool / SHIELD_CD; shieldBtn.style.setProperty('--k', k); shieldBtn.classList.toggle('cool', k > 0); // the ring fills back in as the shield recharges
 }
 
+await __ldStep("08e_blackhole.js", 0.1950, 0.1951);
 // ============================================================
 // KILL STREAKS + THE BLACK HOLE
 //  Kill streak = knockouts in a row without being knocked out yourself. Everyone has the same ladder:
@@ -6250,6 +6293,7 @@ function specCamera() { // the 360 camera: on the pole (Camera menu), or a wide 
 // a tiny "you're out" check used by the player controls: no acting from the camera
 const isOut = r => r && r.state === 'out';
 
+await __ldStep("08f_more_powers.js", 0.1951, 0.1957);
 // ============================================================
 // THREE MORE KILL-STREAK POWERS (Ali's spec)
 //  FETCH!        a dog picks a random enemy: they light up and a bone appears on their back. The dog runs at 1.2x your
@@ -6710,6 +6754,7 @@ function unboneBlock(b) { const o = b.boneOf; if (!o) return null; const t = b.b
 { const gbB = grabBlock; grabBlock = function (r, e, ...a) { if (e && e.boneOf) { const nb = unboneBlock(e); return nb ? gbB(r, nb, ...a) : false; } return gbB(r, e, ...a); }; }
 function updateBones() { for (const D of DOGS) if (D.fetch && D.fetch.b.body) { const t = D.fetch.b.body.translation(), q = D.fetch.b.body.rotation(); D.fetch.mesh.position.set(t.x, t.y, t.z); D.fetch.mesh.quaternion.set(q.x, q.y, q.z, q.w); } }
 
+await __ldStep("08g_shovel_blackhole.js", 0.1957, 0.1960);
 // ============================================================
 // SHOVEL (kill-streak power): dig an instant hole right where you stand. You fall in, and so does anyone close by.
 // Anyone else who drops through counts as your knockout. It fills back in like any other hole.
@@ -6884,6 +6929,7 @@ function updateGoggles(on) {
   if (on !== !!PW.nvWasOn) { PW.nvWasOn = on; if (on) sfx('nvon'); }
 }
 
+await __ldStep("08h_island.js", 0.1960, 0.1973);
 // ============================================================
 // THE SKY ISLAND: a little floating island just above the centre pole. On it, a golden KILL-STREAK block sits on top
 // of a stack of 3 grey blocks (so a swipe-down grabs the grey ones first). Pick it up and you get a kill-streak power;
@@ -6941,6 +6987,7 @@ function updateIsland(dt) {
 }
 { const ump0 = updateMorePowers; updateMorePowers = function (dt) { ump0(dt); updateIsland(dt); }; }
 
+await __ldStep("08i_bot_smarts.js", 0.1973, 0.1974);
 // ============================================================
 // SMARTER BOTS: extra skills layered on top of the basic bot brain, scaled by difficulty.
 //  EASY    as before.
@@ -7033,6 +7080,7 @@ function hazardAt(r, x, z) {
     if (lvl >= 1 && r.botPw && r.botPw.length && match.state === 'play' && Math.random() < dt * (lvl >= 2 ? 1.5 : .5)) botUsePower(r, p);
   }; }
 
+await __ldStep("08j_slowmo.js", 0.1974, 0.1975);
 // ============================================================
 // SLOW-MO, properly: anyone it catches does EVERYTHING at half speed for those 8 seconds.
 // Walking and running (already), jumping and falling (half the launch, a quarter of the gravity: the same height, twice
@@ -7063,6 +7111,7 @@ function hazardAt(r, x, z) {
 { const rg0 = ragdoll; ragdoll = function (r, ...a) { if (isInvisible(r) && r.body && r.body.translation().y > -2) return; return rg0(r, ...a); }; }
 { const fzI = freezeArea; freezeArea = function (pos, team, by, ...a) { const was = P ? P.frozenT : 0; const out = fzI(pos, team, by, ...a); if (P && isInvisible(P) && P.frozenT > was) { P.frozenT = was; setIce(P, false); } return out; }; }
 
+await __ldStep("08k_rewind.js", 0.1975, 0.1976);
 // ============================================================
 // REWIND (replaces slow-mo): everything goes back to how it was 10 seconds ago. Everyone, the one who used it too.
 //  - you watch the last 10 seconds run backwards for about 2.5 seconds, then play carries on from back then
@@ -7221,6 +7270,7 @@ function rwaEnd() { if (!RWA.on) return; const t = AC.currentTime; RWA.gate.gain
 // every power you earn is stamped with the moment you got it (so a rewind knows which ones to take back)
 { const rp0 = rollPower; rollPower = function (...a) { const n = PW.slots.length; const res = rp0(...a); if (PW.slots.length > n) PW.slots[PW.slots.length - 1].at = RW.clock; return res; }; }
 
+await __ldStep("08l_streaks2.js", 0.1976, 0.1976);
 // ============================================================
 // STREAKS 2: more ways to build a streak, and two new streak rewards
 //  - STEALS (grabbing an enemy flag), SCORES and SAVES (sending your own flag home) now count towards your streak,
@@ -7321,6 +7371,7 @@ function updateClones(dt) {
 }
 { const umS = updateMorePowers; updateMorePowers = function (dt) { umS(dt); updateClones(dt); }; }
 
+await __ldStep("09_main.js", 0.1976, 0.2400);
 // ============================================================
 // MATCH FLOW + MAIN LOOP
 // ============================================================
@@ -7471,7 +7522,7 @@ function drawScene() {
   while (camHidden.length) camHidden.pop().visible = true;
 }
 function frame() {
-  if (window.HOLD) { last = now(); requestAnimationFrame(frame); return; } // (test hook)
+  if (window.HOLD || !window.__built) { last = now(); requestAnimationFrame(frame); return; } // (test hook; and the world is still being built in steps behind the loading screen)
   const t = now(), raw = (t - last) / 1000, dt = Math.min(.05, raw); last = t;
   // automatic quality: only judged on real play (not while loading, not on one-off hiccups like a shader warming up or the
   // app coming back from the background), only stepped down when it's slow for a good while, and stepped back UP when
@@ -7546,6 +7597,7 @@ updateBlocks(0);
 requestAnimationFrame(frame);
 window.__nymbo = { scoreFlag, jmNext: (a, b) => jmNext(a, b), jmNbrs: n => jmNbrs(n), get JM() { return JM; }, get JG() { return JG; }, get ICE2() { return ICE2; }, get TR() { return TR; }, get staticBoxes() { return staticBoxes; }, get EG() { return EG; }, get VO() { return VO; }, sendDog: (o, t) => sendDog(o, t), get ESC() { return ESC; }, escTrace: p => escapeTrace(p), escInk: a => { ESC.ink = a; escapeCheck(); return !!ESC.snap; }, escScore: (a, k) => escScore(escNorm(escResample(a)), k), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, explode, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; } };
 
+await __ldStep("09b_night.js", 0.2400, 0.2407);
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
 // Chosen on the home screen; the page reloads with it. Gameplay is identical: only colours,
@@ -7622,6 +7674,7 @@ if (NIGHT) { const rhN = refreshHeld; refreshHeld = function (r) { rhN(r);
     if (!m.transparent) { m.transparent = true; m.needsUpdate = true; } m.opacity = .78; if (m.emissive) m.emissive.copy(e.color).multiplyScalar(.42);
   }; }
 
+await __ldStep("09c_mountains.js", 0.2407, 0.2439);
 // ============================================================
 // DISTANT MOUNTAINS: two rings of giant mountain ranges rising out of the cloud sea far away.
 // Drawing only. They sit "behind the fog": the colours are pre-mixed into the horizon haze
@@ -7655,6 +7708,7 @@ if (NIGHT) { const rhN = refreshHeld; refreshHeld = function (r) { rhN(r);
   const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam) => { prev(r, s, cam); mat.color.setScalar(1 - .95 * skyU.dark.value); }; // blackout hides them too
 }
 
+await __ldStep("09d_camera.js", 0.2439, 0.2440);
 // ============================================================
 // CAMERAS: the round-start flyover (four styles, pick one in the Camera menu), a preview of each from the menu,
 // and two ways to look at the level without playing: the 360° camera on the monument, and a slow fly-over.
@@ -7758,6 +7812,7 @@ function menuCamera() {
 function previewAt(style, k) { show(null); SPEC.on = false; CAMV.fly = false; CAMV.preview = { style, t0: now() - k * INTRO_T * 1000, hold: true }; }
 function look360(yaw) { show(null); CAMV.preview = null; SPEC.on = true; SPEC.orbit = false; SPEC.yaw = yaw; SPEC.pitch = -.2; }
 
+await __ldStep("09e_replay.js", 0.2440, 0.2440);
 // ============================================================
 // INSTANT REPLAY: when you're knocked out, watch the last few seconds again from the point of view of whoever got you.
 //  Settings → "Instant replay": ON (default) = it plays by itself, tap anywhere to skip.
@@ -7915,6 +7970,7 @@ stage.addEventListener('pointerdown', e => { if (REPLAY.on) { stopReplay(); e.st
 addEventListener('keydown', e => { if (REPLAY.on && (e.code === 'Space' || e.code === 'Escape')) stopReplay(); });
 $('replayTag').addEventListener('click', () => stopReplay());
 
+await __ldStep("09f_landscape.js", 0.2440, 0.2441);
 // ============================================================
 // LANDSCAPE CONTROLS (experimental; Settings → "Landscape controls"). A separate control scheme for holding the phone
 // sideways, or for playing with a keyboard + mouse or a gamepad. It doesn't change the normal swipe game at all.
@@ -8030,6 +8086,7 @@ function landAim(power) { // where the block should come down: along the crossha
 // a nudge to turn the phone sideways
 /* (no more "turn your phone sideways" pop-up: the controls work either way up) */
 
+await __ldStep("09g_maps.js", 0.2441, 0.2472);
 // ============================================================
 // THE SKY BRIDGE MAP (1.4x the classic island). Picked in the menu; the page reloads into it.
 //  - A gorge of open sky runs right across the middle and off both edges of the island: blue's half and red's half.
@@ -8549,6 +8606,7 @@ if (CH) setTimeout(() => { try { rebuildPits(); } catch (e) {} }, 0); // dirt wa
 document.querySelectorAll('[data-map]').forEach(b => { b.classList.toggle('on', b.dataset.map === MAP);
   b.onclick = () => { if (b.dataset.map === MAP) return; try { localStorage.setItem('nymbo-map', b.dataset.map); } catch (e) {} location.reload(); }; });
 
+await __ldStep("09h_penguins.js", 0.2472, 0.2475);
 // ============================================================
 // PENGUINS (the sky map): a penguin hides in every ice pillar. Knock a pillar down and it pops out and waddles about,
 // with the odd belly-slide (harmless: it just makes them hard to catch).
@@ -8736,6 +8794,7 @@ function updatePenguins(dt) {
   }; }
 { const um0 = updateMorePowers; updateMorePowers = function (dt) { um0(dt); updatePenguins(dt); }; }
 
+await __ldStep("09i_polarbear.js", 0.2475, 0.2476);
 // ============================================================
 // THE POLAR BEAR: once a match, at a random moment towards the end, lightning strikes (three big flashes over a couple of seconds) and a
 // huge polar bear appears where it hit: three times a robot's height, up on its hind legs. It goes after whoever is
@@ -8870,6 +8929,7 @@ function bearThaw(B) {
 { const fzB = freezeArea; freezeArea = function (pos, team, by, R = FREEZE_R0) { const B = BEAR.b; if (B && by && Math.hypot(B.x - pos.x, B.z - pos.z) < R + 1.5 && Math.abs(pos.y - B.y - 2) < R + 3) { bearFreeze(B); if (by.isPlayer) toast('THE BEAR FROZE SOLID!'); } return fzB(pos, team, by, R); }; }
 { const umB = updateMorePowers; updateMorePowers = function (dt) { umB(dt); updateBear(dt); }; }
 
+await __ldStep("09k_worlds.js", 0.2476, 0.2477);
 // ============================================================
 // WORLD STYLES: the same game on different planets (picked in the Look lab; the page reloads into it).
 // Each one changes the shapes, the shading, the ground, the sky and the light, not just colours:
@@ -8998,6 +9058,7 @@ if (['jelly', 'circuit', 'toon', 'clay'].includes(WORLD)) {
   { const rhW = refreshHeld; refreshHeld = function (r) { rhW(r); const m = r.model.heldPlainMat; if (m && !m.userData.w) { m.userData.w = 1; style(m); } }; }
 }
 
+await __ldStep("09m_desert.js", 0.2477, 0.2479);
 // ============================================================
 // THE RED DESERT (map): a Mars-like planet with Earth animals. Same game as the classic island, re-made for the desert:
 //  - dunes with gentle windward slopes and steep slip faces: run onto a steep face and you go sliding down it in a spray of
@@ -9223,6 +9284,7 @@ if (DESERT && S.mummy) { for (const r of robots) mummify(r.model, r.color); cons
 function updateMummy() { if (!MUMMY.ribbons.length) return; const t = now() / 1000; for (const R of MUMMY.ribbons) { if (!R.m.parent || !R.m.visible) continue; const p = R.m.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const y = R.base[i * 3 + 1], k = -y; p.setZ(i, -k * k * .35 - k * .15 * (1 + Math.sin(t * 7 + R.ph + k * 4))); p.setX(i, R.base[i * 3] + Math.sin(t * 5 + R.ph + k * 3) * .08 * k); } p.needsUpdate = true; } }
 { const ump4 = updateMorePowers; updateMorePowers = function (dt) { ump4(dt); if (DESERT) { updateSpit(dt); updateDust(dt); } updateMummy(); }; }
 
+await __ldStep("09n_ice.js", 0.2479, 0.2480);
 // ============================================================
 // THE FROZEN LAKE (map): the lake itself (the ski resort round it, the igloos on the mountains, the cable cars, seals
 // and snow birds: 02f_ice.js and 09s_ice2.js).
@@ -9389,6 +9451,7 @@ function frostify(M) {
 }
 if (ICEMAP && S.mummy !== false) { for (const r of robots) frostify(r.model); const rmF = robotModel; robotModel = function (...a) { const M = rmF(...a); try { frostify(M); } catch (e) {} return M; }; }
 
+await __ldStep("09o_volcano.js", 0.2480, 0.2481);
 // ============================================================
 // VOLCANO ISLAND (map). A volcano in the middle with a glowing crater; two rivers of lava run from it to the edge of
 // the island (north and south), each with two stone bridges. The forts sit on black lava shelves either side.
@@ -9647,6 +9710,7 @@ if (VOLC && S.mummy !== false) { for (const r of robots) sootify(r.model); const
       if (sp > 1 && lavaD(t.x, t.z) > 1.05) { const k = 1.6 / sp, ax = t.x + lv.x * k, az = t.z + lv.z * k; if (lavaD(ax, az) < 1.1 && !onBridge(ax, az)) r.jumpReq = true; } }
     return urV(r, dt); }; }
 
+await __ldStep("09p_jungle.js", 0.2481, 0.2482);
 // ============================================================
 // THE JUNGLE TEMPLE (map). Two mossy temple forts in a thick jungle.
 //  - the STONE IDOL stands in the middle with the STAR on its head. Two staircases lead up it (one from each side), but
@@ -9853,6 +9917,7 @@ function jmTempleWay(p, g) { // the courtyard's only ways in and out are the pas
     ai.via = wp; uaJ(r, dt); ai.via = null;
   }; }
 
+await __ldStep("09q_toy.js", 0.2482, 0.2483);
 // ============================================================
 // THE TOY ROOM (map). The robots are tiny toys (about 4 cm tall) playing on a child's bedroom floor, and everything else is
 // its real size (1 unit ≈ 2.2 cm): a 4.2 × 2.9 m room, a 2.5 m ceiling, a 90 × 190 cm bed...
@@ -10079,6 +10144,7 @@ function tinify(M) {
 if (TOY && S.mummy !== false) { for (const r of robots) tinify(r.model); const rmT = robotModel; robotModel = function (...a) { const M = rmT(...a); try { tinify(M); } catch (e) {} return M; }; }
 { const ump9 = updateMorePowers; updateMorePowers = function (dt) { ump9(dt); if (TOY) for (const r of robots) if (r.model && r.model.windKey) r.model.windKey.rotation.z += dt * 3; }; }
 
+await __ldStep("09r_portal.js", 0.2483, 0.2484);
 // ============================================================
 // PORTAL PLATFORMS (map), everything that happens on it (the platforms themselves are built in 02d_platforms.js):
 //  - every platform has TWO PORTALS. They link up in one big loop through all the platforms, so at first it seems
@@ -10507,6 +10573,7 @@ function pxRoute(from, to) { // the first step of the cheapest way from one plat
   if (!safe(r.want)) { let ok = null; for (const a of [.7, -.7, 1.4, -1.4, 2.2, -2.2, Math.PI]) { const d = r.want.clone().applyAxisAngle(V(0, 1, 0), a); if (safe(d)) { ok = d; break; } } if (ok) { r.want.copy(ok); r.yawT = yawTo(ok.x, ok.z); } else r.wantSpeed = 0; }
 }; }
 
+await __ldStep("09s_ice2.js", 0.2484, 0.2485);
 // ============================================================
 // THE FROZEN LAKE (map), part 2: the ski resort. (The mountains are TH in 02_world; the igloos are in 02f.)
 //  - SKI RUNS: the icy run winding down round each mountain is slippery, and it pulls you downhill: a long, fast slide
@@ -10686,6 +10753,7 @@ function updateIce2(dt) {
 }
 { const umI = updateMorePowers; updateMorePowers = function (dt) { umI(dt); updateIce2(dt); }; }
 
+await __ldStep("09t_reef.js", 0.2485, 0.2486);
 // ============================================================
 // THE MOONLIT REEF (map). Deep under the sea at night: the moon wobbling through the waves far overhead, beams of
 // moonlight slanting down, rippling light on the sand, marine snow and bubbles drifting, glowing coral and seaweed,
@@ -10812,6 +10880,7 @@ function updateReef(dt) {
 Object.assign(SFX_SYNTH, { zap: () => { noiseHit(.25, 'bandpass', 3200, .5, 0, true, 1500, 1); clack(1800, .3, .02, .05); }, chomp: () => { thump(90, .9, 0, .3); noiseHit(.2, 'lowpass', 600, .5, 0, true, 200, 1); } });
 { const umR = updateMorePowers; updateMorePowers = function (dt) { umR(dt); updateReef(dt); }; }
 
+await __ldStep("09u_newmaps.js", 0.2486, 0.2487);
 // ============================================================
 // THE NEW STAGES (Nov 2026): shared bits used by the stage files after this one (09ua-09uh)
 //  - nmBox: a solid box you can stand on (mesh + collider)
@@ -10848,6 +10917,7 @@ function nmStep(c, tx, tz, sp, dt, side = false) { const dx = tx - c.x, dz = tz 
   if (!onIsland(nx, nz)) return d; c.x = nx; c.z = nz; const yaw = Math.atan2(dx, dz) + (side ? Math.PI / 2 : 0); c.yaw += Math.atan2(Math.sin(yaw - c.yaw), Math.cos(yaw - c.yaw)) * Math.min(1, dt * 6); return d; }
 { const umN = updateMorePowers; updateMorePowers = function (dt) { umN(dt); if (!NM) return; NMX.t += dt; for (const f of NMX.upd) f(dt); }; }
 
+await __ldStep("09ua_tide.js", 0.2487, 0.2488);
 // ============================================================
 // TIDE ISLANDS: a sunny archipelago in a sea that rises and falls. At low tide the sandbars join everything up;
 // at high tide only the islands stay dry and you're wading (slowly!) or swimming between them.
@@ -10909,6 +10979,7 @@ if (MAP === 'tide') {
       r.body.setLinvel({ x: lv.x * f, y: d > 1.1 ? Math.max(lv.y, Math.min(2.2, lv.y + 28 * dt)) : lv.y, z: lv.z * f }, true); }; }
 }
 
+await __ldStep("09ub_daynight.js", 0.2488, 0.2488);
 // ============================================================
 // DAY & NIGHT: half the map is sunny, the other half is night, and the line between them slowly sweeps back and forth.
 //  - in the dark your ball leaves a GLOWING TRAIL in your team's colour: team-mates who roll along it go faster
@@ -10991,6 +11062,7 @@ if (MAP === 'daynight') {
   });
 }
 
+await __ldStep("09uc_lab.js", 0.2488, 0.2489);
 // ============================================================
 // THE MAGNET LAB: a hexagon lab floor floating in a dark, humming laboratory full of glowing tanks and tesla coils.
 //  - every plain block here is METAL. MAGNET blocks (red, with silver tips) pull metal blocks to them and they snap
@@ -11090,6 +11162,7 @@ if (MAP === 'lab') {
   { const sR = syncRobot; syncRobot = function (r, ...a) { if (r.fusedIn) return; return sR(r, ...a); }; }
 }
 
+await __ldStep("09ud_cube.js", 0.2489, 0.2490);
 // ============================================================
 // THE ROTATING CUBE: each base sits on a round island floating in the sky. Between them lies a giant square block,
 // and every 45 seconds it turns a quarter-turn on its long axis. Whatever's on top tumbles onto the next side up.
@@ -11148,6 +11221,7 @@ if (MAP === 'cube') {
   });
 }
 
+await __ldStep("09ue_grass.js", 0.2490, 0.2491);
 // ============================================================
 // TALL GRASS: you're the size of an ant in a garden. Grass towers over you, pebbles are boulders, mushrooms are
 // platforms, dandelions are trees.
@@ -11236,6 +11310,7 @@ if (MAP === 'grass') {
         if (!r.stackOn) { r.stackOn = o; koPop(q, 'STACK!', '#7ae8ff'); } return; } r.stackOn = null; }; }
 }
 
+await __ldStep("09uf_train.js", 0.2491, 0.2492);
 // ============================================================
 // TRAIN RACE: the whole match is on the roofs of two trains racing side by side through the countryside. Blue's
 // base rides at the back of one train, red's at the front of the other. The two trains are on separate tracks:
@@ -11384,6 +11459,7 @@ if (MAP === 'train') { const pa = pickAmmo; pickAmmo = function (r, p, ...a) { c
     for (const e of blocks) { if (e.dead || !e.body) continue; const t = e.body.translation(); if ((t.z < 0 ? -1 : 1) !== s) { e.dead = true; hid.push(e); } }
     try { return pa(r, p, ...a); } finally { for (const e of hid) e.dead = false; } }; }
 
+await __ldStep("09ug_paint.js", 0.2492, 0.2493);
 // ============================================================
 // PAINT WARS: a bright white arena. PAINT BLOCKS (white with splats) turn up at six paint taps. Carry one and you
 // paint the ground in your team's colour as you roll. Enemies who roll onto your paint go SPLAT (knocked over).
@@ -11456,6 +11532,7 @@ if (MAP === 'paint') {
       if (r.jumps === 0) r.jumpReq = true; }; } // (no way round: jump it)
 }
 
+await __ldStep("09uh_cylinder.js", 0.2493, 0.2494);
 // ============================================================
 // THE CYLINDER: the whole map is the inside wall of a giant open-ended tube floating in the sky. Walk in any direction
 // and you can go all the way round; the world turns with you, so wherever you are, you're standing upright at the
@@ -11522,6 +11599,7 @@ if (MAP === 'cylinder') {
   });
 }
 
+await __ldStep("09v_rainzap.js", 0.2494, 0.2495);
 // ============================================================
 // RAIN ZAPS (14 Nov): rain no longer makes anyone slide. Instead, out in the rain, every few seconds (at random) a
 // robot's antenna is swamped: so many raindrops pinging it at once that it overloads and ZAPS, and the robot stops
@@ -11544,6 +11622,7 @@ function updateRainZaps(dt) {
 }
 { const umRZ = updateMorePowers; updateMorePowers = function (dt) { umRZ(dt); updateRainZaps(dt); }; }
 
+await __ldStep("10_net.js", 0.2495, 0.2496);
 // ============================================================
 // ONLINE PLAY (test version, no game server needed)
 // One device HOSTS: it runs the real match exactly like offline play. Friends JOIN with a 4-digit room code;
@@ -11910,6 +11989,7 @@ $('lobbyBack').onclick = () => { try { sessionStorage.removeItem('nymbo-host'); 
 try { if (sessionStorage.getItem('nymbo-rehost') === '1') { sessionStorage.removeItem('nymbo-rehost'); setTimeout(() => netHost(), 300); } } catch (e) {}
 try { const j = sessionStorage.getItem('nymbo-join'); if (j && sessionStorage.getItem('nymbo-auto') !== '1') { $('netCode').value = j; setTimeout(() => netJoin(j), 300); } } catch (e) {}
 
+await __ldStep("11_labs.js", 0.2496, 0.2497);
 // ============================================================
 // THE LABS (home menu → Sound lab / Look lab)
 //  Sound lab: hear every sound the game uses, and upload your own file to replace any of them.
@@ -12069,6 +12149,7 @@ function stopLab() { const g = LABSND.g; LABSND.g = null; if (!g || !AC) return;
 function labPlay(fn) { if (!AC) return fn(); stopLab(); const g = AC.createGain(); g.connect(bus); const b0 = bus, s0 = send; bus = g; send = null; try { fn(); } finally { bus = b0; send = s0; } LABSND.g = g; }
 $('labExport').onclick = $('labExport2').onclick = exportLabs;
 
+await __ldStep("11b_texpacks.js", 0.2497, 0.2504);
 // ============================================================
 // TEXTURE PACKS (Look lab): every kind of thing gets its own texture, chosen separately.
 //  Grey blocks · Fort bricks · Tree trunks · Tree leaves · Stone ledges · Ground — plus the old robot/flag/power rows.
@@ -12414,6 +12495,7 @@ function open3D(slot) {
   loop();
 }
 
+await __ldStep("11c_guide.js", 0.2504, 0.2505);
 // ============================================================
 // SETTINGS and the GUIDE. Settings opens from the main menu or the pause menu (and goes back to whichever it came
 // from). The guide has five tabs: controls, blocks, powers, creatures and maps; the power icons are the real ones.
@@ -12541,6 +12623,7 @@ function guideTab(k) { $('guideBody').innerHTML = GUIDE[k](); document.querySele
 document.querySelectorAll('#guideTabs [data-g]').forEach(b => b.onclick = () => guideTab(b.dataset.g));
 guideTab('controls');
 
+await __ldStep("11d_designs.js", 0.2505, 0.2506);
 // ============================================================
 // READY-MADE DESIGNS for every row of the Look lab (on top of "Game", your own paintings and uploads).
 // Each design is drawn in code once, the first time it's shown. Picking one is saved like any other choice ('d:<key>').
@@ -12636,6 +12719,7 @@ const DZ = (() => {
 for (const s of LOOK_SLOTS) { const v = CHOICE.tex[s.id]; if (typeof v === 'string' && v.startsWith('d:')) try { applyTexChoice(s); } catch (e) {} }
 for (const s of TP_SLOTS) { const v = CHOICE.tex[s.id]; if (typeof v === 'string' && v.startsWith('d:')) try { tpApply(s); } catch (e) {} }
 
+await __ldStep("12_voice.js", 0.2506, 0.2507);
 // ============================================================
 // VOICE CHAT (test version): talk to the people in your room.
 // Every phone sends its microphone to the host. The host hears everyone and sends each player a mix of all the
@@ -12702,6 +12786,7 @@ $('micBtn').onclick = voiceToggle;
 $('lobbyMic').onclick = voiceToggle;
 setInterval(() => { const inRoom = !!NET; $('micBtn').hidden = !inRoom || match.state === 'menu' && $('lobby').hidden; $('lobbyMic').hidden = !inRoom; const on = VOICE.on; for (const b of [$('micBtn'), $('lobbyMic')]) { b.classList.toggle('on', on); b.textContent = on ? '🎤 on' : '🎤 off'; } if (NET && NET.host && !VOICE.hostReady && NET.peer) { hostVoiceStart(); } }, 500);
 
+await __ldStep("12b_oden.js", 0.2507, 0.2508);
 // ============================================================
 // ODEN V1 (Settings > Sound & feel): a voice and sound pack that was sent in ("NYMBO Powerful Voices 2.0").
 //  - an announcer for the round: opening, get ready, countdown, go, one minute left, final countdown, first hit,
@@ -12785,6 +12870,7 @@ setInterval(() => { if (!odenOn() || match.state !== 'play' || !P || P.state !==
   const near = F && Math.hypot(F.body.translation().x - p.x, F.body.translation().z - p.z) < 14;
   if (carrying || near) { ODEN.whisperT = rr(14, 22); odenSay('oden_nex_0' + (1 + Math.floor(Math.random() * 8)), 1, .8); } else ODEN.whisperT = 3; }, 500);
 
+await __ldStep("12c_hd.js", 0.2508, 0.2509);
 // ============================================================
 // HD WORLD (Look lab → HD world) and the HEAT HAZE (Look lab → Heat haze, on the desert)
 // HD world: the same game, but real-looking:
@@ -13074,6 +13160,7 @@ if (HD && DESERT) { const st0 = sideTint; sideTint = function (cx, cz) { return 
     row.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { S.mummy = b.dataset.m === '1'; saveS(); toast('MUMMY ROBOTS ' + (S.mummy ? 'ON' : 'OFF') + ' (AFTER A RELOAD)'); lookLabRows(); });
     box.insertBefore(row, box.firstChild); }; }
 
+await __ldStep("12d_neo.js", 0.2509, 0.2510);
 // ============================================================
 // THE NEW LOOK (what "Day" is since Nov 2026): a retro-future world in CANDY-APPLE PAINT AND CHROME under a sunset.
 // Not a set of pictures laid over the old world: the blocks, the light, the sky and (map by map) the ground and the
@@ -13506,6 +13593,7 @@ window.__neo = { NEOU, neoShine };
 NEOX = { NEOU, NEO_ENV, neoShine, neoRng, TOUCH: NEO_TOUCH, kitPatch, KIT, kitSet };
 }
 
+await __ldStep("12e_neon.js", 0.2510, 0.2511);
 // ============================================================
 // NEON CITY (the new look's own map): everything you see that is not a block, a robot or an animal.
 //   - dusk over a city of chrome towers: a striped retro sun on the skyline, a ringed planet, stars coming out
@@ -13714,6 +13802,7 @@ float neoBox(vec2 p, vec2 c, vec2 h, float r) { vec2 q = abs(p - c) - h + r; ret
       renderer.setRenderTarget(RT); renderer.clear(); renderer.render(scene, vcam); renderer.setRenderTarget(pRT); renderer.shadowMap.autoUpdate = pAU; slab.visible = true; inRefl = false; FU.neoRon.value = 1; }; }
 }
 
+await __ldStep("12f_robopets.js", 0.2511, 0.2512);
 // ============================================================
 // ROBOT ANIMALS (the new look, from Ali's sheet): the cows and sheep in the pastures are little robots now. Rounded
 // shells in their own colours, a black glass visor with two glowing eyes that blink, chrome joints. They behave exactly
@@ -13768,6 +13857,7 @@ if (NEO && NEOX && !VOLC && !DESERT && !ICEMAP) {
   for (const e of blocks) if (e.kind === 'animal' && e.mesh && (e.animal === 'cow' || e.animal === 'sheep')) { const old = e.mesh, n = makeAnimal(e.animal); n.position.copy(old.position); n.quaternion.copy(old.quaternion); n.visible = old.visible; scene.remove(old); e.mesh = n; }
 }
 
+await __ldStep("12g_ruins.js", 0.2512, 0.2513);
 // ============================================================
 // THE RUINED FIELD (the classic map in the new look): the old stone things that are not blocks.
 //  - one weathered stone for all of them: worn, streaked by rain, moss thick on whatever faces the sky
@@ -13846,6 +13936,7 @@ float rN3(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); 
   { const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam, rt) => { if (prev) prev(r, s, cam, rt); shimU.t.value = now() / 1000; shimU.dim.value = portalCool > 0 ? 1 : 0; }; }
 }
 
+await __ldStep("12h_blocks.js", 0.2513, 0.3935);
 // ============================================================
 // THE NEW SPECIAL BLOCKS (14 Nov, Ali's designs): every special block is carved out of one solid cube in small steps,
 // with one shared look — a rounded, polished frame round each face, little square holes near its corners, a recess, and a symbol.
@@ -14482,9 +14573,11 @@ const SKIN = (() => {
     return M.userData.skin; }
   function strip(M) { if (M && M.userData.skin) { if (M.userData.skin.parent === M) M.remove(M.userData.skin); M.userData.skin = null; M.userData.skinKey = null; } }
   // build one of each kind now, while the game loads, so the first one in a match doesn't stutter
-  try { for (const k of ['bomb', 'freeze', 'homing', 'sticky', 'gold', 'streak']) make(k, '#ffffff', null); for (const t of ['blue', 'red']) for (const c of TEAMS[t].cols) make('flag', c, t); } catch (err) { console.warn('block skins', err); }
   return { KIND, wear, strip, hideM, make };
 })();
+// (built one at a time, with a breather for the loading screen in between)
+await __ldY();
+for (const [k, c, t] of [...['bomb', 'freeze', 'homing', 'sticky', 'gold', 'streak'].map(k => [k, '#ffffff', null]), ...['blue', 'red'].flatMap(t => TEAMS[t].cols.map(c => ['flag', c, t]))]) { try { SKIN.make(k, c, t); } catch (err) { console.warn('block skins', err); } if (__ldDue()) await __ldY(); }
 
 // every frame: dress the special blocks, keep their insides moving, set the semtex timers
 { const pH = pulseHalos; let last = 0;
@@ -14502,6 +14595,7 @@ const SKIN = (() => {
     if (e && SKIN.KIND[e.kind] && !r.heldAnimal) { if (h.userData.inner) { h.remove(h.userData.inner); h.userData.inner = null; } SKIN.wear(h, e); }
     else SKIN.strip(h); }; }
 
+await __ldStep("12i_zoo.js", 0.3935, 0.7352);
 // ============================================================
 // THE NEW ANIMALS: every creature in the game rebuilt in the Nym style (Ali's zoo). Glossy shells, a black glass visor
 // with glowing eyes in the animal's own colour that change with its mood (calm / angry . . / stressed > < with a sweat drop),
@@ -15214,7 +15308,7 @@ const ZOO = (() => {
 const zooKind = (kind) => kind === 'cow' ? (VOLC ? 'goat' : ICEMAP ? 'seal' : DESERT ? 'camel' : 'cow') : kind === 'chicken' ? 'chicken' : kind === 'penguin' ? 'penguin' : 'sheep';
 // animals in the pastures (cows / goats / seals / camels, sheep, chickens, penguins): every new one, and the ones already out
 { const mk = makeAnimal; makeAnimal = function (kind) { const g = mk(kind); ZOO.dress(g, zooKind(kind)); return g; }; }
-for (const e of blocks) if (e.kind === 'animal' && e.mesh) ZOO.dress(e.mesh, zooKind(e.animal));
+for (const e of blocks) if (e.kind === 'animal' && e.mesh) { ZOO.dress(e.mesh, zooKind(e.animal)); if (__ldDue()) await __ldY(); } // (a breather after each animal: the loading screen keeps going)
 { const al = animateLegs; animateLegs = function (e, mode, sp) { al(e, mode, sp); if (mode === 'held') ZOO.held(e); }; }
 // the dog (the Fetch power)
 { const dm = dogModel; dogModel = function () { const m = dm(); ZOO.dress(m.g, 'dog', { keep: [], angry: () => false, mood: () => 'happy' });
@@ -15240,6 +15334,7 @@ for (const J of RF.jellies) ZOO.dress(J.g, 'jellyfish', { paint: J.bell.material
 { const pH = pulseHalos; let last = 0; pulseHalos = function (t) { pH(t); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t; if (dt > 0) ZOO.tick(dt, now()); }; }
 if (window.__nymbo) window.__nymbo.ZOO = ZOO;
 
+await __ldStep("12j_lore.js", 0.7352, 0.7428);
 // ============================================================
 // FETCH's NEW BONE and BLACKOUT's NIGHT-VISION LIGHT (Ali's story for the powers: see the guide's story tab).
 //   The bone: a Nym hit by Fetch! gets a bad signal into its antenna that can only make bones, so everything it holds
@@ -15348,6 +15443,7 @@ const nymKeep = M => { const k = []; for (const v of Object.values(M)) { if (v &
 { const nm = nymMeshModel; nymMeshModel = function (c, h) { const M = nm(c, h); try { bakeStatic(M.g, { keep: nymKeep(M) }); } catch (e) { console.warn('bake nym', e); } return M; }; }
 for (const r of robots) if (r.model && r.model.nym && !r.model.g.userData.baked) try { bakeStatic(r.model.g, { keep: nymKeep(r.model) }); } catch (e) { console.warn('bake nym', e); }
 
+await __ldStep("12k_looklab.js", 0.7428, 0.7431);
 // ============================================================
 // LOOK LAB, the new layout (Ali, 14 Nov): what's in the game NOW sits on top, everything else under "Old".
 //   Now: every block, every animal and every Nym, as little pictures. Tap one to open it big: drag to turn it round,
@@ -15413,6 +15509,7 @@ const LOOKNOW = (() => {
 { const ll = lookLabRows; lookLabRows = function () { ll(); try { LOOKNOW.fill(); } catch (e) { console.warn('look now', e); } }; }
 try { LOOKNOW.layout(); } catch (e) {}
 
+await __ldStep("12l_backdrop.js", 0.7431, 0.7674);
 // ============================================================
 // THE BACKDROP, redone (Ali, 14 Nov): mountains, hills and clouds far away, and a sky that is more than one shade.
 //   Sky: deep blue overhead, softer blue lower down, a pale hazy band at the horizon that warms towards the sun, and
@@ -15540,6 +15637,7 @@ if (!TOY && !PLAT && !REEF && !(NM && NM.noMountains)) {
     const k = 1 - .95 * skyU.dark.value; landU.uK.value = k; for (const [m, o] of puffMats) m.opacity = o * k; };
 }
 
+await __ldStep("12m0_fortkit.js", 0.7674, 0.7677);
 // ============================================================
 // THE SCAVENGED-STONE KIT from the fort lab (14 Nov, the walls Ali picked): pillowy stones packed tight, shaped tops,
 // carved pieces, and the surface materials (sandstone, granite, clay...). Used by the classic stage (12m_classic.js).
@@ -15787,6 +15885,7 @@ function makeFortKit(THREE, RBOX, MERGE) {
   return { V, T, WORLDS, block, top, wall, teamCol, surfMat, surfaces, stoneGeo, paintStone, carvedPiece, shade, rng, lump, stretch, tint, FAM, NOISE, setRes: r => { CRES = r; } };
 }
 
+await __ldStep("12m_classic.js", 0.7677, 0.9998);
 // ============================================================
 // THE CLASSIC STAGE, NEW LOOK (14 Nov, Ali): candy-dream light; forts, towers and ammo built from scavenged stones
 // (nothing perfect: jagged tops, some lower some higher, wonky doorways, the odd stone sticking out); the grey ammo in
@@ -15933,6 +16032,7 @@ if (CLX) {
   { const nb = newBlock; newBlock = function (...a) { const e = nb(...a); if (e && e.inst >= 0) stoneSet(e); return e; }; }
   window.__nymbo && (window.__nymbo.stoneSet = stoneSet);
 
+  await __ldY(); // (a breather: the loading screen moves on while the stage is built)
   // ---------------- 2b. the stones themselves: the lab's scavenged-stone kit ----------------
   // Every fort brick, ammo block and ledge is drawn as one of the lab's pieces made to its exact size: a pillowy stone
   // (or now and then a carved one), and the battlements on top get the lab's shaped tops (ramps, gables, points, round
@@ -16044,7 +16144,7 @@ if (CLX) {
     const fam = e.kind === 'fort' ? famPick[e.team === 'red' ? 'red' : 'blue']() : famPick.none();
     famAttrs(g, fam); return { e, g, fam, local }; }
   const dressE = blocks.filter(e => e.inst >= 0 && (e.kind === 'fort' || e.kind === 'stone' || e.kind === 'prop') && !e.mazeBrick);
-  for (const e of dressE) { const p = labPiece(e); LAB.push(p); (byFam[p.fam] = byFam[p.fam] || []).push(p); hideA.setX(e.inst, 1); }
+  for (const e of dressE) { if (__ldDue()) await __ldY(); const p = labPiece(e); LAB.push(p); (byFam[p.fam] = byFam[p.fam] || []).push(p); hideA.setX(e.inst, 1); }
   hideA.needsUpdate = true;
   const ENVS = (() => { try { const pm = new THREE.PMREMGenerator(renderer); return pm.fromScene(new RoomEnvironment(), .04).texture; } catch (_) { return null; } })();
   // Drawing them: every stone that hasn't moved is welded into one big mesh per material (a handful of draw calls for
@@ -16055,6 +16155,7 @@ if (CLX) {
   // ONE object for every stone that hasn't moved
   // (welded in map tiles, not one piece: tiles off the screen, or outside the sun's shadow area round you, are skipped)
   const WELD = [], TILE = 27, tileOf = (x, z) => Math.floor(x / TILE) + ',' + Math.floor(z / TILE), TILES = {};
+  await __ldY(); // (a breather: the loading screen moves on while the stage is built)
   for (const p of LAB) { plainIM.getMatrixAt(p.e.inst, _M); (TILES[tileOf(_M.elements[12], _M.elements[14])] = TILES[tileOf(_M.elements[12], _M.elements[14])] || []).push(p); }
   for (const L of Object.values(TILES)) { let nv = 0, ni = 0; for (const p of L) { nv += p.g.attributes.position.count; ni += p.g.index.count; }
     const A = { position: new Float32Array(nv * 3), normal: new Float32Array(nv * 3), color: new Float32Array(nv * 3), aF1: new Float32Array(nv * 4), aF2: new Float32Array(nv * 4), aF3: new Float32Array(nv * 4) }, I = new Uint32Array(ni); let o = 0, oi = 0;
@@ -16088,6 +16189,7 @@ if (CLX) {
         const leaf = e.color.g > e.color.r, m = stoneMesh(1, 1, 1, '#' + e.color.getHexString(), [e.id % 97 / 97, 0, 0, leaf ? 3 : 2], [0, 0, 0, 0], [1, 0, 0, 0], tm); h.add(m); h.userData.labC = m; h.material = SKIN.hideM; return; }
       if (e && e._piece && !r.heldAnimal) { const p = e._piece, m = new THREE.Mesh(p.g, famMat(p.fam)); m.matrixAutoUpdate = false; m.matrix.copy(p.local); m.castShadow = true; h.add(m); h.userData.labC = m; h.material = SKIN.hideM; } }; }
 
+  await __ldY(); // (a breather: the loading screen moves on while the stage is built)
   // ---------------- 2d. the pick-up outline follows the real shape (stones, animals) ----------------
   const hullN = new THREE.MeshBasicMaterial({ color: 0xffe14a, side: THREE.BackSide, transparent: true, depthWrite: false });
   hullN.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += normalize(normal) * .07;'); }; hullN.customProgramCacheKey = () => 'hullN';
@@ -16100,6 +16202,7 @@ if (CLX) {
       hullN.color.copy(hullMat.color); hullN.opacity = hullMat.opacity; }; }
   { const nb = newBlock; newBlock = function (...a) { const e = nb(...a); const p = e && LAB.find(q_ => q_.e === e); if (p) e._piece = p; return e; }; }
 
+  await __ldY(); // (a breather: the loading screen moves on while the stage is built)
   // ---------------- 3. the pastures: a proper meadow, and wonky old wooden posts ----------------
   { const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d'), pr = prng(77), r = () => pr();
     const rg = g.createRadialGradient(256, 256, 120, 256, 256, 256); rg.addColorStop(0, 'rgba(98,178,64,.95)'); rg.addColorStop(.8, 'rgba(92,170,60,.85)'); rg.addColorStop(1, 'rgba(92,170,60,0)'); g.fillStyle = rg; g.fillRect(0, 0, 512, 512);
@@ -16127,6 +16230,7 @@ if (CLX) {
         for (const y of [.42, .74]) { const L = Math.hypot(B.x - A.x, B.z - A.z), M = labMesh(L + .1, .09, .07, WOODC[Math.floor(sr() * 4)], 'wood', Math.floor(sr() * 1e6), true);
           M.position.set((A.x + B.x) / 2, y + R(-.04, .04), (A.z + B.z) / 2); M.rotation.set(0, -Math.atan2(B.z - A.z, B.x - A.x), R(-.04, .04)); M.castShadow = true; scene.add(M); } } } }
 
+  await __ldY(); // (a breather: the loading screen moves on while the stage is built)
   // ---------------- 4. the centre pole: rebuilt from the same scavenged stones ----------------
   if (MONUMENT.g && MONUMENT.g.parent) { const g = MONUMENT.g, keepY = POLE_H - 1.28, sm = stoneMaterial(new LiteMat({ roughness: .9 })); sm.customProgramCacheKey = () => 'stone1p';
     // take away the old plinth and column (everything low down), keep the lantern, the weathervane and the signposts
@@ -16149,6 +16253,7 @@ if (CLX) {
     for (const o of g.children) if (o.isGroup) for (const c of [...o.children]) if (c.isMesh && c.geometry.type === 'RoundedBoxGeometry' && c.material.color && c.material.color.getHex() === (NIGHT ? 0xd8def0 : 0xf3efe6)) { const st = labMesh(.66, .86, .3, '#d8d2c6', 'granite', Math.floor(pr() * 1e6)); st.position.copy(c.position); o.add(st); o.remove(c); }
   }
 
+  await __ldY(); // (a breather: the loading screen moves on while the stage is built)
   // ---------------- 4b. stone floors: the power-block pads, the portal pads and the sky island ----------------
   // laid from the same stones as flagstones: big and small, a little uneven (some higher, some tilted), the odd one
   // cracked in two, a piece or two missing, and a ragged edge. Fixed scenery: they never move.
@@ -16240,6 +16345,7 @@ if (CLX) {
     { const all = Object.values(parts).flat(), T_ = {}; for (const g of all) { if (!g.boundingSphere) g.computeBoundingSphere(); const c = g.boundingSphere.center, k = Math.floor(c.x / 27) + "," + Math.floor(c.z / 27) + (c.y > 6 ? 'up' : ''); (T_[k] = T_[k] || []).push(g); }
       for (const L of Object.values(T_)) { const g = mergeGeometries(L); const m = new THREE.Mesh(g, uniMat()); m.castShadow = m.receiveShadow = true; scene.add(m); } } } // (all the floors: welded in map tiles, so what's off screen is skipped)
 
+  await __ldY(); // (a breather: the loading screen moves on while the stage is built)
   // ---------------- 5. the field: grass with worn paths, tall grass where nobody walks ----------------
   { const W = MX * 2, D = MZ * 2, RES = 2, GW_ = W * RES, GD_ = D * RES, wear = new Float32Array(GW_ * GD_), tall = new Float32Array(GW_ * GD_);
     const at = (x, z) => [Math.round((x + MX) * RES), Math.round((z + MZ) * RES)];
@@ -16358,6 +16464,7 @@ if (CLX) {
       const lv = perf.level || 0; GU.uThin.value = lv >= 4 ? .4 : lv >= 3 ? .55 : lv >= 2 ? .75 : 1; };
     window.__nymbo && (window.__nymbo.FIELD = { grass, wear, tall, n, GU }); }
 
+  await __ldY(); // (a breather: the loading screen moves on while the stage is built)
   // ---------------- 6. the island's edge: not a ruler-straight box any more ----------------
   // a ragged lip of grass all the way round (it pokes out a little, more in some places than others, with rounded
   // corners), and below it a lumpy earth-and-rock cliff instead of the flat striped side. Same shape of island; the
@@ -16484,9 +16591,11 @@ if (CLX) { sun.shadow.bias = -0.0009; sun.shadow.normalBias = 0.06; }
     for (const r of robots) { const g = r.model && r.model.g; if (!g) continue; g.getWorldPosition(_p); setFar(g, r !== P && _p.distanceToSquared(_c) > FAR); }
     for (const e of blocks) if (e.animal && e.mesh) { e.mesh.getWorldPosition(_p); setFar(e.mesh, _p.distanceToSquared(_c) > FAR); } }; }
 
+await __ldStep("13_hooks.js", 0.9998, 1.0000);
 // test hooks for the newer bits (headless checks only)
 Object.assign(window.__nymbo, { nbrPose, nbrAntPose, nbrAntRest, nbrHeld, startReplay: () => startReplay(), drawReplay: () => drawReplay(), onPlayerKO: (...a) => onPlayerKO(...a), nymMeshModel, NBR_SWAPU, NBR_HD, NBR_TS, grabBlock: (...a) => grabBlock(...a), freezeRobot: (...a) => freezeRobot(...a), ragdoll: (...a) => ragdoll(...a), get blocks() { return blocks; }, syncRobot: (...a) => syncRobot(...a), FORT, FLAGS, TN: typeof TN !== 'undefined' ? TN : null, startClones, placeFake, get CLONES() { return CLONES; }, firePower, byIdP });
 
-document.getElementById('loading').hidden = true;
+await __ldStep('end', 1, 1); window.__built = true; __ldBar(1);
+setTimeout(() => { document.getElementById('loading').hidden = true; }, 150);
 </script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))</script></body></html>
