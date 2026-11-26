@@ -440,6 +440,7 @@ html,body{overflow-x:hidden}#menu{overflow-x:hidden;touch-action:pan-y;overscrol
       <div class="tog"><label for="sReplay">Instant replay</label><input id="sReplay" type="checkbox"></div>
       <div class="tog"><label for="sLand">On-screen controls</label><input id="sLand" type="checkbox"></div>
       <div class="tog"><label for="sMaxQ">Max quality</label><input id="sMaxQ" type="checkbox"></div>
+      <div class="tog"><label for="sNE">Nymbo Engine (draws on a second core)</label><input id="sNE" type="checkbox"></div>
       <div class="tog"><label for="sCap">Frame rate</label><select id="sCap" style="font:600 14px var(--body);padding:4px 8px;border-radius:10px;border:0"><option value="auto">Auto (steady)</option><option value="60">60 locked</option><option value="max">Max (screen)</option></select></div></div>
     <div class="sect"><h3>Testing</h3>
       <div class="tog"><label for="sAllPowers">All powers</label><input id="sAllPowers" type="checkbox"></div>
@@ -565,8 +566,9 @@ window.__ldUI = { shown: .03, target: .03, cap: .03, cb: null,
 </script>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/","rapier":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.20.0/dist/rapier.mjs"}}</script>
-<script>window.NYMBO_VER="3f819e5bfd";window.NYMBO_FILES=["alert", "alert_2", "alert_3", "amb_bed", "amb_birds", "amb_grass", "amb_night", "amb_night_2", "amb_night_3", "amb_trees", "amb_wind", "amb_wind_2", "amb_wind_3", "baa1", "baa2", "baa3", "baa4", "baa5", "baa6", "baa7", "baa8", "baa9", "beep", "blackout", "blackout_2", "blackout_3", "boom", "boom1", "boom2", "boom_2", "boom_3", "boom_big", "boom_big_2", "boom_big_3", "boom_tail", "boom_tail_2", "boost", "boost_2", "boost_3", "catch", "catch_2", "catch_3", "cheer", "chimes", "chirp_blue", "chirp_blue_2", "chirp_blue_3", "chirp_red", "chirp_red_2", "chirp_red_3", "clonk", "clonk1", "clonk2", "clonk3", "clonk_2", "clonk_3", "clonk_big", "clonk_big_2", "clonk_big_3", "cloth", "confirm", "crow", "crow_2", "crow_3", "crumble", "crumble1", "crumble2", "crumble_2", "crumble_3", "defeat", "defeat_2", "denied", "denied_2", "denied_3", "dodge", "dodge_2", "dodge_3", "flagDrop", "flagDrop_2", "flagDrop_3", "flagGrab", "flagGrab_2", "flagGrab_3", "flagdrop", "freeze", "freeze_2", "freeze_3", "full", "full_2", "full_3", "glock", "go", "go_2", "go_3", "gong", "grab", "grab1", "grab2", "grab3", "grab_2", "grab_3", "grab_bomb", "grab_bomb_2", "grab_bomb_3", "grab_freeze", "grab_freeze_2", "grab_freeze_3", "grab_homing", "grab_homing_2", "heart", "hit", "hit1", "hit2", "hit3", "hit_2", "hit_3", "hole", "hoof", "hoof_2", "hoof_3", "ice_crack", "ice_crack_2", "ice_crack_3", "impact_stone", "impact_stone_2", "impact_stone_3", "impact_wood", "impact_wood_2", "impact_wood_3", "intro", "intro_2", "intro_3", "invis", "invis_2", "invis_3", "jet", "jet_2", "jump", "jump2", "jump_2", "jump_3", "ko", "ko_2", "ko_3", "land", "land2", "land_2", "land_3", "lightsOn", "lightsOn_2", "lightsOn_3", "lock", "lose", "lose_2", "lose_3", "moo1", "moo2", "moo3", "moo4", "moo5", "nuke", "nuke_rumble", "oden_ann_countdown", "oden_ann_critical_hit", "oden_ann_defeat", "oden_ann_draw", "oden_ann_final_countdown", "oden_ann_first_hit", "oden_ann_game_opening", "oden_ann_match_start", "oden_ann_nex_recovered", "oden_ann_nex_returned", "oden_ann_nex_stolen", "oden_ann_prepare", "oden_ann_sixty_seconds", "oden_ann_victory", "oden_bot_aurinym_01", "oden_bot_aurinym_02", "oden_bot_aurinym_03", "oden_bot_aurinym_04", "oden_bot_aurinym_05", "oden_bot_cronym_01", "oden_bot_cronym_02", "oden_bot_cronym_03", "oden_bot_cronym_04", "oden_bot_cronym_05", "oden_bot_fernym_01", "oden_bot_fernym_02", "oden_bot_fernym_03", "oden_bot_fernym_04", "oden_bot_fernym_05", "oden_bot_nymbus_01", "oden_bot_nymbus_02", "oden_bot_nymbus_03", "oden_bot_nymbus_04", "oden_bot_nymbus_05", "oden_bot_penzonym_01", "oden_bot_penzonym_02", "oden_bot_penzonym_03", "oden_bot_penzonym_04", "oden_bot_penzonym_05", "oden_bot_piconym_01", "oden_bot_piconym_02", "oden_bot_piconym_03", "oden_bot_piconym_04", "oden_bot_piconym_05", "oden_bot_rezinym_01", "oden_bot_rezinym_02", "oden_bot_rezinym_03", "oden_bot_rezinym_04", "oden_bot_rezinym_05", "oden_bot_vionym_01", "oden_bot_vionym_02", "oden_bot_vionym_03", "oden_bot_vionym_04", "oden_bot_vionym_05", "oden_cv_blackhole", "oden_cv_bomb", "oden_cv_dodge", "oden_cv_freeze", "oden_cv_hit_opponent", "oden_cv_homing", "oden_cv_miss_throw", "oden_cv_pickup_block", "oden_cv_respawn", "oden_cv_take_damage", "oden_cv_throw_block", "oden_cv_win", "oden_nex_01", "oden_nex_02", "oden_nex_03", "oden_nex_04", "oden_nex_05", "oden_nex_06", "oden_nex_07", "oden_nex_08", "oden_sfx_blackhole_vortex", "oden_sfx_block_impact", "oden_sfx_block_throw", "oden_sfx_bomb_explosion", "oden_sfx_defeat_shutdown", "oden_sfx_dodge_dash", "oden_sfx_freeze_burst", "oden_sfx_homing_lock", "oden_sfx_magnetic_pickup", "oden_sfx_menu_select", "oden_sfx_nex_capture", "oden_sfx_nex_signal", "oden_sfx_respawn", "oden_sfx_victory_fanfare", "pad", "pad_2", "pad_3", "plop", "pop", "portal", "portal_2", "portal_3", "portal_hum", "powerdown", "powerup", "reload", "reload_2", "reload_3", "repair", "repair_2", "repair_3", "respawn", "respawn_2", "respawn_3", "roll", "score", "score_2", "score_3", "servo", "servo_2", "servo_3", "shatter", "shatter1", "shatter2", "shatter_2", "shatter_3", "siren", "slide", "slide_2", "slowmo", "slowmo_2", "streak", "streak_2", "streak_3", "swoop", "throw", "throw1", "throw2", "throw3", "throw_2", "throw_3", "tick", "tornado", "tramp", "ui", "v2_alert", "v2_amb_bed", "v2_amb_grass", "v2_amb_trees", "v2_baa1", "v2_baa2", "v2_baa3", "v2_baa4", "v2_baa5", "v2_baa6", "v2_baa7", "v2_baa8", "v2_baa9", "v2_boom1", "v2_boom2", "v2_boom_tail", "v2_cheer", "v2_chimes", "v2_clonk1", "v2_clonk2", "v2_clonk3", "v2_clonk_big", "v2_cloth", "v2_confirm", "v2_crumble1", "v2_crumble2", "v2_denied", "v2_dodge", "v2_flagdrop", "v2_freeze", "v2_full", "v2_glock", "v2_gong", "v2_grab1", "v2_grab2", "v2_grab3", "v2_grab_bomb", "v2_grab_freeze", "v2_grab_homing", "v2_heart", "v2_hit1", "v2_hit2", "v2_hit3", "v2_hoof", "v2_ice_crack", "v2_impact_stone", "v2_impact_wood", "v2_jump", "v2_jump2", "v2_ko", "v2_land", "v2_land2", "v2_lock", "v2_moo1", "v2_moo2", "v2_moo3", "v2_moo4", "v2_moo5", "v2_nuke_rumble", "v2_plop", "v2_pop", "v2_portal", "v2_powerdown", "v2_powerup", "v2_reload", "v2_respawn", "v2_roll", "v2_shatter1", "v2_shatter2", "v2_siren", "v2_throw1", "v2_throw2", "v2_throw3", "v2_tick", "v2_tramp", "v2_ui", "v2_v_cow", "v2_v_dark", "v2_v_frozen", "v2_v_gotit", "v2_v_ice", "v2_v_invis", "v2_v_nuke", "v2_v_oops", "v2_v_ouch", "v2_v_returned", "v2_v_run", "v2_v_scored", "v2_v_slow", "v2_v_stolen", "v2_v_theyscored", "v2_v_tornado", "v2_v_visible", "v2_vjump1", "v2_vjump2", "v2_vjump3", "v2_whoosh_big", "v2_whoosh_long", "v_cow", "v_dark", "v_frozen", "v_gotit", "v_ice", "v_invis", "v_nuke", "v_oops", "v_ouch", "v_returned", "v_run", "v_scored", "v_slow", "v_stolen", "v_theyscored", "v_tornado", "v_visible", "visible", "visible_2", "vjump1", "vjump2", "vjump3", "whoosh_big", "whoosh_big_2", "whoosh_big_3", "whoosh_long", "win", "win_2"]</script>
+<script>window.NYMBO_VER="1f5b9b85d2";window.NYMBO_FILES=["alert", "alert_2", "alert_3", "amb_bed", "amb_birds", "amb_grass", "amb_night", "amb_night_2", "amb_night_3", "amb_trees", "amb_wind", "amb_wind_2", "amb_wind_3", "baa1", "baa2", "baa3", "baa4", "baa5", "baa6", "baa7", "baa8", "baa9", "beep", "blackout", "blackout_2", "blackout_3", "boom", "boom1", "boom2", "boom_2", "boom_3", "boom_big", "boom_big_2", "boom_big_3", "boom_tail", "boom_tail_2", "boost", "boost_2", "boost_3", "catch", "catch_2", "catch_3", "cheer", "chimes", "chirp_blue", "chirp_blue_2", "chirp_blue_3", "chirp_red", "chirp_red_2", "chirp_red_3", "clonk", "clonk1", "clonk2", "clonk3", "clonk_2", "clonk_3", "clonk_big", "clonk_big_2", "clonk_big_3", "cloth", "confirm", "crow", "crow_2", "crow_3", "crumble", "crumble1", "crumble2", "crumble_2", "crumble_3", "defeat", "defeat_2", "denied", "denied_2", "denied_3", "dodge", "dodge_2", "dodge_3", "flagDrop", "flagDrop_2", "flagDrop_3", "flagGrab", "flagGrab_2", "flagGrab_3", "flagdrop", "freeze", "freeze_2", "freeze_3", "full", "full_2", "full_3", "glock", "go", "go_2", "go_3", "gong", "grab", "grab1", "grab2", "grab3", "grab_2", "grab_3", "grab_bomb", "grab_bomb_2", "grab_bomb_3", "grab_freeze", "grab_freeze_2", "grab_freeze_3", "grab_homing", "grab_homing_2", "heart", "hit", "hit1", "hit2", "hit3", "hit_2", "hit_3", "hole", "hoof", "hoof_2", "hoof_3", "ice_crack", "ice_crack_2", "ice_crack_3", "impact_stone", "impact_stone_2", "impact_stone_3", "impact_wood", "impact_wood_2", "impact_wood_3", "intro", "intro_2", "intro_3", "invis", "invis_2", "invis_3", "jet", "jet_2", "jump", "jump2", "jump_2", "jump_3", "ko", "ko_2", "ko_3", "land", "land2", "land_2", "land_3", "lightsOn", "lightsOn_2", "lightsOn_3", "lock", "lose", "lose_2", "lose_3", "moo1", "moo2", "moo3", "moo4", "moo5", "nuke", "nuke_rumble", "oden_ann_countdown", "oden_ann_critical_hit", "oden_ann_defeat", "oden_ann_draw", "oden_ann_final_countdown", "oden_ann_first_hit", "oden_ann_game_opening", "oden_ann_match_start", "oden_ann_nex_recovered", "oden_ann_nex_returned", "oden_ann_nex_stolen", "oden_ann_prepare", "oden_ann_sixty_seconds", "oden_ann_victory", "oden_bot_aurinym_01", "oden_bot_aurinym_02", "oden_bot_aurinym_03", "oden_bot_aurinym_04", "oden_bot_aurinym_05", "oden_bot_cronym_01", "oden_bot_cronym_02", "oden_bot_cronym_03", "oden_bot_cronym_04", "oden_bot_cronym_05", "oden_bot_fernym_01", "oden_bot_fernym_02", "oden_bot_fernym_03", "oden_bot_fernym_04", "oden_bot_fernym_05", "oden_bot_nymbus_01", "oden_bot_nymbus_02", "oden_bot_nymbus_03", "oden_bot_nymbus_04", "oden_bot_nymbus_05", "oden_bot_penzonym_01", "oden_bot_penzonym_02", "oden_bot_penzonym_03", "oden_bot_penzonym_04", "oden_bot_penzonym_05", "oden_bot_piconym_01", "oden_bot_piconym_02", "oden_bot_piconym_03", "oden_bot_piconym_04", "oden_bot_piconym_05", "oden_bot_rezinym_01", "oden_bot_rezinym_02", "oden_bot_rezinym_03", "oden_bot_rezinym_04", "oden_bot_rezinym_05", "oden_bot_vionym_01", "oden_bot_vionym_02", "oden_bot_vionym_03", "oden_bot_vionym_04", "oden_bot_vionym_05", "oden_cv_blackhole", "oden_cv_bomb", "oden_cv_dodge", "oden_cv_freeze", "oden_cv_hit_opponent", "oden_cv_homing", "oden_cv_miss_throw", "oden_cv_pickup_block", "oden_cv_respawn", "oden_cv_take_damage", "oden_cv_throw_block", "oden_cv_win", "oden_nex_01", "oden_nex_02", "oden_nex_03", "oden_nex_04", "oden_nex_05", "oden_nex_06", "oden_nex_07", "oden_nex_08", "oden_sfx_blackhole_vortex", "oden_sfx_block_impact", "oden_sfx_block_throw", "oden_sfx_bomb_explosion", "oden_sfx_defeat_shutdown", "oden_sfx_dodge_dash", "oden_sfx_freeze_burst", "oden_sfx_homing_lock", "oden_sfx_magnetic_pickup", "oden_sfx_menu_select", "oden_sfx_nex_capture", "oden_sfx_nex_signal", "oden_sfx_respawn", "oden_sfx_victory_fanfare", "pad", "pad_2", "pad_3", "plop", "pop", "portal", "portal_2", "portal_3", "portal_hum", "powerdown", "powerup", "reload", "reload_2", "reload_3", "repair", "repair_2", "repair_3", "respawn", "respawn_2", "respawn_3", "roll", "score", "score_2", "score_3", "servo", "servo_2", "servo_3", "shatter", "shatter1", "shatter2", "shatter_2", "shatter_3", "siren", "slide", "slide_2", "slowmo", "slowmo_2", "streak", "streak_2", "streak_3", "swoop", "throw", "throw1", "throw2", "throw3", "throw_2", "throw_3", "tick", "tornado", "tramp", "ui", "v2_alert", "v2_amb_bed", "v2_amb_grass", "v2_amb_trees", "v2_baa1", "v2_baa2", "v2_baa3", "v2_baa4", "v2_baa5", "v2_baa6", "v2_baa7", "v2_baa8", "v2_baa9", "v2_boom1", "v2_boom2", "v2_boom_tail", "v2_cheer", "v2_chimes", "v2_clonk1", "v2_clonk2", "v2_clonk3", "v2_clonk_big", "v2_cloth", "v2_confirm", "v2_crumble1", "v2_crumble2", "v2_denied", "v2_dodge", "v2_flagdrop", "v2_freeze", "v2_full", "v2_glock", "v2_gong", "v2_grab1", "v2_grab2", "v2_grab3", "v2_grab_bomb", "v2_grab_freeze", "v2_grab_homing", "v2_heart", "v2_hit1", "v2_hit2", "v2_hit3", "v2_hoof", "v2_ice_crack", "v2_impact_stone", "v2_impact_wood", "v2_jump", "v2_jump2", "v2_ko", "v2_land", "v2_land2", "v2_lock", "v2_moo1", "v2_moo2", "v2_moo3", "v2_moo4", "v2_moo5", "v2_nuke_rumble", "v2_plop", "v2_pop", "v2_portal", "v2_powerdown", "v2_powerup", "v2_reload", "v2_respawn", "v2_roll", "v2_shatter1", "v2_shatter2", "v2_siren", "v2_throw1", "v2_throw2", "v2_throw3", "v2_tick", "v2_tramp", "v2_ui", "v2_v_cow", "v2_v_dark", "v2_v_frozen", "v2_v_gotit", "v2_v_ice", "v2_v_invis", "v2_v_nuke", "v2_v_oops", "v2_v_ouch", "v2_v_returned", "v2_v_run", "v2_v_scored", "v2_v_slow", "v2_v_stolen", "v2_v_theyscored", "v2_v_tornado", "v2_v_visible", "v2_vjump1", "v2_vjump2", "v2_vjump3", "v2_whoosh_big", "v2_whoosh_long", "v_cow", "v_dark", "v_frozen", "v_gotit", "v_ice", "v_invis", "v_nuke", "v_oops", "v_ouch", "v_returned", "v_run", "v_scored", "v_slow", "v_stolen", "v_theyscored", "v_tornado", "v_visible", "visible", "visible_2", "vjump1", "vjump2", "vjump3", "whoosh_big", "whoosh_big_2", "whoosh_big_3", "whoosh_long", "win", "win_2"]</script>
 <script type="module">
+const __NE_WORKER_SRC = "// ============================================================\n// NYMBO ENGINE: THE RENDER THREAD\n// Runs on its own core. The game (on the main thread) works out what the world looks like and sends it here as a compact\n// list of changes; this thread owns the screen and does all the drawing with the graphics chip. The main thread never\n// waits for drawing again, so the game can run its full speed while the picture is drawn alongside it.\n// The materials are rebuilt here from the game's own recipes (including its custom shader code), so the picture is the same.\n// ============================================================\nlet THREE = null, R = null, CAM = null, ready = false, NODRAW = false;\nconst RT = new Map(), O = new Map(), G = new Map(), A = new Map(), IB = new Map(), M = new Map(), T = new Map(), U = new Map(), SC = new Map(), PMQ = [];\nconst stats = { calls: 0, tris: 0, ms: 0, frames: 0, progs: 0 };\nconst V = (v, cur) => { // a value sent from the main thread, back to its THREE form (re-using the existing object where it can)\n  if (v === null || v === undefined || typeof v !== 'object') return v;\n  if (v.C) { if (cur && cur.isColor) return cur.setRGB(v.C[0], v.C[1], v.C[2]); return new THREE.Color(v.C[0], v.C[1], v.C[2]); }\n  if (v.V) { const n = v.V.length; if (cur && ((n === 2 && cur.isVector2) || (n === 3 && cur.isVector3) || (n === 4 && (cur.isVector4 || cur.isQuaternion)))) { cur.fromArray(v.V); return cur; }\n    return n === 2 ? new THREE.Vector2().fromArray(v.V) : n === 3 ? new THREE.Vector3().fromArray(v.V) : v.Q ? new THREE.Quaternion().fromArray(v.V) : new THREE.Vector4().fromArray(v.V); }\n  if (v.M3) { if (cur && cur.isMatrix3) return cur.fromArray(v.M3); return new THREE.Matrix3().fromArray(v.M3); }\n  if (v.M4) { if (cur && cur.isMatrix4) return cur.fromArray(v.M4); return new THREE.Matrix4().fromArray(v.M4); }\n  if (v.T !== undefined) return v.T === null ? null : texGet(v.T);\n  if (v.A) return v.A.map((x, i) => V(x, cur && cur[i]));\n  if (v.F) return v.F;\n  if (v.E) { if (cur && cur.isEuler) return cur.set(v.E[0], v.E[1], v.E[2]); return new THREE.Euler(v.E[0], v.E[1], v.E[2]); }\n  return v; };\n// a picture that hasn't arrived yet (it's being prepared on the other side) is a 1x1 white stand-in, swapped in place later\nlet WHITE = null; const texGet = id => { let t = T.get(id); if (!t) { if (!WHITE) { WHITE = new OffscreenCanvas(1, 1); const g = WHITE.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 1, 1); } t = new THREE.Texture(WHITE); t.__stand = true; t.needsUpdate = true; T.set(id, t); } return t; };\nconst uni = id => { let u = U.get(id); if (!u) { u = { value: null }; U.set(id, u); } return u; };\n// ---- textures ----\nconst texParams = (t, p) => { for (const k of ['wrapS', 'wrapT', 'magFilter', 'minFilter', 'anisotropy', 'format', 'type', 'colorSpace', 'generateMipmaps', 'unpackAlignment', 'channel', 'rotation', 'matrixAutoUpdate', 'internalFormat']) if (p[k] !== undefined) t[k] = p[k];\n  if (p.repeat) t.repeat.fromArray(p.repeat); if (p.offset) t.offset.fromArray(p.offset); if (p.center) t.center.fromArray(p.center); if (p.matrix) t.matrix.fromArray(p.matrix); };\nfunction texOp(id, d) { let t = T.get(id);\n  if (d.kind === 'img') { if (!t || t.isDataTexture || t.isData3DTexture || t.isCubeTexture) { t = new THREE.Texture(d.img); } else { if (t.image && t.image.close && t.image !== WHITE) try { t.image.close(); } catch (_) {} t.image = d.img; t.__stand = false; }\n    t.flipY = false; t.premultiplyAlpha = false; }\n  else if (d.kind === 'data') { if (!t) t = new THREE.DataTexture(d.data, d.w, d.h); else { t.image = { data: d.data, width: d.w, height: d.h }; t.isDataTexture = true; } t.flipY = !!d.flipY; t.premultiplyAlpha = !!d.pma; }\n  else if (d.kind === 'data3d') { if (!t || !t.isData3DTexture) { const old = t; t = new THREE.Data3DTexture(d.data, d.w, d.h, d.d); if (old) swapTex(old, t); } else t.image.data = d.data; }\n  else if (d.kind === 'cube') { if (!t || !t.isCubeTexture) { if (t) t.dispose(); t = new THREE.CubeTexture(d.imgs); } else t.images = d.imgs; t.flipY = false; }\n  else if (d.kind === 'pm') { PMQ.push({ id, d }); if (!t) { t = new THREE.Texture(); t.__pmWait = true; } }\n  else if (d.kind === 'none') { if (!t) t = texGet(id); }\n  else if (d.kind === 'rt') { const rt = RT.get(d.rt); const nt = rt ? (d.depth ? rt.depthTexture : rt.texture) : null; if (nt) { if (t && t !== nt) swapTex(t, nt); T.set(id, nt); } return; }\n  texParams(t, d.p || {}); t.needsUpdate = true; T.set(id, t); }\nfunction swapTex(old, nt) { for (const m of M.values()) { for (const k in m) if (m[k] === old) { m[k] = nt; m.needsUpdate = true; } if (m.uniforms) for (const k in m.uniforms) if (m.uniforms[k].value === old) m.uniforms[k].value = nt; } for (const u of U.values()) if (u.value === old) u.value = nt; for (const s of SC.values()) { if (s.environment === old) s.environment = nt; if (s.background === old) s.background = nt; } }\nfunction rtOp(id, d) { let rt = RT.get(id);\n  if (rt) { if (rt.width !== d.w || rt.height !== d.h) rt.setSize(d.w, d.h); return; }\n  rt = new THREE.WebGLRenderTarget(d.w, d.h, { samples: d.samples, type: d.type, format: d.format, colorSpace: d.colorSpace, minFilter: d.minFilter, magFilter: d.magFilter, generateMipmaps: d.gm, wrapS: d.wrapS, wrapT: d.wrapT, depthBuffer: d.db !== false, stencilBuffer: !!d.sb });\n  if (d.depth) { rt.depthTexture = new THREE.DepthTexture(d.w, d.h); if (d.depthType) rt.depthTexture.type = d.depthType; } RT.set(id, rt); }\nfunction runPM() { while (PMQ.length) { const { id, d } = PMQ.shift(); const sc = SC.get(d.root); if (!sc) continue; try { const pm = new THREE.PMREMGenerator(R); const rt = d.equi !== undefined ? pm.fromEquirectangular(T.get(d.equi)) : pm.fromScene(sc, d.sigma || 0, d.near || .1, d.far || 100); pm.dispose();\n      const old = T.get(id); const nt = rt.texture; T.set(id, nt); if (old) swapTex(old, nt); /* (everything pointing at the waiting picture now points at the real one) */ } catch (e) { postMessage({ t: 'warn', e: 'pmrem ' + e.message }); } } }\n// ---- geometry ----\nfunction attrOp(id, d) { let a = A.get(id);\n  if (d.ib !== undefined) { const ib = IB.get(d.ib); a = new THREE.InterleavedBufferAttribute(ib, d.itemSize, d.offset, d.normalized); A.set(id, a); return; }\n  if (!a || a.array.length !== d.array.length || a.array.constructor !== d.array.constructor) { a = d.inst ? new THREE.InstancedBufferAttribute(d.array, d.itemSize, d.normalized, d.mpa || 1) : new THREE.BufferAttribute(d.array, d.itemSize, d.normalized); if (d.usage) a.setUsage(d.usage); if (d.gpuType !== undefined) a.gpuType = d.gpuType;\n    const old = A.get(id); A.set(id, a); if (old) for (const g of G.values()) { for (const k in g.attributes) if (g.attributes[k] === old) g.attributes[k] = a; if (g.index === old) g.index = a; } for (const o of O.values()) { if (o.instanceMatrix === old) o.instanceMatrix = a; if (o.instanceColor === old) o.instanceColor = a; } }\n  else { a.array.set(d.array); a.needsUpdate = true; } }\nfunction ibOp(id, d) { let ib = IB.get(id); if (!ib || ib.array.length !== d.array.length) { ib = d.inst ? new THREE.InstancedInterleavedBuffer(d.array, d.stride, d.mpa || 1) : new THREE.InterleavedBuffer(d.array, d.stride); IB.set(id, ib); } else { ib.array.set(d.array); ib.needsUpdate = true; } }\nfunction geoOp(id, d) { let g = G.get(id); if (!g) { g = new THREE.BufferGeometry(); G.set(id, g); }\n  for (const k of Object.keys(g.attributes)) if (!(k in d.attrs)) g.deleteAttribute(k);\n  for (const k in d.attrs) { const a = A.get(d.attrs[k]); if (a) g.setAttribute(k, a); }\n  g.setIndex(d.index !== null && d.index !== undefined ? A.get(d.index) || null : null);\n  g.clearGroups(); for (const gr of d.groups || []) g.addGroup(gr[0], gr[1], gr[2]); g.setDrawRange(d.dr[0], d.dr[1]);\n  if (d.bs) { g.boundingSphere = new THREE.Sphere(new THREE.Vector3(d.bs[0], d.bs[1], d.bs[2]), d.bs[3]); } else g.boundingSphere = null; if (d.bb) g.boundingBox = new THREE.Box3(new THREE.Vector3().fromArray(d.bb, 0), new THREE.Vector3().fromArray(d.bb, 3)); else g.boundingBox = null;\n  if (d.morph) { g.morphAttributes = {}; for (const k in d.morph) g.morphAttributes[k] = d.morph[k].map(i => A.get(i)); g.morphTargetsRelative = !!d.mrel; } }\n// ---- materials ----\nconst PROG = new Set(['map', 'envMap', 'normalMap', 'emissiveMap', 'alphaMap', 'aoMap', 'lightMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'displacementMap', 'clearcoatMap', 'transmission', 'vertexColors', 'flatShading', 'fog', 'transparent', 'alphaTest', 'side', 'sizeAttenuation', 'clearcoat', 'sheen', 'iridescence', 'dithering', 'toneMapped', 'premultipliedAlpha', 'alphaHash', 'wireframe', 'depthPacking', 'specularMap', 'gradientMap', 'matcap']);\nfunction matProps(m, p) { let prog = false;\n  for (const k in p) { const v = p[k], cur = m[k];\n    if (PROG.has(k)) { const was = cur && cur.isTexture ? 'T' : cur; const nv = V(v, cur && (cur.isColor || cur.isVector2) ? cur : undefined); const now = nv && nv.isTexture ? 'T' : nv; if ((was === null || was === undefined) !== (now === null || now === undefined) || (typeof was !== 'object' && was !== now)) prog = true; m[k] = nv; }\n    else m[k] = V(v, cur && typeof cur === 'object' ? cur : undefined); }\n  if (prog) m.needsUpdate = true; }\nfunction matOp(id, d) { let m = M.get(id);\n  if (!m || m.type !== d.type || d.fresh) { if (m) m.dispose();\n    if (d.type === 'ShaderMaterial' || d.type === 'RawShaderMaterial') { const u = {}; for (const k in d.uni) u[k] = uni(d.uni[k]); m = new THREE[d.type]({ vertexShader: d.vs, fragmentShader: d.fs, uniforms: u, defines: d.defines || {} }); if (d.ext) m.extensions = d.ext; }\n    else m = new THREE[d.type]();\n    M.set(id, m); }\n  matProps(m, d.p || {});\n  if (d.type !== 'ShaderMaterial' && d.type !== 'RawShaderMaterial') {\n    if (d.obc) { const c = d.obc, key = d.key || ''; m.onBeforeCompile = sh => { sh.vertexShader = c.vs; sh.fragmentShader = c.fs; for (const k in c.uni) sh.uniforms[k] = uni(c.uni[k]); if (c.defines) sh.defines = Object.assign(sh.defines || {}, c.defines); }; m.customProgramCacheKey = () => key; }\n    else { m.onBeforeCompile = THREE.Material.prototype.onBeforeCompile; m.customProgramCacheKey = THREE.Material.prototype.customProgramCacheKey; } }\n  else { for (const k in d.uni) m.uniforms[k] = uni(d.uni[k]); if (d.defines) m.defines = d.defines; }\n  m.needsUpdate = true; }\n// ---- objects ----\nconst _bones = n => Array.from({ length: n }, () => new THREE.Bone());\nfunction objOp(id, d) { let o = O.get(id); if (o) { if (o.parent) o.parent.remove(o); O.delete(id); }\n  const g = G.get(d.g), mat = Array.isArray(d.m) ? d.m.map(i => M.get(i)) : M.get(d.m);\n  switch (d.k) {\n    case 'mesh': o = new THREE.Mesh(g, mat); break;\n    case 'inst': o = new THREE.InstancedMesh(g, mat, 1); o.instanceMatrix = A.get(d.im); o.instanceColor = d.ic !== undefined && d.ic !== null ? A.get(d.ic) : null; o.count = d.count; break;\n    case 'skin': o = new THREE.SkinnedMesh(g, mat); { const sk = new THREE.Skeleton(_bones(d.nb)); sk.update = function () { if (this.__fresh && this.boneTexture) { this.boneTexture.needsUpdate = true; this.__fresh = false; } }; o.bind(sk, new THREE.Matrix4().fromArray(d.bind)); o.bindMode = d.bindMode || 'attached'; o.frustumCulled = false; } break;\n    case 'pts': o = new THREE.Points(g, mat); break;\n    case 'line': o = new THREE.Line(g, mat); break;\n    case 'lseg': o = new THREE.LineSegments(g, mat); break;\n    case 'lloop': o = new THREE.LineLoop(g, mat); break;\n    case 'spr': o = new THREE.Sprite(mat); if (d.center) o.center.fromArray(d.center); break;\n    case 'dir': o = new THREE.DirectionalLight(); break;\n    case 'hemi': o = new THREE.HemisphereLight(); break;\n    case 'amb': o = new THREE.AmbientLight(); break;\n    case 'point': o = new THREE.PointLight(); break;\n    case 'spot': o = new THREE.SpotLight(); break;\n    default: return; }\n  o.matrixAutoUpdate = false; o.matrixWorldAutoUpdate = false; if (o.target) { o.target.matrixAutoUpdate = false; o.target.matrixWorldAutoUpdate = false; }\n  o.__root = d.root; let sc = SC.get(d.root); if (!sc) { sc = new THREE.Scene(); sc.matrixWorldAutoUpdate = false; SC.set(d.root, sc); }\n  sc.add(o); O.set(id, o); if (d.p) propOp(o, d.p); }\nfunction propOp(o, p) {\n  if (p.v !== undefined) o.visible = p.v; if (p.l !== undefined) o.layers.mask = p.l; if (p.cs !== undefined) o.castShadow = p.cs; if (p.rs !== undefined) o.receiveShadow = p.rs;\n  if (p.ro !== undefined) o.renderOrder = p.ro; if (p.fc !== undefined) o.frustumCulled = p.fc; if (p.count !== undefined) o.count = p.count;\n  if (p.g !== undefined) o.geometry = G.get(p.g); if (p.m !== undefined) o.material = Array.isArray(p.m) ? p.m.map(i => M.get(i)) : M.get(p.m);\n  if (p.im !== undefined) { o.instanceMatrix = A.get(p.im); o.boundingSphere = null; } if (p.ic !== undefined) o.instanceColor = p.ic === null ? null : A.get(p.ic); if (p.ib) o.boundingSphere = null;\n  if (p.cdm !== undefined) o.customDepthMaterial = p.cdm === null ? undefined : M.get(p.cdm); if (p.cdist !== undefined) o.customDistanceMaterial = p.cdist === null ? undefined : M.get(p.cdist);\n  if (p.center) o.center.fromArray(p.center); if (p.bind) { o.bindMatrix.fromArray(p.bind); o.bindMatrixInverse.copy(o.bindMatrix).invert(); }\n  if (o.isLight) { if (p.color) o.color.setRGB(p.color[0], p.color[1], p.color[2]); if (p.ground) o.groundColor.setRGB(p.ground[0], p.ground[1], p.ground[2]); if (p.i !== undefined) o.intensity = p.i;\n    for (const k of ['distance', 'decay', 'angle', 'penumbra']) if (p[k] !== undefined) o[k] = p[k];\n    if (p.tw) o.target.matrixWorld.fromArray(p.tw);\n    if (p.sh && o.shadow) { const s = o.shadow, q = p.sh; for (const k of ['bias', 'normalBias', 'radius', 'blurSamples', 'intensity', 'autoUpdate']) if (q[k] !== undefined) s[k] = q[k]; if (q.needsUpdate) s.needsUpdate = true;\n      if (q.ms && (s.mapSize.x !== q.ms[0] || s.mapSize.y !== q.ms[1])) { s.mapSize.set(q.ms[0], q.ms[1]); if (s.map) { s.map.dispose(); s.map = null; } }\n      if (q.cam) { const c = s.camera; for (const k in q.cam) c[k] = q.cam[k]; c.updateProjectionMatrix(); } } } }\n// ---- a frame ----\nconst OCAM = { c: null };\nfunction applyOps(L) { for (const op of L) { try { switch (op[0]) {\n    case 'ib': ibOp(op[1], op[2]); break; case 'a': attrOp(op[1], op[2]); break; case 'g': geoOp(op[1], op[2]); break; case 't': texOp(op[1], op[2]); break; case 'rt': rtOp(op[1], op[2]); break;\n    case 'm': matOp(op[1], op[2]); break; case 'mp': { const m = M.get(op[1]); if (m) matProps(m, op[2]); break; }\n    case 'u': uni(op[1]).value = V(op[2], uni(op[1]).value); break;\n    case 'o': objOp(op[1], op[2]); break; case 'op': { const o = O.get(op[1]); if (o) propOp(o, op[2]); break; }\n    case 'x': { const o = O.get(op[1]); if (o) { if (o.parent) o.parent.remove(o); if (o.isSkinnedMesh && o.skeleton) o.skeleton.dispose(); O.delete(op[1]); } break; }\n    case 'free': { const [, kind, id] = op; const S = kind === 'g' ? G : kind === 'm' ? M : kind === 't' ? T : kind === 'a' ? A : null; if (S) { const x = S.get(id); if (x && x.dispose) x.dispose(); S.delete(id); } break; }\n    case 's': { let sc = SC.get(op[1]); if (!sc) { sc = new THREE.Scene(); sc.matrixWorldAutoUpdate = false; SC.set(op[1], sc); } const d = op[2];\n      if (d.bg !== undefined) sc.background = d.bg === null ? null : d.bg.C ? new THREE.Color(d.bg.C[0], d.bg.C[1], d.bg.C[2]) : V(d.bg);\n      if (d.fog !== undefined) sc.fog = d.fog === null ? null : d.fog.d !== undefined ? new THREE.FogExp2(new THREE.Color(...d.fog.c), d.fog.d) : new THREE.Fog(new THREE.Color(...d.fog.c), d.fog.n, d.fog.f);\n      if (d.env !== undefined) sc.environment = d.env === null ? null : T.get(d.env) || null; if (d.bgi !== undefined) sc.backgroundIntensity = d.bgi; if (d.bgb !== undefined) sc.backgroundBlurriness = d.bgb; break; }\n    case 'r': { const d = op[1]; if (d.tm !== undefined) R.toneMapping = d.tm; if (d.te !== undefined) R.toneMappingExposure = d.te; if (d.cs !== undefined) R.outputColorSpace = d.cs; if (d.se !== undefined) R.shadowMap.enabled = d.se; if (d.st !== undefined) { R.shadowMap.type = d.st; R.shadowMap.needsUpdate = true; } if (d.sa !== undefined) R.shadowMap.autoUpdate = d.sa; if (d.sn) R.shadowMap.needsUpdate = true; if (d.cc) R.setClearColor(new THREE.Color(d.cc[0], d.cc[1], d.cc[2]), d.cc[3]); if (d.so !== undefined) R.sortObjects = d.so; break; }\n    case 'size': R.setPixelRatio(op[3]); R.setSize(op[1], op[2], false); break;\n  } } catch (e) { postMessage({ t: 'warn', e: op[0] + ' ' + (e && e.message) }); } } }\nlet first = true;\nasync function frame(f) { const t0 = performance.now(); let calls = 0, tris = 0;\n  for (const S of f.segs) { applyOps(S.ops);\n    const tr = S.tr; for (let i = 0; i < tr.length; i += 17) { const o = O.get(tr[i]); if (!o) continue; for (let k = 0; k < 16; k++) o.matrixWorld.elements[k] = tr[i + 1 + k]; o.matrix.copy(o.matrixWorld); }\n    if (S.bones) for (const [id, arr] of S.bones) { const o = O.get(id); if (!o || !o.skeleton) continue; const sk = o.skeleton; if (sk.boneMatrices.length < arr.length) sk.boneMatrices = new Float32Array(arr.length); sk.boneMatrices.set(arr); sk.__fresh = true; if (sk.boneTexture) sk.boneTexture.needsUpdate = true; }\n    if (PMQ.length) runPM();\n    const P = S.pass; if (!P || NODRAW) continue; const sc = SC.get(P.root); if (!sc) continue;\n    const c = P.cam, cam = c.o ? (OCAM.c || (OCAM.c = (() => { const k = new THREE.OrthographicCamera(); k.matrixAutoUpdate = false; k.matrixWorldAutoUpdate = false; return k; })())) : CAM;\n    cam.projectionMatrix.fromArray(c.p); cam.projectionMatrixInverse.fromArray(c.pi); cam.matrixWorld.fromArray(c.w); cam.matrixWorldInverse.copy(cam.matrixWorld).invert(); cam.layers.mask = c.l; cam.position.setFromMatrixPosition(cam.matrixWorld);\n    R.setRenderTarget(P.target !== null && P.target !== undefined ? RT.get(P.target) || null : null); R.autoClear = P.clear !== false;\n    if (first && P.target === null) { first = false; try { if (R.compileAsync) await R.compileAsync(sc, cam); } catch (_) {} } /* (the first time: every shader built at once, in parallel where the phone can) */\n    R.render(sc, cam); calls += R.info.render.calls; tris += R.info.render.triangles; }\n  R.setRenderTarget(null);\n  stats.calls = calls; stats.tris = tris; stats.ms = performance.now() - t0; stats.frames++; stats.progs = R.info.programs ? R.info.programs.length : 0; }\nonmessage = async e => { const m = e.data;\n  if (m.t === 'init') { NODRAW = !!m.nodraw; try { THREE = await import(m.three); const cv = m.canvas; R = new THREE.WebGLRenderer({ canvas: cv, antialias: m.aa, powerPreference: 'high-performance', alpha: false });\n      R.setPixelRatio(m.dpr); R.setSize(m.w, m.h, false); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap; R.info.autoReset = true;\n      CAM = new THREE.PerspectiveCamera(); CAM.matrixAutoUpdate = false; CAM.matrixWorldAutoUpdate = false; ready = true; postMessage({ t: 'ready', gl: R.getContext().getParameter(R.getContext().VERSION) }); }\n    catch (err) { postMessage({ t: 'fail', e: String(err && err.message || err) }); } return; }\n  if (m.t === 'f') { if (!ready) { postMessage({ t: 'done', n: m.n, s: stats }); return; } try { await frame(m); } catch (err) { postMessage({ t: 'warn', e: 'frame ' + (err && err.message) }); } postMessage({ t: 'done', n: m.n, s: stats }); }\n  if (m.t === 'compile') { try { const sc = SC.get(m.root); if (sc && R.compileAsync) { await R.compileAsync(sc, CAM); } else if (sc) R.compile(sc, CAM); } catch (_) {} postMessage({ t: 'compiled' }); } };\n";
 const __LD = { t: performance.now(), f: 0, next: 0, shown: 0, T: [] };
 const __ldBar = f => { if (f <= __LD.shown) return; __LD.shown = f; const U = window.__ldUI; if (U) { U.target = Math.max(U.target, .03 + f * .82); U.cap = Math.max(U.cap, .03 + Math.max(f, __LD.next || 0) * .82); } };
 const __ldYield = () => { const g = performance.now() - __LD.t; if (g > (__LD.gmax || 0)) { __LD.gmax = g; __LD.gat = __LD.cur + '#' + (__LD.k || 0); } return __ldYield0(); };
@@ -990,7 +992,15 @@ THREE.ShaderChunk.lights_fragment_begin = THREE.ShaderChunk.lights_fragment_begi
 `);
 window.__bakeChunkOk = THREE.ShaderChunk.lights_fragment_begin.includes('DirectionalLightShadow bk');
 
-await __ldStep("02_world.js", 0.0095, 0.0362);
+await __ldStep("01c_nehooks.js", 0.0095, 0.0098);
+// NYMBO ENGINE, early: pictures made by the "sky reflection" maker (PMREM) remember how they were made, so the render
+// thread can make its own copy (it can't borrow pictures made on this side's graphics context).
+const __PMREC = window.__PMREC = new WeakMap();
+{ const PG = THREE.PMREMGenerator.prototype, fs = PG.fromScene, fe = PG.fromEquirectangular;
+  PG.fromScene = function (sc, sigma, near, far, ...r) { const rt = fs.call(this, sc, sigma, near, far, ...r); try { __PMREC.set(rt.texture, { root: sc, sigma, near, far }); } catch (_) {} return rt; };
+  if (fe) PG.fromEquirectangular = function (tex, ...r) { const rt = fe.call(this, tex, ...r); try { __PMREC.set(rt.texture, { equi: tex }); } catch (_) {} return rt; }; }
+
+await __ldStep("02_world.js", 0.0098, 0.0364);
 // ============================================================
 // WORLD: grass island, fixed scenery (trees, ledges, middle ring), gateways, portals, animals
 // Scenery here never moves and can't be picked up.
@@ -1667,7 +1677,7 @@ await __ldY();
   }
 }
 
-await __ldStep("02b_launch.js", 0.0362, 0.0366);
+await __ldStep("02b_launch.js", 0.0364, 0.0368);
 // ============================================================
 // HIDDEN TRAMPOLINES and SPEED STRIPS (kept off the middle: that's where the carnage happens)
 //  - trampolines: round black mats set flush into the ground, yellow-and-black rim, tucked inside the two big tree groves.
@@ -1816,7 +1826,7 @@ function updateLaunchers(dt, visualOnly = false) {
   }
 }
 
-await __ldStep("02c_monument.js", 0.0366, 0.0418);
+await __ldStep("02c_monument.js", 0.0368, 0.0420);
 // ============================================================
 // THE CENTRE POLE: a tall tower of stacked blocks in the middle of the map (a 360° camera point on top). The round-start flyover
 // uses the camera, swallowed players spectate from it, and the Camera menu lets you look around the level from it.
@@ -1897,7 +1907,7 @@ function updatePole(dt, t) { // the weathervane swings slowly round with the win
   if (MONUMENT.vane) { const s_ = t / 1000, want = Math.sin(s_ * .05) * 2.2 + Math.sin(s_ * .13 + 1) * .9 + Math.sin(s_ * 1.7) * .06; MONUMENT.vane.rotation.y += (want - MONUMENT.vane.rotation.y) * Math.min(1, dt * 1.5); }
 }
 
-await __ldStep("02d_platforms.js", 0.0418, 0.0421);
+await __ldStep("02d_platforms.js", 0.0420, 0.0423);
 // ============================================================
 // PORTAL PLATFORMS (map): the floating platforms themselves. No ground anywhere: just platforms hanging in a strange sky,
 // some fixed, most drifting slowly side to side, up and down, or round in little circles. Built here (before the forts
@@ -1980,7 +1990,7 @@ function plPlace(t, now_) {
 }
 if (PLAT) { plPlace(0, true); for (const o of PL) o.dx = o.dy = o.dz = 0; } // (everything starts where it'll be at time 0)
 
-await __ldStep("02e_jungle.js", 0.0421, 0.0421);
+await __ldStep("02e_jungle.js", 0.0423, 0.0423);
 // ============================================================
 // THE JUNGLE (map), part 1: built before the forts and the ammo.
 //  - THE MAZE fills the middle: mossy stone walls too tall to jump, the same both ways round (turned about the middle) so
@@ -2213,7 +2223,7 @@ function jmMend(dt) {
     jmBanana(Bn); Bn.t = 0; }
 }
 
-await __ldStep("02f_ice.js", 0.0421, 0.0422);
+await __ldStep("02f_ice.js", 0.0423, 0.0424);
 // ============================================================
 // THE FROZEN LAKE (map), part 1: each team's base is a big IGLOO of real snow blocks on its mountain top (knock it
 // about: it rebuilds like any fort). The dome is open at the very top (it's all seen from above), with a tunnel into
@@ -2273,7 +2283,7 @@ function buildIgloo(team) {
     const home = V(F.x + x, 3.5, F.z + z); const fl = newBlock('flag', home.clone(), { team, color: T.cols[i], home, owner: i }); FLAGS[team].push(fl); });
 }
 
-await __ldStep("02g_neon.js", 0.0422, 0.0422);
+await __ldStep("02g_neon.js", 0.0424, 0.0424);
 // ============================================================
 // NEON CITY: what it is built from (the forts and the scrap heaps). Its look is in 12d_neo.js (the block kit) and
 // 12e_neon.js (the deck, the sky, the gates, the signs).
@@ -2390,7 +2400,7 @@ function neonScrap() {
   ANCH.dirty = true;
 }
 
-await __ldStep("02h_haunt.js", 0.0422, 0.0440);
+await __ldStep("02h_haunt.js", 0.0424, 0.0442);
 // ============================================================
 // THE FEARS (the Backrooms card; Ali 25 Nov: "make another one... no crawling, massive ceilings... scary... people's fears";
 // he picked the four on the mood board: THE GIANT, THE DEEP, THE DROP, THE WATCHERS). Classic size, 160 x 100 m, on a grid of
@@ -2529,7 +2539,7 @@ if (HAUNT) { const { C, NX, NZ, X0, Z0, LID, V, H, zone, kind, hole, plat, isPil
   Object.assign(HAUNT, { MESH, PMESH, GM, WATER, M });
   window.HAUNT = HAUNT; }
 
-await __ldStep("03_blocks.js", 0.0440, 0.0471);
+await __ldStep("03_blocks.js", 0.0442, 0.0473);
 // ============================================================
 // BLOCKS: every movable block is a physics body. Forts, towers, flags, ammo, power blocks.
 // ============================================================
@@ -3265,7 +3275,7 @@ function updateBlocks(dt) {
   plainIM.instanceMatrix.needsUpdate = true;
 }
 
-await __ldStep("03c_repair.js", 0.0471, 0.0476);
+await __ldStep("03c_repair.js", 0.0473, 0.0478);
 // ============================================================
 // FORT REPAIR: forts slowly rebuild themselves, bottom-up, in the quiet moments.
 //  - every fort block remembers its home spot; a spot is "missing" when its block isn't sitting there any more
@@ -3407,7 +3417,7 @@ function clearRubble(s) {
   }
 }
 
-await __ldStep("04_fx.js", 0.0476, 0.0482);
+await __ldStep("04_fx.js", 0.0478, 0.0484);
 // ============================================================
 // EFFECTS: light trails, explosions, freeze bursts, respawn beams, screen shake
 // No point lights at all (each one costs on every pixel); glows come from additive effects.
@@ -3497,7 +3507,7 @@ const buzz = name => {
   try { navigator.vibrate && navigator.vibrate(pat); } catch (e) {}
 };
 
-await __ldStep("04b_audio.js", 0.0482, 0.0482);
+await __ldStep("04b_audio.js", 0.0484, 0.0484);
 // ============================================================
 // NYMBO SOUND (v2): one family of sounds so the game is recognisable by ear.
 //  - "Toy block" clacks: wooden/plastic modal hits with a body "thock"
@@ -3836,7 +3846,7 @@ function updateAmbience(dt) {
   }
 }
 
-await __ldStep("04c_audio_real.js", 0.0482, 0.0485);
+await __ldStep("04c_audio_real.js", 0.0484, 0.0487);
 // ============================================================
 // REAL SOUNDS: recorded, CC0 (public-domain) sound files from OpenGameArt, BigSoundBank and Kenney
 // (full list with links in SOUNDS_CREDITS.md). They play through the same 3D field as before.
@@ -3981,7 +3991,7 @@ function updateAmbienceReal(dt) {
   ambR.g.roll.gain.setTargetAtTime(0, t, .08); // rolling noise off (motor hum instead)
 }
 
-await __ldStep("04d_mood.js", 0.0485, 0.0486);
+await __ldStep("04d_mood.js", 0.0487, 0.0488);
 // ============================================================
 // MOOD SOUNDSCAPE (no music, just sound): the field itself changes with how you're doing.
 //  - HAPPY   with team-mates around you: lively birdsong all round, chirpy and bright
@@ -4093,7 +4103,7 @@ function updateMood(dt) {
   }
 }
 
-await __ldStep("04e_sfx3.js", 0.0486, 0.0486);
+await __ldStep("04e_sfx3.js", 0.0488, 0.0488);
 // ============================================================
 // SOUND SET 3: the AI-made sounds (Stable Audio Open Small, polished by tools/pick.py).
 // Every sound has up to three takes (name, name_2, name_3) played round-robin with a little pitch wobble, so
@@ -4221,7 +4231,7 @@ happyBird = function () {}; // (birdsong comes from the recorded bed now)
 // portals hum for real: the generated loop, placed at each portal
 { const hum0 = startAmbienceReal; startAmbienceReal = function () { hum0(); setTimeout(() => { if (!BUF.portal_hum || !ambR) return; for (const Q of PORTALS) { const pn = AC.createPanner(); pn.panningModel = 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 4; pn.rolloffFactor = 1.4; pn.connect(ambR.bus); setPos(pn, Q.pos); loopSrc('portal_hum', pn, .22); } }, 4000); }; }
 
-await __ldStep("04f_mix.js", 0.0486, 0.0487);
+await __ldStep("04f_mix.js", 0.0488, 0.0489);
 // ============================================================
 // THE MIX: what makes the sound feel like a place and like a body, not a list of samples.
 //  - every in-world sound goes through one "world" channel: a low-pass (the world goes muffled when you're
@@ -4299,7 +4309,7 @@ function updateMix(dt) {
 }
 function stopIncoming(e, w) { const t = AC.currentTime; w.g.gain.setTargetAtTime(0, t, .04); try { w.s.stop(t + .25); } catch (x) {} MIX.incoming.delete(e); }
 
-await __ldStep("05_robots.js", 0.0487, 0.0498);
+await __ldStep("05_robots.js", 0.0489, 0.0500);
 // ============================================================
 // ROBOTS: round robots (refs 6/7), legs never move. Physics capsule bodies.
 // Hit = ragdoll 3s, then respawn near your flags, see-through for 3s.
@@ -4690,7 +4700,7 @@ function syncRobot(r) {
   });
 }
 
-await __ldStep("05b_nymbots.js", 0.0498, 0.0694);
+await __ldStep("05b_nymbots.js", 0.0500, 0.0696);
 // ============================================================
 // THE ROBOTS YOU CAN PICK (Look lab → Robots; the page reloads with the chosen robots for everyone in the game):
 //  - Nym: a glossy white robot that rolls on a ball: a round head with a black visor and a little screen for a face,
@@ -5003,7 +5013,7 @@ if (BOT_KIND === 'ball') { robotModel = function (color, happy) { return nymMesh
   // (replays pose the robots themselves: keep the arms' look and the antenna right there too)
   const aP = applyPose; applyPose = function (r, ...a) { aP(r, ...a); const M = r.model; if (M && M.rigged) { M.heldIn = M.held.position.z > .3; nbrHeld(M); nbrPose(M); nbrAntPose(M); } }; }
 
-await __ldStep("06_rules.js", 0.0694, 0.0743);
+await __ldStep("06_rules.js", 0.0696, 0.0745);
 // ============================================================
 // RULES: thrown blocks hitting robots, bombs, freeze, homing, flags and scoring
 // ============================================================
@@ -5258,7 +5268,7 @@ function scoreFlag(team, f, by) {
   if (score[team] >= WIN_FLAGS) endMatch();
 }
 
-await __ldStep("06b_holes.js", 0.0743, 0.0744);
+await __ldStep("06b_holes.js", 0.0745, 0.0746);
 // ============================================================
 // FROZEN GROUND and HOLES
 // When the ground freezes, the grass squares under the ice-glass turn icy too. A bomb landing on frozen ground
@@ -5333,7 +5343,7 @@ function updateHoles(dt) {
   }
 }
 
-await __ldStep("06c_sticky.js", 0.0744, 0.0744);
+await __ldStep("06c_sticky.js", 0.0746, 0.0746);
 // ============================================================
 // STICKY THINGS + THE BIRDS
 //  sticky grenade (your one start block): sticks to whatever it hits first, a robot included, and goes off 2.5 s later.
@@ -5464,7 +5474,7 @@ function updateGas(dt) {
         koPop(rPos(by), 'REVENGE!', '#ffd23a'); if (on.isPlayer) buzz('blast'); } } catch (_) {}
     return r; }; }
 
-await __ldStep("07_ai.js", 0.0744, 0.0745);
+await __ldStep("07_ai.js", 0.0746, 0.0747);
 // ============================================================
 // BOTS: same rules as you (same speed cap, same throws, same physics). No cheating, no walking through walls.
 // Roles: attack (steal flags / knock towers), mid (power blocks, fights), defend (guards, returns flags)
@@ -5691,7 +5701,7 @@ function updateAI(r, dt) {
   }
 }
 
-await __ldStep("08_input_hud.js", 0.0745, 0.0745);
+await __ldStep("08_input_hud.js", 0.0747, 0.0747);
 // ============================================================
 // INPUT (your swipes) and the minimal HUD
 // ============================================================
@@ -6090,7 +6100,7 @@ function drawTrail() {
   }
 }
 
-await __ldStep("08b_fun.js", 0.0745, 0.0746);
+await __ldStep("08b_fun.js", 0.0747, 0.0748);
 // ============================================================
 // FUN LAYER: the two best feelings in the game, turned up.
 //  1) knocking someone out: a tiny hit-stop, a KO pop where they got hit, KO streaks
@@ -6284,7 +6294,7 @@ function updateWool(dt) {
   }
 }
 
-await __ldStep("08c_powers.js", 0.0746, 0.0746);
+await __ldStep("08c_powers.js", 0.0748, 0.0748);
 // ============================================================
 // POWER-UPS (practice mode: you have all five, each one recharges after use)
 //  NUKE          pick a spot on the map: vaporises the middle, rips a quarter of a fort loose, knocks out anyone near
@@ -6762,7 +6772,7 @@ function skyMapBits(g, X, s, U) {
   if (RBW.on) rainbowCols.forEach((c, j) => { g.strokeStyle = c; g.lineWidth = 1.6 * U; g.beginPath(); for (let k = 0; k <= 40; k++) { const p = RBW.at(k / 40), o = (j - 3) * .55; const [px, py] = X.to(p.x + RBW.side.x * o, p.z + RBW.side.z * o); k ? g.lineTo(px, py) : g.moveTo(px, py); } g.stroke(); });
 }
 
-await __ldStep("08d_shield.js", 0.0746, 0.0747);
+await __ldStep("08d_shield.js", 0.0748, 0.0749);
 // ============================================================
 // DEFENSE SHIELD: everyone has it. Tap it and every block you carry drops in a ring around you at once,
 // a quick wall to hide behind. Then it recharges (like the powers), so you can't spam it.
@@ -6809,7 +6819,7 @@ function updateShield(dt) {
   const k = SHIELD.cool / SHIELD_CD; shieldBtn.style.setProperty('--k', k); shieldBtn.classList.toggle('cool', k > 0); // the ring fills back in as the shield recharges
 }
 
-await __ldStep("08e_blackhole.js", 0.0747, 0.0747);
+await __ldStep("08e_blackhole.js", 0.0749, 0.0749);
 // ============================================================
 // KILL STREAKS + THE BLACK HOLE
 //  Kill streak = knockouts in a row without being knocked out yourself. Everyone has the same ladder:
@@ -6946,7 +6956,7 @@ function specCamera() { // the 360 camera: on the pole (Camera menu), or a wide 
 // a tiny "you're out" check used by the player controls: no acting from the camera
 const isOut = r => r && r.state === 'out';
 
-await __ldStep("08f_more_powers.js", 0.0747, 0.0751);
+await __ldStep("08f_more_powers.js", 0.0749, 0.0753);
 // ============================================================
 // THREE MORE KILL-STREAK POWERS (Ali's spec)
 //  FETCH!        a dog picks a random enemy: they light up and a bone appears on their back. The dog runs at 1.2x your
@@ -7401,7 +7411,7 @@ function unboneBlock(b) { const o = b.boneOf; if (!o) return null; const t = b.b
 { const gbB = grabBlock; grabBlock = function (r, e, ...a) { if (e && e.boneOf) { const nb = unboneBlock(e); return nb ? gbB(r, nb, ...a) : false; } return gbB(r, e, ...a); }; }
 function updateBones() { for (const D of DOGS) if (D.fetch && D.fetch.b.body) { const t = D.fetch.b.body.translation(), q = D.fetch.b.body.rotation(); D.fetch.mesh.position.set(t.x, t.y, t.z); D.fetch.mesh.quaternion.set(q.x, q.y, q.z, q.w); } }
 
-await __ldStep("08g_shovel_blackhole.js", 0.0751, 0.0752);
+await __ldStep("08g_shovel_blackhole.js", 0.0753, 0.0754);
 // ============================================================
 // SHOVEL (kill-streak power): dig an instant hole right where you stand. You fall in, and so does anyone close by.
 // Anyone else who drops through counts as your knockout. It fills back in like any other hole.
@@ -7576,7 +7586,7 @@ function updateGoggles(on) {
   if (on !== !!PW.nvWasOn) { PW.nvWasOn = on; if (on) sfx('nvon'); }
 }
 
-await __ldStep("08h_island.js", 0.0752, 0.0753);
+await __ldStep("08h_island.js", 0.0754, 0.0755);
 // ============================================================
 // THE SKY ISLAND: a little floating island just above the centre pole. On it, a golden KILL-STREAK block sits on top
 // of a stack of 3 grey blocks (so a swipe-down grabs the grey ones first). Pick it up and you get a kill-streak power;
@@ -7634,7 +7644,7 @@ function updateIsland(dt) {
 }
 { const ump0 = updateMorePowers; updateMorePowers = function (dt) { ump0(dt); updateIsland(dt); }; }
 
-await __ldStep("08i_bot_smarts.js", 0.0753, 0.0753);
+await __ldStep("08i_bot_smarts.js", 0.0755, 0.0755);
 // ============================================================
 // SMARTER BOTS: extra skills layered on top of the basic bot brain, scaled by difficulty.
 //  EASY    as before.
@@ -7730,7 +7740,7 @@ const LTB = { n: -1, a: [] }; const liveThrown = () => { if (LTB.n !== TICK_N) {
     if (lvl >= 1 && r.botPw && r.botPw.length && match.state === 'play' && Math.random() < dt * (lvl >= 2 ? 1.5 : .5)) botUsePower(r, p);
   }; }
 
-await __ldStep("08j_slowmo.js", 0.0753, 0.0754);
+await __ldStep("08j_slowmo.js", 0.0755, 0.0756);
 // ============================================================
 // SLOW-MO, properly: anyone it catches does EVERYTHING at half speed for those 8 seconds.
 // Walking and running (already), jumping and falling (half the launch, a quarter of the gravity: the same height, twice
@@ -7761,7 +7771,7 @@ await __ldStep("08j_slowmo.js", 0.0753, 0.0754);
 { const rg0 = ragdoll; ragdoll = function (r, ...a) { if (isInvisible(r) && r.body && r.body.translation().y > -2) return; return rg0(r, ...a); }; }
 { const fzI = freezeArea; freezeArea = function (pos, team, by, ...a) { const was = P ? P.frozenT : 0; const out = fzI(pos, team, by, ...a); if (P && isInvisible(P) && P.frozenT > was) { P.frozenT = was; setIce(P, false); } return out; }; }
 
-await __ldStep("08k_rewind.js", 0.0754, 0.0754);
+await __ldStep("08k_rewind.js", 0.0756, 0.0756);
 // ============================================================
 // REWIND (replaces slow-mo): everything goes back to how it was 10 seconds ago. Everyone, the one who used it too.
 //  - you watch the last 10 seconds run backwards for about 2.5 seconds, then play carries on from back then
@@ -7920,7 +7930,7 @@ function rwaEnd() { if (!RWA.on) return; const t = AC.currentTime; RWA.gate.gain
 // every power you earn is stamped with the moment you got it (so a rewind knows which ones to take back)
 { const rp0 = rollPower; rollPower = function (...a) { const n = PW.slots.length; const res = rp0(...a); if (PW.slots.length > n) PW.slots[PW.slots.length - 1].at = RW.clock; return res; }; }
 
-await __ldStep("08l_streaks2.js", 0.0754, 0.0755);
+await __ldStep("08l_streaks2.js", 0.0756, 0.0757);
 // ============================================================
 // STREAKS 2: more ways to build a streak, and two new streak rewards
 //  - STEALS (grabbing an enemy flag), SCORES and SAVES (sending your own flag home) now count towards your streak,
@@ -8028,7 +8038,7 @@ function updateClones(dt) {
 }
 { const umS = updateMorePowers; updateMorePowers = function (dt) { umS(dt); updateClones(dt); }; }
 
-await __ldStep("09_main.js", 0.0755, 0.0816);
+await __ldStep("09_main.js", 0.0757, 0.0818);
 // ============================================================
 // MATCH FLOW + MAIN LOOP
 // ============================================================
@@ -8232,7 +8242,7 @@ function frame() {
   drawTrail();
   if (!(PW.pick && (frameN = (frameN || 0) + 1) % 4)) drawScene(); } catch (e) { noteErr(e); } const t3 = performance.now(); // (the place-picker map covers the game: what's behind it is redrawn only every 4th frame)
   { const F = fpsStat; F.n++; F.sim += t2 - t1; F.draw += t3 - t2; F.raw += raw; // the readout (Settings → Show FPS)
-    if (t - F.t0 > 500) { const el = $('fps'); el.hidden = !S.fps; if (S.fps) el.textContent = `${Math.round(F.n / F.raw)} fps · sim ${(F.sim / F.n).toFixed(1)} ms · draw ${(F.draw / F.n).toFixed(1)} ms · frame ${(F.raw / F.n * 1000).toFixed(1)} ms\n${renderer.getPixelRatio().toFixed(2)}x · shadows ${sun.castShadow ? 'on' : 'off'} · q${perf.level}${PACE.on() ? ' · steady 60' : ''}`; F.t0 = t; F.n = 0; F.sim = 0; F.draw = 0; F.raw = 0; } }
+    if (t - F.t0 > 500) { const el = $('fps'); el.hidden = !S.fps; if (S.fps) el.textContent = `${window.NE && NE.on ? Math.round(NE.fps || 0) + ' fps (engine) · game ' + Math.round(F.n / F.raw) + ' fps' : Math.round(F.n / F.raw) + ' fps'} · sim ${(F.sim / F.n).toFixed(1)} ms · draw ${(F.draw / F.n).toFixed(1)} ms · frame ${(F.raw / F.n * 1000).toFixed(1)} ms\n${renderer.getPixelRatio().toFixed(2)}x · shadows ${sun.castShadow ? 'on' : 'off'} · q${perf.level}${PACE.on() ? ' · steady 60' : ''}`; F.t0 = t; F.n = 0; F.sim = 0; F.draw = 0; F.raw = 0; } }
   requestAnimationFrame(frame);
 }
 let lastDt = 1 / 60;
@@ -8287,7 +8297,7 @@ updateBlocks(0);
 requestAnimationFrame(frame);
 window.__nymbo = { buildChunk: (i, j) => buildChunk(i, j), get BIGG() { return BIGG; }, get chunkCols() { return chunkCols; }, scoreFlag, jmNext: (a, b) => jmNext(a, b), jmNbrs: n => jmNbrs(n), get JM() { return JM; }, get JG() { return JG; }, get ICE2() { return ICE2; }, get TR() { return TR; }, get staticBoxes() { return staticBoxes; }, get EG() { return EG; }, get VO() { return VO; }, sendDog: (o, t) => sendDog(o, t), get ESC() { return ESC; }, escTrace: p => escapeTrace(p), escInk: a => { ESC.ink = a; escapeCheck(); return !!ESC.snap; }, escScore: (a, k) => escScore(escNorm(escResample(a)), k), get VB() { return VB; }, volley: n => volleyOfBombs(n), get TGOATS() { return TGOATS; }, get TREES() { return TREES; }, get PX() { return PX; }, get PL() { return PL; }, get PL_T() { return PL_T; }, platUnder: (x, z, y) => platUnder(x, z, y), pxRoute: (a, b) => pxRoute(a, b), get TR() { return TR; }, get JG() { return JG; }, get VO() { return VO; }, erupt: () => erupt(), lavaX: z => lavaX(z), breakLake: (p, r) => breakLake(p, r), holeAllowed: (x, z) => holeAllowed(x, z), lakeD: (x, z) => lakeD(x, z), get LK() { return LK; }, explode: (...a) => explode(...a), isHole: (x, z) => isHole(x, z), kindMat, destroyBlock: e => destroyBlock(e), get SPIT() { return SPIT; }, capD: (r, p) => capsuleDist(r, p), hittable: r => hittable(r), get DD() { return DD; }, breakLoose: (a, r) => breakLoose(a, r), draw: () => drawScene(), get perf() { return perf; }, get HDW() { return HDW; }, get GM() { return GROUND_MESH; }, get DS() { return DS; }, get RW() { return RW; }, startRewind, score, get FLAGS() { return FLAGS; }, get BUF() { return BUF; }, get ODEN() { return ODEN; }, get DOGS() { return DOGS; }, removeDog, sendDog, firePower, POWERS, PW, applyDark, get LAND() { return LAND; }, throwFor, rPos, S, fxBurst, robotModel, RoundedBoxGeometry, renderer, freeze: (x, z, R) => freezeArea(V(x, TH(x, z) + .3, z), null, null, R), get HOLES() { return HOLES; }, get TREES() { return TREES; }, get ICE() { return ICE; }, get GATES() { return GATES; }, chasm: (x, z) => chasmDist(x, z), lookRows: () => lookLabRows(), get BEAR() { return BEAR; }, summonBear: () => summonBear(), get PENG() { return PENG; }, spawnPenguin: (x, z) => spawnPenguin(V(x, 0, z)), updateHeld: dt => updateHeldAnimals(dt), openPicker: id => openPicker(POWERS.find(p => p.id === id)), endNow: () => { match.time = .01; }, TH: (x, z) => TH(x, z), get GOLD() { return GOLD; }, updateGold: dt => updateGold(dt), setSlow: t => { PW.slowT = t; }, throwAt: (r, a, s) => throwAt(r, a, s), groundAt: (x, z, f) => groundAt(x, z, f), HILLS, get WX() { return WX; }, TRAMP_SPOTS, get SLIDES() { return SLIDES; }, get CONV() { return CONV; }, get RBW() { return RBW; }, ISLAND, BHW, dig: r => dig(r), HOLES_: () => HOLES.size, PORTALS, DOGS, SPRINGS, COOP, ATTACKERS, sendDog, startCoop, placeSpring, chickenOn, firePower: (p, a) => firePower(p, a), get REPLAY() { return REPLAY; }, startReplay: () => startReplay(), gasCloudAt: (x, z) => gasCloud(V(x, 0, z)), get GAS() { return GAS; }, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }), unanchorRaw: unanchor, firePower, PADS, fxCount: () => fxList.length, paintFloor, S, cellData, cellTex, setCell, startTornado, hullMat, get BIRDS() { return BIRDS; }, get STUCK() { return STUCK; }, TREES, unanchor: e => unanchor(e), pthrow: playerThrow, previewAt, look360, startBlackHole, BH, onStreak, SPEC, camera, scene, renderer, MONUMENT, drawScene, grabBlock, PASTURES, renderHud, PADS, HOLES, holeAllowed, FORT_SPOTS, freezeArea, hlKind: () => hlE && (hlE.kind + (hlE.animal || '')), placeHL: placeHighlight, isSlowed, bufCount: () => Object.keys(BUF).length, PW, POWERS, usePower, mapXf, ICE, render: () => { updateCamera(1 / 60); drawScene(); }, THREE, ragdoll, SFX: { ...SFX_SYNTH, ...SFX_REAL }, sfx, ac: () => AC && AC.state, robots, blocks, score, match, get P() { return P; }, get NET() { return NET; }, world, tick, FLAGS, start: startCountdown, grabBlock, freezeArea, get lock() { return lineTarget; }, MX, MZ, FORT_RX, FORT_RZ, HUBS, TH, onIsland, TOWER_H, ANIMAL_SPOTS }; // (the last few: the export tools read them)
 
-await __ldStep("09b_night.js", 0.0816, 0.0829);
+await __ldStep("09b_night.js", 0.0818, 0.0831);
 // ============================================================
 // AURORA NIGHT: the second world look (Style 20 "Aurora Crystal" from the art book).
 // Chosen on the home screen; the page reloads with it. Gameplay is identical: only colours,
@@ -8364,7 +8374,7 @@ if (NIGHT) { const rhN = refreshHeld; refreshHeld = function (r) { rhN(r);
     if (!m.transparent) { m.transparent = true; m.needsUpdate = true; } m.opacity = .78; if (m.emissive) m.emissive.copy(e.color).multiplyScalar(.42);
   }; }
 
-await __ldStep("09c_mountains.js", 0.0829, 0.0848);
+await __ldStep("09c_mountains.js", 0.0831, 0.0850);
 // ============================================================
 // DISTANT MOUNTAINS: two rings of giant mountain ranges rising out of the cloud sea far away.
 // Drawing only. They sit "behind the fog": the colours are pre-mixed into the horizon haze
@@ -8398,7 +8408,7 @@ await __ldStep("09c_mountains.js", 0.0829, 0.0848);
   const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam) => { prev(r, s, cam); mat.color.setScalar(1 - .95 * skyU.dark.value); }; // blackout hides them too
 }
 
-await __ldStep("09d_camera.js", 0.0848, 0.0852);
+await __ldStep("09d_camera.js", 0.0850, 0.0854);
 // ============================================================
 // CAMERAS: the round-start flyover (four styles, pick one in the Camera menu), a preview of each from the menu,
 // and two ways to look at the level without playing: the 360° camera on the monument, and a slow fly-over.
@@ -8512,7 +8522,7 @@ function menuCamera() {
 function previewAt(style, k) { show(null); SPEC.on = false; CAMV.fly = false; CAMV.preview = { style, t0: now() - k * INTRO_T * 1000, hold: true }; }
 function look360(yaw) { show(null); CAMV.preview = null; SPEC.on = true; SPEC.orbit = false; SPEC.yaw = yaw; SPEC.pitch = -.2; }
 
-await __ldStep("09e_replay.js", 0.0852, 0.0852);
+await __ldStep("09e_replay.js", 0.0854, 0.0854);
 // ============================================================
 // INSTANT REPLAY: when you're knocked out, watch the last few seconds again from the point of view of whoever got you.
 //  Settings → "Instant replay": ON (default) = it plays by itself, tap anywhere to skip.
@@ -8681,7 +8691,7 @@ stage.addEventListener('pointerdown', e => { if (REPLAY.on) { stopReplay(); e.st
 addEventListener('keydown', e => { if (REPLAY.on && (e.code === 'Space' || e.code === 'Escape')) stopReplay(); });
 $('replayTag').addEventListener('click', () => stopReplay());
 
-await __ldStep("09f_landscape.js", 0.0852, 0.0855);
+await __ldStep("09f_landscape.js", 0.0854, 0.0857);
 // ============================================================
 // LANDSCAPE CONTROLS (experimental; Settings → "Landscape controls"). A separate control scheme for holding the phone
 // sideways, or for playing with a keyboard + mouse or a gamepad. It doesn't change the normal swipe game at all.
@@ -8797,7 +8807,7 @@ function landAim(power) { // where the block should come down: along the crossha
 // a nudge to turn the phone sideways
 /* (no more "turn your phone sideways" pop-up: the controls work either way up) */
 
-await __ldStep("09g_maps.js", 0.0855, 0.0880);
+await __ldStep("09g_maps.js", 0.0857, 0.0882);
 // ============================================================
 // THE SKY BRIDGE MAP (1.4x the classic island). Picked in the menu; the page reloads into it.
 //  - A gorge of open sky runs right across the middle and off both edges of the island: blue's half and red's half.
@@ -9373,7 +9383,7 @@ if (false) { const st = .5, segs = [], f = (x, z) => chasmDist(x, z), ok = (x, z
   const im = new THREE.Mesh(mergeGeometries(tubes), lipM); im.receiveShadow = true; scene.add(im);
   const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); fg.computeVertexNormals(); const face = new THREE.Mesh(fg, faceM); face.receiveShadow = true; scene.add(face); }
 
-await __ldStep("09h_penguins.js", 0.0880, 0.0883);
+await __ldStep("09h_penguins.js", 0.0882, 0.0885);
 // ============================================================
 // PENGUINS (the sky map): a penguin hides in every ice pillar. Knock a pillar down and it pops out and waddles about,
 // with the odd belly-slide (harmless: it just makes them hard to catch).
@@ -9561,7 +9571,7 @@ function updatePenguins(dt) {
   }; }
 { const um0 = updateMorePowers; updateMorePowers = function (dt) { um0(dt); updatePenguins(dt); }; }
 
-await __ldStep("09i_polarbear.js", 0.0883, 0.0883);
+await __ldStep("09i_polarbear.js", 0.0885, 0.0885);
 // ============================================================
 // THE POLAR BEAR: once a match, at a random moment towards the end, lightning strikes (three big flashes over a couple of seconds) and a
 // huge polar bear appears where it hit: three times a robot's height, up on its hind legs. It goes after whoever is
@@ -9696,7 +9706,7 @@ function bearThaw(B) {
 { const fzB = freezeArea; freezeArea = function (pos, team, by, R = FREEZE_R0) { const B = BEAR.b; if (B && by && Math.hypot(B.x - pos.x, B.z - pos.z) < R + 1.5 && Math.abs(pos.y - B.y - 2) < R + 3) { bearFreeze(B); if (by.isPlayer) toast('THE BEAR FROZE SOLID!'); } return fzB(pos, team, by, R); }; }
 { const umB = updateMorePowers; updateMorePowers = function (dt) { umB(dt); updateBear(dt); }; }
 
-await __ldStep("09k_worlds.js", 0.0883, 0.0884);
+await __ldStep("09k_worlds.js", 0.0885, 0.0886);
 // ============================================================
 // WORLD STYLES: the same game on different planets (picked in the Look lab; the page reloads into it).
 // Each one changes the shapes, the shading, the ground, the sky and the light, not just colours:
@@ -9825,7 +9835,7 @@ if (['jelly', 'circuit', 'toon', 'clay'].includes(WORLD)) {
   { const rhW = refreshHeld; refreshHeld = function (r) { rhW(r); const m = r.model.heldPlainMat; if (m && !m.userData.w) { m.userData.w = 1; style(m); } }; }
 }
 
-await __ldStep("09m_desert.js", 0.0884, 0.0884);
+await __ldStep("09m_desert.js", 0.0886, 0.0886);
 // ============================================================
 // THE RED DESERT (map): a Mars-like planet with Earth animals. Same game as the classic island, re-made for the desert:
 //  - dunes with gentle windward slopes and steep slip faces: run onto a steep face and you go sliding down it in a spray of
@@ -10051,7 +10061,7 @@ if (DESERT && S.mummy) { for (const r of robots) mummify(r.model, r.color); cons
 function updateMummy() { if (!MUMMY.ribbons.length) return; const t = now() / 1000; for (const R of MUMMY.ribbons) { if (!R.m.parent || !R.m.visible) continue; const p = R.m.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const y = R.base[i * 3 + 1], k = -y; p.setZ(i, -k * k * .35 - k * .15 * (1 + Math.sin(t * 7 + R.ph + k * 4))); p.setX(i, R.base[i * 3] + Math.sin(t * 5 + R.ph + k * 3) * .08 * k); } p.needsUpdate = true; } }
 { const ump4 = updateMorePowers; updateMorePowers = function (dt) { ump4(dt); if (DESERT) { updateSpit(dt); updateDust(dt); } updateMummy(); }; }
 
-await __ldStep("09n_ice.js", 0.0884, 0.0885);
+await __ldStep("09n_ice.js", 0.0886, 0.0887);
 // ============================================================
 // THE FROZEN LAKE (map): the lake itself (the ski resort round it, the igloos on the mountains, the cable cars, seals
 // and snow birds: 02f_ice.js and 09s_ice2.js).
@@ -10226,7 +10236,7 @@ function frostify(M) {
 }
 if (ICEMAP && S.mummy !== false) { for (const r of robots) frostify(r.model); const rmF = robotModel; robotModel = function (...a) { const M = rmF(...a); try { frostify(M); } catch (e) {} return M; }; }
 
-await __ldStep("09o_volcano.js", 0.0885, 0.0886);
+await __ldStep("09o_volcano.js", 0.0887, 0.0888);
 // ============================================================
 // VOLCANO ISLAND (map). A volcano in the middle with a glowing crater; two rivers of lava run from it to the edge of
 // the island (north and south), each with two stone bridges. The forts sit on black lava shelves either side.
@@ -10497,7 +10507,7 @@ if (VOLC && S.mummy !== false) { for (const r of robots) sootify(r.model); const
       if (sp > 1 && lavaD(t.x, t.z) > 1.05) { const k = 1.6 / sp, ax = t.x + lv.x * k, az = t.z + lv.z * k; if (lavaD(ax, az) < 1.1 && !onBridge(ax, az)) r.jumpReq = true; } }
     return urV(r, dt); }; }
 
-await __ldStep("09p_jungle.js", 0.0886, 0.0887);
+await __ldStep("09p_jungle.js", 0.0888, 0.0889);
 // ============================================================
 // THE JUNGLE TEMPLE (map). Two mossy temple forts in a thick jungle.
 //  - the STONE IDOL stands in the middle with the STAR on its head. Two staircases lead up it (one from each side), but
@@ -10712,7 +10722,7 @@ function jmTempleWay(p, g) { // the courtyard's only ways in and out are the pas
     ai.via = wp; uaJ(r, dt); ai.via = null;
   }; }
 
-await __ldStep("09q_toy.js", 0.0887, 0.0887);
+await __ldStep("09q_toy.js", 0.0889, 0.0889);
 // ============================================================
 // THE TOY ROOM (map). The robots are tiny toys (about 4 cm tall) playing on a child's bedroom floor, and everything else is
 // its real size (1 unit ≈ 2.2 cm): a 4.2 × 2.9 m room, a 2.5 m ceiling, a 90 × 190 cm bed...
@@ -10977,7 +10987,7 @@ if (TOY) { const sr = syncRobot; syncRobot = function (r) { sr(r); const up = r.
 // a bomb going off near the ball sends it rolling
 if (TOY) { const ex = explode; explode = function (pos, ...a) { const B = TR.ball; if (B && pos) { const dx = B.x - pos.x, dz = B.z - pos.z, d = Math.hypot(dx, dz), R = 9 + B.R; if (d < R) { const k = 1 - d / R; B.dir.set(dx / (d || 1), 0, dz / (d || 1)); B.sp = Math.max(B.sp, 6 + 16 * k); B.bounce = 1; } } return ex(pos, ...a); }; }
 
-await __ldStep("09r_portal.js", 0.0887, 0.0889);
+await __ldStep("09r_portal.js", 0.0889, 0.0891);
 // ============================================================
 // PORTAL PLATFORMS (map), everything that happens on it (the platforms themselves are built in 02d_platforms.js):
 //  - every platform has TWO PORTALS. They link up in one big loop through all the platforms, so at first it seems
@@ -11410,7 +11420,7 @@ function pxRoute(from, to) { // the first step of the cheapest way from one plat
   if (!safe(r.want)) { let ok = null; for (const a of [.7, -.7, 1.4, -1.4, 2.2, -2.2, Math.PI]) { const d = r.want.clone().applyAxisAngle(V(0, 1, 0), a); if (safe(d)) { ok = d; break; } } if (ok) { r.want.copy(ok); r.yawT = yawTo(ok.x, ok.z); } else r.wantSpeed = 0; }
 }; }
 
-await __ldStep("09s_ice2.js", 0.0889, 0.0890);
+await __ldStep("09s_ice2.js", 0.0891, 0.0892);
 // ============================================================
 // THE FROZEN LAKE (map), part 2: the ski resort. (The mountains are TH in 02_world; the igloos are in 02f.)
 //  - SKI RUNS: the icy run winding down round each mountain is slippery, and it pulls you downhill: a long, fast slide
@@ -11603,7 +11613,7 @@ function updateIce2(dt) {
 }
 { const umI = updateMorePowers; updateMorePowers = function (dt) { umI(dt); updateIce2(dt); }; }
 
-await __ldStep("09t_reef.js", 0.0890, 0.0890);
+await __ldStep("09t_reef.js", 0.0892, 0.0892);
 // ============================================================
 // THE MOONLIT REEF (map). Deep under the sea at night: the moon wobbling through the waves far overhead, beams of
 // moonlight slanting down, rippling light on the sand, marine snow and bubbles drifting, glowing coral and seaweed,
@@ -11766,7 +11776,7 @@ function updateReef(dt) {
 Object.assign(SFX_SYNTH, { zap: () => { noiseHit(.25, 'bandpass', 3200, .5, 0, true, 1500, 1); clack(1800, .3, .02, .05); }, chomp: () => { thump(90, .9, 0, .3); noiseHit(.2, 'lowpass', 600, .5, 0, true, 200, 1); } });
 { const umR = updateMorePowers; updateMorePowers = function (dt) { umR(dt); updateReef(dt); }; }
 
-await __ldStep("09u_newmaps.js", 0.0890, 0.0891);
+await __ldStep("09u_newmaps.js", 0.0892, 0.0893);
 // ============================================================
 // THE NEW STAGES (Nov 2026): shared bits used by the stage files after this one (09ua-09uh)
 //  - nmBox: a solid box you can stand on (mesh + collider)
@@ -11803,7 +11813,7 @@ function nmStep(c, tx, tz, sp, dt, side = false) { const dx = tx - c.x, dz = tz 
   if (!onIsland(nx, nz)) return d; c.x = nx; c.z = nz; const yaw = Math.atan2(dx, dz) + (side ? Math.PI / 2 : 0); c.yaw += Math.atan2(Math.sin(yaw - c.yaw), Math.cos(yaw - c.yaw)) * Math.min(1, dt * 6); return d; }
 { const umN = updateMorePowers; updateMorePowers = function (dt) { umN(dt); if (!NM) return; NMX.t += dt; for (const f of NMX.upd) { try { f(dt); } catch (e) { noteErr(e); } } }; } // (one stage piece going wrong no longer stops the rest)
 
-await __ldStep("09ua_tide.js", 0.0891, 0.0891);
+await __ldStep("09ua_tide.js", 0.0893, 0.0893);
 // ============================================================
 // TIDE ISLANDS: a sunny archipelago in a sea that rises and falls. At low tide the sandbars join everything up;
 // at high tide only the islands stay dry and you're wading (slowly!) or swimming between them.
@@ -11867,7 +11877,7 @@ if (MAP === 'tide') {
       r.body.setLinvel({ x: lv.x * f, y: d > 1.1 ? Math.max(lv.y, Math.min(2.2, lv.y + 28 * dt)) : lv.y, z: lv.z * f }, true); }; }
 }
 
-await __ldStep("09ub_daynight.js", 0.0891, 0.0892);
+await __ldStep("09ub_daynight.js", 0.0893, 0.0894);
 // ============================================================
 // DAY & NIGHT: half the map is sunny, the other half is night, and the line between them slowly sweeps back and forth.
 //  - in the dark your ball leaves a GLOWING TRAIL in your team's colour: team-mates who roll along it go faster
@@ -11950,7 +11960,7 @@ if (MAP === 'daynight') {
   });
 }
 
-await __ldStep("09uc_lab.js", 0.0892, 0.0892);
+await __ldStep("09uc_lab.js", 0.0894, 0.0894);
 // ============================================================
 // THE MAGNET LAB: a hexagon lab floor floating in a dark, humming laboratory full of glowing tanks and tesla coils.
 //  - every plain block here is METAL. MAGNET blocks (red, with silver tips) pull metal blocks to them and they snap
@@ -12187,7 +12197,7 @@ if (MAP === 'lab') {
   { const sR = syncRobot; syncRobot = function (r, ...a) { if (r.fusedIn) return; return sR(r, ...a); }; }
 }
 
-await __ldStep("09ud_cube.js", 0.0892, 0.0893);
+await __ldStep("09ud_cube.js", 0.0894, 0.0895);
 // ============================================================
 // THE ROLLING LOG (Ali 18 Nov: "a rotating cylinder instead of a cuboid"): between the two floating base islands lies a
 // giant round drum, its axis running from base to base, turning slowly all the time. You run along the top, but it
@@ -12269,7 +12279,7 @@ if (MAP === 'cube') {
   });
 }
 
-await __ldStep("09ue_grass.js", 0.0893, 0.0893);
+await __ldStep("09ue_grass.js", 0.0895, 0.0895);
 // ============================================================
 // TALL GRASS: you're the size of an ant in a garden. Grass towers over you, pebbles are boulders, mushrooms are
 // platforms, dandelions are trees.
@@ -12383,7 +12393,7 @@ if (MAP === 'grass') {
         if (!r.stackOn) { r.stackOn = o; koPop(q, 'STACK!', '#7ae8ff'); } return; } r.stackOn = null; }; }
 }
 
-await __ldStep("09uf_train.js", 0.0893, 0.0912);
+await __ldStep("09uf_train.js", 0.0895, 0.0914);
 // ============================================================
 // TRAIN RACE: the whole match is on the roofs of two trains racing side by side through the countryside. Blue's
 // base rides at the back of one train, red's at the front of the other. The two trains are on separate tracks:
@@ -12695,7 +12705,7 @@ if (MAP === 'train') { const pa = pickAmmo; pickAmmo = function (r, p, ...a) { c
     for (const e of blocks) { if (e.dead || !e.body) continue; const t = e.body.translation(); if ((t.z < 0 ? -1 : 1) !== s) { e.dead = true; hid.push(e); } }
     try { return pa(r, p, ...a); } finally { for (const e of hid) e.dead = false; } }; }
 
-await __ldStep("09ug_paint.js", 0.0912, 0.0913);
+await __ldStep("09ug_paint.js", 0.0914, 0.0915);
 // ============================================================
 // PAINT WARS: a bright white arena. PAINT BLOCKS (white with splats) turn up at six paint taps. Carry one and you
 // paint the ground in your team's colour as you roll. Enemies who roll onto your paint go SPLAT (knocked over).
@@ -12780,7 +12790,7 @@ if (MAP === 'paint') {
       if (r.jumps === 0) r.jumpReq = true; }; } // (no way round: jump it)
 }
 
-await __ldStep("09uh_cylinder.js", 0.0913, 0.0914);
+await __ldStep("09uh_cylinder.js", 0.0915, 0.0916);
 // ============================================================
 // THE CYLINDER: the whole map is the inside wall of a giant open-ended tube floating in the sky. Walk in any direction
 // and you can go all the way round; the world turns with you, so wherever you are, you're standing upright at the
@@ -12909,7 +12919,7 @@ if (MAP === 'cylinder') {
   });
 }
 
-await __ldStep("09ui_backrooms.js", 0.0914, 0.0914);
+await __ldStep("09ui_backrooms.js", 0.0916, 0.0916);
 // ============================================================
 // THE BACKROOMS (Ali, Nov 2026): endless yellow rooms with a damp carpet and buzzing ceiling lights.
 //  - an open room round each fort, a maze of halls in the middle (the same both ways round, so it's fair)
@@ -13137,7 +13147,7 @@ if (MAP === 'backrooms') { window.__BR = BR;
   scene.traverse(o => { if (o.isDirectionalLight) { o.position.set(o.target ? o.target.position.x + 2 : 2, 60, 3); } });
 }
 
-await __ldStep("09uj_dragon.js", 0.0914, 0.0915);
+await __ldStep("09uj_dragon.js", 0.0916, 0.0917);
 // ============================================================
 // THE DRAGON'S DEN (Ali 18 Nov). A scorched plateau, a castle at each end, and in the middle a deep round PIT where a
 // great red DRAGON sleeps on a heap of gold, with the STAR on its back.
@@ -13615,7 +13625,7 @@ if (MAP === 'dragon') {
       if (force) { const d = V(w.x - p.x, 0, w.z - p.z); if (d.lengthSq() > .04) { r.want.copy(d.normalize()); r.wantSpeed = Math.max(r.wantSpeed || 0, 7); } } }; }
 }
 
-await __ldStep("09v_rainzap.js", 0.0915, 0.0915);
+await __ldStep("09v_rainzap.js", 0.0917, 0.0917);
 // ============================================================
 // RAIN ZAPS (14 Nov): rain no longer makes anyone slide. Instead, out in the rain, every few seconds (at random) a
 // robot's antenna is swamped: so many raindrops pinging it at once that it overloads and ZAPS, and the robot stops
@@ -13638,7 +13648,7 @@ function updateRainZaps(dt) {
 }
 { const umRZ = updateMorePowers; updateMorePowers = function (dt) { umRZ(dt); updateRainZaps(dt); }; }
 
-await __ldStep("10_net.js", 0.0915, 0.0915);
+await __ldStep("10_net.js", 0.0917, 0.0917);
 // ============================================================
 // ONLINE PLAY (test version, no game server needed)
 // One device HOSTS: it runs the real match exactly like offline play. Friends JOIN with a 4-digit room code;
@@ -14005,7 +14015,7 @@ $('lobbyBack').onclick = () => { try { sessionStorage.removeItem('nymbo-host'); 
 try { if (sessionStorage.getItem('nymbo-rehost') === '1') { sessionStorage.removeItem('nymbo-rehost'); setTimeout(() => netHost(), 300); } } catch (e) {}
 try { const j = sessionStorage.getItem('nymbo-join'); if (j && sessionStorage.getItem('nymbo-auto') !== '1') { $('netCode').value = j; setTimeout(() => netJoin(j), 300); } } catch (e) {}
 
-await __ldStep("11_labs.js", 0.0915, 0.0916);
+await __ldStep("11_labs.js", 0.0917, 0.0918);
 // ============================================================
 // THE LABS (home menu → Sound lab / Look lab)
 //  Sound lab: hear every sound the game uses, and upload your own file to replace any of them.
@@ -14165,7 +14175,7 @@ function stopLab() { const g = LABSND.g; LABSND.g = null; if (!g || !AC) return;
 function labPlay(fn) { if (!AC) return fn(); stopLab(); const g = AC.createGain(); g.connect(bus); const b0 = bus, s0 = send; bus = g; send = null; try { fn(); } finally { bus = b0; send = s0; } LABSND.g = g; }
 $('labExport').onclick = $('labExport2').onclick = exportLabs;
 
-await __ldStep("11b_texpacks.js", 0.0916, 0.0917);
+await __ldStep("11b_texpacks.js", 0.0918, 0.0919);
 // ============================================================
 // TEXTURE PACKS (Look lab): every kind of thing gets its own texture, chosen separately.
 //  Grey blocks · Fort bricks · Tree trunks · Tree leaves · Stone ledges · Ground — plus the old robot/flag/power rows.
@@ -14511,7 +14521,7 @@ function open3D(slot) {
   loop();
 }
 
-await __ldStep("11c_guide.js", 0.0917, 0.0918);
+await __ldStep("11c_guide.js", 0.0919, 0.0920);
 // ============================================================
 // SETTINGS and the GUIDE. Settings opens from the main menu or the pause menu (and goes back to whichever it came
 // from). The guide has five tabs: controls, blocks, powers, creatures and maps; the power icons are the real ones.
@@ -14636,7 +14646,7 @@ function guideTab(k) { $('guideBody').innerHTML = GUIDE[k](); document.querySele
 document.querySelectorAll('#guideTabs [data-g]').forEach(b => b.onclick = () => guideTab(b.dataset.g));
 guideTab('controls');
 
-await __ldStep("11d_designs.js", 0.0918, 0.0918);
+await __ldStep("11d_designs.js", 0.0920, 0.0920);
 // ============================================================
 // READY-MADE DESIGNS for every row of the Look lab (on top of "Game", your own paintings and uploads).
 // Each design is drawn in code once, the first time it's shown. Picking one is saved like any other choice ('d:<key>').
@@ -14732,7 +14742,7 @@ const DZ = (() => {
 for (const s of LOOK_SLOTS) { const v = CHOICE.tex[s.id]; if (typeof v === 'string' && v.startsWith('d:')) try { applyTexChoice(s); } catch (e) {} }
 for (const s of TP_SLOTS) { const v = CHOICE.tex[s.id]; if (typeof v === 'string' && v.startsWith('d:')) try { tpApply(s); } catch (e) {} }
 
-await __ldStep("12_voice.js", 0.0918, 0.0919);
+await __ldStep("12_voice.js", 0.0920, 0.0921);
 // ============================================================
 // VOICE CHAT (test version): talk to the people in your room.
 // Every phone sends its microphone to the host. The host hears everyone and sends each player a mix of all the
@@ -14799,7 +14809,7 @@ $('micBtn').onclick = voiceToggle;
 $('lobbyMic').onclick = voiceToggle;
 setInterval(() => { const inRoom = !!NET; $('micBtn').hidden = !inRoom || match.state === 'menu' && $('lobby').hidden; $('lobbyMic').hidden = !inRoom; const on = VOICE.on; for (const b of [$('micBtn'), $('lobbyMic')]) { b.classList.toggle('on', on); b.textContent = on ? '🎤 on' : '🎤 off'; } if (NET && NET.host && !VOICE.hostReady && NET.peer) { hostVoiceStart(); } }, 500);
 
-await __ldStep("12b_oden.js", 0.0919, 0.0919);
+await __ldStep("12b_oden.js", 0.0921, 0.0921);
 // ============================================================
 // ODEN V1 (Settings > Sound & feel): a voice and sound pack that was sent in ("NYMBO Powerful Voices 2.0").
 //  - an announcer for the round: opening, get ready, countdown, go, one minute left, final countdown, first hit,
@@ -14883,7 +14893,7 @@ setInterval(() => { if (!odenOn() || match.state !== 'play' || !P || P.state !==
   const near = F && Math.hypot(F.body.translation().x - p.x, F.body.translation().z - p.z) < 14;
   if (carrying || near) { ODEN.whisperT = rr(14, 22); odenSay('oden_nex_0' + (1 + Math.floor(Math.random() * 8)), 1, .8); } else ODEN.whisperT = 3; }, 500);
 
-await __ldStep("12c_hd.js", 0.0919, 0.0920);
+await __ldStep("12c_hd.js", 0.0921, 0.0922);
 // ============================================================
 // HD WORLD (Look lab → HD world) and the HEAT HAZE (Look lab → Heat haze, on the desert)
 // HD world: the same game, but real-looking:
@@ -15173,7 +15183,7 @@ if (HD && DESERT) { const st0 = sideTint; sideTint = function (cx, cz) { return 
     row.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { S.mummy = b.dataset.m === '1'; saveS(); toast('MUMMY ROBOTS ' + (S.mummy ? 'ON' : 'OFF') + ' (AFTER A RELOAD)'); lookLabRows(); });
     box.insertBefore(row, box.firstChild); }; }
 
-await __ldStep("12d_neo.js", 0.0920, 0.0920);
+await __ldStep("12d_neo.js", 0.0922, 0.0922);
 // ============================================================
 // THE NEW LOOK (what "Day" is since Nov 2026): a retro-future world in CANDY-APPLE PAINT AND CHROME under a sunset.
 // Not a set of pictures laid over the old world: the blocks, the light, the sky and (map by map) the ground and the
@@ -15606,7 +15616,7 @@ window.__neo = { NEOU, neoShine };
 NEOX = { NEOU, NEO_ENV, neoShine, neoRng, TOUCH: NEO_TOUCH, kitPatch, KIT, kitSet };
 }
 
-await __ldStep("12e_neon.js", 0.0920, 0.0921);
+await __ldStep("12e_neon.js", 0.0922, 0.0923);
 // ============================================================
 // NEON CITY (the new look's own map): everything you see that is not a block, a robot or an animal.
 //   - dusk over a city of chrome towers: a striped retro sun on the skyline, a ringed planet, stars coming out
@@ -15815,7 +15825,7 @@ float neoBox(vec2 p, vec2 c, vec2 h, float r) { vec2 q = abs(p - c) - h + r; ret
       renderer.setRenderTarget(RT); renderer.clear(); renderer.render(scene, vcam); renderer.setRenderTarget(pRT); renderer.shadowMap.autoUpdate = pAU; slab.visible = true; inRefl = false; FU.neoRon.value = 1; }; }
 }
 
-await __ldStep("12f_robopets.js", 0.0921, 0.0921);
+await __ldStep("12f_robopets.js", 0.0923, 0.0923);
 // ============================================================
 // ROBOT ANIMALS (the new look, from Ali's sheet): the cows and sheep in the pastures are little robots now. Rounded
 // shells in their own colours, a black glass visor with two glowing eyes that blink, chrome joints. They behave exactly
@@ -15870,7 +15880,7 @@ if (NEO && NEOX && !VOLC && !DESERT && !ICEMAP) {
   for (const e of blocks) if (e.kind === 'animal' && e.mesh && (e.animal === 'cow' || e.animal === 'sheep')) { const old = e.mesh, n = makeAnimal(e.animal); n.position.copy(old.position); n.quaternion.copy(old.quaternion); n.visible = old.visible; scene.remove(old); e.mesh = n; }
 }
 
-await __ldStep("12g_ruins.js", 0.0921, 0.0922);
+await __ldStep("12g_ruins.js", 0.0923, 0.0924);
 // ============================================================
 // THE RUINED FIELD (the classic map in the new look): the old stone things that are not blocks.
 //  - one weathered stone for all of them: worn, streaked by rain, moss thick on whatever faces the sky
@@ -15949,7 +15959,7 @@ float rN3(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); 
   { const prev = scene.onBeforeRender; scene.onBeforeRender = (r, s, cam, rt) => { if (prev) prev(r, s, cam, rt); shimU.t.value = now() / 1000; shimU.dim.value = portalCool > 0 ? 1 : 0; }; }
 }
 
-await __ldStep("12h_blocks.js", 0.0922, 0.1820);
+await __ldStep("12h_blocks.js", 0.0924, 0.1821);
 // ============================================================
 // THE NEW SPECIAL BLOCKS (14 Nov, Ali's designs): every special block is carved out of one solid cube in small steps,
 // with one shared look — a rounded, polished frame round each face, little square holes near its corners, a recess, and a symbol.
@@ -16739,7 +16749,7 @@ for (const [k, c, t] of [...['bomb', 'freeze', 'homing', 'sticky', 'gold', 'stre
     if (e && SKIN.KIND[e.kind] && !r.heldAnimal) { if (h.userData.inner) { h.remove(h.userData.inner); h.userData.inner = null; } SKIN.wear(h, e); }
     else SKIN.strip(h); }; }
 
-await __ldStep("12i_zoo.js", 0.1820, 0.2041);
+await __ldStep("12i_zoo.js", 0.1821, 0.2042);
 // ============================================================
 // THE NEW ANIMALS: every creature in the game rebuilt in the Nym style (Ali's zoo). Glossy shells, a black glass visor
 // with glowing eyes in the animal's own colour that change with its mood (calm / angry . . / stressed > < with a sweat drop),
@@ -17546,7 +17556,7 @@ for (const J of RF.jellies) ZOO.dress(J.g, 'jellyfish', { paint: J.bell.material
 { const pH = pulseHalos; let last = 0; pulseHalos = function (t) { pH(t); __hkM("12i_zoo"); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t; if (dt > 0) ZOO.tick(dt, now()); }; }
 if (window.__nymbo) window.__nymbo.ZOO = ZOO;
 
-await __ldStep("12j_lore.js", 0.2041, 0.2081);
+await __ldStep("12j_lore.js", 0.2042, 0.2083);
 // ============================================================
 // FETCH's NEW BONE and BLACKOUT's NIGHT-VISION LIGHT (Ali's story for the powers: see the guide's story tab).
 //   The bone: a Nym hit by Fetch! gets a bad signal into its antenna that can only make bones, so everything it holds
@@ -17655,7 +17665,7 @@ const nymKeep = M => { const k = []; for (const v of Object.values(M)) { if (v &
 { const nm = nymMeshModel; nymMeshModel = function (c, h) { const M = nm(c, h); try { bakeStatic(M.g, { keep: nymKeep(M) }); } catch (e) { console.warn('bake nym', e); } return M; }; }
 for (const r of robots) if (r.model && r.model.nym && !r.model.g.userData.baked) try { bakeStatic(r.model.g, { keep: nymKeep(r.model) }); } catch (e) { console.warn('bake nym', e); }
 
-await __ldStep("12k_looklab.js", 0.2081, 0.2085);
+await __ldStep("12k_looklab.js", 0.2083, 0.2086);
 // ============================================================
 // LOOK LAB, the new layout (Ali, 14 Nov): what's in the game NOW sits on top, everything else under "Old".
 //   Now: every block, every animal and every Nym, as little pictures. Tap one to open it big: drag to turn it round,
@@ -17721,7 +17731,7 @@ const LOOKNOW = (() => {
 { const ll = lookLabRows; lookLabRows = function () { ll(); try { LOOKNOW.fill(); } catch (e) { console.warn('look now', e); } }; }
 try { LOOKNOW.layout(); } catch (e) {}
 
-await __ldStep("12l_backdrop.js", 0.2085, 0.2181);
+await __ldStep("12l_backdrop.js", 0.2086, 0.2182);
 // ============================================================
 // THE BACKDROP, redone (Ali, 14 Nov): mountains, hills and clouds far away, and a sky that is more than one shade.
 //   Sky: deep blue overhead, softer blue lower down, a pale hazy band at the horizon that warms towards the sun, and
@@ -17915,7 +17925,7 @@ if (!TOY && !PLAT && !REEF && !(NM && NM.noMountains)) {
     const k = 1 - .95 * skyU.dark.value; landU.uK.value = k; if (land2) land2.userData.uK.value = k; for (const [m, o] of puffMats) m.opacity = o * k; };
 }
 
-await __ldStep("12m0_fortkit.js", 0.2181, 0.2184);
+await __ldStep("12m0_fortkit.js", 0.2182, 0.2185);
 // ============================================================
 // THE SCAVENGED-STONE KIT from the fort lab (14 Nov, the walls Ali picked): pillowy stones packed tight, shaped tops,
 // carved pieces, and the surface materials (sandstone, granite, clay...). Used by the classic stage (12m_classic.js).
@@ -18163,7 +18173,7 @@ function makeFortKit(THREE, RBOX, MERGE) {
   return { V, T, WORLDS, block, top, wall, teamCol, surfMat, surfaces, stoneGeo, paintStone, carvedPiece, shade, rng, lump, stretch, tint, FAM, NOISE, setRes: r => { CRES = r; } };
 }
 
-await __ldStep("12m9_newlook.js", 0.2184, 0.2187);
+await __ldStep("12m9_newlook.js", 0.2185, 0.2189);
 // ============================================================
 // THE NEW LOOK (Ali, 18 Nov: brought over from the Godot version of the game).
 //   SKY: its own on every stage: colours from overhead down to the horizon, a sun or a moon, and each stage's extras: twinkling
@@ -18387,7 +18397,7 @@ const NEWLOOK = (() => {
 // the ground detail coat's clock (02_world.js COAT_GLSL: snow sparkle, neon grid pulse)
 { const pH = pulseHalos; let last = 0; pulseHalos = function (t) { pH(t); __hkM("12m9_newlook"); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t; COAT_T.value += dt; }; }
 
-await __ldStep("12m_classic.js", 0.2187, 0.7055);
+await __ldStep("12m_classic.js", 0.2189, 0.7054);
 // ============================================================
 // THE CLASSIC STAGE, NEW LOOK (14 Nov, Ali): candy-dream light; forts, towers and ammo built from scavenged stones
 // (nothing perfect: jagged tops, some lower some higher, wonky doorways, the odd stone sticking out); the grey ammo in
@@ -19351,7 +19361,7 @@ try { const spares = []; for (const L of Object.values(SKIN.POOL || {})) for (co
   renderer.setRenderTarget(null);
   for (const o of hidden) o.visible = false; for (const o of culled) o.frustumCulled = true; drawScene(); for (const g of spares) scene.remove(g); rt.dispose(); } catch (err) { console.warn('warm-up', err); }
 
-await __ldStep("12n_diorama.js", 0.7055, 0.7058);
+await __ldStep("12n_diorama.js", 0.7054, 0.7057);
 // ============================================================
 // THE PAPER DIORAMA BACKDROPS (Ali, 15 Nov): instead of the 3-D mountains, mist and soft cloud puffs, the world round the
 // island is a kids' storytime diorama: many sheets of coloured paper standing one behind the other, each cut into a
@@ -19502,7 +19512,7 @@ try { DIO.use(DIO.pick()); } catch (err) { console.warn('paper backdrop', err); 
     box.insertBefore(row, box.firstChild); box.insertBefore(h, row); mark(); } catch (e) { console.warn('bg row', e); } }; }
 window.__DIO = DIO;
 
-await __ldStep("13_hooks.js", 0.7058, 0.9923);
+await __ldStep("13_hooks.js", 0.7057, 0.9920);
 // the train: the forts and the ammo are wooden transport crates (a framed plank box with a cross brace), unless a texture
 // pack has been picked for them
 if (MAP === 'train') try { const crate = texFromCanvas(tpCanvas(128, (g, n) => { g.fillStyle = '#efe4d2'; g.fillRect(0, 0, n, n);
@@ -19534,7 +19544,7 @@ try { window.__liteAll && window.__liteAll(); BATCH.sync(); window.__plainSync &
   for (const o of hidden) o.visible = false; for (const o of culled) o.frustumCulled = true; for (const im of slotsOn) im.count = 0; BATCH.sync();
 } catch (err) { console.warn('warm-up 2', err); }
 
-await __ldStep("14a_water.js", 0.9923, 0.9930);
+await __ldStep("14a_water.js", 0.9920, 0.9928);
 // ============================================================
 // WATER, its own on every stage (Ali 18 Nov, from the Godot version): clear blue with foam where it meets the shore, turquoise on the
 // reef, icy water on the ski stage, glowing lava, a river of paint on the paint stage, neon goo in the lab... It moves: waves roll,
@@ -19629,7 +19639,7 @@ const WATER = (() => {
   return { mats, swapped, use, n: found.length };
 })();
 
-await __ldStep("14b_turf.js", 0.9930, 0.9930);
+await __ldStep("14b_turf.js", 0.9928, 0.9928);
 // ============================================================
 // GRASS with its own look on every stage (Ali 18 Nov, from the Godot version): dry tufts in the desert, frosty blades on the ice,
 // charred blades with glowing tips by the volcano, broad ferns in the jungle, seaweed on the reef, dune grass by the tide, meadow
@@ -19721,7 +19731,7 @@ const TURF = (() => {
   return { mesh, fl, n: xf.length };
 })();
 
-await __ldStep("14c_pads.js", 0.9930, 0.9932);
+await __ldStep("14c_pads.js", 0.9928, 0.9930);
 // ============================================================
 // TRAMPOLINES you can see from far off (Ali 18 Nov, from the Godot version): a fat rubber dome bulging up out of the ground inside a
 // chunky striped rim, with its own design on every stage (a target on classic, a star in the desert, a snowflake on the ice, lava cracks
@@ -19829,7 +19839,7 @@ const PADLOOK = (() => {
   return { list };
 })();
 
-await __ldStep("14d_gates.js", 0.9932, 0.9933);
+await __ldStep("14d_gates.js", 0.9930, 0.9931);
 // ============================================================
 // PORTALS you want to jump into (Ali 18 Nov, from the Godot version): a STONE ARCH (two pillars of stacked stones, a round top of wedge
 // stones, a big capping stone with a glowing gem) around a deep swirling tunnel with sparks streaming in, and sparks running over the
@@ -19956,7 +19966,7 @@ const GATELOOK = (() => {
     if (!SH.length) return; const pH = pulseHalos; let last = 0; pulseHalos = function (t) { pH(t); __hkM("14d_gates"); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t;
       for (const S_ of SH) { const closed = (ICEMAP || MAP === 'dragon') ? !!(P && P.portT > now()) : portalCool > 0; S_.v += ((closed ? 1 : 0) - S_.v) * Math.min(1, dt * (closed ? 7 : 4)); S_.m.uniforms.shut.value = S_.v; S_.o.visible = S_.v > .001; /* (Ali 26 Nov, engine: an open shutter isn't drawn at all; it used to be drawn and thrown away pixel by pixel) */ } }; }, 0); }
 
-await __ldStep("14e_arrows.js", 0.9933, 0.9933);
+await __ldStep("14e_arrows.js", 0.9931, 0.9931);
 // ============================================================
 // SPEED ARROWS (Ali 18 Nov, from the Godot version): five neon-tube arrows lying on the ground, round and glowing in the team's colour,
 // pointing the way you get thrown. A bright light runs along each tube, the arrows flash one after another (back to front), and each throws
@@ -20020,7 +20030,7 @@ const ARROWLOOK = (() => {
   return {};
 })();
 
-await __ldStep("14f_pole.js", 0.9933, 0.9935);
+await __ldStep("14f_pole.js", 0.9931, 0.9933);
 // ============================================================
 // THE CENTRE POLE in each stage's own design (Ali 18 Nov, from the Godot version): the same job and the same parts as before (a
 // blue-and-red base, a column of stacked blocks, a glowing lantern, two signposts pointing at the blue and red forts), but each stage
@@ -20158,7 +20168,7 @@ setTimeout(() => { try { if (POLELOOK || !MONUMENT.g) return;
     for (let i = Z.length - 1; i >= 0; i--) { const z = Z[i]; z.t += dt; z.m.material.opacity = Math.max(0, 1 - z.t / z.life) * (Math.random() < .25 ? .4 : 1); if (z.t >= z.life) { scene.remove(z.m); z.m.geometry.dispose(); z.m.material.dispose(); Z.splice(i, 1); } } };
   window.__poleOrb = ORBS[0].g; } catch (e) { console.warn('[pole orb]', e); } }, 0);
 
-await __ldStep("14g_bricks.js", 0.9935, 0.9936);
+await __ldStep("14g_bricks.js", 0.9933, 0.9933);
 // ============================================================
 // THE BUILDING BLOCKS of every stage (Ali 18 Nov, from the Godot version; his brief of 17 Nov): the grey blocks lying about and the blocks
 // the forts are built from are the kind of rock or thing you'd expect to find THERE, with its own surface; each team's blocks keep that
@@ -20287,7 +20297,7 @@ if (BRICKS) { const hidden = new THREE.MeshBasicMaterial({ visible: false });
     if (!B) { B = new THREE.InstancedMesh(g1(), BRICKS.m, 1); B.setMatrixAt(0, new THREE.Matrix4()); B.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(3), 3); B.frustumCulled = false; B.castShadow = true; h.add(B); r.model.heldBrick = B; }
     B.geometry.attributes.aFort.setX(0, e.kind === 'fort' && e.team ? 1 : 0); B.geometry.attributes.aFort.needsUpdate = true; B.setColorAt(0, e.color); B.instanceColor.needsUpdate = true; B.visible = true; h.material = hidden; }; }
 
-await __ldStep("14h_brwalls.js", 0.9936, 0.9936);
+await __ldStep("14h_brwalls.js", 0.9933, 0.9934);
 // ============================================================
 // BACKROOMS SECRET WALLS (Ali 18 Nov, from the Godot version): three plain walls on the left half look a little wobbly. Walk into one
 // and you come out of the matching wall on the right half (the maze is a mirror, so every left wall has a twin), still running.
@@ -20338,7 +20348,7 @@ const BRWALLS = (() => {
   return { ends };
 })();
 
-await __ldStep("14i_pool.js", 0.9936, 0.9937);
+await __ldStep("14i_pool.js", 0.9934, 0.9934);
 // ============================================================
 // THE BACKROOMS, MORE (Ali 18 Nov):
 //  - THE POOL ROOM in the middle: white tiles, still dark green water, three steps down on each side and then nothing:
@@ -20619,7 +20629,7 @@ const BRX = (() => {
   return { inHole };
 })();
 
-await __ldStep("14j_flaghome.js", 0.9937, 0.9937);
+await __ldStep("14j_flaghome.js", 0.9934, 0.9935);
 // ============================================================
 // THE FLAG GOING HOME (Ali 18 Nov: "it needs to happen specially, not just disappear"): when a flag is returned it
 // lifts up where it was, spins and glows in its colour, then flies home in a high arc trailing sparkles, drops onto its
@@ -20646,7 +20656,7 @@ const FLYHOME = [];
         fxBurst(F.to, f.color.getHex(), 2.4, .5); fxBurst(F.to, 0xffffff, 1.2, .3); fxBeam(F.to, f.color, 1.4); sfx('repair', F.to); sfx('streak', F.to);
         for (let q = 0; q < 24; q++) { const a = q / 24 * Math.PI * 2; emit(F.to.clone(), f.color.getHex(), V(Math.cos(a) * 5, 1.5, Math.sin(a) * 5), .3, .7, 2); } } } }; }
 
-await __ldStep("14k_iceslide.js", 0.9937, 0.9938);
+await __ldStep("14k_iceslide.js", 0.9935, 0.9935);
 // ============================================================
 // THE ICE SLIDE (Ali 18 Nov): straight out of the front of each igloo, a steep icy chute down the mountain. Step on it
 // and you're off: whoosh down, over a strip of speed chevrons, up the kicker ramp and high into the sky, landing out on
@@ -20694,7 +20704,7 @@ const ICESLIDE = (() => {
   return { S };
 })();
 
-await __ldStep("14l_volcano2.js", 0.9938, 0.9938);
+await __ldStep("14l_volcano2.js", 0.9935, 0.9936);
 // ============================================================
 // THE VOLCANO, HARDER (Ali 18 Nov):
 //  - the STAR sits in the lava pool in the crater. Drop in for it and you burn... unless you're quick: grab it and jump
@@ -20753,7 +20763,7 @@ const VO2 = (() => {
 if (PLAT) { const pH = pulseHalos; let last = 0; pulseHalos = function (t) { pH(t); __hkM("14l_volcano2"); const dt = clamp((t - (last || t)) / 1000, 0, .05); last = t;
     for (const r of robots) { if (!r.body || r.state !== 'play' || r.grounded) continue; const lv = r.body.linvel(); if (lv.y < 0) r.body.setLinvel({ x: lv.x, y: lv.y + G * .1 * dt, z: lv.z }, true); } }; }
 
-await __ldStep("14m_jungle2.js", 0.9938, 0.9939);
+await __ldStep("14m_jungle2.js", 0.9936, 0.9936);
 // ============================================================
 // THE JUNGLE, BUSIER (Ali 18 Nov):
 //  - STAMPERS: in some corridors two huge stone blocks slam out of the walls from both sides and meet in the middle.
@@ -20821,7 +20831,7 @@ const JG2 = (() => {
   return { ST, FE, TR };
 })();
 
-await __ldStep("14n_toy2.js", 0.9939, 0.9939);
+await __ldStep("14n_toy2.js", 0.9936, 0.9937);
 // ============================================================
 // THE TOY ROOM, MORE STUFF (Ali 18 Nov): things on the walls (posters, a cork board of drawings, bunting, a clock that
 // ticks, a dartboard, glow-in-the-dark stars on the ceiling) and more toys about the floor (a rubber duck, a spinning top,
@@ -20906,7 +20916,7 @@ const TOY2 = (() => {
   return {};
 })();
 
-await __ldStep("14o_train2.js", 0.9939, 0.9940);
+await __ldStep("14o_train2.js", 0.9937, 0.9937);
 // ============================================================
 // TRAIN RACE, MORE (Ali 18 Nov):
 //  - OVERHEAD GANTRIES: now and then a signal gantry sweeps along over the tracks. Its crossbar is just above the coach
@@ -20944,7 +20954,7 @@ const TN2 = (() => {
 })();
 // (Ali 24 Nov: the extra semtex goo blobs added on 18 Nov are gone: "just leave the original goo on it")
 
-await __ldStep("14p_hardbots.js", 0.9940, 0.9940);
+await __ldStep("14p_hardbots.js", 0.9937, 0.9938);
 // ============================================================
 // HARD BOTS USE EVERYTHING (Ali 18 Nov): on HARD, on top of everything else they already do, bots now
 //  - race for the GOLD BLOCK whenever one is out (the nearest bot on each team goes for it)
@@ -21014,7 +21024,7 @@ function botShortcuts() { if (BOT_SC) return BOT_SC; BOT_SC = [];
       if (st !== 'mix') { /* (Ali 19 Nov: the flying intros move like they used to: only lifted just where a wall is in the way, eased in and out) */ const raw = j => plan.need[clamp(j, 0, plan.N)]; L = 0; let w = 0; for (let j = -8; j <= 8; j++) { const g = Math.exp(-j * j / 20); L += Math.max(raw(i0 + j), raw(i1 + j)) * g; w += g; } L /= w; L = Math.max(L, raw(i0) * (1 - (f - i0)) + raw(i1) * (f - i0)); }
       c.pos.y += L; } catch (e) {} return c; }; }
 
-await __ldStep("14q_lushgrass.js", 0.9940, 0.9967);
+await __ldStep("14q_lushgrass.js", 0.9938, 0.9965);
 // ============================================================
 // LUSH GRASS on the classic island (Ali 18 Nov: "the tall-grass blades, just smaller, so lush, flowing in the wind"):
 // thick clumps of round tapering blades, dark at the root and light at the tip, swaying in waves of wind. Nyms brush it
@@ -21066,7 +21076,7 @@ if (MAP === 'grass' && typeof GR !== 'undefined') { const pH = pulseHalos; pulse
     for (const [L, R] of [[GR.bugs, 2.1], [GR.snails, 1.9]]) for (const B of L) for (const r of robots) { if (!r.body || r.state !== 'play') continue; const p = r.body.translation(), dx = p.x - B.x, dz = p.z - B.z, d = Math.hypot(dx, dz); if (d >= R || p.y - TH(B.x, B.z) > 2.6) continue;
       const k = (R - d) / (d || 1); r.body.setTranslation({ x: p.x + dx * k, y: p.y, z: p.z + dz * k }, true); } }; }
 
-await __ldStep("14r_toytrain.js", 0.9967, 0.9969);
+await __ldStep("14r_toytrain.js", 0.9965, 0.9966);
 // ============================================================
 // THE TOY ROOM, MORE (Ali 18 Nov):
 //  - a wind-up TOY TRAIN chuffs round and round the edge of the room on its wooden track, right under the bed and under
@@ -21123,7 +21133,7 @@ const TOYTR = (() => {
 })();
 window.__dbg = s => eval(s); // (testing hook: run code inside the game's own scope)
 
-await __ldStep("14s_boom.js", 0.9969, 0.9969);
+await __ldStep("14s_boom.js", 0.9966, 0.9967);
 // ============================================================
 // SOFT EXPLOSIONS (Ali 18 Nov: "so it doesn't look like a ball of polygons"): the see-through blast balls and the white
 // flash ball are gone. A blast is now soft round glows: a white-hot flash in the middle, a cluster of fiery puffs that
@@ -21156,7 +21166,7 @@ await __ldStep("14s_boom.js", 0.9969, 0.9969);
         if (k >= 1) { scene.remove(f.m); f.m.material.dispose(); L.splice(i, 1); } } }; }
 }
 
-await __ldStep("14t_speed.js", 0.9969, 0.9970);
+await __ldStep("14t_speed.js", 0.9967, 0.9967);
 // ============================================================
 // SPEED (Ali 19 Nov: "go stage by stage and optimise, I want 120 fps stable").
 //  - On a fast screen (90/120 Hz) the sun's shadow picture is redrawn every other frame instead of every frame. At 120 fps
@@ -21234,7 +21244,7 @@ if (MAP !== 'train' && !(typeof CLX !== 'undefined' && CLX && !S.maxq)) {
       if (window.__speedLog) console.log('[speed] model pieces saved', n); }
     if (f > 300 && f % 15 === 0) for (const W of PW) { if (!W.on) continue; for (const it of W.list) { const o = it.o; if (o.material !== it.mat || o.parent !== it.par || !o.visible || !o.matrix.equals(it.m) || W.M.parent !== W.par) { W.on = false; W.par.remove(W.M); W.M.geometry.dispose(); for (const j of W.list) j.o.layers.set(0); break; } } } }; }
 
-await __ldStep("14u_update.js", 0.9970, 0.9970);
+await __ldStep("14u_update.js", 0.9967, 0.9968);
 // ============================================================
 // NEW VERSION, STRAIGHT AWAY (Ali 19 Nov: "sometimes I have to click to another stage and back, that's why it doesn't
 // show"). The phone kept the old copy of the game until something made it reload. Now, while you're on the menu (never
@@ -21250,7 +21260,7 @@ await __ldStep("14u_update.js", 0.9970, 0.9970);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(() => ask(true), 600); });
   setInterval(() => { if (onMenu()) ask(false); }, 30000); setTimeout(() => ask(true), 4000); }
 
-await __ldStep("14v_halo.js", 0.9970, 0.9971);
+await __ldStep("14v_halo.js", 0.9968, 0.9968);
 // ============================================================
 // THE VIEWING HALO (Ali 20 Nov: "between the player and the camera, anywhere, there will always be a halo of viewing, so
 // we don't have to edit camera angles"). Anything standing between the camera and you (a wall, a roof, a tree, a tower)
@@ -21282,7 +21292,7 @@ const HALO = { u: { value: new THREE.Vector4(-9999, -9999, 0, 0) }, f: { value: 
           HALO.u.value.set(cx, cy, sz.y * clamp(.75 / Math.max(2, dist) * 3.4, .06, .15), v2.z * .5 + .5); HALO.f.value = (feet.y * .5 + .5) * sz.y; HALO.on.value = 1; } } } catch (e) { HALO.on.value = 0; }
     return ds(...a); }; }
 
-await __ldStep("14w_skycow.js", 0.9971, 0.9971);
+await __ldStep("14w_skycow.js", 0.9968, 0.9969);
 // ============================================================
 // THE SKY COW (Ali 20 Nov): the portal platforms are the world everything lands in, where all the portals lead. So a cow
 // came through too, and missed: a GIANT cow (much bigger than a normal one) drifts round high in the sky above the
@@ -21297,7 +21307,7 @@ if (PLAT) { let cow = null, t0 = 0; const R = 82, Y = 46;
       (cow.userData.legs || []).forEach((l, i) => { if (l) l.rotation.x = Math.sin(s * 5.5 + i * 1.7) * .7 + Math.sin(s * 9 + i) * .15; }); // (kicking, all out of step: trying to swim through the air)
       const hd = cow.userData.head; if (hd) hd.rotation.y = Math.sin(s * .8) * .5; } catch (e) {} }; }
 
-await __ldStep("14x_warmnight.js", 0.9971, 0.9972);
+await __ldStep("14x_warmnight.js", 0.9969, 0.9969);
 // ============================================================
 // WARM NIGHT (Ali 20 Nov): the frozen lake is a night map, and the classic island is night half the time (picked at
 // random each match: "people won't pick maps unless they're playing with friends"). Moonlight, a deep blue sky, and
@@ -21342,7 +21352,7 @@ const WARMN = (() => {
   return W;
 })();
 
-await __ldStep("14y_brzones.js", 0.9972, 0.9972);
+await __ldStep("14y_brzones.js", 0.9969, 0.9970);
 // ============================================================
 // THE BACKROOMS, DRESSED (Ali 21 Nov, the third go: "redo it, new ideas: high ceiling, backrooms with only ground-level
 // phobia stuff, no multi-level stuff; claustrophobia, tight spaces"). The layout is in 09ui (thick walls: halls 3.6 m wide).
@@ -21530,7 +21540,7 @@ const BRZ = (() => {
   return { zone, zoneAt };
 })();
 
-await __ldStep("14z_gatearch.js", 0.9972, 0.9973);
+await __ldStep("14z_gatearch.js", 0.9970, 0.9970);
 // ============================================================
 // THE FLAG GATES AS ARCHES (Ali 20 Nov: "use this arch in other maps too, but don't make it gold in every map; only in the
 // maps that have a portal like this, the train shouldn't have it" / "change the scoring one to the new design"). The gate
@@ -21563,7 +21573,7 @@ await __ldStep("14z_gatearch.js", 0.9972, 0.9973);
         G.glow.geometry = sg; } }
     if (parts.length) { const m = new THREE.Mesh(mergeGeometries(parts), mat); m.castShadow = m.receiveShadow = true; scene.add(m); parts.forEach(g => g.dispose()); } } }
 
-await __ldStep("14zh_haunt.js", 0.9973, 0.9976);
+await __ldStep("14zh_haunt.js", 0.9970, 0.9974);
 // ============================================================
 // THE FEARS, running (the layout and the building are in 02h_haunt.js).
 //  - no fighting: no blocks, no powers, only the eight flags. Find one, carry it home, don't get caught, don't fall
@@ -21707,7 +21717,7 @@ if (MAP === 'haunt' && window.HAUNT) { const HA = window.HAUNT, { C, NX, NZ, cx,
   console.log('[fears] ready:', ENT.length, 'things,', FIGS.length, 'figures');
 }
 
-await __ldStep("14zz_liminal.js", 0.9976, 0.9977);
+await __ldStep("14zz_liminal.js", 0.9974, 0.9974);
 // ============================================================
 // THE BACKROOMS, THE NINE ROOMS (Ali 21 Nov 2026). The whole map was designed piece by piece in the sandbox and is built here
 // from the same code; the rules are in BACKROOMS_V2.md. A 3 x 3 grid of rooms 100 m apart, joined by plain white passages:
@@ -23032,7 +23042,7 @@ window.R2V = { pas1: [[31.7, 1.7, 41], [32, 1.3, 50]], pas2: [[20, 1.7, 50.3], [
   console.log('[liminal] built', nB, 'boxes', nH, 'hulls', srcP.length, 'point lamps', srcS.length, 'spots', TP.length, 'portals');
 })();
 
-await __ldStep("14zzz_monsters.js", 0.9977, 0.9977);
+await __ldStep("14zzz_monsters.js", 0.9974, 0.9975);
 // ============================================================
 // THE NINE ROOMS, PART 2 (Ali 21 Nov 2026): the things that live there, and the rules of each room (BACKROOMS_V2.md).
 //  - the camera: low and close behind you under the passages' ceilings (never inside a wall)
@@ -23213,7 +23223,7 @@ if (MAP === 'liminal' && window.LIM) {
   window.LIM.mon = { SP, NOTE, ITS, SCS, RF, BELT, CR, setCrawl, respawn: r => respawnRobot(r) };
 }
 
-await __ldStep("14zzzz_nav.js", 0.9977, 0.9978);
+await __ldStep("14zzzz_nav.js", 0.9975, 0.9975);
 // ============================================================
 // BACKROOMS: HOW THE BOTS FIND THEIR WAY (Ali 25 Nov: "Nyms are stuck against walls trying to walk through"). The bots
 // used to head in a straight line for whatever they wanted, and in nine walled rooms that means a wall. Now the game feels
@@ -23281,7 +23291,7 @@ if (MAP === 'liminal' && window.LIM) {
   window.LIMNAV = Object.assign(API, { route, near, cellOf, FL, EXL, EZL, JUMP }); Object.defineProperty(API, "ready", { get: () => ready });
 }
 
-await __ldStep("15b_autobatch.js", 0.9978, 0.9978);
+await __ldStep("15b_autobatch.js", 0.9975, 0.9976);
 // ============================================================
 // SPEED (Ali 23 Nov: "as smooth as butter"): AUTO-BATCHING.
 // A phone pays a fixed price for every separate thing it's asked to draw, however small. Some maps asked for 500-800
@@ -23349,7 +23359,7 @@ if (renderer.capabilities.isWebGL2 && !/[?&]nobatch/.test(location.search)) {
   { const RP = THREE.Raycaster.prototype; for (const f of ['intersectObject', 'intersectObjects']) { const f0 = RP[f]; RP[f] = function (...a) { const L = this.layers.mask; this.layers.mask = L | 1 << HID; try { return f0.apply(this, a); } finally { this.layers.mask = L; } }; } }
 }
 
-await __ldStep("15c_settle.js", 0.9978, 0.9979);
+await __ldStep("15c_settle.js", 0.9976, 0.9976);
 // ============================================================
 // SMOOTHNESS (Ali 24 Nov: "a 37 fps drop for like 2 seconds when something happens"). After a blast ~90 blocks are
 // flying, and the physics engine keeps every one of them "awake" (worked out every step) until it has lain still for
@@ -23365,7 +23375,7 @@ await __ldStep("15c_settle.js", 0.9978, 0.9979);
       if (o && Math.abs(p.x - o[0]) + Math.abs(p.y - o[1]) + Math.abs(p.z - o[2]) < .04 && Math.abs(q.x * o[3] + q.y * o[4] + q.z * o[5] + q.w * o[6]) > .9995) { if (++o[7] >= 2) { b.sleep(); e._sp = null; } continue; }
       e._sp = [p.x, p.y, p.z, q.x, q.y, q.z, q.w, 0]; } }; }
 
-await __ldStep("15d_shaderwarm.js", 0.9979, 0.9979);
+await __ldStep("15d_shaderwarm.js", 0.9976, 0.9977);
 // ============================================================
 // NO MORE HITCHES (Ali 24 Nov: "i still see a 37fps drop for like 2 seconds, when something happens").
 // The real cause: the first time something new shows up in a game (a blast, a throw, a power's effect, the match
@@ -23432,7 +23442,7 @@ window.compileSlices = (list, cam, target, rt) => new Promise(res => { let i = 0
   const wait = () => { if (window.__built && typeof match !== 'undefined') { setTimeout(warm, 300); return; } setTimeout(wait, 100); }; wait();
 }
 
-await __ldStep("15e_lagrec.js", 0.9979, 0.9980);
+await __ldStep("15e_lagrec.js", 0.9977, 0.9977);
 // ============================================================
 // LAG RECORDER (Ali 24 Nov: "I still see lagging... what else can we do"). We can't see his phone, so the game watches
 // itself: every frame that comes late is written down with what took the time (the bots, the physics, the blocks,
@@ -23470,6 +23480,7 @@ const LAGREC = (() => {
       'late frames mostly: game logic ' + why.sim + ' · drawing ' + why.draw + ' · new shader ' + why.shader + ' · memory clean-up ' + why.gc + ' · phone stalled ' + why.phone + ' · waiting on the graphics chip ' + why.gpu,
       '--- worst 25 (when s, frame ms, logic ms [biggest parts], draw ms, shaders built, memory freed MB, phone stall ms, what happened) ---',
       ...(window.SPEEDT && SPEEDT.res ? ['--- ' + SPEEDT.res.text.split('\n').join('\n') + ' ---'] : []),
+      ...(window.NE ? [`nymbo engine: ${!NE.want ? 'switched off' : NE.on ? 'on (' + (NE.gl || '') + ')' : NE.err ? 'stopped (' + NE.err + ')' : 'starting'} · game side ${(NE.mainMs || 0).toFixed(1)} ms a frame · render thread ${NE.stats && NE.stats.ms ? NE.stats.ms.toFixed(1) : '-'} ms, ${NE.stats ? NE.stats.calls : 0} draws · pictures skipped ${NE.skipped}/${NE.frames + NE.skipped}`] : []),
       ...(window.PHW ? [`physics helper: ${!PHW.on ? 'switched off' : PHW.off ? 'stopped (' + PHW.err + ')' : PHW.ready ? 'on' : 'starting'} · rubble there now ${PHW.D.size} · sent ${PHW.offloaded || 0} · handed back ${PHW.reclaimed || 0} · its step ${(PHW.stepMs || 0).toFixed(1)} ms`] : []),
       ...(window.__ERRS && __ERRS.length ? ['--- errors (the game skipped these frames) ---', ...__ERRS.map(x => `${x.map} ${x.at}s x${x.n}: ${x.m}`)] : []),
       ...top.map(s => `${s.map} ${s.at}s ${s.gap}ms logic ${s.sim} [${s.secs.join(', ')}] draw ${s.draw}${s.newProg ? ' SHADER x' + s.newProg : ''}${s.gc ? ' GC ' + s.gc + 'MB' : ''}${s.long.length ? ' STALL ' + s.long.join('/') : ''}${s.ev.length ? ' · ' + s.ev.join(',') : ''}`)].join('\n'); };
@@ -23488,7 +23499,7 @@ const LAGREC = (() => {
     btn.onclick = e => { e.stopPropagation(); pre.textContent = report(); sh.style.display = 'flex'; }; } catch (e) { console.warn('lag report button', e); }
   window.__lag = { R, report }; return R; })();
 
-await __ldStep("15g_depthvar.js", 0.9980, 0.9980);
+await __ldStep("15g_depthvar.js", 0.9977, 0.9978);
 // ============================================================
 // SHADOW PASS WITHOUT THE CONSTANT SHADER SWAPS (Ali 24 Nov: "make it faster"). three.js draws every shadow with ONE
 // shared depth material. Batched groups, instanced fields, skinned animals and plain meshes each need a different version
@@ -23508,7 +23519,7 @@ await __ldStep("15g_depthvar.js", 0.9980, 0.9980);
   renderer.render = function (sc, cam) { if (sc === scene && (n++ % 30) === 0 && !window.__noDV) try { sweep(); } catch (e) {} return r0(sc, cam); };
 }
 
-await __ldStep("15h_cpu.js", 0.9980, 0.9981);
+await __ldStep("15h_cpu.js", 0.9978, 0.9978);
 // ============================================================
 // SPEED (Ali 24 Nov: "max fps"): the measured cost of a frame was ~5 ms of game and ~22 ms of getting the picture ready on
 // the main core. Two things in that were pure waste, every frame:
@@ -23531,7 +23542,7 @@ await __ldStep("15h_cpu.js", 0.9980, 0.9981);
     if (this.__sig === sig && this.boneTexture) return; // (no joint moved since last time: what the graphics chip has is still right)
     this.__sig = sig; return up0.call(this); }; }
 
-await __ldStep("15i_bench.js", 0.9981, 0.9981);
+await __ldStep("15i_bench.js", 0.9978, 0.9979);
 // ============================================================
 // THE BENCHMARK (Ali 24 Nov: "this will be the game people go to to test their machines, and to show that their old
 // machines can still run a good game"). Home menu → BENCHMARK: a full 8-Nym match plays itself on the current stage (you're
@@ -23587,7 +23598,7 @@ if (BENCH) {
     if (BENCH.t >= BENCH_T) finish(); };
 }
 
-await __ldStep("15j_space.js", 0.9981, 0.9982);
+await __ldStep("15j_space.js", 0.9979, 0.9980);
 // ============================================================
 // THE HOME SCREEN: PORTAL SPACE (Ali 25 Nov: "for the background on the main menu, use the Nym from the loading screen; put
 // them in a world with random portals and blocks all flying around in portal space... not the portal map, just the space
@@ -23686,7 +23697,7 @@ await __ldStep("15j_space.js", 0.9981, 0.9982);
   addEventListener('orientationchange', refit); if (window.visualViewport) visualViewport.addEventListener('resize', refit); if (screen.orientation) try { screen.orientation.addEventListener('change', refit); } catch (e) {}
   const ds2 = drawScene; drawScene = function (...a) { if (innerWidth !== lw || innerHeight !== lh || devicePixelRatio !== ld) refit(); return ds2.apply(this, a); }; }
 
-await __ldStep("15k_visor.js", 0.9982, 0.9990);
+await __ldStep("15k_visor.js", 0.9980, 0.9988);
 // ============================================================
 // THE NYM IN THE DARK, on every stage (Ali 25 Nov: "my face visor is showing light in a well lit room, and it's not inverted
 // when it's doing it"; "add that inverted look to the blackout killstreak, and any time a Nym is stuck in darkness, except
@@ -23720,7 +23731,7 @@ await __ldStep("15k_visor.js", 0.9982, 0.9990);
       const g = r.model.g.position; vf.copy(fwdOf(r.yaw)); v.l.position.set(g.x + vf.x * .5, g.y + .85, g.z + vf.z * .5); const kt = Math.min(1, dt * 6); v.l.target.position.x += (g.x + vf.x * 7 - v.l.target.position.x) * kt; v.l.target.position.y = g.y - .6; v.l.target.position.z += (g.z + vf.z * 7 - v.l.target.position.z) * kt; }); };
   window.NYMDARK = { darkAt, setInv }; }
 
-await __ldStep("15l_speed2.js", 0.9990, 0.9994);
+await __ldStep("15l_speed2.js", 0.9988, 0.9992);
 // ============================================================
 // SPEED 2 (Ali 25 Nov: "optimise even further / do everything").
 //  - The bots think in turns: each bot works out what to do every other step (half of them on the odd steps, half on
@@ -23736,7 +23747,7 @@ await __ldStep("15l_speed2.js", 0.9990, 0.9994);
     if (((TICK_N + r.__aiI) & 1) && r.__aiAcc < .05) return; /* (its turn to rest; never more than a twentieth of a second without a thought) */
     const d = r.__aiAcc; r.__aiAcc = 0; return ua(r, d); }; }
 
-await __ldStep("15m_physw.js", 0.9994, 0.9995);
+await __ldStep("15m_physw.js", 0.9992, 0.9992);
 // ============================================================
 // PHYSICS HELPER, PART 2 (Ali 25 Nov: "do 7": physics on the phone's second core).
 // Tests showed the physics is cheap most of the time (0.2 ms a frame) but right after a fort is blown up it jumps to
@@ -23897,7 +23908,7 @@ onmessage = ev => { Q = Q.then(() => msg(ev.data)).catch(e => postMessage({ t: '
     return r; };
 }
 
-await __ldStep("15n_speed3.js", 0.9995, 0.9995);
+await __ldStep("15n_speed3.js", 0.9992, 0.9993);
 // ============================================================
 // SPEED 3 (Ali 25 Nov: "do those things" / "let the loading screen run longer and prepare the game better").
 // ============================================================
@@ -23914,7 +23925,8 @@ const LDH = window.__ldHold = { on: false };
 window.__ldFinish = () => { const U = window.__ldUI, L = document.getElementById('loading'), t0 = performance.now();
   const wait = () => { if (LDH.on) return; /* (PLAY was already pressed (picked a stage): the match's own wait takes over the loading screen) */
     const el = performance.now() - t0; if (U) U.cap = Math.max(U.cap, Math.min(.97, .85 + .12 * Math.min(1, el / 3000)));
-    if ((!window.__warmDone && el < 15000) || el < 1500 || (LDH.ok < 20 && el < 9000)) { requestAnimationFrame(wait); return; }
+    const neWait = window.NE && NE.want && !NE.err && !(NE.stats && NE.stats.frames >= 1); /* (the new engine's first picture done: its shaders are built) */
+    if ((!window.__warmDone && el < 15000) || el < 1500 || (LDH.ok < 20 && el < 9000) || (neWait && el < 25000)) { requestAnimationFrame(wait); return; }
     if (LDH.on) return; if (U) U.finish(() => { if (!LDH.on) L.hidden = true; }); else L.hidden = true; };
   requestAnimationFrame(wait); };
 { const sc0 = startCountdown; let busy = false;
@@ -23930,7 +23942,8 @@ window.__ldFinish = () => { const U = window.__ldUI, L = document.getElementById
       busy = false; sc0.apply(this, a); try { if (AC && AC.state === 'running') AC.suspend(); } catch (_) {}
       // the match is going behind the loading screen, its countdown held at the start, until it runs smoothly
       const t1 = performance.now(); const hold = () => { const t = performance.now(); creep(); if (match.state === 'count') match.count = INTRO_T;
-        if ((LDH.ok < 20 || t - t1 < 1500) && t - t1 < 9000) { requestAnimationFrame(hold); return; }
+        const neBusy = window.NE && NE.on && NE.stats && NE.skipped > (hold.sk || 0) + 3; hold.sk = window.NE ? NE.skipped : 0; /* (the render thread keeping up too) */
+        if ((LDH.ok < 20 || t - t1 < 1500 || neBusy) && t - t1 < 9000) { requestAnimationFrame(hold); return; }
         const reveal = () => { LDH.on = false; L.hidden = true; try { if (AC) AC.resume(); } catch (_) {} };
         if (U) { U.finish(reveal); const keep = () => { if (LDH.on) { if (match.state === 'count') match.count = INTRO_T; requestAnimationFrame(keep); } }; keep(); } else reveal(); };
       requestAnimationFrame(hold); };
@@ -23971,7 +23984,7 @@ const SPEEDT = window.SPEEDT = { on: false, res: null };
     const chip = C.gpu.length ? gpu : wait ? draw + wait : 0, cpu = sim + draw;
     const v = chip && chip > cpu * 1.15 ? 'the GRAPHICS CHIP (painting the picture) is what holds it back' : cpu > 7 ? 'the MAIN PROCESSOR (game + getting the picture ready) is what holds it back' : 'nothing much: the phone keeps up';
     return { text: [`SPEED TEST ${MAP} · ${fps.toFixed(0)} fps average · ${low.toFixed(0)} fps at the worst 1%`, `game ${sim.toFixed(1)} ms · getting the picture ready ${draw.toFixed(1)} ms · graphics chip ${C.gpu.length ? gpu.toFixed(1) + ' ms' : wait ? '~' + (draw + wait).toFixed(1) + ' ms (estimated)' : 'n/a'} · a frame ${avg(F).toFixed(1)} ms`,
-      `sharpness ${renderer.getPixelRatio().toFixed(2)}x · shadows ${sun.castShadow ? 'on' : 'off'} · max quality ${S.maxq ? 'on' : 'off'} · ${renderer.info.render.calls} draws · ${(renderer.info.render.triangles / 1000).toFixed(0)}k triangles · still things ${FREEZE.n}`, 'verdict: ' + v].join('\n'), fps, low }; };
+      `sharpness ${renderer.getPixelRatio().toFixed(2)}x · shadows ${sun.castShadow ? 'on' : 'off'} · max quality ${S.maxq ? 'on' : 'off'} · ${renderer.info.render.calls} draws · ${(renderer.info.render.triangles / 1000).toFixed(0)}k triangles · still things ${FREEZE.n}`, 'verdict: ' + v, ...(window.NE && NE.on ? [`NYMBO ENGINE on: ${(NE.fps || 0).toFixed(0)} pictures a second drawn on the second core (render thread ${(NE.stats.ms || 0).toFixed(1)} ms, ${NE.stats.calls} draws) · game side ${(NE.mainMs || 0).toFixed(1)} ms · game loop ${fps.toFixed(0)} a second`] : [])].join('\n'), fps, low }; };
   try { const row = $('resumeBtn').parentNode; const btn = document.createElement('button'); btn.textContent = 'SPEED TEST'; btn.className = 'menuBtn'; btn.style.cssText = 'font:700 13px var(--body);padding:8px;border-radius:12px;border:0;background:#2a2f3a;color:#7dffb0';
     row.appendChild(btn);
     btn.onclick = async e => { e.stopPropagation(); if (SPEEDT.on) return; try { $('resumeBtn').click(); } catch (_) {} toast([['SPEED TEST: ', '#7dffb0'], ['play normally for ' + (window.BAKE && BAKE.want !== undefined ? 14 : window.__shTune ? 12 : 10) + ' seconds…', '#fff']]);
@@ -23992,7 +24005,7 @@ const SPEEDT = window.SPEEDT = { on: false, res: null };
       else C = await run(10000);
       SPEEDT.res = sum(C); if (extra) SPEEDT.res.text += '\n' + extra; toast([['SPEED TEST DONE: ', '#7dffb0'], [SPEEDT.res.fps.toFixed(0) + ' fps · Pause → LAG REPORT to copy it', '#fff']]); }; } catch (e) { console.warn('speed test button', e); } }
 
-await __ldStep("15o_engine.js", 0.9995, 0.9998);
+await __ldStep("15o_engine.js", 0.9993, 0.9995);
 // ============================================================
 // THE NYMBO ENGINE (Ali 26 Nov: "build our own engine specifically for this game... do all of them").
 // Drawing made for Nymbo: instead of handing three.js thousands of separate things to sort through and draw one at a
@@ -24070,7 +24083,7 @@ if (ENG.on) {
   const ds = drawScene; drawScene = function (...a) { if (ENG.on && match.state !== 'menu') { try { step(); } catch (e) { noteErr(e); IF.visible = IA.visible = false; for (const b of blocks) for (const o of (b.__shP || [])) if (o.__shOff) { o.__shOff = false; o.castShadow = true; } } } return ds.apply(this, a); };
 }
 
-await __ldStep("15p_bake.js", 0.9998, 1.0000);
+await __ldStep("15p_bake.js", 0.9995, 0.9998);
 // ============================================================
 // BAKED SHADOWS, PART 2: deciding what never moves, drawing its shadow once, and keeping it right.
 //  - A few seconds into the match, every shadow-casting thing that isn't a Nym, a block, an animal or an effect is
@@ -24103,7 +24116,7 @@ if (window.__bakeChunkOk && sun.castShadow && MAP === 'classic') { /* (classic f
   // drawing the saved picture: only the still things cast, just for this one frame
   let bakeNow = false; const doBake = () => { bakeNow = true; };
   const ds = drawScene; drawScene = function (...a) {
-    if (!bakeNow) return ds.apply(this, a);
+    if (!bakeNow || (window.NE && NE.on && NE.busy && NE.busy())) return ds.apply(this, a); /* (with the new engine: waits for a frame the render thread will actually take) */
     bakeNow = false; const off = []; try { fit();
       // everything else stops casting for this one frame; the still things cast again
       scene.traverse(o => { if (o.castShadow && !o.__bkSt) { o.castShadow = false; off.push(o); } }); for (const o of BAKE.st) o.castShadow = true;
@@ -24132,6 +24145,260 @@ if (window.__bakeChunkOk && sun.castShadow && MAP === 'classic') { /* (classic f
   // the classic island's own way of saving shadows isn't needed while this is on
   if (BAKE.want) window.__noStaticSh = true; /* (the classic island's older way of saving shadows isn't needed while this is on) */
 }
+
+await __ldStep("16_ne.js", 0.9998, 1.0000);
+// ============================================================
+// NYMBO ENGINE: THE GAME SIDE (Ali 26 Nov: "our own custom engine built for Nymbo, to run on any device").
+// The picture is drawn on a second core (ne_worker.js, the render thread). This side, every frame, looks over the
+// world and sends the render thread only what changed: new shapes, paint and pictures the first time they're seen,
+// then just where things are, what's visible and what changed colour. The game's own thread never touches the
+// graphics chip for the main picture any more, so it stays free to run the game.
+// Works with the browser's normal WebGL 2, so the same engine runs on Android, iPhone/iPad, Windows, Mac and Linux.
+// Off switch: Settings, or localStorage 'nymbo-ne' = '0'.  On: 'nymbo-ne' = '1'  (or ?ne=1 / ?ne=0 on the address).
+// If anything goes wrong it switches itself off and the game carries on drawing the old way.
+// ============================================================
+const NE = window.NE = { want: false, on: false, ready: false, err: null, stats: {}, frames: 0, skipped: 0, mainMs: 0 };
+{ let p = null, q = null; try { p = localStorage.getItem('nymbo-ne'); q = new URLSearchParams(location.search).get('ne'); } catch (_) {}
+  NE.want = q === '1' || (q !== '0' && p !== '0'); /* (on unless switched off) */
+  if (typeof OffscreenCanvas === 'undefined' || !HTMLCanvasElement.prototype.transferControlToOffscreen || typeof Worker === 'undefined') NE.want = false; }
+if (NE.want) {
+  const MAIN = renderer.domElement;
+  // ---- ids for everything sent across ----
+  let NID = 1; const ID = new WeakMap(), idOf = x => { let i = ID.get(x); if (!i) { i = NID++; ID.set(x, i); } return i; };
+  let ops = [], xfer = [], frameNo = 0, inFlight = false, lastAck = 0, wk = null;
+  const op = (...a) => ops.push(a);
+  // ---- the engine is told when things change, instead of checking everything every frame ----
+  const DA = new Set(), DG = new Set();
+  { const hookNU = (proto, set) => { const d = Object.getOwnPropertyDescriptor(proto, 'needsUpdate'); if (!d || !d.set) return; Object.defineProperty(proto, 'needsUpdate', { set(v) { d.set.call(this, v); if (v) set.add(this); }, get: d.get, configurable: true }); };
+    hookNU(THREE.BufferAttribute.prototype, DA); hookNU(THREE.InterleavedBuffer.prototype, DA);
+    const GP = THREE.BufferGeometry.prototype; for (const k of ['setAttribute', 'deleteAttribute', 'setIndex', 'addGroup', 'clearGroups', 'setDrawRange', 'applyMatrix4', 'translate', 'scale', 'rotateX', 'rotateY', 'rotateZ', 'center']) { const f = GP[k]; if (!f) continue; GP[k] = function (...a) { DG.add(this); return f.apply(this, a); }; }
+    /* (bounds: worked out again and again by the game; only a real change counts) */
+    { const cs = GP.computeBoundingSphere; GP.computeBoundingSphere = function () { const o = this.boundingSphere; const x = o && o.center.x, y = o && o.center.y, z = o && o.center.z, r = o && o.radius; const res = cs.call(this); const n = this.boundingSphere; if (!o || !n || n.radius !== r || n.center.x !== x || n.center.y !== y || n.center.z !== z) DG.add(this); return res; };
+      const cb = GP.computeBoundingBox; GP.computeBoundingBox = function () { const o = this.boundingBox; const a0 = o && o.min.x, a1 = o && o.min.y, a2 = o && o.min.z, b0 = o && o.max.x, b1 = o && o.max.y, b2 = o && o.max.z; const res = cb.call(this); const n = this.boundingBox; if (!o || !n || n.min.x !== a0 || n.min.y !== a1 || n.min.z !== a2 || n.max.x !== b0 || n.max.y !== b1 || n.max.z !== b2) DG.add(this); return res; }; } }
+  const AG = new WeakMap(); // shape data -> the shapes using it
+  const markDirty = () => { for (const g of DG) if (!GS.has(g)) DG.delete(g); /* (never sent yet: it goes whole on its first visit anyway; keeps the list from holding on to things no longer in use) */ const n0 = DG.size; for (const a of DA) { const L = AG.get(a); if (L) for (const g of L) DG.add(g); } if (window.__neOpStat) { NE.dg = NE.dg || { hook: 0, attr: 0, da: 0, n: 0 }; NE.dg.hook += n0; NE.dg.attr += DG.size - n0; NE.dg.da += DA.size; NE.dg.n++; } DA.clear(); };
+  // ---- values to plain data ----
+  const ser = v => { if (v === null || v === undefined) return null; const t = typeof v; if (t === 'number' || t === 'boolean' || t === 'string') return v;
+    if (v.isColor) return { C: [v.r, v.g, v.b] }; if (v.isVector2) return { V: [v.x, v.y] }; if (v.isVector3) return { V: [v.x, v.y, v.z] }; if (v.isVector4) return { V: [v.x, v.y, v.z, v.w] }; if (v.isQuaternion) return { V: [v.x, v.y, v.z, v.w], Q: 1 };
+    if (v.isMatrix3) return { M3: Array.from(v.elements) }; if (v.isMatrix4) return { M4: Array.from(v.elements) }; if (v.isEuler) return { E: [v.x, v.y, v.z] };
+    if (v.isTexture) return { T: texRef(v) }; if (Array.isArray(v)) return { A: v.map(ser) }; if (ArrayBuffer.isView(v)) return { F: v.slice() };
+    return undefined; };
+  const sig = v => { if (v === null || v === undefined) return 'n'; const t = typeof v; if (t !== 'object') return v; if (v.isColor) return v.r + ',' + v.g + ',' + v.b; if (v.isVector2) return v.x + ',' + v.y; if (v.isVector3) return v.x + ',' + v.y + ',' + v.z; if (v.isVector4 || v.isQuaternion) return v.x + ',' + v.y + ',' + v.z + ',' + v.w;
+    if (v.isMatrix3 || v.isMatrix4) return v.elements.join(','); if (v.isTexture) return 't' + idOf(v) + ':' + v.version; if (v.isEuler) return v.x + ',' + v.y + ',' + v.z; if (Array.isArray(v)) return v.map(sig).join('|'); if (ArrayBuffer.isView(v)) return v.join(','); return '?'; };
+  // ---- pictures (textures) ----
+  const TS = new WeakMap(); // texture -> { id, ver, pend }
+  const PMREC = __PMREC; // (filled in from the start: see 01c_nehooks.js)
+  const texP = t => ({ wrapS: t.wrapS, wrapT: t.wrapT, magFilter: t.magFilter, minFilter: t.minFilter, anisotropy: t.anisotropy, format: t.format, type: t.type, colorSpace: t.colorSpace, generateMipmaps: t.generateMipmaps, unpackAlignment: t.unpackAlignment, channel: t.channel,
+    rotation: t.rotation, matrixAutoUpdate: t.matrixAutoUpdate, internalFormat: t.internalFormat, repeat: [t.repeat.x, t.repeat.y], offset: [t.offset.x, t.offset.y], center: [t.center.x, t.center.y], matrix: Array.from(t.matrix.elements) });
+  const isImg = im => im && ((typeof HTMLImageElement !== 'undefined' && im instanceof HTMLImageElement) || (typeof HTMLCanvasElement !== 'undefined' && im instanceof HTMLCanvasElement) || (typeof ImageBitmap !== 'undefined' && im instanceof ImageBitmap) || (typeof OffscreenCanvas !== 'undefined' && im instanceof OffscreenCanvas) || (typeof HTMLVideoElement !== 'undefined' && im instanceof HTMLVideoElement) || (typeof ImageData !== 'undefined' && im instanceof ImageData));
+  const bitmap = (im, t) => { const ok = im instanceof HTMLImageElement ? im.complete && im.naturalWidth > 0 : (im.width > 0 && im.height > 0); if (!ok) return null;
+    const opt = { imageOrientation: t.flipY ? 'flipY' : 'from-image', premultiplyAlpha: t.premultiplyAlpha ? 'premultiply' : 'none', colorSpaceConversion: 'none' };
+    return createImageBitmap(im, opt).catch(() => { /* (older browsers without 'flipY': the picture is turned over by hand) */ const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height, c = new OffscreenCanvas(w, h), g = c.getContext('2d'); if (t.flipY) { g.translate(0, h); g.scale(1, -1); } g.drawImage(im, 0, 0, w, h); return createImageBitmap(c); }); };
+  function texRef(t) { let s = TS.get(t); const id = idOf(t);
+    if (s && s.ver === t.version) return id; if (s && s.pend) return id;
+    if (!s) { s = { id, ver: -1, pend: false }; TS.set(t, s); }
+    const pm = PMREC.get(t);
+    if (pm) { s.ver = t.version; if (pm.root) { syncRoot(pm.root, idOf(pm.root), false); op('t', id, { kind: 'pm', root: idOf(pm.root), sigma: pm.sigma, near: pm.near, far: pm.far }); } else op('t', id, { kind: 'pm', equi: texRef(pm.equi), root: 0 }); return id; }
+    if (t.isRenderTargetTexture || t.isDepthTexture) { const R_ = TEX2RT.get(t); s.ver = t.version;
+      if (R_) { WANT.add(R_.rt); op('t', id, { kind: 'rt', rt: rtRef(R_.rt), depth: R_.depth }); return id; } /* (a picture the game paints of the world (a reflection, the heat haze): painted on the render thread from now on) */
+      if (!s.unk) op('t', id, { kind: 'none', p: texP(t) }); s.ver = -3; s.unk = (s.unk || 0) + 1; PEND.add(t); if (s.unk > 240) NE.fail('an unknown live picture in the world'); return id; }
+    const im = t.image;
+    if (t.isCubeTexture) { const L = (t.images || []).filter(Boolean); if (L.length !== 6 || !L.every(isImg)) { s.ver = t.version; op('t', id, { kind: 'none', p: texP(t) }); return id; }
+      const ver = t.version; s.pend = true; Promise.all(L.map(x => createImageBitmap(x, { imageOrientation: 'from-image', premultiplyAlpha: 'none', colorSpaceConversion: 'none' }))).then(bs => { s.pend = false; s.ver = ver; op('t', id, { kind: 'cube', imgs: bs, p: texP(t) }); xfer.push(...bs); }).catch(() => { s.pend = false; s.ver = ver; }); return id; }
+    if (im && im.data && ArrayBuffer.isView(im.data)) { s.ver = t.version; const D = im.data.slice(); xfer.push(D.buffer); op('t', id, { kind: t.isData3DTexture ? 'data3d' : 'data', data: D, w: im.width, h: im.height, d: im.depth, flipY: t.flipY, pma: t.premultiplyAlpha, p: texP(t) }); return id; }
+    if (isImg(im) && s.at && performance.now() - s.at < 90 && !(im instanceof HTMLImageElement)) return id; /* (a picture the game keeps redrawing: sent at most ~11 times a second) */
+    if (isImg(im)) { s.at = performance.now(); const pr = bitmap(im, t); if (!pr) { op('t', id, { kind: 'none', p: texP(t) }); s.ver = -2; return id; } /* (not loaded yet: tried again next time) */
+      const ver = t.version; s.pend = true; pr.then(b => { s.pend = false; s.ver = ver; op('t', id, { kind: 'img', img: b, p: texP(t) }); xfer.push(b); }).catch(() => { s.pend = false; s.ver = ver; }); return id; }
+    s.ver = t.version; op('t', id, { kind: 'none', p: texP(t) }); return id; }
+  // ---- shapes (geometry) ----
+  const AS = new WeakMap(), GS = new WeakMap();
+  const copyArr = a => { const c = a.slice(); xfer.push(c.buffer); return c; };
+  function attrRef(a) { const id = idOf(a); let s = AS.get(a);
+    if (a.isInterleavedBufferAttribute) { const ib = a.data, ibid = idOf(ib); let si = AS.get(ib); if (!si || si.ver !== ib.version) { op('ib', ibid, { array: copyArr(ib.array), stride: ib.stride, inst: !!ib.isInstancedInterleavedBuffer, mpa: ib.meshPerAttribute }); AS.set(ib, { ver: ib.version }); }
+      if (!s) { op('a', id, { ib: ibid, itemSize: a.itemSize, offset: a.offset, normalized: a.normalized }); AS.set(a, { ver: 0 }); } return id; }
+    if (s && s.ver !== a.version && window.__neOpStat) { const H = NE.ar = NE.ar || {}; const k2 = a.array.constructor.name + a.array.length + (a.isInstancedBufferAttribute ? 'I' : '') + ':' + a.itemSize + ':r' + (a.updateRanges ? a.updateRanges.length : -1); H[k2] = (H[k2] || 0) + 1; }
+    if (!s || s.ver !== a.version) { op('a', id, { array: copyArr(a.array), itemSize: a.itemSize, normalized: a.normalized, inst: !!a.isInstancedBufferAttribute, mpa: a.meshPerAttribute, usage: a.usage, gpuType: a.gpuType }); AS.set(a, { ver: a.version }); }
+    return id; }
+  function geoRef(g) { const id = idOf(g); let s = GS.get(g);
+    if (s && s.f === frameNo) return id; /* (already looked at this frame) */
+    if (s && !DG.has(g) && s.drs === g.drawRange.start && s.drc === g.drawRange.count) { s.f = frameNo; return id; } /* (nothing about it changed) */
+    DG.delete(g); let ch = !s; if (!s) { s = { at: {}, n: -1 }; GS.set(g, s); }
+    // its data: each piece sent again only if it changed; the shape itself re-described only if its make-up changed
+    let n = 0; const at = s.at; for (const k in g.attributes) { const a = g.attributes[k]; attrRef(a); if (at[k] !== a) { at[k] = a; ch = true; } n++;
+      const src = a.isInterleavedBufferAttribute ? a.data : a; let L = AG.get(src); if (!L) { L = new Set(); AG.set(src, L); } L.add(g); }
+    if (n !== s.n) { if (s.n !== -1 || !ch) ch = true; for (const k in at) if (!(k in g.attributes)) delete at[k]; s.n = n; }
+    if (g.index) { attrRef(g.index); let L = AG.get(g.index); if (!L) { L = new Set(); AG.set(g.index, L); } L.add(g); } if (s.ix !== g.index) { s.ix = g.index; ch = true; }
+    const gs = g.groups.length ? g.groups.map(x => x.start + ',' + x.count + ',' + x.materialIndex).join(';') : ''; if (s.gs !== gs) { s.gs = gs; ch = true; }
+    if (s.drs !== g.drawRange.start || s.drc !== g.drawRange.count) { s.drs = g.drawRange.start; s.drc = g.drawRange.count; ch = true; }
+    const bs = g.boundingSphere, br = bs ? bs.radius + ',' + bs.center.x + ',' + bs.center.y + ',' + bs.center.z : ''; if (s.br !== br) { s.br = br; ch = true; }
+    const hasM = g.morphAttributes && Object.keys(g.morphAttributes).length; if (hasM) for (const k in g.morphAttributes) for (const a of g.morphAttributes[k]) attrRef(a);
+    if (ch) { const attrs = {}; for (const k in g.attributes) attrs[k] = idOf(g.attributes[k]); let morph = null; if (hasM) { morph = {}; for (const k in g.morphAttributes) morph[k] = g.morphAttributes[k].map(idOf); }
+      const bb = g.boundingBox; op('g', id, { attrs, index: g.index ? idOf(g.index) : null, groups: g.groups.map(x => [x.start, x.count, x.materialIndex]), dr: [g.drawRange.start, g.drawRange.count], bs: bs ? [bs.center.x, bs.center.y, bs.center.z, bs.radius] : null, bb: bb ? [bb.min.x, bb.min.y, bb.min.z, bb.max.x, bb.max.y, bb.max.z] : null, morph, mrel: g.morphTargetsRelative }); }
+    s.f = frameNo; return id; }
+  // ---- paint (materials), including the game's own shader changes ----
+  const SHID = { MeshBasicMaterial: 'basic', MeshLambertMaterial: 'lambert', MeshPhongMaterial: 'phong', MeshStandardMaterial: 'physical', MeshPhysicalMaterial: 'physical', MeshToonMaterial: 'toon', MeshMatcapMaterial: 'matcap', MeshDepthMaterial: 'depth', MeshDistanceMaterial: 'distanceRGBA', MeshNormalMaterial: 'normal', PointsMaterial: 'points', SpriteMaterial: 'sprite', LineBasicMaterial: 'basic', LineDashedMaterial: 'dashed', ShadowMaterial: 'shadow' };
+  const SKIP = new Set(['uuid', 'id', 'name', 'type', 'version', 'userData', 'uniforms', 'vertexShader', 'fragmentShader', 'defines', 'onBeforeCompile', 'customProgramCacheKey', 'onBeforeRender', 'clippingPlanes', 'extensions', 'uniformsGroups', 'glslVersion', 'index0AttributeName', 'uniformsNeedUpdate', 'isMaterial', 'isShaderMaterial', 'isRawShaderMaterial', '_listeners', '_alphaTest', '_sheen', '_clearcoat', '_iridescence', '_dispersion', '_anisotropy', '_transmission', 'blendColor', 'defaultAttributeValues']);
+  const HOT = ['color', 'emissive', 'emissiveIntensity', 'opacity', 'visible', 'transparent', 'depthWrite', 'depthTest', 'alphaTest', 'roughness', 'metalness', 'map', 'emissiveMap', 'side', 'blending', 'size', 'rotation', 'envMapIntensity', 'colorWrite', 'clearcoat', 'sheen', 'transmission', 'iridescence', 'specularIntensity', 'polygonOffsetFactor', 'polygonOffsetUnits', 'polygonOffset', 'alphaMap', 'envMap', 'toneMapped', 'fog', 'wireframe', 'dashSize', 'gapSize', 'scale', 'normalMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'lightMap', 'specularMap', 'displacementMap', 'gradientMap', 'matcap'];
+  const MS = new WeakMap(); const UOBJ = new Map(); // uniform object -> { id, sig }
+  const uRef = u => { let s = UOBJ.get(u); if (!s) { s = { id: idOf(u), sig: null }; UOBJ.set(u, s); } return s.id; };
+  const OBC0 = THREE.Material.prototype.onBeforeCompile, CPK0 = THREE.Material.prototype.customProgramCacheKey;
+  function capture(m) { // the game's own changes to a built-in paint: done once here on a stand-in, and the finished shader text sent over
+    const sid = SHID[m.type]; if (!sid || !THREE.ShaderLib[sid]) return null; const L = THREE.ShaderLib[sid];
+    const sh = { shaderID: sid, shaderType: m.type, shaderName: m.type, vertexShader: L.vertexShader, fragmentShader: L.fragmentShader, uniforms: THREE.UniformsUtils.clone(L.uniforms), defines: Object.assign({}, m.defines || {}), isRawShaderMaterial: false, glslVersion: null };
+    const d0 = JSON.stringify(sh.defines); m.onBeforeCompile(sh, renderer);
+    const uni = {}; for (const k in sh.uniforms) if (!(k in L.uniforms)) uni[k] = uRef(sh.uniforms[k]);
+    const d1 = JSON.stringify(sh.defines || {}); return { vs: sh.vertexShader, fs: sh.fragmentShader, uni, defines: d1 !== d0 ? sh.defines : (m.defines ? sh.defines : null) }; }
+  const props = m => { const p = {}; for (const k in m) { if (SKIP.has(k) || k.startsWith('_') && !['_alphaTest'].includes(k)) continue; const v = m[k]; if (typeof v === 'function') continue; const s = ser(v); if (s !== undefined) p[k] = s; }
+    for (const k of ['alphaTest', 'sheen', 'clearcoat', 'iridescence', 'transmission', 'dispersion', 'anisotropy']) if (k in m) p[k] = m[k]; return p; };
+  function matRef(m) { const id = idOf(m); let s = MS.get(m);
+    if (!s || s.ver !== m.version) { const d = { type: m.type, p: props(m), fresh: !s };
+      if (m.isShaderMaterial) { d.vs = m.vertexShader; d.fs = m.fragmentShader; d.uni = {}; for (const k in m.uniforms) d.uni[k] = uRef(m.uniforms[k]); d.defines = m.defines ? Object.assign({}, m.defines) : {}; if (m.extensions) d.ext = Object.assign({}, m.extensions); }
+      else if (m.onBeforeCompile !== OBC0) { try { d.obc = capture(m); d.key = (m.customProgramCacheKey !== CPK0 ? m.customProgramCacheKey() : '') + '#' + id; } catch (e) { d.obc = null; } }
+      op('m', id, d); s = { ver: m.version, hot: HOT.map(k => sig(m[k])) }; MS.set(m, s); s.used = frameNo; return id; }
+    if (s.used === frameNo) return id; s.used = frameNo; if (s.prim && !(s.hotTo > frameNo) && ((id + frameNo) & 3)) return id; /* (paint that hasn't changed lately is looked at every 4th frame; paint that's changing, every frame) */
+    // the bits of paint the game changes on the fly (flashes, fades, glows): a quick look at each, every frame
+    let ch = null; const H = s.h || (s.h = []); for (let i = 0; i < HOT.length; i++) { const k = HOT[i]; const v = m[k]; if (v === undefined) continue; const j = i * 4;
+      if (v !== null && typeof v === 'object') { if (v.isColor) { if (H[j] === v.r && H[j + 1] === v.g && H[j + 2] === v.b && H[j + 3] === 'c') continue; H[j] = v.r; H[j + 1] = v.g; H[j + 2] = v.b; H[j + 3] = 'c'; }
+        else if (v.isTexture) { if (H[j] === v && H[j + 1] === v.version) continue; H[j] = v; H[j + 1] = v.version; H[j + 3] = 't'; }
+        else if (v.isVector2) { if (H[j] === v.x && H[j + 1] === v.y && H[j + 3] === 'v') continue; H[j] = v.x; H[j + 1] = v.y; H[j + 3] = 'v'; }
+        else continue; }
+      else { if (H[j] === v && H[j + 3] === 'p') continue; H[j] = v; H[j + 3] = 'p'; }
+      if (s.prim) { (ch || (ch = {}))[k] = ser(v); s.hotTo = frameNo + 240; } }
+    s.prim = true; if (s.hot) s.hot = null;
+    if (m.isShaderMaterial && m.uniformsNeedUpdate) m.uniformsNeedUpdate = false;
+    if (ch) op('mp', id, ch); return id; }
+  const matsRef = m => Array.isArray(m) ? m.map(matRef) : matRef(m);
+  // ---- the world, every frame ----
+  const OS = new Map(); // id -> state of an object sent over
+  const KIND = o => o.isSkinnedMesh ? 'skin' : o.isInstancedMesh ? 'inst' : o.isBatchedMesh ? null : o.isMesh ? 'mesh' : o.isPoints ? 'pts' : o.isLineSegments ? 'lseg' : o.isLineLoop ? 'lloop' : o.isLine ? 'line' : o.isSprite ? 'spr'
+    : o.isDirectionalLight ? 'dir' : o.isHemisphereLight ? 'hemi' : o.isAmbientLight ? 'amb' : o.isPointLight ? 'point' : o.isSpotLight ? 'spot' : null;
+  let TR = new Float32Array(17 * 512), trN = 0; const pushTr = (id, e) => { if ((trN + 1) * 17 > TR.length) { const n = new Float32Array(TR.length * 2); n.set(TR); TR = n; } const b = trN * 17; TR[b] = id; for (let k = 0; k < 16; k++) TR[b + 1 + k] = e[k]; trN++; };
+  let BONES = [];
+  const lightP = (o, st) => { const p = {}; const c = o.color; const cs = c.r + ',' + c.g + ',' + c.b + ',' + o.intensity; if (st.lc !== cs) { st.lc = cs; p.color = [c.r, c.g, c.b]; p.i = o.intensity; }
+    if (o.isHemisphereLight) { const g = o.groundColor, gs = g.r + ',' + g.g + ',' + g.b; if (st.lg !== gs) { st.lg = gs; p.ground = [g.r, g.g, g.b]; } }
+    for (const k of ['distance', 'decay', 'angle', 'penumbra']) if (k in o && st['l' + k] !== o[k]) { st['l' + k] = o[k]; p[k] = o[k]; }
+    if (o.target) { o.target.updateMatrixWorld(); const e = o.target.matrixWorld.elements, s_ = e.join(); if (st.lt !== s_) { st.lt = s_; p.tw = Array.from(e); } }
+    if (o.shadow && o.castShadow) { const s = o.shadow, c_ = s.camera, q = { bias: s.bias, normalBias: s.normalBias, radius: s.radius, blurSamples: s.blurSamples, intensity: s.intensity, autoUpdate: s.autoUpdate, ms: [s.mapSize.x, s.mapSize.y] };
+      if (c_) q.cam = c_.isOrthographicCamera ? { left: c_.left, right: c_.right, top: c_.top, bottom: c_.bottom, near: c_.near, far: c_.far } : { near: c_.near, far: c_.far, fov: c_.fov, aspect: c_.aspect };
+      const qs = JSON.stringify(q); if (st.ls !== qs) { st.ls = qs; p.sh = q; } if (s.needsUpdate) { (p.sh || (p.sh = {})).needsUpdate = true; s.needsUpdate = false; } }
+    return p; };
+  function visit(o, root, rootId) { const k = KIND(o); if (!k) return; if (window.__neOpStat) NE.tt2.nv = (NE.tt2.nv || 0) + 1; const id = idOf(o); let st = OS.get(id);
+    if (!st) { const d = { k, root: rootId };
+      if (k !== 'spr' && o.geometry && !o.isLight) d.g = geoRef(o.geometry); if (o.material) d.m = matsRef(o.material);
+      if (k === 'inst') { d.im = attrRef(o.instanceMatrix); d.ic = o.instanceColor ? attrRef(o.instanceColor) : null; d.count = o.count; }
+      if (k === 'skin') { d.nb = o.skeleton ? o.skeleton.bones.length : 1; d.bind = Array.from(o.bindMatrix.elements); d.bindMode = o.bindMode; }
+      if (k === 'spr') d.center = [o.center.x, o.center.y];
+      op('o', id, d); st = { o, k, root: rootId, g: o.geometry, m: o.material, mw: new Float32Array(16).fill(NaN), v: null, l: null, cs: null, rs: null, ro: null, fc: null, count: d.count, imv: o.instanceMatrix ? o.instanceMatrix.version : 0, icv: o.instanceColor ? o.instanceColor.version : 0, ic: o.instanceColor || null, cdm: undefined, cdist: undefined, seen: 0 }; OS.set(id, st);
+      if (k === 'inst') { AS.get(o.instanceMatrix).ver = o.instanceMatrix.version; } }
+    st.seen = frameNo; const p = {};
+    if (st.v !== true) { st.v = true; p.v = true; } if (st.l !== o.layers.mask) { st.l = o.layers.mask; p.l = st.l; } if (st.cs !== o.castShadow) { st.cs = o.castShadow; p.cs = st.cs; } if (st.rs !== o.receiveShadow) { st.rs = o.receiveShadow; p.rs = st.rs; }
+    if (st.ro !== o.renderOrder) { st.ro = o.renderOrder; p.ro = st.ro; } if (st.fc !== o.frustumCulled && k !== 'skin') { st.fc = o.frustumCulled; p.fc = st.fc; }
+    if (k !== 'spr' && o.geometry && !o.isLight) { const gid = geoRef(o.geometry); if (st.g !== o.geometry) { st.g = o.geometry; p.g = gid; } }
+    if (o.material) { const mid = matsRef(o.material); if (st.m !== o.material || (Array.isArray(o.material) && st.mSig !== mid.join())) { st.m = o.material; st.mSig = Array.isArray(mid) ? mid.join() : ''; p.m = mid; } }
+    if (o.customDepthMaterial !== st.cdm) { st.cdm = o.customDepthMaterial; p.cdm = st.cdm ? matRef(st.cdm) : null; } else if (st.cdm) matRef(st.cdm);
+    if (o.customDistanceMaterial !== st.cdist) { st.cdist = o.customDistanceMaterial; p.cdist = st.cdist ? matRef(st.cdist) : null; } else if (st.cdist) matRef(st.cdist);
+    if (k === 'inst') { if (st.count !== o.count) { st.count = o.count; p.count = o.count; } const im = attrRef(o.instanceMatrix); if (st.imv !== o.instanceMatrix.version || st.imo !== o.instanceMatrix) { st.imv = o.instanceMatrix.version; st.imo = o.instanceMatrix; p.im = im; p.ib = 1; }
+      if (o.instanceColor) { const ic = attrRef(o.instanceColor); if (st.ic !== o.instanceColor) { st.ic = o.instanceColor; p.ic = ic; } } else if (st.ic) { st.ic = null; p.ic = null; } }
+    if (k === 'skin' && o.skeleton) { if (window.__neOpStat) NE.tt2.nsk = (NE.tt2.nsk || 0) + 1; const sk = o.skeleton; if (sk.__neF !== frameNo) { sk.__neF = frameNo; sk.update(); sk.__neB = null; } /* (several pieces of one Nym share one skeleton: worked out once) */ BONES.push([id, sk.boneMatrices.slice()]); }
+    if (k === 'spr') { const c = o.center; if (st.cx !== c.x || st.cy !== c.y) { st.cx = c.x; st.cy = c.y; p.center = [c.x, c.y]; } }
+    if (o.isLight) Object.assign(p, lightP(o, st));
+    for (const _ in p) { op('op', id, p); break; }
+    const e = o.matrixWorld.elements, mw = st.mw; let same = true; for (let i = 0; i < 16; i++) if (mw[i] !== e[i]) { same = false; break; } if (!same) { mw.set(e); pushTr(id, e); } }
+  function syncRoot(root, rootId, withCallbacks, camMask) { const cm = camMask === undefined ? -1 : camMask;
+    const stack = [root]; while (stack.length) { const o = stack.pop(); if (!o.visible) continue; if (o !== root && (o.layers.mask & cm)) visit(o, root, rootId); /* (things on layers this camera can't see are never drawn: not sent) */
+      if (withCallbacks && o.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender && o !== root) { const tq = window.__neOpStat ? performance.now() : 0; try { o.onBeforeRender(renderer, root, camera, o.geometry, o.material, null); } catch (_) {} if (tq) { const T = NE.tt2; T.cb = (T.cb || 0) + performance.now() - tq; T.ncb = (T.ncb || 0) + 1; } }
+      const C = o.children; for (let i = C.length - 1; i >= 0; i--) stack.push(C[i]); }
+    // the scene's own settings
+    const sp = {}, S_ = SCS.get(rootId) || {}; const bgS = root.background ? sig(root.background) : 'n'; if (S_.bg !== bgS) { S_.bg = bgS; sp.bg = root.background ? (root.background.isColor ? { C: [root.background.r, root.background.g, root.background.b] } : { T: texRef(root.background) }) : null; }
+    const f = root.fog, fS = f ? (f.isFogExp2 ? 'e' + f.color.getHex() + ',' + f.density : f.color.getHex() + ',' + f.near + ',' + f.far) : 'n'; if (S_.fog !== fS) { S_.fog = fS; sp.fog = f ? (f.isFogExp2 ? { c: [f.color.r, f.color.g, f.color.b], d: f.density } : { c: [f.color.r, f.color.g, f.color.b], n: f.near, f: f.far }) : null; }
+    const env = root.environment ? texRef(root.environment) : null; if (S_.env !== env) { S_.env = env; sp.env = env; }
+    for (const _ in sp) { op('s', rootId, sp); break; } SCS.set(rootId, S_); }
+  const SCS = new Map();
+  // (a quick "has this value changed" without building strings: numbers kept from last time)
+  const changed = (v, s) => { let a = s.a; if (!a) a = s.a = []; let n = 0, ch = false; const put = x => { if (a[n] !== x) { a[n] = x; ch = true; } n++; };
+    const walk = v => { if (v === null || v === undefined) return put(null); const t = typeof v; if (t !== 'object') return put(v);
+      if (v.isColor) { put(v.r); put(v.g); return put(v.b); } if (v.isVector2) { put(v.x); return put(v.y); } if (v.isVector3) { put(v.x); put(v.y); return put(v.z); } if (v.isVector4 || v.isQuaternion) { put(v.x); put(v.y); put(v.z); return put(v.w); }
+      if (v.isMatrix3 || v.isMatrix4) { const e = v.elements; for (let i = 0; i < e.length; i++) put(e[i]); return; } if (v.isTexture) { put(v); return put(v.version); }
+      if (Array.isArray(v)) { put(v.length); for (const x of v) walk(x); return; } if (ArrayBuffer.isView(v)) { put(v.length); for (let i = 0; i < v.length; i++) put(v[i]); return; } put(v); };
+    walk(v); if (a.length !== n) { a.length = n; ch = true; } return ch || !s.done ? (s.done = true, true) : false; };
+  // ---- the render thread ----
+  let canvas = null, RS = {};
+  const rendererOps = () => { const d = {}, c = new THREE.Color(); renderer.getClearColor(c); const now = { tm: renderer.toneMapping, te: renderer.toneMappingExposure, cs: renderer.outputColorSpace, se: renderer.shadowMap.enabled, st: renderer.shadowMap.type, sa: renderer.shadowMap.autoUpdate, so: renderer.sortObjects, cc: [c.r, c.g, c.b, renderer.getClearAlpha()].join() };
+    for (const k in now) if (RS[k] !== now[k]) { RS[k] = now[k]; d[k] = k === 'cc' ? now[k].split(',').map(Number) : now[k]; }
+    if (renderer.shadowMap.needsUpdate) { d.sn = true; renderer.shadowMap.needsUpdate = false; }
+    for (const _ in d) { op('r', d); break; } };
+  let SZ = '';
+  let CW = 0, CH = 0; try { new ResizeObserver(() => { CW = MAIN.parentNode ? MAIN.parentNode.clientWidth : 0; CH = MAIN.parentNode ? MAIN.parentNode.clientHeight : 0; }).observe(stage); } catch (_) {}
+  const sizeOp = () => { const w = CW || stage.clientWidth || innerWidth, h = CH || stage.clientHeight || innerHeight, dpr = renderer.getPixelRatio(), s = w + 'x' + h + '@' + dpr; if (s !== SZ) { SZ = s; op('size', w, h, dpr); } };
+  function freeOld() { // things not seen for a long while are let go on the render thread (and sent again if they come back)
+    if (frameNo % 120) return;
+    for (const [id, st] of OS) if (frameNo - st.seen > 600 && !st.o.parent) { op('x', id); OS.delete(id); } }
+  // ---- pictures painted into other pictures (a reflection, a finishing pass): done on the render thread too ----
+  const RTS = new WeakMap(), TEX2RT = new WeakMap(), PEND = new Set();
+  { const sr = renderer.setRenderTarget.bind(renderer); renderer.setRenderTarget = function (rt, ...a) { if (rt && rt.isWebGLRenderTarget && !rt.isWebGLCubeRenderTarget && !rt.isWebGL3DRenderTarget && !rt.isWebGLArrayRenderTarget) { TEX2RT.set(rt.texture, { rt, depth: false }); if (rt.depthTexture) TEX2RT.set(rt.depthTexture, { rt, depth: true }); } return sr(rt, ...a); }; }
+  const WANT = new WeakSet(); // render targets whose picture is used in the world: drawn on the render thread
+  function rtRef(rt) { const id = idOf(rt); let s = RTS.get(rt); const t = rt.texture, key = rt.width + 'x' + rt.height + ':' + rt.samples + ':' + t.type + ':' + t.format + ':' + !!rt.depthTexture;
+    if (!s || s.key !== key) { op('rt', id, { w: rt.width, h: rt.height, samples: rt.samples || 0, type: t.type, format: t.format, colorSpace: t.colorSpace, minFilter: t.minFilter, magFilter: t.magFilter, gm: t.generateMipmaps, wrapS: t.wrapS, wrapT: t.wrapT, depth: !!rt.depthTexture, depthType: rt.depthTexture ? rt.depthTexture.type : 0, db: rt.depthBuffer, sb: rt.stencilBuffer }); RTS.set(rt, { key }); }
+    return id; }
+  // ---- one picture on the screen = one or more passes, sent together ----
+  let cur = null; // the frame being put together
+  const seg = () => { const tr = TR.slice(0, trN * 17); xfer.push(tr.buffer); for (const b of BONES) xfer.push(b[1].buffer); const sgm = { ops, tr, bones: BONES }; ops = []; trN = 0; BONES = []; return sgm; };
+  const camOf = c => ({ o: !!c.isOrthographicCamera, p: Array.from(c.projectionMatrix.elements), pi: Array.from(c.projectionMatrixInverse.elements), w: Array.from(c.matrixWorld.elements), l: c.layers.mask });
+  NE.pass = (sc, cam, tgt) => { const t0 = performance.now();
+    if (!cur) { cur = { skip: inFlight, segs: [], roots: new Set(), t: 0 }; if (cur.skip) NE.skipped++; else { const tC = performance.now(); frameNo++; markDirty(); sizeOp(); rendererOps(); for (const t of PEND) { PEND.delete(t); texRef(t); } if (window.__neOpStat) { const T = NE.tt2 || (NE.tt2 = {}); T.pre = (T.pre || 0) + performance.now() - tC; T.n = (T.n || 0) + 1; } } }
+    if (cur.skip) { if (tgt === null) cur = null; return; } /* (the render thread is still drawing the last picture: this one is skipped; its changes go with the next) */
+    const rid = idOf(sc);
+    if (!cur.roots.has(rid)) { cur.roots.add(rid);
+      if (sc.matrixWorldAutoUpdate) sc.updateMatrixWorld();
+      try { if (sc.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) sc.onBeforeRender(renderer, sc, cam, tgt); } catch (_) {}
+      const tA = performance.now(); syncRoot(sc, rid, sc === scene, cam.layers.mask); if (window.__neOpStat) { const T = NE.tt2 || (NE.tt2 = {}); T.sync = (T.sync || 0) + performance.now() - tA; }
+      for (const [id, st] of OS) if (st.root === sc && st.seen !== frameNo && st.v !== false) { st.v = false; op('op', id, { v: false }); } }
+    if (cam.parent === null && cam.matrixWorldAutoUpdate) cam.updateMatrixWorld();
+    const tB = performance.now(); for (const [u, s] of UOBJ) { if (changed(u.value, s)) { const v = ser(u.value); op('u', s.id, v === undefined ? null : v); } } if (window.__neOpStat) { const T = NE.tt2 || (NE.tt2 = {}); T.uni = (T.uni || 0) + performance.now() - tB; T.nU = UOBJ.size; }
+    const target = tgt ? rtRef(tgt) : null;
+    const sgm = seg(); sgm.pass = { root: rid, cam: camOf(cam), target, clear: renderer.autoClear }; cur.segs.push(sgm); cur.t += performance.now() - t0;
+    if (tgt !== null) return;
+    // the screen pass: the frame is complete, off it goes
+    freeOld(); const msg = { t: 'f', n: frameNo, segs: cur.segs }; if (window.__neOpStat) { const C = NE.opc || (NE.opc = {}); for (const g of cur.segs) { for (const o of g.ops) { C[o[0]] = (C[o[0]] || 0) + 1; if (o[0] === 'a' && o[2].array) { C.aB = (C.aB || 0) + o[2].array.byteLength; const k = 'a' + o[2].array.length + (o[2].inst ? 'i' : '') + 'x' + o[2].itemSize; const A_ = NE.opa || (NE.opa = {}); A_[k] = (A_[k] || 0) + 1; } } C.tr = (C.tr || 0) + g.tr.length / 17; } C.frames = (C.frames || 0) + 1; } const X = xfer; xfer = []; const ft = cur.t; cur = null;
+    inFlight = true; lastAck = performance.now();
+    const tD = performance.now(); try { wk.postMessage(msg, X); } catch (e) { NE.fail('post ' + e.message); } if (window.__neOpStat) { const T = NE.tt2 || (NE.tt2 = {}); T.post = (T.post || 0) + performance.now() - tD; }
+    NE.frames++; const dtm = ft + (performance.now() - t0); if (NE.frames > 3) { NE.mainMs = NE.mainMs ? NE.mainMs * .95 + dtm * .05 : dtm; (NE.ft || (NE.ft = [])).push(dtm); if (NE.ft.length > 600) NE.ft.shift(); } };
+  NE.frame = cam => NE.pass(scene, cam, null);
+  { const ra = () => { if (cur && !cur.segs.length) cur = null; else if (cur && cur.segs.length) { /* (a frame that never reached the screen) */ cur = null; ops = []; } requestAnimationFrame(ra); }; requestAnimationFrame(ra); }
+  NE.busy = () => inFlight;
+  NE.fail = why => { if (!NE.on && NE.err) return; NE.err = why; NE.on = false; console.warn('[NE] off:', why); try { wk && wk.terminate(); } catch (_) {} if (canvas) canvas.style.display = 'none'; MAIN.style.display = ''; };
+  // the main picture goes to the render thread; pictures made for other things (maps, previews) are still made here
+  const r0 = renderer.render.bind(renderer);
+  renderer.render = function (sc, cam) {
+    if (NE.on) { const tgt = renderer.getRenderTarget();
+      if (renderer.getScissorTest() && tgt === null) { NE.fail('split screen'); return r0(sc, cam); }
+      if (tgt === null || (WANT.has(tgt) && !renderer.getScissorTest())) return NE.pass(sc, cam, tgt); } /* (the screen, and pictures the world itself shows: render thread; anything else, e.g. the paper map, here) */
+    return r0(sc, cam); };
+  // starting up, once the world is built
+  const start = async () => {
+    try { let url = null; try { url = import.meta.resolve('three'); } catch (_) {} if (!url) { const im = JSON.parse(document.querySelector('script[type=importmap]').textContent).imports.three; url = new URL(im, location.href).href; }
+      const src = await (await fetch(url)).text(); const turl = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+      canvas = document.createElement('canvas'); canvas.id = 'neCanvas'; canvas.style.cssText = MAIN.style.cssText; canvas.className = MAIN.className; canvas.style.display = 'block'; canvas.style.width = '100%'; canvas.style.height = '100%'; canvas.style.touchAction = 'none';
+      MAIN.parentNode.insertBefore(canvas, MAIN); const off = canvas.transferControlToOffscreen();
+      wk = new Worker(URL.createObjectURL(new Blob([__NE_WORKER_SRC], { type: 'text/javascript' })), { type: 'module' });
+      wk.onerror = ev => NE.fail('worker ' + (ev.message || 'error'));
+      wk.onmessage = ev => { const m = ev.data;
+        if (m.t === 'ready') { NE.ready = true; NE.on = true; NE.gl = m.gl; MAIN.style.display = 'none'; window.__noStaticSh = true; console.log('[NE] render thread ready', m.gl); requestAnimationFrame(() => { try { if (NE.on && !NE.frames) NE.frame(camera); } catch (e) { NE.fail('prime ' + e.message); } }); /* (the first full picture is sent straight away, while the menu is up: every shader gets built on the render thread before the match) */ }
+        else if (m.t === 'fail') NE.fail(m.e);
+        else if (m.t === 'done') { inFlight = false; const nw = performance.now(); NE.fpsN = (NE.fpsN || 0) + 1; if (!NE.fpsT) NE.fpsT = nw; if (nw - NE.fpsT > 500) { NE.fps = NE.fpsN * 1000 / (nw - NE.fpsT); NE.fpsN = 0; NE.fpsT = nw; } lastAck = nw; NE.stats = m.s; } /* (pictures actually drawn per second: what you see) */
+        else if (m.t === 'warn') { (NE.warns = NE.warns || []).push(m.e); if (NE.warns.length < 20) console.warn('[NE]', m.e); } };
+      const w = MAIN.clientWidth || innerWidth, h = MAIN.clientHeight || innerHeight;
+      wk.postMessage({ t: 'init', canvas: off, three: turl, w, h, dpr: renderer.getPixelRatio(), aa: true, nodraw: !!window.__neNoDraw }, [off]);
+      // a render thread that stops answering hands the picture back to the old way
+      setInterval(() => { if (NE.on && inFlight && performance.now() - lastAck > (window.__neWatch || (NE.stats.frames ? 6000 : 60000)) && document.visibilityState === 'visible') NE.fail('no answer'); }, 1000); /* (the very first picture builds every shader: it gets a minute) */
+    } catch (e) { NE.fail('start ' + (e && e.message)); } };
+  start();
+}
+
+// the switch in Settings (takes effect when the game restarts)
+{ const el = document.getElementById('sNE'); if (el) { let p = null; try { p = localStorage.getItem('nymbo-ne'); } catch (_) {} el.checked = p !== '0';
+    const lab = el.parentNode && el.parentNode.querySelector('label'); if (lab && NE.err) lab.textContent = 'Nymbo Engine (off this time: ' + NE.err + ')';
+    el.onchange = () => { try { localStorage.setItem('nymbo-ne', el.checked ? '1' : '0'); } catch (_) {} setTimeout(() => location.reload(), 150); }; } }
 
 await __ldStep('end', 1, 1); window.__built = true; __ldBar(1);
 if (window.__ldFinish) window.__ldFinish(); else setTimeout(() => { document.getElementById('loading').hidden = true; }, 150);
