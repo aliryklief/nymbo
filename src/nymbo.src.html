@@ -24668,6 +24668,10 @@ if (NE.want) {
     const lab = el.parentNode && el.parentNode.querySelector('label'); if (lab && NE.err) lab.textContent = 'Nymbo Engine (off: ' + NE.err + ')';
     el.onchange = () => { try { localStorage.setItem('nymbo-ne2', el.checked ? '1' : '0'); localStorage.removeItem('nymbo-ne-slow'); localStorage.removeItem('nymbo-ne-ab'); } catch (_) {} setTimeout(() => location.reload(), 150); }; } }
 
+/* (Ali 28 Nov, "less lag spikes on the loading screens, homescreens": the last parts of the stage (water, grass, the home screen and
+   so on) are made after the big warm-up, so the very first picture had to build their shaders, a 100-450 ms stop as the menu
+   appeared. They're asked for here, and the graphics chip builds them while the loading screen is still up) */
+try { renderer.compile(scene, camera); } catch (_) {} await __progWait(4000);
 await __ldStep('end', 1, 1); window.__built = true; __ldBar(1);
 // (Ali 27 Nov, "some shadows were missing from the towers": the saved shadow picture of the still things could be taken part-way
 //  through loading, before everything was in place. It's taken again now everything is built, and again as each match starts)
