@@ -615,6 +615,12 @@ const LiteBase = HD ? THREE.MeshStandardMaterial : WORLD === 'jelly' ? THREE.Mes
 //  without colours re-worked-out its shader on every single draw. Point the name it looks for at the real one)
 if (THREE.BatchedMesh && !('colorTexture' in THREE.BatchedMesh.prototype)) Object.defineProperty(THREE.BatchedMesh.prototype, 'colorTexture', { get() { return this._colorsTexture; } });
 const MAT_OBC0 = THREE.Material.prototype.onBeforeCompile; // (the untouched shader hook: the auto-batcher only takes materials still using it)
+/* (Ali 28 Nov, "make it run the best it can on all stages": a see-through, two-sided thing (a glow, a beam of light, a shadow layer, a
+   warning ring) was drawn twice every picture, back then front, and three.js re-checked its shader both times, every frame. For flat
+   things and soft glows (no depth of their own, so the order can't show) it's now drawn once. Solid see-through shapes keep two passes) */
+{ const flat = g => { const u = g.userData; if (u.__flat === undefined) { try { if (!g.boundingBox) g.computeBoundingBox(); const s = g.boundingBox.getSize(new THREE.Vector3()), mx = Math.max(s.x, s.y, s.z), mn = Math.min(s.x, s.y, s.z); u.__flat = mx > 0 && mn < mx * .02; } catch (_) { u.__flat = false; } } return u.__flat; };
+  const ob = THREE.Material.prototype.onBeforeRender; THREE.Material.prototype.onBeforeRender = function (r, sc, cam, g, o, gr) { ob.call(this, r, sc, cam, g, o, gr);
+    if (this.__fsp === undefined && this.transparent && this.side === THREE.DoubleSide) { this.__fsp = this.isShadowMaterial || this.depthWrite === false || this.blending === THREE.AdditiveBlending || (!!g && flat(g)); if (this.__fsp && !window.__noSinglePass) this.forceSinglePass = true; } }; }
 class LiteMat extends LiteBase {
   constructor(o = {}) { const { roughness, metalness, clearcoat, clearcoatRoughness, ...rest } = o;
     if (WORLD === 'jelly') { rest.shininess = rest.shininess ?? 70; rest.specular = rest.specular ?? 0x777777; }
@@ -9217,7 +9223,7 @@ Object.assign(SFX_SYNTH, {
 function moveFall(F, cam, speed, dt) {
   const a = F.m.geometry.attributes.position.array;
   F.d.forEach((q, i) => { q[1] -= speed * dt; if (q[1] < -2) { q[0] = rr(-30, 30); q[1] = rr(22, 32); q[2] = rr(-30, 30); }
-    const x = cam.x + q[0], y = cam.y - 8 + q[1], z = cam.z + q[2]; a.set([x, y, z, x - .3, y + F.len, z], i * 6); });
+    const x = cam.x + q[0], y = cam.y - 8 + q[1], z = cam.z + q[2], o = i * 6; a[o] = x; a[o + 1] = y; a[o + 2] = z; a[o + 3] = x - .3; a[o + 4] = y + F.len; a[o + 5] = z; }); /* (no little throwaway list per raindrop per frame) */
   F.m.geometry.attributes.position.needsUpdate = true;
 }
 function stormClock() { // (the match clock drives it, so everyone online gets the same weather)
