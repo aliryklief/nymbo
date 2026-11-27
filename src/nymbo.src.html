@@ -12231,7 +12231,9 @@ if (MAP === 'cube') {
   CB.g = CB.secs[0].g;
   // the drum: four bands of world round it, glowing rims at the ends
   const FACES = [['#5cb43a', '#8ae05a'], ['#eef4fb', '#bcd8f0'], ['#e0a868', '#f0c890'], ['#b89aee', '#ffd0ff']];
-  FACES.forEach(([a, b], k) => { const tex = canvasTex(64, 64, g => { g.fillStyle = a; g.fillRect(0, 0, 64, 64); g.fillStyle = b; for (let i = 0; i < 14; i++) g.fillRect((i * 23) % 60, (i * 37) % 60, 4, 4); }, 12, 4);
+  /* (Ali 28 Nov: "I still notice the brick pattern on the rotating log, it looks weird from far": the little squares repeated
+     along the drum lined up into rows of dashes. Now each band is its own colour with a few big soft patches, no lines) */
+  FACES.forEach(([a, b], k) => { const tex = canvasTex(128, 128, g => { g.fillStyle = a; g.fillRect(0, 0, 128, 128); g.globalAlpha = .35; for (let i = 0; i < 9; i++) { const x = (i * 47 + 13) % 128, y = (i * 71 + 29) % 128, r = 18 + (i * 13) % 22; for (const [ox, oy] of [[0, 0], [128, 0], [-128, 0], [0, 128], [0, -128]]) { const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r); gr.addColorStop(0, b); gr.addColorStop(1, b + '00'); g.fillStyle = gr; g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2); } } g.globalAlpha = 1; }, 4, 2);
     for (const S of CB.secs) { const len = S.x1 - S.x0 - .3, m = new THREE.Mesh(new THREE.CylinderGeometry(R, R, len, 48, 1, true, k * Math.PI / 2, Math.PI / 2).rotateZ(Math.PI / 2), new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide })); m.position.x = (S.x0 + S.x1) / 2; m.receiveShadow = true; S.g.add(m); } });
   for (const S of CB.secs) for (const x of [S.x0 + .15, S.x1 - .15]) { if (Math.abs(x) > L - 1) continue; const ring = new THREE.Mesh(new THREE.TorusGeometry(R + .05, .35, 8, 64).rotateY(Math.PI / 2), nmGlow(S.dir > 0 ? '#5ac8ff' : '#ff8a3a', 1.6)); ring.position.x = x; S.g.add(ring); } // (glowing seams where the sections meet)
   for (const sx of [-1, 1]) { const S = secOf(sx * (L - 1)), cap = new THREE.Mesh(new THREE.CircleGeometry(R, 48).rotateY(sx * Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x6a58a8 })); cap.position.x = sx * L; S.g.add(cap);
