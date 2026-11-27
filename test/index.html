@@ -24216,7 +24216,7 @@ await __ldStep("16_ne.js", 0.9998, 1.0000);
 // ============================================================
 const NE = window.NE = { want: false, on: false, ready: false, err: null, stats: {}, frames: 0, skipped: 0, mainMs: 0 };
 { let p = null, q = null; try { p = localStorage.getItem('nymbo-ne2'); q = new URLSearchParams(location.search).get('ne'); } catch (_) {}
-  let slow = null; try { slow = localStorage.getItem('nymbo-ne-slow'); } catch (_) {} NE.V = '4'; NE.force = q === '1';
+  let slow = null; try { slow = localStorage.getItem('nymbo-ne-slow'); } catch (_) {} NE.V = '5'; NE.force = q === '1';
   NE.want = q === '1' || (q !== '0' && p !== '0' && slow !== NE.V); /* (on, unless switched off, or this version already turned out slower than the old way on this phone) */
   if (!NE.want && slow === NE.V && p !== '0' && q !== '0') NE.err = 'slower on this phone';
   if (typeof OffscreenCanvas === 'undefined' || !HTMLCanvasElement.prototype.transferControlToOffscreen || typeof Worker === 'undefined') NE.want = false; }
