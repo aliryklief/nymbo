@@ -8110,7 +8110,7 @@ function startCountdown() {
   if (!NET && !match.seatPicked) { match.seatPicked = true; pickRandomSeat(); }
   netEv(['count']);
   if (!(NET && NET.client) && MAP !== 'liminal' && MAP !== 'haunt') for (const r of robots) if (!r.stack.some(e => e.kind === 'sticky')) { const w = newBlock('sticky', V(rPos(r).x, 2, rPos(r).z), { dims: V(1, 1, 1) }); w.anchored = false; grabBlock(r, w, true); } // everyone's one start block: a sticky grenade
-  show(null); match.state = 'count'; match.count = INTRO_T; match.lastBeep = 6; match.swooped = false; sfx('intro'); $('hud').hidden = false;
+  show(null); match.state = 'count'; setTimeout(() => window.__ghostWarm && window.__ghostWarm(), 150); match.count = INTRO_T; match.lastBeep = 6; match.swooped = false; sfx('intro'); $('hud').hidden = false;
   try { navigator.wakeLock?.request('screen').then(w => wakeLock = w).catch(() => {}); } catch (e) {}
 }
 function endMatch() {
@@ -19708,11 +19708,16 @@ try { window.__liteAll && window.__liteAll(); BATCH.sync(); window.__plainSync &
   if (window.__lodWarm) { window.__lodWarm(true); window.__farWarm && window.__farWarm(true); renderer.render(scene, camera); window.__lodWarm(false); window.__farWarm && window.__farWarm(false); }
   // (Ali 27 Nov, "make game faster": the biggest hiccups left were a Nym coming back see-through after being knocked out
   //  (its paint switches to a see-through version, built for the first time right then: up to a 40 ms stop). Every Nym is
-  //  made see-through for one hidden picture here, near and far, so those versions are ready before the match)
-  try { if (typeof nbrGhost === 'function') { const gs = robots.filter(r => r.model && r.model.rigged && r.model.mats);
+  //  made see-through here, near and far (and again when the intro starts, once everyone's look for the match is picked),
+  //  so those versions are ready before anyone needs them)
+  window.__ghostWarm = () => { try { const gs = typeof nbrGhost === 'function' ? robots.filter(r => r.model && r.model.rigged && r.model.mats) : [];
+      const roots = [...robots.map(r => r.model && r.model.g), ...blocks.filter(e => e.animal && e.mesh).map(e => e.mesh)].filter(Boolean);
+      const comp = () => { for (const g of roots) try { renderer.compile(g, camera, scene); } catch (_) {} }; /* (built in the background: the chip finishes them while the intro plays) */
       for (const r of gs) { r.model.__sw = r.model.seeThru; r.model.seeThru = true; nbrGhost(r); }
-      renderer.render(scene, camera); if (window.__farWarm) { window.__farWarm(true); renderer.render(scene, camera); window.__farWarm(false); }
-      for (const r of gs) { r.model.seeThru = r.model.__sw; delete r.model.__sw; nbrGhost(r); } } } catch (err) { console.warn('ghost warm', err); }
+      comp(); if (window.__farWarm) { window.__farWarm(true); comp(); window.__farWarm(false); }
+      for (const r of gs) { r.model.seeThru = r.model.__sw; delete r.model.__sw; nbrGhost(r); }
+      comp(); if (window.__farWarm) { window.__farWarm(true); comp(); window.__farWarm(false); } } catch (err) { console.warn('ghost warm', err); } };
+  window.__ghostWarm();
   renderer.shadowMap.autoUpdate = sau; renderer.shadowMap.needsUpdate = snu; renderer.setRenderTarget(null); rt.dispose();
   try { drawScene(); } catch (_) {} /* (and once through the game's own shadow drawing, which has its own versions) */
   for (const o of hidden) o.visible = false; for (const o of culled) o.frustumCulled = true; for (const im of slotsOn) im.count = 0; BATCH.sync();
