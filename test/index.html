@@ -17900,7 +17900,7 @@ if (!TOY && !PLAT && !REEF && !(NM && NM.noMountains)) {
     const amp = 10 + 145 * Math.pow(k, 1.2), edge = THREE.MathUtils.smoothstep(k, 0, .08); // (rises from below the cloud sea at its near edge)
     return -30 + edge * (18 + 14 * rolling + amp * range * (.2 + rid * .9) * (.8 + .4 * fbm2(wx * 2.3, wz * 2.3 + 4))); };
   const pos = [], idx = [];
-  for (let j = 0; j <= NA; j++) { const a = j / NA * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+  for (let j = 0; j <= NA; j++) { if (__ldDue()) await __ldY(); const a = j / NA * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
     for (let k = 0; k <= NR; k++) { const r = R0 + (R1 - R0) * Math.pow(k / NR, 1.15), x = ca * r, z = sa * r * .94; pos.push(x, height(ca * r, sa * r, r), z); } }
   for (let j = 0; j < NA; j++) for (let k = 0; k < NR; k++) { const a = j * (NR + 1) + k, b = a + NR + 1; idx.push(a, a + 1, b + 1, a, b + 1, b); }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
@@ -19063,9 +19063,9 @@ if (CLX) {
       g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(tx, yaw, tz))); g.translate(x, y, z);
       if (y < .5 && g.index && !window.__noFloorCull) { const P = g.attributes.position.array, I = g.index.array, K = []; for (let k = 0; k < I.length; k += 3) { if (Math.max(P[I[k] * 3 + 1], P[I[k + 1] * 3 + 1], P[I[k + 2] * 3 + 1]) < -.01) continue; K.push(I[k], I[k + 1], I[k + 2]); } g.setIndex(K); } /* (the part of each slab sunk into the ground can never be seen: not drawn) */
       (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); };
-    function floor(cx, y, cz, inside, cells, o = {}) { // cells: [x,z] integer offsets; inside(x,z): is this cell part of the floor
+    async function floor(cx, y, cz, inside, cells, o = {}) { // cells: [x,z] integer offsets; inside(x,z): is this cell part of the floor
       const used = new Set(), K = (a, b) => a + ',' + b, fam = o.fam || LABK.surfaces('classic', LABK.rng(cx * 7 + cz))();
-      for (const [x, z] of cells) { if (used.has(K(x, z)) || !inside(x, z)) continue;
+      for (const [x, z] of cells) { if (__ldDue()) await __ldY(); /* (Ali 27 Nov: the loading screen keeps moving while the floors are laid) */ if (used.has(K(x, z)) || !inside(x, z)) continue;
         const edge = !inside(x + 1, z) || !inside(x - 1, z) || !inside(x, z + 1) || !inside(x, z - 1);
         if (!edge && FR() < (o.miss ?? .05)) { used.add(K(x, z)); continue; } // (a piece missing)
         let w = 1, d = 1; const tryS = [[2, 2], [2, 1], [1, 2]].filter(() => FR() < .5);
@@ -19083,18 +19083,18 @@ if (CLX) {
     const disc = (R0, jit) => { const cells = [], j = {}; for (let x = -7; x <= 7; x++) for (let z = -7; z <= 7; z++) cells.push([x, z]); const inside = (x, z) => { const k = x + ',' + z; if (j[k] == null) j[k] = R0 + (FR() - .5) * jit; return Math.hypot(x, z) < j[k]; }; return [cells, inside]; };
     // the floors are solid: blocks sit on top of the stones, not sunk into them
     const padCol = (x, z, shape) => { const c = world.createCollider(shape.setTranslation(x, .045, z).setFriction(.8)); byCollider.set(c.handle, { type: 'static' }); };
-    for (const h of HUBS) { const [cells, inside] = disc(5.6, 1.3); floor(h.x, .03, h.z, inside, cells); padCol(h.x, h.z, RAPIER.ColliderDesc.cylinder(.045, 5.2)); }
-    for (const sp of PORTAL_SPOTS) { const cells = []; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) cells.push([a, b]); const cut = new Set(cells.filter(([a, b]) => Math.abs(a) === 2 && Math.abs(b) === 2 && FR() < .6).map(c => c + '')); floor(Math.round(sp.x), .03, Math.round(sp.z), (x, z) => Math.abs(x) <= 2 && Math.abs(z) <= 2 && !cut.has([x, z] + ''), cells, { miss: .02 }); padCol(Math.round(sp.x), Math.round(sp.z), RAPIER.ColliderDesc.cuboid(2.4, .045, 2.4)); }
+    for (const h of HUBS) { const [cells, inside] = disc(5.6, 1.3); await floor(h.x, .03, h.z, inside, cells); padCol(h.x, h.z, RAPIER.ColliderDesc.cylinder(.045, 5.2)); }
+    for (const sp of PORTAL_SPOTS) { const cells = []; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) cells.push([a, b]); const cut = new Set(cells.filter(([a, b]) => Math.abs(a) === 2 && Math.abs(b) === 2 && FR() < .6).map(c => c + '')); await floor(Math.round(sp.x), .03, Math.round(sp.z), (x, z) => Math.abs(x) <= 2 && Math.abs(z) <= 2 && !cut.has([x, z] + ''), cells, { miss: .02 }); padCol(Math.round(sp.x), Math.round(sp.z), RAPIER.ColliderDesc.cuboid(2.4, .045, 2.4)); }
     // the forts: the same stone floor inside the walls (a bit simpler, there's a lot of it)
     FRES = FORT_RES;
     for (const t of ['blue', 'red']) { const F = FORT[t], ix = FORT_RX, iz = FORT_RZ, cells = []; /* (right out under the walls) */ for (let x = -ix; x <= ix; x++) for (let z = -iz; z <= iz; z++) cells.push([x, z]);
       const col = r_ => new THREE.Color(GREYS[Math.floor(r_() * GREYS.length)]).lerp(new THREE.Color(t === 'red' ? '#c08a84' : '#8a98b8'), .25).getStyle();
-      floor(Math.round(F.x), .03, Math.round(F.z), (x, z) => Math.abs(x) <= ix && Math.abs(z) <= iz, cells, { miss: .03, col });
+      await floor(Math.round(F.x), .03, Math.round(F.z), (x, z) => Math.abs(x) <= ix && Math.abs(z) <= iz, cells, { miss: .03, col });
       padCol(Math.round(F.x), Math.round(F.z), RAPIER.ColliderDesc.cuboid(ix - 1.5, .045, iz - 1.5)); } // (solid inside the walls; under the walls themselves it's just looks)
     FRES = PAD_RES;
     // the sky island: a stone floor on top, and a rough rocky underside hanging below it
     if (ISLAND.on) { for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === cubeGeo && o.count < 80) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (Math.abs(m.elements[13] - (ISLAND.top - .5)) < .05) scene.remove(o); }
-      const [cells, inside] = disc(ISLAND.r + .15, .7); floor(0, ISLAND.top, 0, inside, cells, { miss: .04, col: r_ => ['#a9adb8', '#9a9ea9', '#b4b0a6', '#9c9890'][Math.floor(r_() * 4)] });
+      const [cells, inside] = disc(ISLAND.r + .15, .7); await floor(0, ISLAND.top, 0, inside, cells, { miss: .04, col: r_ => ['#a9adb8', '#9a9ea9', '#b4b0a6', '#9c9890'][Math.floor(r_() * 4)] });
       const fam = 'granite', ROCK = ['#7d7a78', '#6f6c6a', '#86817a', '#75716e'];
       for (let k = 0; k < 4; k++) { const Rk = (ISLAND.r - .2) * (1 - k * .24), yk = ISLAND.top - .55 - k * .75;
         for (let x = -5; x <= 5; x++) for (let z = -5; z <= 5; z++) { const dd = Math.hypot(x, z); if (dd > Rk + (FR() - .5) * .8) continue; if (k > 0 && dd < Rk - 1.6) continue; // (only the outer shell shows from below)
@@ -19108,7 +19108,7 @@ if (CLX) {
     for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === cubeGeo && o.instanceColor && !o.castShadow === false && o !== plainIM) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (m.elements[13] < -.4 || m.elements[13] > 12) continue;
       const v = new THREE.Vector3(), c = new THREE.Color();
       const metal = [], isGate = (x, z) => ['blue', 'red'].some(t => GATES[t] && Math.abs(x - GATES[t].x) < .8 && Math.abs(z - GATES[t].z) < 2.8);
-      for (let k = 0; k < o.count; k++) { o.getMatrixAt(k, m); v.setFromMatrixPosition(m); o.getColorAt(k, c); const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd);
+      for (let k = 0; k < o.count; k++) { if (__ldDue()) await __ldY(); o.getMatrixAt(k, m); v.setFromMatrixPosition(m); o.getColorAt(k, c); const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd);
         if (PORTALS.some(Q => Math.hypot(v.x - Q.pos.x, v.z - Q.pos.z) < 3)) continue; // (the portals' old feet: the portals are arches now, below)
         if (isGate(v.x, v.z)) { if (v.y > 3) continue; // the flag gates: gold bricks only; the flat top becomes an arch (built below)
           const g = clean(LABK.paintStone(stoneGeoC(1, 1, sd, R, RES), new THREE.Color('#e0b040').offsetHSL((FR() - .5) * .02, 0, (FR() - .5) * .08))); g.rotateY(Math.floor(FR() * 4) * Math.PI / 2); g.translate(v.x, v.y, v.z); metal.push(g); continue; }
@@ -19143,7 +19143,7 @@ if (CLX) {
         const g = mergeGeometries(metal), M = new THREE.Mesh(g, mm); M.castShadow = M.receiveShadow = true; M.userData.staticShadow = 1; scene.add(M); }
       scene.remove(o); }
     { const all = Object.values(parts).flat(), T_ = {}; for (const g of all) { if (!g.boundingSphere) g.computeBoundingSphere(); const c = g.boundingSphere.center, k = Math.floor(c.x / 27) + "," + Math.floor(c.z / 27) + (c.y > 6 ? 'up' : ''); (T_[k] = T_[k] || []).push(g); }
-      for (const L of Object.values(T_)) { const g = mergeGeometries(L); const m = new THREE.Mesh(g, uniMat()); m.castShadow = m.receiveShadow = true; scene.add(m); } } } // (all the floors: welded in map tiles, so what's off screen is skipped)
+      for (const L of Object.values(T_)) { if (__ldDue()) await __ldY(); const g = mergeGeometries(L); const m = new THREE.Mesh(g, uniMat()); m.castShadow = m.receiveShadow = true; scene.add(m); } } } // (all the floors: welded in map tiles, so what's off screen is skipped)
 
   await __ldY(); // (a breather: the loading screen moves on while the stage is built)
   // ---------------- 5. the field: grass with worn paths, tall grass where nobody walks ----------------
