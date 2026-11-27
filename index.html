@@ -940,10 +940,12 @@ world.timestep = 1 / 60;
 const PHV = { p: 1, v: 1 }; window.__PHV = PHV;
 { const RB = RAPIER.RigidBody.prototype, tr0 = RB.translation, lv0 = RB.linvel, st0 = world.step.bind(world);
   world.step = function (...a) { PHV.p++; PHV.v++; return st0(...a); };
-  RB.translation = function () { if (this._tpv !== PHV.p || !this._tp) { this._tp = tr0.call(this); this._tpv = PHV.p; } return this._tp; }; // (the same answer object is handed out until it changes: nothing in the game writes into it - checked 24 Nov)
-  RB.linvel = function () { if (this._lvv !== PHV.v || !this._lv) { this._lv = lv0.call(this); this._lvv = PHV.v; } return this._lv; };
-  for (const k of ['setTranslation', 'setPosition', 'setBodyType', 'setEnabled', 'setNextKinematicTranslation']) { const f = RB[k]; if (f) RB[k] = function (...a) { PHV.p++; PHV.v++; return f.apply(this, a); }; }
-  for (const k of ['setLinvel', 'applyImpulse', 'applyImpulseAtPoint', 'resetForces', 'setLinearDamping', 'lockTranslations', 'setEnabledTranslations', 'sleep', 'wakeUp']) { const f = RB[k]; if (f) RB[k] = function (...a) { PHV.v++; return f.apply(this, a); }; }
+  /* (Ali 27 Nov, speed: a fixed body - every block still locked in a wall, ~1,600 of them - never moves when the world steps, so its answer
+     is kept until something moves that body by hand; before, every step threw all the answers away and the next few thousand asks made new ones) */
+  RB.translation = function () { const tp = this._tp; if (tp && (this._tpv === PHV.p || this._tfix)) return tp; this._tp = tr0.call(this); this._tpv = PHV.p; this._tfix = this.isFixed(); return this._tp; }; // (the same answer object is handed out until it changes: nothing in the game writes into it - checked 24 Nov)
+  RB.linvel = function () { const lv = this._lv; if (lv && (this._lvv === PHV.v || this._lfix)) return lv; this._lv = lv0.call(this); this._lvv = PHV.v; this._lfix = this.isFixed(); return this._lv; };
+  for (const k of ['setTranslation', 'setPosition', 'setBodyType', 'setEnabled', 'setNextKinematicTranslation']) { const f = RB[k]; if (f) RB[k] = function (...a) { PHV.p++; PHV.v++; this._tp = this._lv = null; this._tfix = this._lfix = false; return f.apply(this, a); }; }
+  for (const k of ['setLinvel', 'applyImpulse', 'applyImpulseAtPoint', 'resetForces', 'setLinearDamping', 'lockTranslations', 'setEnabledTranslations', 'sleep', 'wakeUp']) { const f = RB[k]; if (f) RB[k] = function (...a) { PHV.v++; this._lv = null; this._lfix = false; return f.apply(this, a); }; }
   const rr = world.removeRigidBody.bind(world); world.removeRigidBody = b => { if (b) { b._tp = b._lv = null; } return rr(b); }; }
 const eventQueue = new RAPIER.EventQueue(true);
 const byCollider = new Map();      // collider handle -> { type:'block'|'robot'|'static'|'animal', ref }
@@ -7792,7 +7794,7 @@ function rwRecord() {
   for (let i = 0; i < n; i++) { const e = list[i], o = i * RW_NB; idx.set(e, i);
     hold[i] = e.holder ? robots.indexOf(e.holder) : -1;
     const b = e.body, pi = prevIdx && prevIdx.get(e);
-    if (b && pi != null && b.isSleeping() && (prev.d[pi * RW_NB + 13] & 4)) { d.set(prev.d.subarray(pi * RW_NB, pi * RW_NB + RW_NB), o); continue; } // (lying still: same as last time)
+    if (b && pi != null && b.isSleeping() && (prev.d[pi * RW_NB + 13] & 4)) { const pd = prev.d, po = pi * RW_NB; for (let k = 0; k < RW_NB; k++) d[o + k] = pd[po + k]; continue; } /* (copied number by number: no throwaway view per block) */ // (lying still: same as last time)
     if (b) { const p = b.translation(), q = b.rotation(), v = b.linvel(), a = b.angvel(); d[o] = p.x; d[o + 1] = p.y; d[o + 2] = p.z; d[o + 3] = q.x; d[o + 4] = q.y; d[o + 5] = q.z; d[o + 6] = q.w; d[o + 7] = v.x; d[o + 8] = v.y; d[o + 9] = v.z; d[o + 10] = a.x; d[o + 11] = a.y; d[o + 12] = a.z; if (!b.isSleeping()) e.rwMoved = t; }
     d[o + 13] = (e.anchored ? 1 : 0) | (e.live ? 2 : 0) | (b ? 4 : 0);
   }
@@ -16646,18 +16648,25 @@ function rigidMerge(M, o = {}) {
     sk.userData.rigidSrc = list; sk.userData.rigidNear = near;
     sk.boundingSphere = near.boundingSphere.clone(); sk.boundingBox = near.boundingBox.clone(); M.add(sk); sk.updateMatrixWorld(true); const skel = new THREE.Skeleton(list); sk.bind(skel, sk.matrixWorld);
     // keeping up: colours and glows copied onto the corners when they change; anything it can't copy, it gives up
-    const last = new Float32Array(list.length * 6).fill(-1), live = list.map(c => [c.material, c.material.transparent, c.material.opacity, c.material.visible]);
-    const paint = geo => { const C = geo.attributes.color, E = geo.attributes.aEm; geo.userData.ranges.forEach(([s, n], b) => { const m = list[b].material, c = m.color, e = m.emissive, k = m.emissiveIntensity ?? 1;
-        const V = hasVC ? geo.userData.ranges[b][2] : null;
-        for (let i = s; i < s + n; i++) { const f0 = V ? V.getX(i - s) : 1, f1 = V ? V.getY(i - s) : 1, f2 = V ? V.getZ(i - s) : 1; C.array[i * 3] = c.r * f0; C.array[i * 3 + 1] = c.g * f1; C.array[i * 3 + 2] = c.b * f2; if (e) { E.array[i * 3] = e.r * k; E.array[i * 3 + 1] = e.g * k; E.array[i * 3 + 2] = e.b * k; } } }); C.needsUpdate = E.needsUpdate = true; geo.userData.dirty = false; };
+    const chg = [], last = new Float64Array(list.length * 6).fill(-1), live = list.map(c => [c.material, c.material.transparent, c.material.opacity, c.material.visible]);
+    /* (Ali 27 Nov, speed: only the pieces whose colour or glow changed are painted again, and only their part of the list is sent to the
+       graphics chip; it used to repaint and resend the whole block every frame a glow pulsed, and made throwaway lists doing it) */
+    const paintB = (geo, b) => { const C = geo.attributes.color, E = geo.attributes.aEm, R_ = geo.userData.ranges[b], s = R_[0], n = R_[1], m = list[b].material, c = m.color, e = m.emissive, k = m.emissiveIntensity ?? 1;
+        const V = hasVC ? R_[2] : null;
+        for (let i = s; i < s + n; i++) { const f0 = V ? V.getX(i - s) : 1, f1 = V ? V.getY(i - s) : 1, f2 = V ? V.getZ(i - s) : 1; C.array[i * 3] = c.r * f0; C.array[i * 3 + 1] = c.g * f1; C.array[i * 3 + 2] = c.b * f2; if (e) { E.array[i * 3] = e.r * k; E.array[i * 3 + 1] = e.g * k; E.array[i * 3 + 2] = e.b * k; } } };
+    const paint = (geo, only) => { const C = geo.attributes.color, E = geo.attributes.aEm, RG = geo.userData.ranges;
+      if (only && !geo.userData.dirty) { for (let j = 0; j < only.length; j++) { const b = only[j]; paintB(geo, b); C.addUpdateRange(RG[b][0] * 3, RG[b][1] * 3); if (E) E.addUpdateRange(RG[b][0] * 3, RG[b][1] * 3); } }
+      else for (let b = 0; b < RG.length; b++) paintB(geo, b);
+      C.needsUpdate = true; if (E) E.needsUpdate = true; geo.userData.dirty = false; };
     if (!shared) paint(near); sk.userData.rigidBuild = map => { const g = build(map); if (!shared) paint(g); return g; }; /* (coloured in straight away: the first picture already has them right) */
     sk.onBeforeRender = () => { const s = sk.userData;
       for (let b = 0; b < list.length; b++) { const c = list[b], L = live[b], m = c.material;
         if (m !== L[0] || !shown(c) || !c.parent || (!shared && (m.transparent !== L[1] || m.opacity !== L[2] || m.visible !== L[3]))) { unmerge(sk); return; } }
-      if (shared) return; let ch = false;
+      if (shared) return; chg.length = 0;
       for (let b = 0; b < list.length; b++) { const m = list[b].material, c = m.color, e = m.emissive, k = m.emissiveIntensity ?? 1, q = b * 6;
-        const v = [c.r, c.g, c.b, e ? e.r * k : 0, e ? e.g * k : 0, e ? e.b * k : 0]; for (let j = 0; j < 6; j++) if (last[q + j] !== v[j]) { last[q + j] = v[j]; ch = true; } }
-      if (ch || sk.geometry.userData.dirty) { paint(sk.geometry); for (const g of [s.rigidNear, s.rigidFar]) if (g && g !== sk.geometry) g.userData.dirty = true; } };
+        const v3 = e ? e.r * k : 0, v4 = e ? e.g * k : 0, v5 = e ? e.b * k : 0;
+        if (last[q] !== c.r || last[q + 1] !== c.g || last[q + 2] !== c.b || last[q + 3] !== v3 || last[q + 4] !== v4 || last[q + 5] !== v5) { last[q] = c.r; last[q + 1] = c.g; last[q + 2] = c.b; last[q + 3] = v3; last[q + 4] = v4; last[q + 5] = v5; chg.push(b); } }
+      if (chg.length || sk.geometry.userData.dirty) { paint(sk.geometry, chg); if (s.rigidNear && s.rigidNear !== sk.geometry) s.rigidNear.userData.dirty = true; if (s.rigidFar && s.rigidFar !== sk.geometry) s.rigidFar.userData.dirty = true; } };
     for (const c of list) { c.layers.set(RIGID_LAYER); c.userData.rigidHidden = true; }
     out.push(sk); }
   M.userData.rigid = out; return M; }
@@ -18579,26 +18588,26 @@ if (CLX) {
        finer than about a pixel and a half: patterns smaller than a pixel jump from pixel to pixel as you move */
     float uPx;
     float fq(float f){ return 1. - smoothstep(.12, .35, uPx * f); }
-    float vnA(vec3 x, float f){ return mix(.5, vn(x), fq(f)); }
-    float fbmA(vec3 p, float f){ float a = .5, s = 0.; for (int i = 0; i < 4; i++) { s += a * mix(.5, vn(p), fq(f)); p *= 2.03; f *= 2.03; a *= .5; } return s; }`;
+    float vnA(vec3 x, float f){ float q = fq(f); return q > 0. ? mix(.5, vn(x), q) : .5; }
+    float fbmA(vec3 p, float f){ float a = .5, s = 0.; for (int i = 0; i < 4; i++) { float q = fq(f); if (q <= 0.) { s += a * (1. - pow(.5, float(4 - i))); break; } s += a * mix(.5, vn(p), q); p *= 2.03; f *= 2.03; a *= .5; } return s; }`; /* (Ali 27 Nov, speed: a pattern finer than a pixel isn't looked up at all, it was only ever faded to its average; the finer ones after it are finer still, so they stop too. Same picture, far less work for the graphics chip) */
   let UNI = null; const uniMat = () => UNI || (UNI = (() => { const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .8, metalness: 0 });
     m.onBeforeCompile = sh => { sh.uniforms.uNz = { value: NZTEX };
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aF1, aF2, aF3; varying vec4 vF1, vF2, vF3; varying vec3 vOP; varying vec3 vON;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOP = position; vON = normal; vF1 = aF1; vF2 = aF2; vF3 = aF3;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vF1, vF2, vF3; varying vec3 vOP; varying vec3 vON;' + NOISE_T + `
-        float surfH(vec3 p){ float st = vF3.w > .5 ? 6. : 1.; vec3 q = vF3.w > .5 ? vec3(p.x * .15, p.y * 6., p.z * 6.) : p; float h = fbmA(q * vF1.w * .25, vF1.w * .25 * st) * .6 + vnA(q * vF1.w, vF1.w * st) * .4; float pit = smoothstep(.78, .86, vn(p * 18.)) * vF2.y * fq(90.); return h - pit * 1.5; }`)
+        float surfH(vec3 p){ float st = vF3.w > .5 ? 6. : 1.; vec3 q = vF3.w > .5 ? vec3(p.x * .15, p.y * 6., p.z * 6.) : p; float h = fbmA(q * vF1.w * .25, vF1.w * .25 * st) * .6 + vnA(q * vF1.w, vF1.w * st) * .4; float pit = vF2.y > 0. && fq(90.) > 0. ? smoothstep(.78, .86, vn(p * 18.)) * vF2.y * fq(90.) : 0.; return h - pit * 1.5; }`)
         .replace('#include <color_fragment>', `#include <color_fragment>
         uPx = length(fwidth(vOP)); /* (worked out here, for every pixel alike: the size of a pixel on the stone) */
         float fd = 1. - smoothstep(38., 55., length(vViewPosition)); /* (fine detail fades out far away, and isn't worked out at all past that) */
-        if (fd > 0.) { vec3 p = vOP + 13.1; float mot = fbmA(p * vF1.y, vF1.y) - .5, g = (vnA(p * vF1.w, vF1.w) - .5), ly = sin(p.y * 22. + fbm(p * 3.) * 4.) * vF2.w * fq(14.);
+        if (fd > 0.) { vec3 p = vOP + 13.1; float mot = fbmA(p * vF1.y, vF1.y) - .5, g = (vnA(p * vF1.w, vF1.w) - .5), ly = vF2.w > 0. && fq(14.) > 0. ? sin(p.y * 22. + fbm(p * 3.) * 4.) * vF2.w * fq(14.) : 0.;
           float vein = vF2.z > 0. ? pow(1. - abs(sin(p.x * 3. + p.y * 2. + fbm(p * 2.5) * 6.)), 14.) * vF2.z * fq(25.) : 0.;
-          float pit = smoothstep(.78, .86, vn(p * 18.)) * vF2.y * fq(90.);
+          float pit = vF2.y > 0. && fq(90.) > 0. ? smoothstep(.78, .86, vn(p * 18.)) * vF2.y * fq(90.) : 0.;
           vec3 n0 = abs(normalize(vON)); float edge = 1. - max(n0.x, max(n0.y, n0.z));
           diffuseColor.rgb *= 1. + fd * (mot * vF1.x * 2. + g * vF1.z + ly * .12 - vein * .35 - pit * .35);
-          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.25 + .05, smoothstep(.08, .3, edge) * vF3.z * (.6 + .8 * vnA(p * 9., 9.)) * fd); }`)
+          { float ew = smoothstep(.08, .3, edge) * vF3.z; if (ew > 0.) diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.25 + .05, ew * (.6 + .8 * vnA(p * 9., 9.)) * fd); } }`)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        { float fr_ = 1. - smoothstep(38., 55., length(vViewPosition)); roughnessFactor = fr_ > 0. ? clamp(vF3.x + (fbmA((vOP + 7.) * 3., 3.) - .5) * vF3.y * 2. * fr_, .04, 1.) : vF3.x; }`)
+        { float fr_ = 1. - smoothstep(38., 55., length(vViewPosition)); roughnessFactor = fr_ > 0. ? (vF3.y > 0. ? clamp(vF3.x + (fbmA((vOP + 7.) * 3., 3.) - .5) * vF3.y * 2. * fr_, .04, 1.) : clamp(vF3.x, .04, 1.)) : vF3.x; }`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-        { float fn_ = 1. - smoothstep(26., 40., length(vViewPosition)); if (fn_ > 0.) { vec3 p = vOP + 13.1; float H = fn_ * surfH(p) * vF2.x * .02; vec2 dH = vec2(dFdx(H), dFdy(H));
+        { float fn_ = 1. - smoothstep(26., 40., length(vViewPosition)); if (fn_ > 0.) { vec3 p = vOP + 13.1; float H = vF2.x > 0. ? fn_ * surfH(p) * vF2.x * .02 : 0.; vec2 dH = vec2(dFdx(H), dFdy(H));
           vec3 sX = dFdx(-vViewPosition), sY = dFdy(-vViewPosition), R1 = cross(sY, normal), R2 = cross(normal, sX); float det = dot(sX, R1);
           normal = normalize(abs(det) * normal - sign(det) * (dH.x * R1 + dH.y * R2)); } }`); };
     m.customProgramCacheKey = () => 'labuni3e'; return m; })());
@@ -18747,6 +18756,41 @@ if (CLX) {
       if (p.weld) { const a = _M.elements, b = p.m0.elements; let same = true; for (let k = 0; k < 16; k++) if (Math.abs(a[k] - b[k]) > 1e-4) { same = false; break; } if (same) continue; if (cuts && (cuts >= 8 || performance.now() - t0c > 1.5)) { p.stillB = null; left = true; continue; } /* (Ali 26 Nov, spikes after a blast: stones are cut out of the wall for at most ~1.5 ms a frame (and never more than 8); the rest a frame or two later) */ cuts++; detach(p); }
       p.mesh.matrix.copy(_M); p.mesh.matrixWorldNeedsUpdate = true; } if (!left) D.clear(); };
   { const pH = pulseHalos; pulseHalos = function (t) { pH(t); __hkM("12m_classic"); syncLab(); }; }
+  // (Ali 27 Nov, "speed up the game, whatever it takes": every stone ever knocked loose stayed a separate thing to draw for
+  //  the rest of the match: hundreds after a few blasts, each looked at twice a picture (for the picture and the shadow).
+  //  Now a loose stone that has come to rest for a couple of seconds is welded back into one shared piece per patch of the
+  //  map, exactly as the untouched walls are; the moment its block moves again it's cut back out. Nothing looks different.)
+  { const RW = new Map(), RTILE = 27, DELAY = 2500, rkey = (p, x, z) => p.fam + '|' + Math.floor(x / RTILE) + ',' + Math.floor(z / RTILE);
+    const KEYS = ['position', 'normal', 'color', 'aF1', 'aF2', 'aF3'], _N = new THREE.Matrix3(), _w = new THREE.Vector3(); let lastB = 0;
+    const build = T => { const L = T.list = T.list.filter(p => p.rest === T); if (!L.length) { if (T.mesh) T.mesh.visible = false; T.dirty = false; return; }
+      let nv = 0, ni = 0; for (const p of L) { nv += p.g.attributes.position.count; ni += p.g.index ? p.g.index.count : p.g.attributes.position.count; }
+      const A = {}; for (const k of KEYS) A[k] = new Float32Array(nv * (k.startsWith('aF') ? 4 : 3)); const I = new Uint32Array(ni); let o = 0, oi = 0;
+      for (const p of L) { const M = p.mesh.matrix, G = p.g.attributes, n = G.position.count; _N.getNormalMatrix(M); p.ro = o; p.rn = n;
+        for (let i = 0; i < n; i++) { _w.fromBufferAttribute(G.position, i).applyMatrix4(M); A.position[(o + i) * 3] = _w.x; A.position[(o + i) * 3 + 1] = _w.y; A.position[(o + i) * 3 + 2] = _w.z;
+          _w.fromBufferAttribute(G.normal, i).applyMatrix3(_N).normalize(); A.normal[(o + i) * 3] = _w.x; A.normal[(o + i) * 3 + 1] = _w.y; A.normal[(o + i) * 3 + 2] = _w.z; }
+        if (G.color) A.color.set(G.color.array.subarray(0, n * 3), o * 3); for (const k of ['aF1', 'aF2', 'aF3']) if (G[k]) A[k].set(G[k].array.subarray(0, n * 4), o * 4);
+        if (p.g.index) { const ix = p.g.index.array; for (let k = 0; k < ix.length; k++) I[oi + k] = ix[k] + o; oi += ix.length; } else { for (let k = 0; k < n; k++) I[oi + k] = o + k; oi += n; } o += n; }
+      const g = new THREE.BufferGeometry(); for (const k of KEYS) g.setAttribute(k, new THREE.BufferAttribute(A[k], k.startsWith('aF') ? 4 : 3)); g.setIndex(new THREE.BufferAttribute(I, 1)); g.computeBoundingSphere();
+      if (!T.mesh) { T.mesh = new THREE.Mesh(g, T.mat); T.mesh.matrixAutoUpdate = false; T.mesh.castShadow = T.mesh.receiveShadow = true; T.mesh.name = 'restweld'; scene.add(T.mesh); } else { const old = T.mesh.geometry; T.mesh.geometry = g; old.dispose(); }
+      T.mesh.visible = true; for (const p of L) p.mesh.visible = false; T.dirty = false; T.built = performance.now(); };
+    const unrest = p => { const T = p.rest; p.rest = null; p.restAt = 0; p.mesh.visible = true; if (T && T.mesh && p.rn) { const P_ = T.mesh.geometry.attributes.position; P_.array.fill(0, p.ro * 3, (p.ro + p.rn) * 3); P_.addUpdateRange(p.ro * 3, p.rn * 3); P_.needsUpdate = true; T.gone = (T.gone || 0) + 1; if (T.gone > 24) T.dirty = true; } };
+    window.__reweldOff = false;
+    const step = () => { if (window.__reweldOff) return; const now = performance.now();
+      for (const p of LAB) { const m = p.mesh; if (!m) continue; const e = p.e;
+        if (e.dead) { if (p.rest) unrest(p); if (m.visible) { m.visible = false; p.hidDead = true; } continue; } /* (a stone that's gone: not looked at any more) */
+        if (p.hidDead) { p.hidDead = false; m.visible = true; }
+        const me = m.matrix.elements; let S_ = p.snap, same = !!S_; if (S_) { for (let k = 0; k < 16; k++) if (Math.abs(me[k] - S_[k]) > 1e-4) { same = false; break; } }
+        if (!same) { if (!S_) S_ = p.snap = new Float32Array(16); S_.set(me); }
+        const still = same && !e.holder && !e.fading && !(e.frozenT > 0) && !e.ice;
+        if (p.rest) { if (!still) unrest(p); continue; }
+        if (!still) { p.restAt = 0; continue; }
+        if (!p.restAt) { p.restAt = now; continue; }
+        if (now - p.restAt < DELAY || p.pend) continue;
+        const k = rkey(p, m.matrix.elements[12], m.matrix.elements[14]); let T = RW.get(k); if (!T) RW.set(k, T = { list: [], mat: m.material, dirty: false, built: 0, mesh: null });
+        if (T.mat !== m.material) continue; p.rest = T; p.rn = 0; T.list.push(p); T.dirty = true; }
+      /* (at most one patch rebuilt a frame, and not the same patch more than every second and a half) */
+      if (now - lastB < 120) return; for (const T of RW.values()) if (T.dirty && now - T.built > 1500) { T.gone = 0; build(T); lastB = now; break; } };
+    const pH2 = pulseHalos; pulseHalos = function (t) { pH2(t); try { step(); } catch (e) { noteErr(e); window.__reweldOff = true; for (const T of RW.values()) { if (T.mesh) T.mesh.visible = false; for (const p of T.list) if (p.rest === T) { p.rest = null; p.mesh.visible = true; } } } }; }
   // ammo made later in the match: a stone of its own
   { const nb = newBlock; newBlock = function (...a) { const e = nb(...a);
       if (e && e.inst >= 0 && (e.kind === 'stone' || e.kind === 'prop') && !e.mazeBrick) try { const p = labPiece(e); p.weld = null; const m = new THREE.Mesh(p.g, famMat(p.fam)); m.matrixAutoUpdate = false; m.castShadow = m.receiveShadow = true; scene.add(m); p.mesh = m; LAB.push(p); hideA.setX(e.inst, 1); hideA.needsUpdate = true; } catch (err) { /* (it just stays a plain block) */ }
@@ -18890,9 +18934,15 @@ if (CLX) {
   const FLOORB = []; // (where the floors are: no grass grows there)
   { const FR = LABK.rng(2024), fr = (a, b) => a + (b - a) * FR(), parts = {};
     const GREYS = ['#8e9097', '#9a9ca3', '#83858c', '#a3a39c', '#8a8a92', '#9c968c'];
-    let FRES = RES; const slab = (w, d, x, y, z, yaw, tx, tz, col, fam) => { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let g = LABK.paintStone(stoneGeoC(w, d, sd, R, FRES), LABK.shade(new THREE.Color(col), R, .06));
+    /* (Ali 27 Nov, speed: the flagstone floors were the heaviest thing on the map for the graphics chip (well over half its triangles, for slabs
+       seen from above). Each slab is now cut from fewer, larger facets: same stones, colours, chips and layout) */
+    const FQ = (() => { try { const m = /[?&]fres=(\d+),(\d+)/.exec(location.search); if (m) return [+m[1], +m[2]]; } catch (_) {} return null; })();
+    const PAD_RES = FQ ? FQ[1] : Math.min(RES, S.maxq ? 6 : CL_TOUCH ? 4 : 5), FORT_RES = FQ ? FQ[0] : (S.maxq ? 5 : CL_TOUCH ? 3 : 4);
+    let FRES = PAD_RES; const slab = (w, d, x, y, z, yaw, tx, tz, col, fam) => { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let g = LABK.paintStone(stoneGeoC(w, d, sd, R, FRES), LABK.shade(new THREE.Color(col), R, .06));
       g = clean(g); g.rotateX(-Math.PI / 2); g.computeBoundingBox(); const t = g.boundingBox.max.y - g.boundingBox.min.y; g.scale(1, .38 / t, 1); g.scale(1.05, 1, 1.05); g.computeBoundingBox(); g.translate(0, -g.boundingBox.max.y, 0);
-      g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(tx, yaw, tz))); g.translate(x, y, z); (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); };
+      g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(tx, yaw, tz))); g.translate(x, y, z);
+      if (y < .5 && g.index && !window.__noFloorCull) { const P = g.attributes.position.array, I = g.index.array, K = []; for (let k = 0; k < I.length; k += 3) { if (Math.max(P[I[k] * 3 + 1], P[I[k + 1] * 3 + 1], P[I[k + 2] * 3 + 1]) < -.01) continue; K.push(I[k], I[k + 1], I[k + 2]); } g.setIndex(K); } /* (the part of each slab sunk into the ground can never be seen: not drawn) */
+      (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); };
     function floor(cx, y, cz, inside, cells, o = {}) { // cells: [x,z] integer offsets; inside(x,z): is this cell part of the floor
       const used = new Set(), K = (a, b) => a + ',' + b, fam = o.fam || LABK.surfaces('classic', LABK.rng(cx * 7 + cz))();
       for (const [x, z] of cells) { if (used.has(K(x, z)) || !inside(x, z)) continue;
@@ -18916,12 +18966,12 @@ if (CLX) {
     for (const h of HUBS) { const [cells, inside] = disc(5.6, 1.3); floor(h.x, .03, h.z, inside, cells); padCol(h.x, h.z, RAPIER.ColliderDesc.cylinder(.045, 5.2)); }
     for (const sp of PORTAL_SPOTS) { const cells = []; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) cells.push([a, b]); const cut = new Set(cells.filter(([a, b]) => Math.abs(a) === 2 && Math.abs(b) === 2 && FR() < .6).map(c => c + '')); floor(Math.round(sp.x), .03, Math.round(sp.z), (x, z) => Math.abs(x) <= 2 && Math.abs(z) <= 2 && !cut.has([x, z] + ''), cells, { miss: .02 }); padCol(Math.round(sp.x), Math.round(sp.z), RAPIER.ColliderDesc.cuboid(2.4, .045, 2.4)); }
     // the forts: the same stone floor inside the walls (a bit simpler, there's a lot of it)
-    FRES = S.maxq ? 9 : CL_TOUCH ? 4 : 6;
+    FRES = FORT_RES;
     for (const t of ['blue', 'red']) { const F = FORT[t], ix = FORT_RX, iz = FORT_RZ, cells = []; /* (right out under the walls) */ for (let x = -ix; x <= ix; x++) for (let z = -iz; z <= iz; z++) cells.push([x, z]);
       const col = r_ => new THREE.Color(GREYS[Math.floor(r_() * GREYS.length)]).lerp(new THREE.Color(t === 'red' ? '#c08a84' : '#8a98b8'), .25).getStyle();
       floor(Math.round(F.x), .03, Math.round(F.z), (x, z) => Math.abs(x) <= ix && Math.abs(z) <= iz, cells, { miss: .03, col });
       padCol(Math.round(F.x), Math.round(F.z), RAPIER.ColliderDesc.cuboid(ix - 1.5, .045, iz - 1.5)); } // (solid inside the walls; under the walls themselves it's just looks)
-    FRES = RES;
+    FRES = PAD_RES;
     // the sky island: a stone floor on top, and a rough rocky underside hanging below it
     if (ISLAND.on) { for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === cubeGeo && o.count < 80) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (Math.abs(m.elements[13] - (ISLAND.top - .5)) < .05) scene.remove(o); }
       const [cells, inside] = disc(ISLAND.r + .15, .7); floor(0, ISLAND.top, 0, inside, cells, { miss: .04, col: r_ => ['#a9adb8', '#9a9ea9', '#b4b0a6', '#9c9890'][Math.floor(r_() * 4)] });
@@ -21280,8 +21330,11 @@ const HALO = { u: { value: new THREE.Vector4(-9999, -9999, 0, 0) }, f: { value: 
     const e = fs.indexOf('{', k) + 1; sh.uniforms.uHalo = HALO.u; sh.uniforms.uHaloF = HALO.f; sh.uniforms.uHaloOn = HALO.on; sh.fragmentShader = DECL + fs.slice(0, e) + BODY + fs.slice(e); };
   const proto = THREE.Material.prototype.onBeforeCompile; THREE.Material.prototype.onBeforeCompile = function (sh, rd) { proto.call(this, sh, rd); inject(sh, this); }; THREE.Material.prototype.onBeforeCompile.__batchSafe = proto === MAT_OBC0; /* (only touches the colour step: fine for the auto-batcher) */
   // (materials that bring their own shader tweak get the window added on top, once)
-  const wrap = () => scene.traverse(o => { for (const m of [].concat(o.material || [])) { if (!m || m.__halo || !Object.prototype.hasOwnProperty.call(m, 'onBeforeCompile')) continue; m.__halo = true;
-      const prev = m.onBeforeCompile, key = m.customProgramCacheKey.bind(m); m.onBeforeCompile = function (sh, rd) { prev.call(m, sh, rd); inject(sh, m); }; m.customProgramCacheKey = () => 'halo' + key(); m.needsUpdate = true; } });
+  /* (Ali 27 Nov, speed: only the materials the see-through window is for (the walls) are wrapped; every other material with its own shader
+     tweak used to be wrapped too, 4 s after it appeared, which threw its shader away and made a duplicate: a stutter each time a block respawned) */
+  const wrap1 = m => { if (!m || m.__halo || !m.userData || !m.userData.halo || !Object.prototype.hasOwnProperty.call(m, 'onBeforeCompile')) return; m.__halo = true;
+      const prev = m.onBeforeCompile, key = m.customProgramCacheKey.bind(m); m.onBeforeCompile = function (sh, rd) { prev.call(m, sh, rd); inject(sh, m); }; m.customProgramCacheKey = () => 'halo' + key(); m.needsUpdate = true; };
+  const wrap = () => scene.traverse(o => { const mm = o.material; if (!mm) return; if (Array.isArray(mm)) { for (let i = 0; i < mm.length; i++) wrap1(mm[i]); } else wrap1(mm); });
   setTimeout(wrap, 0); setInterval(() => { if (match.state === 'play') wrap(); }, 4000);
   // each frame: where you are on screen, how deep, and where your feet are
   const v = new THREE.Vector3(), v2 = new THREE.Vector3(), sz = new THREE.Vector2();
@@ -23330,7 +23383,7 @@ if (renderer.capabilities.isWebGL2 && !/[?&]nobatch/.test(location.search)) {
   function addTo(G, o) { if (G.n >= G.maxN) return false; let gid = G.geo.get(o.geometry);
     if (gid === undefined) { const g = o.geometry, nv = g.attributes.position.count, ni = g.index ? g.index.count : 0; if (G.v + nv > G.maxV || G.i + ni > G.maxI) return false;
       try { gid = G.bm.addGeometry(g); } catch (e) { return false; } G.geo.set(g, gid); G.v += nv; G.i += ni; }
-    const id = G.bm.addInstance(gid); G.n++; const rec = { o, G, id, geo: o.geometry, mat: o.material, cast: o.castShadow, recv: o.receiveShadow, ro: o.renderOrder, m: new Float32Array(16).fill(NaN), vis: null, gone: 0 };
+    const id = G.bm.addInstance(gid); G.n++; const rec = { o, G, id, geo: o.geometry, mat: o.material, cast: o.castShadow, recv: o.receiveShadow, ro: o.renderOrder, m: new Float64Array(16).fill(NaN), vis: null, gone: 0 }; /* (doubles: a single-precision copy never equalled the real matrix, so every piece was re-sent every frame) */
     AB.recs.set(o, rec); if (G.ready) hideO(o); return true; }
   const hideO = o => { o.layers.disable(0); o.layers.enable(HID); o.userData.abH = true; };
   function drop(rec) { const o = rec.o; rec.G.bm.deleteInstance(rec.id); rec.G.n--; rec.G.dirty = true; AB.recs.delete(o); if (o.userData.abH) { o.userData.abH = false; o.layers.disable(HID); if (!(o.layers.mask & (1 << 31))) o.layers.enable(0); } }
@@ -23891,18 +23944,18 @@ onmessage = ev => { Q = Q.then(() => msg(ev.data)).catch(e => postMessage({ t: '
     const tA = performance.now(); PHW.tAp = (PHW.tAp || 0) + tA - t0_; const r = st0.apply(this, a); const tB = performance.now(); PHW.tCore = (PHW.tCore || 0) + tB - tA; PHW.nCore = (PHW.nCore || 0) + 1;
     try { // 2) rubble near a Nym comes back here
       let x0 = 1e9, y0 = 1e9, z0 = 1e9, x1 = -1e9, y1 = -1e9, z1 = -1e9;
-      for (const [id, e] of PHW.D) { const s = PHW.st.get(id); if (!s || !e.body) continue; if (e.holder || e.dead || e.live || NET && NET.client) { reclaim(e.body); continue; }
+      for (const id of PHW.D.keys()) { const e = PHW.D.get(id); const s = PHW.st.get(id); if (!s || !e.body) continue; if (e.holder || e.dead || e.live || NET && NET.client) { reclaim(e.body); continue; }
         if (!s[13] && nymNear(s[0], s[1], s[2], Math.hypot(s[7], s[8], s[9]))) { reclaim(e.body); continue; } if (s[13] && nymNear(s[0], s[1], s[2], 0)) { reclaim(e.body); continue; }
         if (s[0] < x0) x0 = s[0]; if (s[0] > x1) x1 = s[0]; if (s[1] < y0) y0 = s[1]; if (s[1] > y1) y1 = s[1]; if (s[2] < z0) z0 = s[2]; if (s[2] > z1) z1 = s[2]; }
       if (!PHW.D.size) { // nothing for the helper to do: its moving copies are cleared away, and it just keeps its copy of the still world up to date
-        if (PHW.K.size) { for (const [id, b] of PHW.K) { cmd(['r', id]); b.__m = undefined; } PHW.K.clear(); }
+        if (PHW.K.size) { for (const id of PHW.K.keys()) { const b = PHW.K.get(id); cmd(['r', id]); b.__m = undefined; } PHW.K.clear(); }
         if (++idle % 60 === 0 || PHW.cmds.length > 400) flush(false); return r; }
       idle = 0; x0 -= ZM; y0 -= ZM; z0 -= ZM; x1 += ZM; y1 += ZM; z1 += ZM; const inZ = t => t.x > x0 && t.x < x1 && t.y > y0 && t.y < y1 && t.z > z0 && t.z < z1;
       // 3) things moving near the rubble get a moving copy in the helper's world (Nyms, loose blocks, moving platforms)
       const cand = b => { if (!b || b.__m) return; const t = O.translation.call(b); if (inZ(t)) mirror(b, 'K'); };
       for (const q of robots) cand(q.body); for (const b of PHW.KM) cand(b);
       const n = blocks.length, per = Math.ceil(n / 4); for (let k = 0; k < per && n; k++) { const e = blocks[rr = (rr + 1) % n]; if (e.body && !e.dead && !e.anchored) cand(e.body); }
-      const kin = []; for (const [id, b] of PHW.K) { const p = pose(b), L = b.__lp; if (!inZ({ x: p[0], y: p[1], z: p[2] }) && L) continue;
+      const kin = []; for (const id of PHW.K.keys()) { const b = PHW.K.get(id); const p = pose(b), L = b.__lp; if (!inZ({ x: p[0], y: p[1], z: p[2] }) && L) continue;
         if (L && Math.abs(L[0] - p[0]) + Math.abs(L[1] - p[1]) + Math.abs(L[2] - p[2]) + Math.abs(L[3] - p[3]) + Math.abs(L[4] - p[4]) + Math.abs(L[5] - p[5]) < 1e-4) continue; b.__lp = p; kin.push(id, ...p); }
       // 4) send this step to the helper (if it's fallen behind, let it catch up first; if it's gone quiet, take everything back)
       if (PHW.out > 6) { if (performance.now() - PHW.rxAt > 6000) turnOff('no answer'); return r; }
@@ -24163,7 +24216,7 @@ await __ldStep("16_ne.js", 0.9998, 1.0000);
 // ============================================================
 const NE = window.NE = { want: false, on: false, ready: false, err: null, stats: {}, frames: 0, skipped: 0, mainMs: 0 };
 { let p = null, q = null; try { p = localStorage.getItem('nymbo-ne2'); q = new URLSearchParams(location.search).get('ne'); } catch (_) {}
-  let slow = null; try { slow = localStorage.getItem('nymbo-ne-slow'); } catch (_) {} NE.V = '4'; NE.force = q === '1';
+  let slow = null; try { slow = localStorage.getItem('nymbo-ne-slow'); } catch (_) {} NE.V = '5'; NE.force = q === '1';
   NE.want = q === '1' || (q !== '0' && p !== '0' && slow !== NE.V); /* (on, unless switched off, or this version already turned out slower than the old way on this phone) */
   if (!NE.want && slow === NE.V && p !== '0' && q !== '0') NE.err = 'slower on this phone';
   if (typeof OffscreenCanvas === 'undefined' || !HTMLCanvasElement.prototype.transferControlToOffscreen || typeof Worker === 'undefined') NE.want = false; }
@@ -24296,7 +24349,7 @@ if (NE.want) {
       if (k === 'inst') { d.im = attrRef(o.instanceMatrix); d.ic = o.instanceColor ? attrRef(o.instanceColor) : null; d.count = o.count; }
       if (k === 'skin') { d.nb = o.skeleton ? o.skeleton.bones.length : 1; d.bind = Array.from(o.bindMatrix.elements); d.bindMode = o.bindMode; }
       if (k === 'spr') d.center = [o.center.x, o.center.y];
-      op('o', id, d); st = { o, k, root: rootId, g: o.geometry, m: o.material, mw: new Float32Array(16).fill(NaN), v: null, l: null, cs: null, rs: null, ro: null, fc: null, count: d.count, imv: o.instanceMatrix ? o.instanceMatrix.version : 0, icv: o.instanceColor ? o.instanceColor.version : 0, ic: o.instanceColor || null, cdm: undefined, cdist: undefined, seen: 0 }; OS.set(id, st);
+      op('o', id, d); st = { o, k, root: rootId, g: o.geometry, m: o.material, mw: new Float64Array(16).fill(NaN), v: null, l: null, cs: null, rs: null, ro: null, fc: null, count: d.count, imv: o.instanceMatrix ? o.instanceMatrix.version : 0, icv: o.instanceColor ? o.instanceColor.version : 0, ic: o.instanceColor || null, cdm: undefined, cdist: undefined, seen: 0 }; OS.set(id, st);
       if (k === 'inst') { AS.get(o.instanceMatrix).ver = o.instanceMatrix.version; } }
     st.seen = frameNo; const p = {};
     if (st.v !== true) { st.v = true; p.v = true; } if (st.l !== o.layers.mask) { st.l = o.layers.mask; p.l = st.l; } if (st.cs !== o.castShadow) { st.cs = o.castShadow; p.cs = st.cs; } if (st.rs !== o.receiveShadow) { st.rs = o.receiveShadow; p.rs = st.rs; }
