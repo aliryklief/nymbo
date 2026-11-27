@@ -18937,13 +18937,16 @@ if (CLX) {
     //  thousand little throwaway arrays every frame - Ali 24 Nov speed work)
     let IL = null, ILn = -1; const instL = () => { const n = Object.keys(G.attributes).length; if (n !== ILn) { ILn = n; IL = inst().map(k => G.attributes[k]); } return IL; };
     const lastV = []; const changed = () => { const L = instL(); let i = 0, ch = false; const put = x => { if (lastV[i] !== x) { lastV[i] = x; ch = true; } i++; };
-      put(src.instanceMatrix.version); put(hideA.version); put(src.instanceColor ? src.instanceColor.version : 0); put(src.count); put(src.material.uuid); put(src.visible); for (const A of L) put(A.version); if (lastV.length !== i) { lastV.length = i; ch = true; } return ch; };
+      put(src.instanceMatrix.version); put(hideA.version); put(src.instanceColor ? src.instanceColor.version : 0); put(src.count); put(src.material.uuid); put(src.visible); put(src.geometry.attributes.aFort ? src.geometry.attributes.aFort.version : -1); for (const A of L) put(A.version); if (lastV.length !== i) { lastV.length = i; ch = true; } return ch; };
     window.__plainSync = () => { if (window.__noPlainView) return;
       if (!changed() && view && ver) return; idx.length = 0; for (let i = 0; i < src.count; i++) if (hideA.getX(i) < .5) idx.push(i);
       if (!view || idx.length > cap) make(Math.max(64, idx.length * 1.5 | 0)); ver = 'ok';
       const M = src.instanceMatrix.array, VM = view.instanceMatrix.array, C = src.instanceColor && src.instanceColor.array, VC = view.instanceColor.array, IA = inst().map(k => [G.attributes[k], vg.attributes[k]]);
       for (let n = 0; n < idx.length; n++) { const i = idx[n]; for (let k = 0; k < 16; k++) VM[n * 16 + k] = M[i * 16 + k]; if (C) for (let k = 0; k < 3; k++) VC[n * 3 + k] = C[i * 3 + k];
         for (let j = 0; j < IA.length; j++) { const a = IA[j][0], b = IA[j][1], sz = a.itemSize, AA = a.array, BA = b.array; for (let k = 0; k < sz; k++) BA[n * sz + k] = AA[i * sz + k]; } }
+      /* (Ali 28 Nov, "the tree tops look chipped on the corners": the trees are drawn from this list, and the list didn't carry the
+         note that says "a tree, keep your own smooth look", so the stage's block recipe chipped and lumped their corners like loose stones) */
+      { const FA = src.geometry.attributes.aFort; if (FA) { let VF = vg.attributes.aFort; if (!VF || VF.count < cap) { VF = new THREE.InstancedBufferAttribute(new Float32Array(cap), 1); vg.setAttribute('aFort', VF); } for (let n = 0; n < idx.length; n++) VF.array[n] = FA.array[idx[n]]; VF.needsUpdate = true; } }
       view.count = idx.length; view.material = src.material; view.visible = src.visible; view.castShadow = src.castShadow; view.instanceMatrix.needsUpdate = true; view.instanceColor.needsUpdate = true; for (const [, b] of IA) b.needsUpdate = true;
       src.layers.set(31); src.userData.rigidHidden = true; };
     window.__plainViewOff = off => { window.__noPlainView = off; if (view) view.visible = !off; src.layers.set(off ? 0 : 31); src.userData.rigidHidden = !off; ver = ''; lastV.length = 0; }; // (testing)
