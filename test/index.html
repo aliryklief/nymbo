@@ -18867,7 +18867,7 @@ if (CLX) {
         if (G.color) A.color.set(G.color.array.subarray(0, n * 3), o * 3); for (const k of ['aF1', 'aF2', 'aF3']) if (G[k]) A[k].set(G[k].array.subarray(0, n * 4), o * 4);
         if (p.g.index) { const ix = p.g.index.array; for (let k = 0; k < ix.length; k++) I[oi + k] = ix[k] + o; oi += ix.length; } else { for (let k = 0; k < n; k++) I[oi + k] = o + k; oi += n; } o += n; }
       const g = new THREE.BufferGeometry(); for (const k of KEYS) g.setAttribute(k, new THREE.BufferAttribute(A[k], k.startsWith('aF') ? 4 : 3)); g.setIndex(new THREE.BufferAttribute(I, 1)); g.computeBoundingSphere();
-      if (!T.mesh) { T.mesh = new THREE.Mesh(g, T.mat); T.mesh.matrixAutoUpdate = false; T.mesh.castShadow = T.mesh.receiveShadow = true; T.mesh.name = 'restweld'; scene.add(T.mesh); } else { const old = T.mesh.geometry; T.mesh.geometry = g; old.dispose(); }
+      if (!T.mesh) { T.mesh = new THREE.Mesh(g, T.mat); T.mesh.matrixAutoUpdate = false; T.mesh.castShadow = T.mesh.receiveShadow = true; T.mesh.name = 'restweld'; T.mesh.userData.noBake = true; scene.add(T.mesh); } else { const old = T.mesh.geometry; T.mesh.geometry = g; old.dispose(); }
       T.mesh.visible = true; for (const p of L) p.mesh.visible = false; T.dirty = false; T.built = performance.now(); };
     const unrest = p => { const T = p.rest; p.rest = null; p.restAt = 0; p.mesh.visible = true; if (T && T.mesh && p.rn) { const P_ = T.mesh.geometry.attributes.position; P_.array.fill(0, p.ro * 3, (p.ro + p.rn) * 3); P_.addUpdateRange(p.ro * 3, p.rn * 3); P_.needsUpdate = true; T.gone = (T.gone || 0) + 1; if (T.gone > 24) T.dirty = true; } };
     window.__reweldOff = false;
@@ -18902,7 +18902,7 @@ if (CLX) {
     const make = n => { cap = n; if (IM) { scene.remove(IM); IM.dispose(); }
       const p0 = LAB.find(okPiece); if (!p0) return; const A = p0.g.attributes, f1 = A.aF1.array, f3 = A.aF3.array;
       unit.setAttribute('aF1', cA(f1[0], f1[1], f1[2], f1[3])); unit.setAttribute('aF2', cA(0, 0, 0, 0)); unit.setAttribute('aF3', cA(f3[0], f3[1], f3[2], f3[3])); ok = [f1.join(), f3.join()];
-      IM = new THREE.InstancedMesh(unit, famMat('flat'), cap); IM.count = 0; IM.frustumCulled = false; IM.castShadow = IM.receiveShadow = true; IM.name = 'flatPieces'; IM.userData.noBatch = true;
+      IM = new THREE.InstancedMesh(unit, famMat('flat'), cap); IM.count = 0; IM.frustumCulled = false; IM.castShadow = IM.receiveShadow = true; IM.name = 'flatPieces'; IM.userData.noBatch = true; IM.userData.noBake = true; /* (its blocks move: never part of the saved shadow picture) */
       IM.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3); scene.add(IM); };
     window.__flatInstOff = false;
     const sync = () => { if (window.__flatInstOff) return; let n = 0;
@@ -24315,7 +24315,7 @@ if (window.__bakeChunkOk && sun.castShadow && MAP === 'classic') { /* (classic f
   const dyn = new Set(); // things that must never be "still"
   const markDyn = () => { dyn.clear(); for (let _q1088 = 0, r; _q1088 < robots.length && ((r = robots[_q1088]), true); _q1088++) if (r.model && r.model.g) dyn.add(r.model.g); for (let _q1089 = 0, e; _q1089 < blocks.length && ((e = blocks[_q1089]), true); _q1089++) if (e.mesh) dyn.add(e.mesh); if (typeof plainIM !== 'undefined') dyn.add(plainIM);
     try { for (const p of (window.__nymbo && window.__nymbo.LAB) || []) if (p.mesh) dyn.add(p.mesh); } catch (_) {} };
-  const underDyn = o => { for (let a = o; a && a !== scene; a = a.parent) { if (dyn.has(a) || (a.userData && (a.userData.engine || a.userData.fx))) return true; } return false; };
+  const underDyn = o => { for (let a = o; a && a !== scene; a = a.parent) { if (dyn.has(a) || (a.userData && (a.userData.engine || a.userData.fx || a.userData.noBake))) return true; } return false; };
   let cand = null, candAt = 0;
   const snapM = o => Float64Array.from(o.matrixWorld.elements);
   const sameM = (o, s) => { const e = o.matrixWorld.elements; for (let k = 0; k < 16; k++) if (Math.abs(e[k] - s[k]) > 1e-5) return false; return true; };
