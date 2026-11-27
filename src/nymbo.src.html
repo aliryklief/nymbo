@@ -18561,8 +18561,9 @@ function stoneMaterial(base) {
       if (aSt.w > 2.5 && aSt.w < 3.5) { /* (Ali 28 Nov, "make the tree tops smooth on the corners, it looks chipped": the same rounded block, but every
            point is put exactly on a perfectly round edge and given that edge's true direction for the light, so the corners
            shade smoothly instead of in flat chipped-looking facets. The shape and size are as before) */
-        vec3 lp = position * 1.05, inn = clamp(lp, vec3(-.525 + .147), vec3(.525 - .147)), dd = lp - inn; float L = length(dd);
-        vec3 dir = L > 1e-5 ? dd / L : stN0; stP = inn + dir * .147; stNN = normalize(mix(dir, stN0, .25)); }
+        vec3 hs = stS * .525, lp = position * 1.05 * stS; float rr = min(.16, min(hs.x, min(hs.y, hs.z)) * .3); /* (the same roundness on every edge, in real size, whatever the block's shape) */
+        vec3 inn = clamp(lp, rr - hs, hs - rr), dd = lp - inn; float L = length(dd);
+        vec3 dir = L > 1e-5 ? dd / L : normalize(stN0 / stS); stP = (inn + dir * rr) / stS; stNN = normalize(dir * stS); }
       objectNormal = stNN;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
       transformed = stP; vSp = position; vSm = stP * stS; vSt = aSt; vNo = stN0;`);
