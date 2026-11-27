@@ -18579,26 +18579,26 @@ if (CLX) {
        finer than about a pixel and a half: patterns smaller than a pixel jump from pixel to pixel as you move */
     float uPx;
     float fq(float f){ return 1. - smoothstep(.12, .35, uPx * f); }
-    float vnA(vec3 x, float f){ return mix(.5, vn(x), fq(f)); }
-    float fbmA(vec3 p, float f){ float a = .5, s = 0.; for (int i = 0; i < 4; i++) { s += a * mix(.5, vn(p), fq(f)); p *= 2.03; f *= 2.03; a *= .5; } return s; }`;
+    float vnA(vec3 x, float f){ float q = fq(f); return q > 0. ? mix(.5, vn(x), q) : .5; }
+    float fbmA(vec3 p, float f){ float a = .5, s = 0.; for (int i = 0; i < 4; i++) { float q = fq(f); if (q <= 0.) { s += a * (1. - pow(.5, float(4 - i))); break; } s += a * mix(.5, vn(p), q); p *= 2.03; f *= 2.03; a *= .5; } return s; }`; /* (Ali 27 Nov, speed: a pattern finer than a pixel isn't looked up at all, it was only ever faded to its average; the finer ones after it are finer still, so they stop too. Same picture, far less work for the graphics chip) */
   let UNI = null; const uniMat = () => UNI || (UNI = (() => { const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .8, metalness: 0 });
     m.onBeforeCompile = sh => { sh.uniforms.uNz = { value: NZTEX };
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aF1, aF2, aF3; varying vec4 vF1, vF2, vF3; varying vec3 vOP; varying vec3 vON;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOP = position; vON = normal; vF1 = aF1; vF2 = aF2; vF3 = aF3;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vF1, vF2, vF3; varying vec3 vOP; varying vec3 vON;' + NOISE_T + `
-        float surfH(vec3 p){ float st = vF3.w > .5 ? 6. : 1.; vec3 q = vF3.w > .5 ? vec3(p.x * .15, p.y * 6., p.z * 6.) : p; float h = fbmA(q * vF1.w * .25, vF1.w * .25 * st) * .6 + vnA(q * vF1.w, vF1.w * st) * .4; float pit = smoothstep(.78, .86, vn(p * 18.)) * vF2.y * fq(90.); return h - pit * 1.5; }`)
+        float surfH(vec3 p){ float st = vF3.w > .5 ? 6. : 1.; vec3 q = vF3.w > .5 ? vec3(p.x * .15, p.y * 6., p.z * 6.) : p; float h = fbmA(q * vF1.w * .25, vF1.w * .25 * st) * .6 + vnA(q * vF1.w, vF1.w * st) * .4; float pit = vF2.y > 0. && fq(90.) > 0. ? smoothstep(.78, .86, vn(p * 18.)) * vF2.y * fq(90.) : 0.; return h - pit * 1.5; }`)
         .replace('#include <color_fragment>', `#include <color_fragment>
         uPx = length(fwidth(vOP)); /* (worked out here, for every pixel alike: the size of a pixel on the stone) */
         float fd = 1. - smoothstep(38., 55., length(vViewPosition)); /* (fine detail fades out far away, and isn't worked out at all past that) */
-        if (fd > 0.) { vec3 p = vOP + 13.1; float mot = fbmA(p * vF1.y, vF1.y) - .5, g = (vnA(p * vF1.w, vF1.w) - .5), ly = sin(p.y * 22. + fbm(p * 3.) * 4.) * vF2.w * fq(14.);
+        if (fd > 0.) { vec3 p = vOP + 13.1; float mot = fbmA(p * vF1.y, vF1.y) - .5, g = (vnA(p * vF1.w, vF1.w) - .5), ly = vF2.w > 0. && fq(14.) > 0. ? sin(p.y * 22. + fbm(p * 3.) * 4.) * vF2.w * fq(14.) : 0.;
           float vein = vF2.z > 0. ? pow(1. - abs(sin(p.x * 3. + p.y * 2. + fbm(p * 2.5) * 6.)), 14.) * vF2.z * fq(25.) : 0.;
-          float pit = smoothstep(.78, .86, vn(p * 18.)) * vF2.y * fq(90.);
+          float pit = vF2.y > 0. && fq(90.) > 0. ? smoothstep(.78, .86, vn(p * 18.)) * vF2.y * fq(90.) : 0.;
           vec3 n0 = abs(normalize(vON)); float edge = 1. - max(n0.x, max(n0.y, n0.z));
           diffuseColor.rgb *= 1. + fd * (mot * vF1.x * 2. + g * vF1.z + ly * .12 - vein * .35 - pit * .35);
-          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.25 + .05, smoothstep(.08, .3, edge) * vF3.z * (.6 + .8 * vnA(p * 9., 9.)) * fd); }`)
+          { float ew = smoothstep(.08, .3, edge) * vF3.z; if (ew > 0.) diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.25 + .05, ew * (.6 + .8 * vnA(p * 9., 9.)) * fd); } }`)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        { float fr_ = 1. - smoothstep(38., 55., length(vViewPosition)); roughnessFactor = fr_ > 0. ? clamp(vF3.x + (fbmA((vOP + 7.) * 3., 3.) - .5) * vF3.y * 2. * fr_, .04, 1.) : vF3.x; }`)
+        { float fr_ = 1. - smoothstep(38., 55., length(vViewPosition)); roughnessFactor = fr_ > 0. ? (vF3.y > 0. ? clamp(vF3.x + (fbmA((vOP + 7.) * 3., 3.) - .5) * vF3.y * 2. * fr_, .04, 1.) : clamp(vF3.x, .04, 1.)) : vF3.x; }`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-        { float fn_ = 1. - smoothstep(26., 40., length(vViewPosition)); if (fn_ > 0.) { vec3 p = vOP + 13.1; float H = fn_ * surfH(p) * vF2.x * .02; vec2 dH = vec2(dFdx(H), dFdy(H));
+        { float fn_ = 1. - smoothstep(26., 40., length(vViewPosition)); if (fn_ > 0.) { vec3 p = vOP + 13.1; float H = vF2.x > 0. ? fn_ * surfH(p) * vF2.x * .02 : 0.; vec2 dH = vec2(dFdx(H), dFdy(H));
           vec3 sX = dFdx(-vViewPosition), sY = dFdy(-vViewPosition), R1 = cross(sY, normal), R2 = cross(normal, sX); float det = dot(sX, R1);
           normal = normalize(abs(det) * normal - sign(det) * (dH.x * R1 + dH.y * R2)); } }`); };
     m.customProgramCacheKey = () => 'labuni3e'; return m; })());
