@@ -19706,6 +19706,13 @@ try { window.__liteAll && window.__liteAll(); BATCH.sync(); window.__plainSync &
   const rt = new THREE.WebGLRenderTarget(64, 64), sau = renderer.shadowMap.autoUpdate, snu = renderer.shadowMap.needsUpdate;
   const sa = sun.shadow.autoUpdate; renderer.setRenderTarget(rt); renderer.shadowMap.autoUpdate = true; sun.shadow.autoUpdate = true; sun.shadow.needsUpdate = true; renderer.render(scene, camera); sun.shadow.autoUpdate = sa; /* (with the shadow pass: their shadow versions get made too) */
   if (window.__lodWarm) { window.__lodWarm(true); window.__farWarm && window.__farWarm(true); renderer.render(scene, camera); window.__lodWarm(false); window.__farWarm && window.__farWarm(false); }
+  // (Ali 27 Nov, "make game faster": the biggest hiccups left were a Nym coming back see-through after being knocked out
+  //  (its paint switches to a see-through version, built for the first time right then: up to a 40 ms stop). Every Nym is
+  //  made see-through for one hidden picture here, near and far, so those versions are ready before the match)
+  try { if (typeof nbrGhost === 'function') { const gs = robots.filter(r => r.model && r.model.rigged && r.model.mats);
+      for (const r of gs) { r.model.__sw = r.model.seeThru; r.model.seeThru = true; nbrGhost(r); }
+      renderer.render(scene, camera); if (window.__farWarm) { window.__farWarm(true); renderer.render(scene, camera); window.__farWarm(false); }
+      for (const r of gs) { r.model.seeThru = r.model.__sw; delete r.model.__sw; nbrGhost(r); } } } catch (err) { console.warn('ghost warm', err); }
   renderer.shadowMap.autoUpdate = sau; renderer.shadowMap.needsUpdate = snu; renderer.setRenderTarget(null); rt.dispose();
   try { drawScene(); } catch (_) {} /* (and once through the game's own shadow drawing, which has its own versions) */
   for (const o of hidden) o.visible = false; for (const o of culled) o.frustumCulled = true; for (const im of slotsOn) im.count = 0; BATCH.sync();

@@ -18885,6 +18885,30 @@ if (CLX) {
   { const nb = newBlock; newBlock = function (...a) { const e = nb(...a);
       if (e && e.inst >= 0 && (e.kind === 'stone' || e.kind === 'prop') && !e.mazeBrick) try { const p = labPiece(e); p.weld = null; const m = new THREE.Mesh(p.g, famMat(p.fam)); m.matrixAutoUpdate = false; m.castShadow = m.receiveShadow = true; scene.add(m); p.mesh = m; LAB.push(p); hideA.setX(e.inst, 1); hideA.needsUpdate = true; } catch (err) { /* (it just stays a plain block) */ }
       return e; }; }
+  // (Ali 27 Nov, "make game faster": every plain block knocked out of a wall was drawn on its own, twice a picture (and
+  //  for its shadow): 60 or more separate draws after a few blasts. They're all the same plain box in different sizes and
+  //  shades, so now they're drawn together in ONE go, each copy sized, placed and coloured like its own block. Same look.)
+  { const FL_LAYER = 30, unit = new THREE.BoxGeometry(1, 1, 1), nv = unit.attributes.position.count;
+    unit.setAttribute('color', new THREE.BufferAttribute(new Float32Array(nv * 3).fill(1), 3));
+    const cA = (x, y, z, w) => { const a = new Float32Array(nv * 4); for (let i = 0; i < nv; i++) a.set([x, y, z, w], i * 4); return new THREE.BufferAttribute(a, 4); };
+    let IM = null, cap = 0, ok = null; const _S = new THREE.Matrix4(), _C = new THREE.Color(), SZ = new WeakMap();
+    const okPiece = p => { if (p.fam !== 'flat' || !p.g || !p.g.index || p.g.attributes.position.count !== 24) return false; const A = p.g.attributes; for (const k of ['aF2']) { if (!A[k]) return false; const a = A[k].array; for (let i = 0; i < a.length; i++) if (a[i] !== 0) return false; } return true; };
+    const make = n => { cap = n; if (IM) { scene.remove(IM); IM.dispose(); }
+      const p0 = LAB.find(okPiece); if (!p0) return; const A = p0.g.attributes, f1 = A.aF1.array, f3 = A.aF3.array;
+      unit.setAttribute('aF1', cA(f1[0], f1[1], f1[2], f1[3])); unit.setAttribute('aF2', cA(0, 0, 0, 0)); unit.setAttribute('aF3', cA(f3[0], f3[1], f3[2], f3[3])); ok = [f1.join(), f3.join()];
+      IM = new THREE.InstancedMesh(unit, famMat('flat'), cap); IM.count = 0; IM.frustumCulled = false; IM.castShadow = IM.receiveShadow = true; IM.name = 'flatPieces'; IM.userData.noBatch = true;
+      IM.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3); scene.add(IM); };
+    window.__flatInstOff = false;
+    const sync = () => { if (window.__flatInstOff) return; let n = 0;
+      for (const p of LAB) { const m = p.mesh; if (!m || p.fam !== 'flat') continue;
+        let sz = SZ.get(p); if (sz === undefined) { sz = okPiece(p) && ok !== false ? (() => { const A = p.g.attributes; if (ok && (A.aF1.array.join() !== ok[0] || A.aF3.array.join() !== ok[1])) return null; p.g.computeBoundingBox(); const b = p.g.boundingBox; const c = A.color.array; return { x: b.max.x - b.min.x, y: b.max.y - b.min.y, z: b.max.z - b.min.z, cx: (b.max.x + b.min.x) / 2, cy: (b.max.y + b.min.y) / 2, cz: (b.max.z + b.min.z) / 2, r: c[0], g: c[1], b: c[2] }; })() : null; SZ.set(p, sz); }
+        if (!sz) continue;
+        if (m.layers.mask !== 1 << FL_LAYER) m.layers.set(FL_LAYER); /* (its own copy isn't drawn any more; it still says where the piece is and whether it shows) */
+        if (!m.visible) continue;
+        if (!IM || n >= cap) { const keep = IM ? IM.count : 0; make(Math.max(64, Math.ceil(LAB.length * .5), (n + 1) * 2)); if (!IM) return; }
+        _S.makeScale(sz.x, sz.y, sz.z).setPosition(sz.cx, sz.cy, sz.cz); _S.premultiply(m.matrix); IM.setMatrixAt(n, _S); _C.setRGB(sz.r, sz.g, sz.b, THREE.LinearSRGBColorSpace); IM.setColorAt(n, _C); n++; }
+      if (IM) { IM.count = n; IM.visible = n > 0; if (n) { IM.instanceMatrix.needsUpdate = true; IM.instanceColor.needsUpdate = true; } } };
+    const pH3 = pulseHalos; pulseHalos = function (t) { pH3(t); try { sync(); } catch (e) { noteErr(e); window.__flatInstOff = true; if (IM) IM.visible = false; for (const p of LAB) if (p.mesh && p.mesh.layers.mask === 1 << FL_LAYER) p.mesh.layers.set(0); } }; }
   window.__nymbo && (window.__nymbo.LAB = LAB);
   // ---- the plain boxes under the stones: only the ones still shown are sent to the graphics chip ----
   // Every fort and ammo stone has a plain box underneath that does the physics; the boxes under stones are hidden, but
@@ -19682,6 +19706,13 @@ try { window.__liteAll && window.__liteAll(); BATCH.sync(); window.__plainSync &
   const rt = new THREE.WebGLRenderTarget(64, 64), sau = renderer.shadowMap.autoUpdate, snu = renderer.shadowMap.needsUpdate;
   const sa = sun.shadow.autoUpdate; renderer.setRenderTarget(rt); renderer.shadowMap.autoUpdate = true; sun.shadow.autoUpdate = true; sun.shadow.needsUpdate = true; renderer.render(scene, camera); sun.shadow.autoUpdate = sa; /* (with the shadow pass: their shadow versions get made too) */
   if (window.__lodWarm) { window.__lodWarm(true); window.__farWarm && window.__farWarm(true); renderer.render(scene, camera); window.__lodWarm(false); window.__farWarm && window.__farWarm(false); }
+  // (Ali 27 Nov, "make game faster": the biggest hiccups left were a Nym coming back see-through after being knocked out
+  //  (its paint switches to a see-through version, built for the first time right then: up to a 40 ms stop). Every Nym is
+  //  made see-through for one hidden picture here, near and far, so those versions are ready before the match)
+  try { if (typeof nbrGhost === 'function') { const gs = robots.filter(r => r.model && r.model.rigged && r.model.mats);
+      for (const r of gs) { r.model.__sw = r.model.seeThru; r.model.seeThru = true; nbrGhost(r); }
+      renderer.render(scene, camera); if (window.__farWarm) { window.__farWarm(true); renderer.render(scene, camera); window.__farWarm(false); }
+      for (const r of gs) { r.model.seeThru = r.model.__sw; delete r.model.__sw; nbrGhost(r); } } } catch (err) { console.warn('ghost warm', err); }
   renderer.shadowMap.autoUpdate = sau; renderer.shadowMap.needsUpdate = snu; renderer.setRenderTarget(null); rt.dispose();
   try { drawScene(); } catch (_) {} /* (and once through the game's own shadow drawing, which has its own versions) */
   for (const o of hidden) o.visible = false; for (const o of culled) o.frustumCulled = true; for (const im of slotsOn) im.count = 0; BATCH.sync();
