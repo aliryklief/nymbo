@@ -578,6 +578,10 @@ const __ldYield = () => { const g = performance.now() - __LD.t; if (g > (__LD.gm
 if (/lagdbg/.test(location.search)) { window.__GAPS = []; let l = performance.now(); const f = () => { const n = performance.now(); if (n - l > 50) __GAPS.push([Math.round(n / 100) / 10, Math.round(n - l), __LD.cur + '#' + (__LD.k || 0), window.__built ? (window.__nymbo && window.__nymbo.match ? window.__nymbo.match.state : 'b') : 'load']); l = n; requestAnimationFrame(f); }; requestAnimationFrame(f); }
 const __ldYield0 = () => new Promise(r => { let d = 0; const go = () => { if (!d) { d = 1; __LD.t = performance.now(); r(); } }; requestAnimationFrame(() => setTimeout(go, 0)); setTimeout(go, 120); });
 const __ldDue = () => performance.now() - __LD.t > 40;
+/* (Ali 27 Nov, "less lag spikes on the loading screens": the shaders are asked for first and the loading screen keeps moving
+   while the graphics chip builds them alongside; only once they're all ready is the hidden warm-up picture drawn, so that
+   drawing no longer has to stop and wait for them) */
+const __progWait = async (ms = 6000) => { const t0 = performance.now(); try { while (performance.now() - t0 < ms) { let all = true; for (const p of renderer.info.programs) if (!p.isReady()) { all = false; break; } if (all) return; await __ldYield0(); } } catch (_) {} };
 async function __ldStep(i, f0, f1) { __LD.cur = i; __LD.k = 0; __LD.T.push([i, performance.now()]); __LD.f = f0; __LD.next = f1; __ldBar(f0); if (__ldDue()) await __ldYield(); }
 async function __ldY() { __LD.k = (__LD.k || 0) + 1; __LD.f += (__LD.next - __LD.f) * .3; __ldBar(__LD.f); if (__ldDue()) await __ldYield(); }
 window.__LD = __LD;
@@ -19526,6 +19530,7 @@ try { const tri = () => { const g = new THREE.BufferGeometry(); g.setAttribute('
   if (window.__prepCarry) window.__prepCarry(); } catch (err) { console.warn('prepare effects', err); }
 try { const spares = []; for (const L of Object.values(SKIN.POOL || {})) for (const g of L) { scene.add(g); spares.push(g); } /* (the spare designs too) */
   const culled = [], hidden = []; scene.traverse(o => { if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; } if (!o.visible && o.userData.warm) { hidden.push(o); o.visible = true; } });
+  try { renderer.compile(scene, camera); } catch (_) {} await __progWait();
   const rt = new THREE.WebGLRenderTarget(64, 64), sau = renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate = false; renderer.setRenderTarget(rt); renderer.render(scene, camera); renderer.shadowMap.autoUpdate = sau; /* (no shadow pass for this one: it's only to get things ready) */
   renderer.setRenderTarget(null);
   for (const o of hidden) o.visible = false; for (const o of culled) o.frustumCulled = true; drawScene(); for (const g of spares) scene.remove(g); rt.dispose(); } catch (err) { console.warn('warm-up', err); }
@@ -19705,6 +19710,7 @@ if (TESTF.has('sh0')) { renderer.shadowMap.enabled = false; sun.castShadow = fal
 try { window.__liteAll && window.__liteAll(); BATCH.sync(); window.__plainSync && window.__plainSync();
   const slotsOn = []; for (const S of BATCH.slots.values()) { if (!S.im.count) { S.im.count = 1; S.im.setMatrixAt(0, new THREE.Matrix4().makeTranslation(0, -500, 0)); S.im.instanceMatrix.needsUpdate = true; slotsOn.push(S.im); } S.im.visible = true; }
   const culled = [], hidden = []; scene.traverse(o => { if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; } if (!o.visible && (o.userData.warm || o.isSkinnedMesh || o.userData.batch)) { hidden.push(o); o.visible = true; } });
+  try { renderer.compile(scene, camera); if (window.__lodWarm) { window.__lodWarm(true); window.__farWarm && window.__farWarm(true); renderer.compile(scene, camera); window.__lodWarm(false); window.__farWarm && window.__farWarm(false); } } catch (_) {} await __progWait();
   const rt = new THREE.WebGLRenderTarget(64, 64), sau = renderer.shadowMap.autoUpdate, snu = renderer.shadowMap.needsUpdate;
   const sa = sun.shadow.autoUpdate; renderer.setRenderTarget(rt); renderer.shadowMap.autoUpdate = true; sun.shadow.autoUpdate = true; sun.shadow.needsUpdate = true; renderer.render(scene, camera); sun.shadow.autoUpdate = sa; /* (with the shadow pass: their shadow versions get made too) */
   if (window.__lodWarm) { window.__lodWarm(true); window.__farWarm && window.__farWarm(true); renderer.render(scene, camera); window.__lodWarm(false); window.__farWarm && window.__farWarm(false); }
