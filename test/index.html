@@ -7794,7 +7794,7 @@ function rwRecord() {
   for (let i = 0; i < n; i++) { const e = list[i], o = i * RW_NB; idx.set(e, i);
     hold[i] = e.holder ? robots.indexOf(e.holder) : -1;
     const b = e.body, pi = prevIdx && prevIdx.get(e);
-    if (b && pi != null && b.isSleeping() && (prev.d[pi * RW_NB + 13] & 4)) { d.set(prev.d.subarray(pi * RW_NB, pi * RW_NB + RW_NB), o); continue; } // (lying still: same as last time)
+    if (b && pi != null && b.isSleeping() && (prev.d[pi * RW_NB + 13] & 4)) { const pd = prev.d, po = pi * RW_NB; for (let k = 0; k < RW_NB; k++) d[o + k] = pd[po + k]; continue; } /* (copied number by number: no throwaway view per block) */ // (lying still: same as last time)
     if (b) { const p = b.translation(), q = b.rotation(), v = b.linvel(), a = b.angvel(); d[o] = p.x; d[o + 1] = p.y; d[o + 2] = p.z; d[o + 3] = q.x; d[o + 4] = q.y; d[o + 5] = q.z; d[o + 6] = q.w; d[o + 7] = v.x; d[o + 8] = v.y; d[o + 9] = v.z; d[o + 10] = a.x; d[o + 11] = a.y; d[o + 12] = a.z; if (!b.isSleeping()) e.rwMoved = t; }
     d[o + 13] = (e.anchored ? 1 : 0) | (e.live ? 2 : 0) | (b ? 4 : 0);
   }
@@ -21330,8 +21330,11 @@ const HALO = { u: { value: new THREE.Vector4(-9999, -9999, 0, 0) }, f: { value: 
     const e = fs.indexOf('{', k) + 1; sh.uniforms.uHalo = HALO.u; sh.uniforms.uHaloF = HALO.f; sh.uniforms.uHaloOn = HALO.on; sh.fragmentShader = DECL + fs.slice(0, e) + BODY + fs.slice(e); };
   const proto = THREE.Material.prototype.onBeforeCompile; THREE.Material.prototype.onBeforeCompile = function (sh, rd) { proto.call(this, sh, rd); inject(sh, this); }; THREE.Material.prototype.onBeforeCompile.__batchSafe = proto === MAT_OBC0; /* (only touches the colour step: fine for the auto-batcher) */
   // (materials that bring their own shader tweak get the window added on top, once)
-  const wrap = () => scene.traverse(o => { for (const m of [].concat(o.material || [])) { if (!m || m.__halo || !Object.prototype.hasOwnProperty.call(m, 'onBeforeCompile')) continue; m.__halo = true;
-      const prev = m.onBeforeCompile, key = m.customProgramCacheKey.bind(m); m.onBeforeCompile = function (sh, rd) { prev.call(m, sh, rd); inject(sh, m); }; m.customProgramCacheKey = () => 'halo' + key(); m.needsUpdate = true; } });
+  /* (Ali 27 Nov, speed: only the materials the see-through window is for (the walls) are wrapped; every other material with its own shader
+     tweak used to be wrapped too, 4 s after it appeared, which threw its shader away and made a duplicate: a stutter each time a block respawned) */
+  const wrap1 = m => { if (!m || m.__halo || !m.userData || !m.userData.halo || !Object.prototype.hasOwnProperty.call(m, 'onBeforeCompile')) return; m.__halo = true;
+      const prev = m.onBeforeCompile, key = m.customProgramCacheKey.bind(m); m.onBeforeCompile = function (sh, rd) { prev.call(m, sh, rd); inject(sh, m); }; m.customProgramCacheKey = () => 'halo' + key(); m.needsUpdate = true; };
+  const wrap = () => scene.traverse(o => { const mm = o.material; if (!mm) return; if (Array.isArray(mm)) { for (let i = 0; i < mm.length; i++) wrap1(mm[i]); } else wrap1(mm); });
   setTimeout(wrap, 0); setInterval(() => { if (match.state === 'play') wrap(); }, 4000);
   // each frame: where you are on screen, how deep, and where your feet are
   const v = new THREE.Vector3(), v2 = new THREE.Vector3(), sz = new THREE.Vector2();
@@ -23941,18 +23944,18 @@ onmessage = ev => { Q = Q.then(() => msg(ev.data)).catch(e => postMessage({ t: '
     const tA = performance.now(); PHW.tAp = (PHW.tAp || 0) + tA - t0_; const r = st0.apply(this, a); const tB = performance.now(); PHW.tCore = (PHW.tCore || 0) + tB - tA; PHW.nCore = (PHW.nCore || 0) + 1;
     try { // 2) rubble near a Nym comes back here
       let x0 = 1e9, y0 = 1e9, z0 = 1e9, x1 = -1e9, y1 = -1e9, z1 = -1e9;
-      for (const [id, e] of PHW.D) { const s = PHW.st.get(id); if (!s || !e.body) continue; if (e.holder || e.dead || e.live || NET && NET.client) { reclaim(e.body); continue; }
+      for (const id of PHW.D.keys()) { const e = PHW.D.get(id); const s = PHW.st.get(id); if (!s || !e.body) continue; if (e.holder || e.dead || e.live || NET && NET.client) { reclaim(e.body); continue; }
         if (!s[13] && nymNear(s[0], s[1], s[2], Math.hypot(s[7], s[8], s[9]))) { reclaim(e.body); continue; } if (s[13] && nymNear(s[0], s[1], s[2], 0)) { reclaim(e.body); continue; }
         if (s[0] < x0) x0 = s[0]; if (s[0] > x1) x1 = s[0]; if (s[1] < y0) y0 = s[1]; if (s[1] > y1) y1 = s[1]; if (s[2] < z0) z0 = s[2]; if (s[2] > z1) z1 = s[2]; }
       if (!PHW.D.size) { // nothing for the helper to do: its moving copies are cleared away, and it just keeps its copy of the still world up to date
-        if (PHW.K.size) { for (const [id, b] of PHW.K) { cmd(['r', id]); b.__m = undefined; } PHW.K.clear(); }
+        if (PHW.K.size) { for (const id of PHW.K.keys()) { const b = PHW.K.get(id); cmd(['r', id]); b.__m = undefined; } PHW.K.clear(); }
         if (++idle % 60 === 0 || PHW.cmds.length > 400) flush(false); return r; }
       idle = 0; x0 -= ZM; y0 -= ZM; z0 -= ZM; x1 += ZM; y1 += ZM; z1 += ZM; const inZ = t => t.x > x0 && t.x < x1 && t.y > y0 && t.y < y1 && t.z > z0 && t.z < z1;
       // 3) things moving near the rubble get a moving copy in the helper's world (Nyms, loose blocks, moving platforms)
       const cand = b => { if (!b || b.__m) return; const t = O.translation.call(b); if (inZ(t)) mirror(b, 'K'); };
       for (const q of robots) cand(q.body); for (const b of PHW.KM) cand(b);
       const n = blocks.length, per = Math.ceil(n / 4); for (let k = 0; k < per && n; k++) { const e = blocks[rr = (rr + 1) % n]; if (e.body && !e.dead && !e.anchored) cand(e.body); }
-      const kin = []; for (const [id, b] of PHW.K) { const p = pose(b), L = b.__lp; if (!inZ({ x: p[0], y: p[1], z: p[2] }) && L) continue;
+      const kin = []; for (const id of PHW.K.keys()) { const b = PHW.K.get(id); const p = pose(b), L = b.__lp; if (!inZ({ x: p[0], y: p[1], z: p[2] }) && L) continue;
         if (L && Math.abs(L[0] - p[0]) + Math.abs(L[1] - p[1]) + Math.abs(L[2] - p[2]) + Math.abs(L[3] - p[3]) + Math.abs(L[4] - p[4]) + Math.abs(L[5] - p[5]) < 1e-4) continue; b.__lp = p; kin.push(id, ...p); }
       // 4) send this step to the helper (if it's fallen behind, let it catch up first; if it's gone quiet, take everything back)
       if (PHW.out > 6) { if (performance.now() - PHW.rxAt > 6000) turnOff('no answer'); return r; }
