@@ -1231,9 +1231,9 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
   // Now a fine smooth map of the outline (4 dots a metre, softened) trims the ground's top along the real curve, and a
   // smooth wall runs down from that curve. (Walking still goes square by square underneath: you can't tell.)
   if ((SHAPED || CH) && !PLAT) { const R4 = 4, W4 = GW * R4, D4 = GD * R4, raw = new Float32Array(W4 * D4), inside = (x, z) => (!SHAPED || inShape(x, z)) && !(CH && inChasm(x, z));
-    for (let zi = 0; zi < D4; zi++) for (let xi = 0; xi < W4; xi++) raw[zi * W4 + xi] = inside(xi / R4 - MX + .125, zi / R4 - MZ + .125) ? 1 : 0;
-    const blur = (A) => { const B = new Float32Array(A.length); for (let zi = 0; zi < D4; zi++) for (let xi = 0; xi < W4; xi++) { let t = 0, n = 0; for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) { const X = xi + dx, Z = zi + dz; if (X < 0 || Z < 0 || X >= W4 || Z >= D4) continue; t += A[Z * W4 + X]; n++; } B[zi * W4 + xi] = t / n; } return B; };
-    const F4 = blur(blur(raw)); SHAPE_F = { F: F4, W4, D4, R4, at: (x, z) => { const xi = clamp(Math.round((x + MX) * R4 - .5), 0, W4 - 1), zi = clamp(Math.round((z + MZ) * R4 - .5), 0, D4 - 1); return F4[zi * W4 + xi]; } };
+    for (let zi = 0; zi < D4; zi++) { if (__ldDue()) await __ldY(); for (let xi = 0; xi < W4; xi++) raw[zi * W4 + xi] = inside(xi / R4 - MX + .125, zi / R4 - MZ + .125) ? 1 : 0; }
+    const blur = async (A) => { const B = new Float32Array(A.length); for (let zi = 0; zi < D4; zi++) { if (__ldDue()) await __ldY(); for (let xi = 0; xi < W4; xi++) { let t = 0, n = 0; for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) { const X = xi + dx, Z = zi + dz; if (X < 0 || Z < 0 || X >= W4 || Z >= D4) continue; t += A[Z * W4 + X]; n++; } B[zi * W4 + xi] = t / n; } } return B; };
+    const F4 = await blur(await blur(raw)); SHAPE_F = { F: F4, W4, D4, R4, at: (x, z) => { const xi = clamp(Math.round((x + MX) * R4 - .5), 0, W4 - 1), zi = clamp(Math.round((z + MZ) * R4 - .5), 0, D4 - 1); return F4[zi * W4 + xi]; } };
     const px = new Uint8Array(W4 * D4 * 4); for (let zi = 0; zi < D4; zi++) for (let xi = 0; xi < W4; xi++) { const v = Math.round(F4[zi * W4 + xi] * 255), j = ((D4 - 1 - zi) * W4 + xi) * 4; px[j] = px[j + 1] = px[j + 2] = px[j + 3] = v; }
     SHAPE_TEX.value = new THREE.DataTexture(px, W4, D4, THREE.RGBAFormat); SHAPE_TEX.value.magFilter = SHAPE_TEX.value.minFilter = THREE.LinearFilter; SHAPE_TEX.value.needsUpdate = true;
     // squares the outline only clips a corner off: drawn again (the smooth map trims them), still holes underfoot
@@ -1241,9 +1241,9 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
   if (SHAPE_F) { // the smooth wall down from the outline (and down into the gorge): traced along the smooth map's edge, line by line
     const { F, W4, D4, R4 } = SHAPE_F, segs = [], P_ = (xi, zi) => [xi / R4 - MX + .125, zi / R4 - MZ + .125];
     const Fo = (xi, zi) => xi < 0 || zi < 0 || xi >= W4 || zi >= D4 ? 0 : F[zi * W4 + xi]; /* (Ali 20 Nov: past the map's own edge counts as outside too, so straight edges along the border get their wall) */
-    for (let zi = -1; zi < D4; zi++) for (let xi = -1; xi < W4; xi++) { const v = [Fo(xi, zi) - .5, Fo(xi + 1, zi) - .5, Fo(xi + 1, zi + 1) - .5, Fo(xi, zi + 1) - .5], C = [P_(xi, zi), P_(xi + 1, zi), P_(xi + 1, zi + 1), P_(xi, zi + 1)], pts = [];
+    for (let zi = -1; zi < D4; zi++) { if (__ldDue()) await __ldY(); for (let xi = -1; xi < W4; xi++) { const v = [Fo(xi, zi) - .5, Fo(xi + 1, zi) - .5, Fo(xi + 1, zi + 1) - .5, Fo(xi, zi + 1) - .5], C = [P_(xi, zi), P_(xi + 1, zi), P_(xi + 1, zi + 1), P_(xi, zi + 1)], pts = [];
       for (let k = 0; k < 4; k++) { const a = v[k], b = v[(k + 1) % 4]; if ((a < 0) !== (b < 0)) { const t = a / (a - b), A = C[k], B = C[(k + 1) % 4]; pts.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]); } }
-      for (let k = 0; k + 1 < pts.length; k += 2) segs.push([pts[k], pts[k + 1]]); }
+      for (let k = 0; k + 1 < pts.length; k += 2) segs.push([pts[k], pts[k + 1]]); } }
     const kf = p => p[0].toFixed(3) + ',' + p[1].toFixed(3), ends = new Map(); segs.forEach((sg, i) => { for (const e of [0, 1]) { const k = kf(sg[e]); if (!ends.has(k)) ends.set(k, []); ends.get(k).push(i); } });
     const used = new Set(), pos = [], uv = [], H = 6;
     for (let i = 0; i < segs.length; i++) { if (used.has(i)) continue; used.add(i); const L = [segs[i][0], segs[i][1]];
