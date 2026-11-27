@@ -13902,6 +13902,7 @@ function becomeHost(C, gen) { return new Promise(done => { const peer = new Peer
     // this phone's world becomes the real one: anything it saw move is loose where it lies; the others' robots are bots until they're back
     for (const e of blocks) { if (!e.dead && e.body && !e.holder && e.anchored && e.spawnPos) { const t = e.body.translation(); if (Math.abs(t.x - e.spawnPos.x) + Math.abs(t.y - e.spawnPos.y) + Math.abs(t.z - e.spawnPos.z) > .08) try { unanchor(e); } catch (_) {} } e.nb = null; } /* (only blocks that really left their place: walls still standing stay locked) */
     NET_MOVED.clear();
+    for (const e of blocks) if (!e.dead && e.body && !e.anchored && !e.holder) try { if (e.body.isDynamic()) e.body.wakeUp(); } catch (_) {} /* (this phone only ever placed things, so they were all asleep where they hung: woken, they settle under their own weight again) */
     for (const r of robots) { r.remote = false; r.netIn = null; r.nb = null; r.isPlayer = false; if (r.state === 'rag') r.ragT = Math.max(r.ragT || 0, .8); }
     P = robots[C.me]; P.isPlayer = true;
     NET = { host: true, peer, code: C.code, gen, quick: C.quick, myIdx: C.me, conns: [], list: [{ idx: C.me, name: netName() }], acc: 0, started: !!C.started, snapN: 0, openAt: performance.now(),
