@@ -1219,7 +1219,7 @@ function groundPatch(mat) { // grass top: multiply by the cell tint, and leave a
   groundPatch(mTop);
   if (SHAPED) for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) if (!inShape(cx - MX + .5, cz - MZ + .5)) { HOLES.add(cx + ',' + cz); setCell(cx, cz, 255, 255, 255, 0); SEA.add(cx + ',' + cz); } // (off the island's own outline)
   if (CH) for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) if (inChasm(cx - MX + .5, cz - MZ + .5)) { HOLES.add(cx + ',' + cz); setCell(cx, cz, 255, 255, 255, 0); } // the sky band
-  if (!PLAT) for (let i = 0; i < Math.ceil(MX * 2 / GCH); i++) for (let j = 0; j < Math.ceil(MZ * 2 / GCH); j++) buildChunk(i, j);
+  if (!PLAT) for (let i = 0; i < Math.ceil(MX * 2 / GCH); i++) for (let j = 0; j < Math.ceil(MZ * 2 / GCH); j++) { buildChunk(i, j); if (__ldDue()) await __ldY(); } /* (the loading screen keeps moving while the ground is laid) */
   // join whole chunks of plain ground (one box each) into big rectangles
   if (!PLAT) { const NI = Math.ceil(MX * 2 / GCH), NJ = Math.ceil(MZ * 2 / GCH), full = (i, j) => { const L = chunkCols.get(i + ',' + j); if (!L || L.length !== 1 || BIGG.has(i + ',' + j)) return false; const h = L[0].halfExtents(); return Math.abs(h.x * 2 - Math.min(GCH, GW - i * GCH)) < .01 && Math.abs(h.z * 2 - Math.min(GCH, GD - j * GCH)) < .01 && i * GCH + GCH <= GW && j * GCH + GCH <= GD; };
     for (let j = 0; j < NJ; j++) for (let i = 0; i < NI; i++) { if (!full(i, j)) continue; let i1 = i; while (i1 + 1 < NI && full(i1 + 1, j)) i1++; let j1 = j; grow: while (j1 + 1 < NJ) { for (let k = i; k <= i1; k++) if (!full(k, j1 + 1)) break grow; j1++; }
