@@ -6575,9 +6575,10 @@ function drawPicker(force) {
 }
 // ---------- strikes falling from the sky ----------
 const nukeShell = new THREE.Mesh(cubeGeo, kindMat.bomb), iceShell = new THREE.Mesh(cubeGeo, kindMat.freeze);
-const warnGeo = new THREE.RingGeometry(.92, 1, 64), fillGeo = new THREE.RingGeometry(0, 1, 48, 10);
+const warnGeo = new THREE.RingGeometry(.92, 1, 64), fillGeo = new THREE.RingGeometry(0, 1, 40, 4); /* (Ali 28 Nov, 1% lows: an ice strike's ten warning circles each felt the ground under 670 points, a 30 ms stop; now fewer points, and nearby points share one feel) */
 const drape = (geo, at, R, lift) => { const g = geo.clone().rotateX(-Math.PI / 2).scale(R, 1, R).translate(at.x, 0, at.z), P_ = g.attributes.position; // laid over the ground, hills and all
-  const y0 = at.y ?? TH(at.x, at.z); for (let i = 0; i < P_.count; i++) { const x = P_.getX(i), z = P_.getZ(i), ys = surfTops(x, z), y = ys.length ? ys.reduce((b, t) => Math.abs(t - y0) < Math.abs(b - y0) ? t : b) : TH(x, z); P_.setY(i, (Math.abs(y - y0) < 3 ? y : y0) + lift); } P_.needsUpdate = true; return g; };
+  const y0 = at.y ?? TH(at.x, at.z), memo = drape.memo || (drape.memo = new Map()); if (drape.memoF !== renderer.info.render.frame) { memo.clear(); drape.memoF = renderer.info.render.frame; }
+  for (let i = 0; i < P_.count; i++) { const x = P_.getX(i), z = P_.getZ(i), mk = Math.round(x * 5) * 100003 + Math.round(z * 5); let ys = memo.get(mk); if (!ys) { ys = surfTops(x, z); memo.set(mk, ys); } y = ys.length ? ys.reduce((b, t) => Math.abs(t - y0) < Math.abs(b - y0) ? t : b) : TH(x, z); P_.setY(i, (Math.abs(y - y0) < 3 ? y : y0) + lift); } P_.needsUpdate = true; return g; };
 function dropFromSky(at, kind, fall, R, onLand, delay = 0) { // delay: the warning ring shows, the shell only appears when its turn comes
   const shell = (kind === 'nuke' ? nukeShell : iceShell).clone(); shell.scale.setScalar(kind === 'nuke' ? 2.6 : 1.4); scene.add(shell);
   const ring = new THREE.Mesh(warnGeo, new THREE.MeshBasicMaterial({ color: kind === 'nuke' ? 0xff3b2a : 0x8fdcff, transparent: true, opacity: .8, depthWrite: false, side: THREE.DoubleSide }));
