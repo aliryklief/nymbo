@@ -19012,15 +19012,16 @@ if (CLX) {
     for (let i = 0; i < 60; i++) { const a = r() * 6.28, d = 60 + r() * 120, x = 256 + Math.cos(a) * d, y = 256 + Math.sin(a) * d; g.fillStyle = 'rgba(90,70,40,.3)'; g.beginPath(); g.ellipse(x - 2, y, 1.6, 2.3, a, 0, 7); g.ellipse(x + 2, y, 1.6, 2.3, a, 0, 7); g.fill(); } // (hoof prints)
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4;
     for (const o of scene.children) if (o.isMesh && o.geometry.type === 'CircleGeometry' && o.material.map && o.material.transparent && Math.abs(o.geometry.parameters.radius - (PASTURE_R + 1.2)) < .01) { o.material.map = tx; o.material.needsUpdate = true; }
+    await __ldY();
     // the fence: old wooden posts, every one a bit different, leaning a little, with rails between neighbours (not across the gates)
     const posts = scene.children.filter(o => o.isMesh && o.geometry === boxGeo && Math.abs(o.scale.x - .22) < .001 && Math.abs(o.scale.y - .9) < .001);
     const caps = scene.children.filter(o => o.isMesh && o.geometry === boxGeo && Math.abs(o.scale.x - .28) < .001 && Math.abs(o.scale.y - .08) < .001);
     for (const c_ of caps) scene.remove(c_);
     const WOODC = ['#9a6a3e', '#8a5e36', '#a87648', '#7e5632'];
-    for (const p of posts) { const h = R(.85, 1.1), M = labMesh(R(.2, .26), h, R(.2, .26), WOODC[Math.floor(sr() * 4)], 'wood', Math.floor(sr() * 1e6), true);
+    for (const p of posts) { if (__ldDue()) await __ldY(); const h = R(.85, 1.1), M = labMesh(R(.2, .26), h, R(.2, .26), WOODC[Math.floor(sr() * 4)], 'wood', Math.floor(sr() * 1e6), true);
       M.position.set(p.position.x, h / 2 - .02, p.position.z); M.rotation.set(R(-.07, .07), R(0, 3), R(-.07, .07)); scene.add(M); scene.remove(p); }
     for (const pa of PASTURES) { const ps = posts.filter(p => Math.hypot(p.position.x - pa.x, p.position.z - pa.z) < PASTURE_R + 1.5).map(p => [Math.atan2(p.position.z - pa.z, p.position.x - pa.x), p.position]).sort((a, b) => a[0] - b[0]);
-      for (let k = 0; k < ps.length; k++) { const [a0, A] = ps[k], [a1, B] = ps[(k + 1) % ps.length]; let da = a1 - a0; if (da < 0) da += 6.283; if (da > 6.283 / 18 * 1.5) continue; // (no rail across a gate)
+      for (let k = 0; k < ps.length; k++) { if (__ldDue()) await __ldY(); const [a0, A] = ps[k], [a1, B] = ps[(k + 1) % ps.length]; let da = a1 - a0; if (da < 0) da += 6.283; if (da > 6.283 / 18 * 1.5) continue; // (no rail across a gate)
         for (const y of [.42, .74]) { const L = Math.hypot(B.x - A.x, B.z - A.z), M = labMesh(L + .1, .09, .07, WOODC[Math.floor(sr() * 4)], 'wood', Math.floor(sr() * 1e6), true);
           M.position.set((A.x + B.x) / 2, y + R(-.04, .04), (A.z + B.z) / 2); M.rotation.set(0, -Math.atan2(B.z - A.z, B.x - A.x), R(-.04, .04)); M.castShadow = true; scene.add(M); } } } }
 
