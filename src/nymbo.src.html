@@ -19712,7 +19712,9 @@ try { window.__liteAll && window.__liteAll(); BATCH.sync(); window.__plainSync &
   //  so those versions are ready before anyone needs them)
   window.__ghostWarm = () => { try { const gs = typeof nbrGhost === 'function' ? robots.filter(r => r.model && r.model.rigged && r.model.mats) : [];
       const roots = [...robots.map(r => r.model && r.model.g), ...blocks.filter(e => e.animal && e.mesh).map(e => e.mesh)].filter(Boolean);
-      const comp = () => { for (const g of roots) try { renderer.compile(g, camera, scene); } catch (_) {} }; /* (built in the background: the chip finishes them while the intro plays) */
+      const comp1 = () => { for (const g of roots) try { renderer.compile(g, camera, scene); } catch (_) {} }; /* (built in the background: the chip finishes them while the intro plays) */
+      const casters = []; scene.traverse(o => { if (o.isLight && o.castShadow) casters.push(o); });
+      const comp = () => { comp1(); for (const l of casters) l.castShadow = false; comp1(); for (const l of casters) l.castShadow = true; }; /* (and the versions for the moments the shadows are a saved picture, with no light casting live shadows) */
       for (const r of gs) { r.model.__sw = r.model.seeThru; r.model.seeThru = true; nbrGhost(r); }
       comp(); if (window.__farWarm) { window.__farWarm(true); comp(); window.__farWarm(false); }
       for (const r of gs) { r.model.seeThru = r.model.__sw; delete r.model.__sw; nbrGhost(r); }
