@@ -21557,6 +21557,18 @@ const WARMN = (() => {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   const pm = new THREE.PointsMaterial({ map: dotT, size: 1.6, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffc070, toneMapped: false });
   const lights = new THREE.Points(g, pm); lights.frustumCulled = false; scene.add(lights);
+  // (Ali 28 Nov: "those lights round the fort wall tops and the trees: if there's no wall, make them disappear". Each little
+  //  light remembers the block it hangs on; a few times a second they're checked (a few hundred numbers: no cost), and a light
+  //  whose block has been knocked away, blown up or carried off goes out. A light with nothing under it from the start never shows)
+  try { const P_ = g.attributes.position, A = P_.array, home = Float32Array.from(A), anchor = new Array(P_.count).fill(null), nT = TREES.reduce((s, t) => s + (t.tall ? 22 : 14), 0), nW = Object.keys(FORT).length * 40;
+    const near = (x, y, z, ok, maxD) => { let best = null, bd = maxD * maxD; for (let _i = 0; _i < blocks.length; _i++) { const e = blocks[_i]; if (e.dead || !e.spawnPos || !ok(e)) continue; const p = e.spawnPos, dx = p.x - x, dz = p.z - z, dy = p.y - y, d = dx * dx + dz * dz + dy * dy * .25; if (d < bd) { bd = d; best = e; } } return best; };
+    for (let i = 0; i < Math.min(P_.count, nT + nW); i++) { const x = A[i * 3], y = A[i * 3 + 1], z = A[i * 3 + 2];
+      anchor[i] = i < nT ? near(x, y, z, e => e.kind === 'tree' && e.color && e.color.g > e.color.r, 2.8) || false : near(x, y - .6, z, e => e.kind === 'fort' && e.spawnPos.y + (e.dims ? e.dims.y / 2 : .5) > 3.6, 1.6) || false; }
+    window.__nightLights = { anchor, A, home };
+    let tk = 0; const gone = e => e.dead || e.holder || !e.body || (() => { const t = e.body.translation(), p = e.spawnPos; return Math.abs(t.x - p.x) + Math.abs(t.y - p.y) + Math.abs(t.z - p.z) > .45; })();
+    const pHw = pulseHalos; pulseHalos = function (tm) { pHw(tm); if ((tk = (tk + 1) % 20) !== 0) return; let ch = false;
+      for (let i = 0; i < anchor.length; i++) { const e = anchor[i]; if (e === null) continue; const off = e === false || gone(e), y = off ? -1e4 : home[i * 3 + 1]; if (A[i * 3 + 1] !== y) { A[i * 3 + 1] = y; ch = true; } }
+      if (ch) P_.needsUpdate = true; }; } catch (err) { console.warn('night lights', err); }
   // fireflies: drifting about low over the ground
   const NF = 120, fp = new Float32Array(NF * 3), fd = []; for (let i = 0; i < NF; i++) { const x = rr(-MX + 5, MX - 5), z = rr(-MZ + 5, MZ - 5); fp.set([x, TH(x, z) + rr(.6, 2.4), z], i * 3); fd.push({ ph: rr(0, 6.28), sp: rr(.3, .8), x, z }); }
   const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.BufferAttribute(fp, 3));
