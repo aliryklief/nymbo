@@ -18747,6 +18747,41 @@ if (CLX) {
       if (p.weld) { const a = _M.elements, b = p.m0.elements; let same = true; for (let k = 0; k < 16; k++) if (Math.abs(a[k] - b[k]) > 1e-4) { same = false; break; } if (same) continue; if (cuts && (cuts >= 8 || performance.now() - t0c > 1.5)) { p.stillB = null; left = true; continue; } /* (Ali 26 Nov, spikes after a blast: stones are cut out of the wall for at most ~1.5 ms a frame (and never more than 8); the rest a frame or two later) */ cuts++; detach(p); }
       p.mesh.matrix.copy(_M); p.mesh.matrixWorldNeedsUpdate = true; } if (!left) D.clear(); };
   { const pH = pulseHalos; pulseHalos = function (t) { pH(t); __hkM("12m_classic"); syncLab(); }; }
+  // (Ali 27 Nov, "speed up the game, whatever it takes": every stone ever knocked loose stayed a separate thing to draw for
+  //  the rest of the match: hundreds after a few blasts, each looked at twice a picture (for the picture and the shadow).
+  //  Now a loose stone that has come to rest for a couple of seconds is welded back into one shared piece per patch of the
+  //  map, exactly as the untouched walls are; the moment its block moves again it's cut back out. Nothing looks different.)
+  { const RW = new Map(), RTILE = 27, DELAY = 2500, rkey = (p, x, z) => p.fam + '|' + Math.floor(x / RTILE) + ',' + Math.floor(z / RTILE);
+    const KEYS = ['position', 'normal', 'color', 'aF1', 'aF2', 'aF3'], _N = new THREE.Matrix3(), _w = new THREE.Vector3(); let lastB = 0;
+    const build = T => { const L = T.list = T.list.filter(p => p.rest === T); if (!L.length) { if (T.mesh) T.mesh.visible = false; T.dirty = false; return; }
+      let nv = 0, ni = 0; for (const p of L) { nv += p.g.attributes.position.count; ni += p.g.index ? p.g.index.count : p.g.attributes.position.count; }
+      const A = {}; for (const k of KEYS) A[k] = new Float32Array(nv * (k.startsWith('aF') ? 4 : 3)); const I = new Uint32Array(ni); let o = 0, oi = 0;
+      for (const p of L) { const M = p.mesh.matrix, G = p.g.attributes, n = G.position.count; _N.getNormalMatrix(M); p.ro = o; p.rn = n;
+        for (let i = 0; i < n; i++) { _w.fromBufferAttribute(G.position, i).applyMatrix4(M); A.position[(o + i) * 3] = _w.x; A.position[(o + i) * 3 + 1] = _w.y; A.position[(o + i) * 3 + 2] = _w.z;
+          _w.fromBufferAttribute(G.normal, i).applyMatrix3(_N).normalize(); A.normal[(o + i) * 3] = _w.x; A.normal[(o + i) * 3 + 1] = _w.y; A.normal[(o + i) * 3 + 2] = _w.z; }
+        if (G.color) A.color.set(G.color.array.subarray(0, n * 3), o * 3); for (const k of ['aF1', 'aF2', 'aF3']) if (G[k]) A[k].set(G[k].array.subarray(0, n * 4), o * 4);
+        if (p.g.index) { const ix = p.g.index.array; for (let k = 0; k < ix.length; k++) I[oi + k] = ix[k] + o; oi += ix.length; } else { for (let k = 0; k < n; k++) I[oi + k] = o + k; oi += n; } o += n; }
+      const g = new THREE.BufferGeometry(); for (const k of KEYS) g.setAttribute(k, new THREE.BufferAttribute(A[k], k.startsWith('aF') ? 4 : 3)); g.setIndex(new THREE.BufferAttribute(I, 1)); g.computeBoundingSphere();
+      if (!T.mesh) { T.mesh = new THREE.Mesh(g, T.mat); T.mesh.matrixAutoUpdate = false; T.mesh.castShadow = T.mesh.receiveShadow = true; T.mesh.name = 'restweld'; scene.add(T.mesh); } else { const old = T.mesh.geometry; T.mesh.geometry = g; old.dispose(); }
+      T.mesh.visible = true; for (const p of L) p.mesh.visible = false; T.dirty = false; T.built = performance.now(); };
+    const unrest = p => { const T = p.rest; p.rest = null; p.restAt = 0; p.mesh.visible = true; if (T && T.mesh && p.rn) { const P_ = T.mesh.geometry.attributes.position; P_.array.fill(0, p.ro * 3, (p.ro + p.rn) * 3); P_.addUpdateRange(p.ro * 3, p.rn * 3); P_.needsUpdate = true; T.gone = (T.gone || 0) + 1; if (T.gone > 24) T.dirty = true; } };
+    window.__reweldOff = false;
+    const step = () => { if (window.__reweldOff) return; const now = performance.now();
+      for (const p of LAB) { const m = p.mesh; if (!m) continue; const e = p.e;
+        if (e.dead) { if (p.rest) unrest(p); if (m.visible) { m.visible = false; p.hidDead = true; } continue; } /* (a stone that's gone: not looked at any more) */
+        if (p.hidDead) { p.hidDead = false; m.visible = true; }
+        const me = m.matrix.elements; let S_ = p.snap, same = !!S_; if (S_) { for (let k = 0; k < 16; k++) if (Math.abs(me[k] - S_[k]) > 1e-4) { same = false; break; } }
+        if (!same) { if (!S_) S_ = p.snap = new Float32Array(16); S_.set(me); }
+        const still = same && !e.holder && !e.fading && !(e.frozenT > 0) && !e.ice;
+        if (p.rest) { if (!still) unrest(p); continue; }
+        if (!still) { p.restAt = 0; continue; }
+        if (!p.restAt) { p.restAt = now; continue; }
+        if (now - p.restAt < DELAY || p.pend) continue;
+        const k = rkey(p, m.matrix.elements[12], m.matrix.elements[14]); let T = RW.get(k); if (!T) RW.set(k, T = { list: [], mat: m.material, dirty: false, built: 0, mesh: null });
+        if (T.mat !== m.material) continue; p.rest = T; p.rn = 0; T.list.push(p); T.dirty = true; }
+      /* (at most one patch rebuilt a frame, and not the same patch more than every second and a half) */
+      if (now - lastB < 120) return; for (const T of RW.values()) if (T.dirty && now - T.built > 1500) { T.gone = 0; build(T); lastB = now; break; } };
+    const pH2 = pulseHalos; pulseHalos = function (t) { pH2(t); try { step(); } catch (e) { noteErr(e); window.__reweldOff = true; for (const T of RW.values()) { if (T.mesh) T.mesh.visible = false; for (const p of T.list) if (p.rest === T) { p.rest = null; p.mesh.visible = true; } } } }; }
   // ammo made later in the match: a stone of its own
   { const nb = newBlock; newBlock = function (...a) { const e = nb(...a);
       if (e && e.inst >= 0 && (e.kind === 'stone' || e.kind === 'prop') && !e.mazeBrick) try { const p = labPiece(e); p.weld = null; const m = new THREE.Mesh(p.g, famMat(p.fam)); m.matrixAutoUpdate = false; m.castShadow = m.receiveShadow = true; scene.add(m); p.mesh = m; LAB.push(p); hideA.setX(e.inst, 1); hideA.needsUpdate = true; } catch (err) { /* (it just stays a plain block) */ }
