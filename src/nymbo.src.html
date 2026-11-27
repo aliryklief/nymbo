@@ -19552,7 +19552,7 @@ await __ldY(); /* (a breather) */
 try { const spares = []; for (const L of Object.values(SKIN.POOL || {})) for (const g of L) { scene.add(g); spares.push(g); } /* (the spare designs too) */
   const culled = [], hidden = []; scene.traverse(o => { if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; } if (!o.visible && o.userData.warm) { hidden.push(o); o.visible = true; } });
   try { renderer.compile(scene, camera); } catch (_) {} await __progWait();
-  const rt = new THREE.WebGLRenderTarget(64, 64), sau = renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate = false; renderer.setRenderTarget(rt); renderer.render(scene, camera); renderer.shadowMap.autoUpdate = sau; /* (no shadow pass for this one: it's only to get things ready) */
+  const rt = new THREE.WebGLRenderTarget(64, 64), sau = renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate = false; renderer.setRenderTarget(null); renderer.render(scene, camera); /* (Ali 27 Nov: drawn to the real screen, hidden behind the loading screen: drawing it into a little picture needed a whole second set of shaders the game never uses, half a second of frozen loading screen) */ renderer.shadowMap.autoUpdate = sau; /* (no shadow pass for this one: it's only to get things ready) */
   renderer.setRenderTarget(null);
   for (const o of hidden) o.visible = false; for (const o of culled) o.frustumCulled = true; drawScene(); for (const g of spares) scene.remove(g); rt.dispose(); } catch (err) { console.warn('warm-up', err); }
 
@@ -19733,7 +19733,7 @@ try { window.__liteAll && window.__liteAll(); BATCH.sync(); window.__plainSync &
   const culled = [], hidden = []; scene.traverse(o => { if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; } if (!o.visible && (o.userData.warm || o.isSkinnedMesh || o.userData.batch)) { hidden.push(o); o.visible = true; } });
   try { renderer.compile(scene, camera); if (window.__lodWarm) { window.__lodWarm(true); window.__farWarm && window.__farWarm(true); renderer.compile(scene, camera); window.__lodWarm(false); window.__farWarm && window.__farWarm(false); } } catch (_) {} await __progWait();
   const rt = new THREE.WebGLRenderTarget(64, 64), sau = renderer.shadowMap.autoUpdate, snu = renderer.shadowMap.needsUpdate;
-  const sa = sun.shadow.autoUpdate; renderer.setRenderTarget(rt); renderer.shadowMap.autoUpdate = true; sun.shadow.autoUpdate = true; sun.shadow.needsUpdate = true; renderer.render(scene, camera); sun.shadow.autoUpdate = sa; /* (with the shadow pass: their shadow versions get made too) */
+  const sa = sun.shadow.autoUpdate; renderer.setRenderTarget(null); /* (the real screen, behind the loading screen: see above) */ renderer.shadowMap.autoUpdate = true; sun.shadow.autoUpdate = true; sun.shadow.needsUpdate = true; renderer.render(scene, camera); sun.shadow.autoUpdate = sa; /* (with the shadow pass: their shadow versions get made too) */
   if (window.__lodWarm) { window.__lodWarm(true); window.__farWarm && window.__farWarm(true); renderer.render(scene, camera); window.__lodWarm(false); window.__farWarm && window.__farWarm(false); }
   // (Ali 27 Nov, "make game faster": the biggest hiccups left were a Nym coming back see-through after being knocked out
   //  (its paint switches to a see-through version, built for the first time right then: up to a 40 ms stop). Every Nym is
