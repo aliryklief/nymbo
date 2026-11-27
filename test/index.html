@@ -423,7 +423,9 @@ html,body{overflow-x:hidden}#menu{overflow-x:hidden;touch-action:pan-y;overscrol
     <div class="seg"><button data-diff="easy">Easy</button><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div>
     <div class="lbl">WORLD</div>
     <div class="seg" style="display:none;grid-template-columns:1fr 1fr"><button data-world="day">☀ Day</button><button data-world="night">✦ Aurora night</button></div>
-    <details class="friends"><summary>👫 Play with friends</summary>
+    <details class="friends"><summary>🌍 Play online</summary>
+      <button class="go" id="qpBtn" style="width:100%;margin-top:8px;font-size:18px">🌍 QUICK MATCH</button>
+      <p class="rules" style="text-align:center;margin:6px 0 0;font-size:12px">Puts you in a match with anyone online. Or play with friends: one taps HOST, the others type the code.</p>
       <div class="net"><input id="netName" maxlength="12" placeholder="Your name" autocomplete="off"><button class="ghost" id="hostBtn">HOST</button></div>
       <div class="net"><input id="netCode" inputmode="numeric" maxlength="4" placeholder="Room code" autocomplete="off"><button class="ghost" id="joinBtn">JOIN</button></div>
     </details>
@@ -13677,49 +13679,56 @@ function lobbyShow(code, list, isHost) {
 }
 
 // ---------------- HOST ----------------
-async function netHost(retry = 0) {
-  netStatus('Starting…'); $('lobby').hidden = false; show(null);
-  try { await loadPeer(); } catch (e) { netStatus(e.message); return; }
-  let code; try { code = sessionStorage.getItem('nymbo-host'); } catch (e) {}
+// fixed: a set room (a quick-match room 'Q3', or taking over a friend's room): resolves false if someone else has it already
+async function netHost(retry = 0, fixed = null) {
+  netStatus(fixed && fixed[0] === 'Q' ? 'Opening a new match…' : 'Starting…'); $('lobby').hidden = false; show(null);
+  try { await loadPeer(); } catch (e) { netStatus(e.message); return false; }
+  let code = fixed; if (!code) { try { code = sessionStorage.getItem('nymbo-host'); } catch (e) {} }
   if (!code) code = String(1000 + Math.floor(Math.random() * 9000));
   const peer = new Peer(NET_PREFIX + code, { debug: 1 });
+  return new Promise(done => {
   peer.on('error', err => {
     if (err.type === 'unavailable-id') { // that room code is still taken (e.g. we just reloaded): wait and retry, then pick a new one
-      peer.destroy(); if (retry < 4) setTimeout(() => netHost(retry + 1), 1500); else { try { sessionStorage.removeItem('nymbo-host'); } catch (e) {} netHost(0); }
+      peer.destroy(); if (fixed) { done(false); return; }
+      if (retry < 4) setTimeout(() => netHost(retry + 1).then(done), 1500); else { try { sessionStorage.removeItem('nymbo-host'); } catch (e) {} netHost(0).then(done); }
       return;
     }
     netStatus('Connection problem: ' + err.type);
   });
   peer.on('open', () => {
-    try { sessionStorage.setItem('nymbo-host', code); } catch (e) {}
-    NET = { host: true, peer, code, conns: [], list: [{ idx: 0, name: netName() }], acc: 0, started: false, snapN: 0,
+    if (!fixed) try { sessionStorage.setItem('nymbo-host', code); } catch (e) {}
+    const quick = code[0] === 'Q';
+    NET = { host: true, peer, code, gen: 0, quick, myIdx: 0, conns: [], list: [{ idx: 0, name: netName() }], acc: 0, started: false, snapN: 0, openAt: performance.now(),
       broadcast(ev) { const s = JSON.stringify({ t: 'ev', e: ev }); for (const c of this.conns) if (c.open && c.ready) c.send(s); },
       sendTo(r, ev) { const c = this.conns.find(c => c.robot === r); if (c && c.open) c.send(JSON.stringify({ t: 'ev', e: ev })); },
       hostTick, };
-    lobbyShow(code, NET.list, true); netStatus('Share the code. Friends tap JOIN and type it in.');
+    lobbyShow(quick ? 'QUICK' : code, NET.list, !quick); netStatus(quick ? 'Waiting for players… (bots fill any empty seats)' : 'Share the code. Friends tap JOIN and type it in.');
+    if (quick) quickTimer(); done(true);
   });
   peer.on('connection', conn => {
     conn.on('open', () => {});
     conn.on('data', d => { if (typeof d === 'string') hostMsg(conn, JSON.parse(d)); });
     conn.on('close', () => hostLeave(conn));
   });
-}
+  }); }
 function hostMsg(c, m) {
   const N = NET; if (!N) return;
+  if (m.t === 'peek') { c.send(JSON.stringify({ t: 'peek', open: hostFreeSeat(m.rejoin) >= 0, started: !!N.started, n: N.list.length })); return; }
   if (m.t === 'hi') {
-    if (N.started) { // mid-match: a player whose phone dropped can come back into THEIR robot (same seat, same name), as long as a bot is still holding it
-      const name = String(m.name || '').slice(0, 12), seat = typeof m.rejoin === 'number' ? m.rejoin : -1;
+    if (N.started) { // mid-match: a player whose phone dropped can come back into THEIR robot (same seat, same name), as long as a bot is still holding it;
+      // (Ali 27 Nov) and anyone new takes over a bot's seat straight away
+      const name = String(m.name || '').slice(0, 12), seat = hostFreeSeat(m.rejoin, name);
       const r = robots[seat]; const taken = N.conns.some(x => x.robot === r);
       if (!r || taken || r.isPlayer || (r.name !== name && N.list.some(p => p.idx === seat))) { c.send(JSON.stringify({ t: 'busy' })); return; }
       c.robot = r; c.ready = true; r.remote = true; r.name = name; N.conns.push(c); N.list = N.list.filter(p => p.idx !== seat); N.list.push({ idx: seat, name, conn: c });
-      c.send(JSON.stringify({ t: 'seat', idx: seat, code: N.code, world: NIGHT ? 'night' : 'day' }));
-      c.send(JSON.stringify({ t: 'rejoin', list: N.list.map(p => ({ idx: p.idx, name: p.name })), time: match.time, score }));
-      hostSnap(true); toast(name.toUpperCase() + ' IS BACK'); return;
+      c.send(JSON.stringify({ t: 'seat', idx: seat, code: N.code, gen: N.gen, quick: N.quick, world: NIGHT ? 'night' : 'day' }));
+      c.send(JSON.stringify({ t: 'rejoin', list: hostRoster(), host: N.myIdx, time: match.time, score, state: match.state }));
+      hostSnap(true); hostRosterSend(); toast(name.toUpperCase() + (seat === m.rejoin ? ' IS BACK' : ' JOINED')); return;
     }
     const used = new Set(N.list.map(p => p.idx)), idx = SEATS.find(i => !used.has(i));
     if (idx === undefined) { c.send(JSON.stringify({ t: 'busy' })); return; }
     c.robot = robots[idx]; c.ready = true; N.conns.push(c); N.list.push({ idx, name: String(m.name || 'Player').slice(0, 12), conn: c });
-    c.send(JSON.stringify({ t: 'seat', idx, code: N.code, world: NIGHT ? 'night' : 'day' })); // everyone plays in the host's world
+    c.send(JSON.stringify({ t: 'seat', idx, code: N.code, gen: N.gen, quick: N.quick, world: NIGHT ? 'night' : 'day' })); // everyone plays in the host's world
     hostLobbyUpdate(); sfx('ui');
     return;
   }
@@ -13735,22 +13744,36 @@ function hostMsg(c, m) {
     else if (a[0] === 't') { if (canAct(r)) { if (typeof a[4] === 'number') r.yaw = r.yawT = a[4]; const lt = robots[a[2]], ht = robots[a[3]]; throwFor(r, a[1], lt && hittable(lt) ? lt : null, ht && hittable(ht) ? ht : null); } }
   }
 }
+const hostRoster = () => NET.list.map(p => ({ idx: p.idx, name: p.name }));
+const hostRosterSend = () => { const N = NET, s = JSON.stringify({ t: 'roster', list: hostRoster(), host: N.myIdx }); for (const c of N.conns) if (c.open) c.send(s); };
+// a seat for someone joining: their old one if they're coming back, otherwise (quick match, or a running match) any seat a bot has
+function hostFreeSeat(rejoin, name) { const N = NET; const used = new Set(N.list.map(p => p.idx));
+  if (typeof rejoin === 'number' && rejoin >= 0 && robots[rejoin] && !used.has(rejoin)) return rejoin;
+  if (!N.started) { const i = SEATS.find(k => !used.has(k)); return i === undefined ? -1 : i; }
+  const i = SEATS.find(k => !used.has(k) && robots[k] && !robots[k].isPlayer && !robots[k].remote); return i === undefined ? -1 : i; }
 function hostLobbyUpdate() {
-  const N = NET, list = N.list.map(p => ({ idx: p.idx, name: p.name }));
-  lobbyShow(N.code, list, true);
-  const s = JSON.stringify({ t: 'lobby', list, map: MAP }); for (const c of N.conns) if (c.open) c.send(s);
+  const N = NET, list = hostRoster();
+  lobbyShow(N.quick ? 'QUICK' : N.code, list, !N.quick);
+  const s = JSON.stringify({ t: 'lobby', list, host: N.myIdx, map: MAP, quick: N.quick }); for (const c of N.conns) if (c.open) c.send(s);
 }
+// quick match: starts by itself 15 s after a second player arrives (straight away when full), or after 40 s alone (bots
+// fill in; anyone who arrives later takes over a bot)
+function quickTimer() { const iv = setInterval(() => { const N = NET; if (!N || !N.host || !N.quick) { clearInterval(iv); return; } if (N.started) { clearInterval(iv); return; }
+  const n = N.list.length, t = performance.now(); if (n >= 2 && !N.qAt) N.qAt = t + 15000; if (n < 2) N.qAt = 0;
+  const left = N.qAt ? Math.ceil((N.qAt - t) / 1000) : Math.ceil((N.openAt + 40000 - t) / 1000);
+  netStatus(n >= 2 ? `${n} players · starting in ${Math.max(0, left)} s (bots fill the empty seats)` : `Waiting for players… starting anyway in ${Math.max(0, left)} s`);
+  if (n >= 8 || (N.qAt && t >= N.qAt) || (!N.qAt && t >= N.openAt + 40000)) { clearInterval(iv); hostStart(); } }, 500); }
 function hostLeave(c) {
   const N = NET; if (!N) return;
   N.conns = N.conns.filter(x => x !== c); N.list = N.list.filter(p => p.conn !== c);
   if (c.robot) { c.robot.remote = false; c.robot.netIn = null; } // a bot takes over their robot (and keeps the seat warm for a rejoin)
-  if (!N.started) hostLobbyUpdate(); else toast((c.robot ? c.robot.name : 'A player') + ' LEFT · A BOT TAKES OVER');
+  if (!N.started) hostLobbyUpdate(); else { hostRosterSend(); toast((c.robot ? c.robot.name : 'A player') + ' LEFT · A BOT TAKES OVER'); }
 }
 function hostStart() {
   const N = NET; if (!N || N.started) return;
   N.started = true; $('lobby').hidden = true;
   for (const p of N.list) if (p.conn) { const r = robots[p.idx]; r.remote = true; r.name = p.name; }
-  const s = JSON.stringify({ t: 'start', list: N.list.map(p => ({ idx: p.idx, name: p.name })) }); for (const c of N.conns) if (c.open) c.send(s);
+  const s = JSON.stringify({ t: 'start', list: hostRoster(), host: N.myIdx }); for (const c of N.conns) if (c.open) c.send(s);
   hostSnap(true); audioInit(); startCountdown(); buildHud(); $('pwr').hidden = true;
 }
 // a friend's robot, driven by their phone's controls (same rules as yours)
@@ -13810,41 +13833,101 @@ function hostSnap(full) {
 }
 
 // ---------------- JOIN ----------------
-async function netJoin(code) {
-  code = String(code || '').replace(/\D/g, '').slice(0, 4);
-  if (code.length !== 4) { netStatus('Type the 4-digit room code'); return; }
-  try { sessionStorage.setItem('nymbo-join', code); } catch (e) {}
-  netStatus('Connecting to room ' + code + '…'); $('lobby').hidden = false; show(null); $('lobbyCode').textContent = code; $('lobbyStart').hidden = true;
-  try { await loadPeer(); } catch (e) { netStatus(e.message); return; }
+// resolves true once a seat is ours, false if that room isn't there (or is full)
+// gen: rooms that changed hands live at "<code>-<gen>"; typing a code tries the room and any hand-overs of it
+async function netJoin(code, gen = null, quiet = false) {
+  code = String(code || '').toUpperCase(); code = /^Q\d$/.test(code) ? code : code.replace(/\D/g, '').slice(0, 4);
+  if (!/^Q\d$/.test(code) && code.length !== 4) { netStatus('Type the 4-digit room code'); return false; }
+  if (gen === null && !/^Q/.test(code)) { for (let g = 0; g <= 4; g++) { if (await netJoin(code, g, g > 0)) return true; } netStatus('No room ' + code + ' found. Is the host on the lobby screen?'); return false; }
+  const quick = code[0] === 'Q'; if (!quick) try { sessionStorage.setItem('nymbo-join', code); } catch (e) {}
+  if (!quiet) { netStatus(quick ? 'Joining a match…' : 'Connecting to room ' + code + '…'); $('lobby').hidden = false; show(null); $('lobbyCode').textContent = quick ? 'QUICK' : code; $('lobbyStart').hidden = true; }
+  try { await loadPeer(); } catch (e) { netStatus(e.message); return false; }
   const peer = new Peer({ debug: 1 });
-  peer.on('error', err => netStatus(err.type === 'peer-unavailable' ? 'No room ' + code + ' found. Is the host on the lobby screen?' : 'Connection problem: ' + err.type));
-  peer.on('open', () => {
-    const conn = peer.connect(NET_PREFIX + code, { reliable: true, serialization: 'raw' });
-    NET = { client: true, peer, conn, code, me: -1, snaps: 0, off: null, hostT: 0, lastMove: 0, moveT: 0, ack: 0,
-      act(a) { if (conn.open) conn.send(JSON.stringify({ t: 'act', a })); },
-      move(m) { this.lastMove = m; } };
-    conn.on('open', () => { let rejoin = -1; try { const s = JSON.parse(sessionStorage.getItem('nymbo-seat') || 'null'); if (s && s.code === code && Date.now() - s.t < 180000) rejoin = s.idx; } catch (e) {} conn.send(JSON.stringify({ t: 'hi', name: netName(), rejoin })); netStatus(rejoin >= 0 ? 'Back in the room. Rejoining your robot…' : 'Connected. Waiting for the host to start…'); });
-    conn.on('data', d => { if (typeof d === 'string') clientMsg(JSON.parse(d)); else clientSnap(d instanceof ArrayBuffer ? d : d.buffer || d); });
-    conn.on('close', () => { if (NET.again || match.state === 'end') { setTimeout(() => location.reload(), 800); return; } toast('LOST THE HOST'); netStatus('The host left. Reconnecting…'); setTimeout(() => location.reload(), 2500); });
+  const prevNET = NET; let Jref = null;
+  return new Promise(done => { let settled = false; const fin = v => { if (settled) return; settled = true; if (!v) { try { peer.destroy(); } catch (_) {} if (Jref && NET === Jref) NET = prevNET; } done(v); };
+    setTimeout(() => fin(false), 9000);
+    peer.on('error', err => { if (err.type === 'peer-unavailable') fin(false); else if (!settled) { netStatus('Connection problem: ' + err.type); fin(false); } });
+    peer.on('open', () => {
+      const conn = peer.connect(NET_PREFIX + code + (gen ? '-' + gen : ''), { reliable: true, serialization: 'raw' });
+      const J = { client: true, peer, conn, code, gen: gen || 0, quick, me: -1, snaps: 0, off: null, hostT: 0, lastMove: 0, moveT: 0, ack: 0, roster: [], hostIdx: 0,
+        act(a) { if (conn.open) conn.send(JSON.stringify({ t: 'act', a })); },
+        move(m) { this.lastMove = m; } }; Jref = J;
+      conn.on('open', () => { let rejoin = -1; try { const s = JSON.parse(sessionStorage.getItem('nymbo-seat') || 'null'); if (s && s.code === code && Date.now() - s.t < 180000) rejoin = s.idx; } catch (e) {}
+        const old = NET; if (old && old.client && old !== J) { J.lastMove = old.lastMove || 0; J.started = old.started; } /* (carrying on after a hand-over) */
+        J.pending = true; J.onSeat = ok => { fin(ok); if (ok && old && old !== J && old.peer) setTimeout(() => { try { old.peer.destroy(); } catch (_) {} }, 500); };
+        NET = J; conn.send(JSON.stringify({ t: 'hi', name: netName(), rejoin })); if (!quiet) netStatus(rejoin >= 0 ? 'Back in the room. Rejoining your robot…' : 'Connected. Waiting for the host to start…'); });
+      conn.on('data', d => { if (NET !== J) return; if (typeof d === 'string') clientMsg(JSON.parse(d)); else clientSnap(d instanceof ArrayBuffer ? d : d.buffer || d); });
+      conn.on('close', () => { if (NET !== J) return; if (J.pending) { J.pending = false; fin(false); return; } if (J.again || match.state === 'end') { setTimeout(() => location.reload(), 800); return; } handOver(J); });
+    });
   });
 }
+// quick match: join a match that has room, or open a new one that others can join
+async function netQuick() {
+  netStatus('Looking for a match…'); $('lobby').hidden = false; show(null); $('lobbyCode').textContent = 'QUICK'; $('lobbyStart').hidden = true;
+  try { await loadPeer(); } catch (e) { netStatus(e.message); return; }
+  for (let k = 1; k <= 8; k++) { const id = 'Q' + k, r = await peekRoom(id);
+    if (r === 'open' && await netJoin(id)) return;
+    if (r === 'none' && await netHost(0, id)) return; }
+  netStatus('Every quick match is full right now. Try again in a moment, or HOST a room for friends.');
+}
+function peekRoom(id) { return new Promise(done => { const peer = new Peer({ debug: 0 }); let over = false; const fin = v => { if (over) return; over = true; try { peer.destroy(); } catch (_) {} done(v); };
+  setTimeout(() => fin('full'), 7000);
+  peer.on('error', err => fin(err.type === 'peer-unavailable' ? 'none' : 'full'));
+  peer.on('open', () => { const c = peer.connect(NET_PREFIX + id, { reliable: true, serialization: 'raw' });
+    c.on('open', () => c.send(JSON.stringify({ t: 'peek' })));
+    c.on('data', d => { try { const m = JSON.parse(d); if (m.t === 'peek') fin(m.open ? 'open' : 'full'); } catch (_) {} }); }); }); }
+// ---------------- WHEN THE HOST LEAVES (Ali 27 Nov: "he doesn't need to be in the game") ----------------
+// The match doesn't end: the players still in it agree on a new host without asking anyone (lowest seat first, the next
+// one a few seconds later if that phone has gone too). That phone carries on running the match from exactly what it was
+// showing, and the others reconnect to it into their own robots.
+function handOver(C) { if (C.handing) return; C.handing = true;
+  const left = (C.roster || []).filter(p => p.idx !== C.hostIdx).sort((a, b) => a.idx - b.idx), rank = Math.max(0, left.findIndex(p => p.idx === C.me));
+  const gen = (C.gen || 0) + 1, t0 = performance.now(); toast('HOST LEFT · CARRYING ON…'); netStatus('The host left. Carrying on…');
+  const step = async () => { if (NET !== C) return;
+    if (await netJoin(C.code, gen, true)) { toast('BACK IN · NEW HOST'); return; }
+    if (NET !== C) return;
+    if (performance.now() - t0 > rank * 4000 && await becomeHost(C, gen)) return;
+    if (performance.now() - t0 > 45000) { toast('LOST THE MATCH'); setTimeout(() => location.reload(), 1500); return; }
+    setTimeout(step, 800); };
+  setTimeout(step, 300 + rank * 300); }
+function hostWire(peer) {
+  peer.on('connection', conn => { conn.on('open', () => {}); conn.on('data', d => { if (typeof d === 'string') hostMsg(conn, JSON.parse(d)); }); conn.on('close', () => hostLeave(conn)); }); }
+function becomeHost(C, gen) { return new Promise(done => { const peer = new Peer(NET_PREFIX + C.code + '-' + gen, { debug: 1 }); let over = false;
+  peer.on('error', err => { if (over) return; if (err.type === 'unavailable-id') { over = true; try { peer.destroy(); } catch (_) {} done(false); } });
+  peer.on('open', () => { if (over || NET !== C) { try { peer.destroy(); } catch (_) {} done(false); return; } over = true;
+    // this phone's world becomes the real one: anything it saw move is loose where it lies; the others' robots are bots until they're back
+    for (const e of blocks) { if (!e.dead && e.body && !e.holder && e.nb && e.nb.length && e.anchored) try { unanchor(e); } catch (_) {} e.nb = null; }
+    NET_MOVED.clear();
+    for (const r of robots) { r.remote = false; r.netIn = null; r.nb = null; r.isPlayer = false; if (r.state === 'rag') r.ragT = Math.max(r.ragT || 0, .8); }
+    P = robots[C.me]; P.isPlayer = true;
+    NET = { host: true, peer, code: C.code, gen, quick: C.quick, myIdx: C.me, conns: [], list: [{ idx: C.me, name: netName() }], acc: 0, started: !!C.started, snapN: 0, openAt: performance.now(),
+      broadcast(ev) { const s = JSON.stringify({ t: 'ev', e: ev }); for (const c of this.conns) if (c.open && c.ready) c.send(s); },
+      sendTo(r, ev) { const c = this.conns.find(c => c.robot === r); if (c && c.open) c.send(JSON.stringify({ t: 'ev', e: ev })); },
+      hostTick, };
+    hostWire(peer); try { C.peer.destroy(); } catch (_) {}
+    if (NET.started) { hostSnap(true); toast('YOUR PHONE RUNS THE MATCH NOW'); } else { lobbyShow(NET.quick ? 'QUICK' : NET.code, NET.list, !NET.quick); netStatus('You are the host now. Friends can still join with the same code.'); if (NET.quick) quickTimer(); }
+    done(true); }); }); }
 function clientMsg(m) {
   const N = NET;
-  if (m.t === 'busy') { netStatus('That match has already started or is full (your old seat was taken).'); try { sessionStorage.removeItem('nymbo-seat'); } catch (e) {} return; }
+  if (m.t === 'busy') { netStatus('That match is full right now.'); try { sessionStorage.removeItem('nymbo-seat'); } catch (e) {} N.pending = false; if (N.onSeat) N.onSeat(false); return; }
+  if (m.list && typeof m.host === 'number') { N.roster = m.list; N.hostIdx = m.host; }
+  if (m.t === 'roster') return;
   if (m.t === 'seat') {
     if ((m.world === 'night') !== NIGHT) { // the host plays in the other world: switch to it (the page reloads and re-joins by itself)
       S.world = m.world; saveS(); netStatus(m.world === 'night' ? 'Switching to Aurora night…' : 'Switching to Day…'); N.peer.destroy(); setTimeout(() => location.reload(), 400); return;
     }
-    N.me = m.idx; try { sessionStorage.setItem('nymbo-seat', JSON.stringify({ code: N.code, idx: m.idx, t: Date.now() })); } catch (e) {} netStatus('You are in! Waiting for the host to start…'); return;
+    N.me = m.idx; N.gen = m.gen || 0; N.quick = !!m.quick; N.pending = false; try { sessionStorage.setItem('nymbo-seat', JSON.stringify({ code: N.code, idx: m.idx, t: Date.now() })); } catch (e) {}
+    if (!N.started) netStatus(N.quick ? 'You are in! The match starts soon…' : 'You are in! Waiting for the host to start…'); if (N.onSeat) { const f = N.onSeat; N.onSeat = null; f(true); } return;
   }
   if (m.t === 'lobby' && m.map && m.map !== MAP) { try { localStorage.setItem('nymbo-map', m.map); } catch (e) {} toast('SWITCHING TO THE HOST\'S MAP…'); setTimeout(() => location.reload(), 400); return; } // the host picks the map
-  if (m.t === 'lobby') { lobbyShow(N.code, m.list, false); netStatus(N.me >= 0 ? 'You are ' + (robots[N.me].team === 'blue' ? 'BLUE' : 'RED') + '. Waiting for the host to start…' : 'Joining…'); return; }
+  if (m.t === 'lobby') { lobbyShow(N.quick ? 'QUICK' : N.code, m.list, false); netStatus(N.me >= 0 ? 'You are ' + (robots[N.me].team === 'blue' ? 'BLUE' : 'RED') + (N.quick ? '. The match starts soon…' : '. Waiting for the host to start…') : 'Joining…'); return; }
   if (m.t === 'rejoin') { // straight back into the running match, no intro
     $('lobby').hidden = true; $('againBtn').textContent = 'WAITING FOR HOST…'; $('againBtn').disabled = true;
     robots[0].isPlayer = false; P = robots[N.me]; P.isPlayer = true; snapCamera = true;
     for (const p of m.list) robots[p.idx].name = p.name;
-    if (m.score) Object.assign(score, m.score); match.time = m.time; match.state = 'play'; $('hud').hidden = false; show(null);
-    buildHud(); $('pwr').hidden = true; audioInit(); N.started = true; toast('YOU ARE BACK IN'); return;
+    for (const r of robots) r.nb = null; for (const e of blocks) e.nb = null; NET_MOVED.clear(); N.off = null; /* (a new host keeps its own clock: start the smoothing afresh) */
+    if (m.score) Object.assign(score, m.score); match.time = m.time; match.state = m.state === 'count' || m.state === 'end' ? m.state : 'play'; if (match.state === 'count') match.count = Math.max(match.count || 0, .5); $('hud').hidden = false; show(null);
+    for (const r of robots) if (r !== P) r.isPlayer = false; buildHud(); $('pwr').hidden = true; audioInit(); N.started = true; return;
   }
   if (m.t === 'start') {
     $('lobby').hidden = true; $('againBtn').textContent = 'WAITING FOR HOST…'; $('againBtn').disabled = true;
@@ -14011,6 +14094,7 @@ newBlock = (kind, pos, o = {}) => { const e = newBlock0net(kind, pos, o); if (NE
 try { $('netName').value = localStorage.getItem('nymbo-name') || ''; } catch (e) {}
 $('hostBtn').onclick = () => { audioInit(); netHost(); };
 $('joinBtn').onclick = () => { audioInit(); netJoin($('netCode').value); };
+$('qpBtn').onclick = () => { audioInit(); netQuick(); };
 $('lobbyStart').onclick = () => hostStart();
 $('lobbyBack').onclick = () => { try { sessionStorage.removeItem('nymbo-host'); sessionStorage.removeItem('nymbo-join'); } catch (e) {} if (NET && NET.peer) NET.peer.destroy(); location.reload(); };
 // coming back after a reload: the host reopens the same room, a joiner re-joins it by itself
