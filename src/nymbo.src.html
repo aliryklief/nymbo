@@ -1387,7 +1387,7 @@ function TH(x, z) {
   return h * k;
 }
 /* RAISED (declared above buildChunk): ground squares that aren't flat get one smooth collider instead of boxes */
-if (TERRAIN && !PLAT) for (let cx = 0; cx < GW; cx++) for (let cz = 0; cz < GD; cz++) { const x = cx - MX, z = cz - MZ; if (Math.max(TH(x, z), TH(x + 1, z), TH(x, z + 1), TH(x + 1, z + 1)) > .02) RAISED.add(cx + ',' + cz); }
+if (TERRAIN && !PLAT) for (let cx = 0; cx < GW; cx++) { if (__ldDue()) await __ldY(); for (let cz = 0; cz < GD; cz++) { const x = cx - MX, z = cz - MZ; if (Math.max(TH(x, z), TH(x + 1, z), TH(x, z + 1), TH(x + 1, z + 1)) > .02) RAISED.add(cx + ',' + cz); } }
 let RAISED_COL = null;
 function buildRaised() { // one triangle mesh for all the raised ground (rebuilt without any squares that have been dug out)
   if (RAISED_COL) { byCollider.delete(RAISED_COL.handle); world.removeCollider(RAISED_COL, false); RAISED_COL = null; }
