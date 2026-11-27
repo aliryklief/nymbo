@@ -16648,18 +16648,25 @@ function rigidMerge(M, o = {}) {
     sk.userData.rigidSrc = list; sk.userData.rigidNear = near;
     sk.boundingSphere = near.boundingSphere.clone(); sk.boundingBox = near.boundingBox.clone(); M.add(sk); sk.updateMatrixWorld(true); const skel = new THREE.Skeleton(list); sk.bind(skel, sk.matrixWorld);
     // keeping up: colours and glows copied onto the corners when they change; anything it can't copy, it gives up
-    const last = new Float32Array(list.length * 6).fill(-1), live = list.map(c => [c.material, c.material.transparent, c.material.opacity, c.material.visible]);
-    const paint = geo => { const C = geo.attributes.color, E = geo.attributes.aEm; geo.userData.ranges.forEach(([s, n], b) => { const m = list[b].material, c = m.color, e = m.emissive, k = m.emissiveIntensity ?? 1;
-        const V = hasVC ? geo.userData.ranges[b][2] : null;
-        for (let i = s; i < s + n; i++) { const f0 = V ? V.getX(i - s) : 1, f1 = V ? V.getY(i - s) : 1, f2 = V ? V.getZ(i - s) : 1; C.array[i * 3] = c.r * f0; C.array[i * 3 + 1] = c.g * f1; C.array[i * 3 + 2] = c.b * f2; if (e) { E.array[i * 3] = e.r * k; E.array[i * 3 + 1] = e.g * k; E.array[i * 3 + 2] = e.b * k; } } }); C.needsUpdate = E.needsUpdate = true; geo.userData.dirty = false; };
+    const chg = [], last = new Float64Array(list.length * 6).fill(-1), live = list.map(c => [c.material, c.material.transparent, c.material.opacity, c.material.visible]);
+    /* (Ali 27 Nov, speed: only the pieces whose colour or glow changed are painted again, and only their part of the list is sent to the
+       graphics chip; it used to repaint and resend the whole block every frame a glow pulsed, and made throwaway lists doing it) */
+    const paintB = (geo, b) => { const C = geo.attributes.color, E = geo.attributes.aEm, R_ = geo.userData.ranges[b], s = R_[0], n = R_[1], m = list[b].material, c = m.color, e = m.emissive, k = m.emissiveIntensity ?? 1;
+        const V = hasVC ? R_[2] : null;
+        for (let i = s; i < s + n; i++) { const f0 = V ? V.getX(i - s) : 1, f1 = V ? V.getY(i - s) : 1, f2 = V ? V.getZ(i - s) : 1; C.array[i * 3] = c.r * f0; C.array[i * 3 + 1] = c.g * f1; C.array[i * 3 + 2] = c.b * f2; if (e) { E.array[i * 3] = e.r * k; E.array[i * 3 + 1] = e.g * k; E.array[i * 3 + 2] = e.b * k; } } };
+    const paint = (geo, only) => { const C = geo.attributes.color, E = geo.attributes.aEm, RG = geo.userData.ranges;
+      if (only && !geo.userData.dirty) { for (let j = 0; j < only.length; j++) { const b = only[j]; paintB(geo, b); C.addUpdateRange(RG[b][0] * 3, RG[b][1] * 3); if (E) E.addUpdateRange(RG[b][0] * 3, RG[b][1] * 3); } }
+      else for (let b = 0; b < RG.length; b++) paintB(geo, b);
+      C.needsUpdate = true; if (E) E.needsUpdate = true; geo.userData.dirty = false; };
     if (!shared) paint(near); sk.userData.rigidBuild = map => { const g = build(map); if (!shared) paint(g); return g; }; /* (coloured in straight away: the first picture already has them right) */
     sk.onBeforeRender = () => { const s = sk.userData;
       for (let b = 0; b < list.length; b++) { const c = list[b], L = live[b], m = c.material;
         if (m !== L[0] || !shown(c) || !c.parent || (!shared && (m.transparent !== L[1] || m.opacity !== L[2] || m.visible !== L[3]))) { unmerge(sk); return; } }
-      if (shared) return; let ch = false;
+      if (shared) return; chg.length = 0;
       for (let b = 0; b < list.length; b++) { const m = list[b].material, c = m.color, e = m.emissive, k = m.emissiveIntensity ?? 1, q = b * 6;
-        const v = [c.r, c.g, c.b, e ? e.r * k : 0, e ? e.g * k : 0, e ? e.b * k : 0]; for (let j = 0; j < 6; j++) if (last[q + j] !== v[j]) { last[q + j] = v[j]; ch = true; } }
-      if (ch || sk.geometry.userData.dirty) { paint(sk.geometry); for (const g of [s.rigidNear, s.rigidFar]) if (g && g !== sk.geometry) g.userData.dirty = true; } };
+        const v3 = e ? e.r * k : 0, v4 = e ? e.g * k : 0, v5 = e ? e.b * k : 0;
+        if (last[q] !== c.r || last[q + 1] !== c.g || last[q + 2] !== c.b || last[q + 3] !== v3 || last[q + 4] !== v4 || last[q + 5] !== v5) { last[q] = c.r; last[q + 1] = c.g; last[q + 2] = c.b; last[q + 3] = v3; last[q + 4] = v4; last[q + 5] = v5; chg.push(b); } }
+      if (chg.length || sk.geometry.userData.dirty) { paint(sk.geometry, chg); if (s.rigidNear && s.rigidNear !== sk.geometry) s.rigidNear.userData.dirty = true; if (s.rigidFar && s.rigidFar !== sk.geometry) s.rigidFar.userData.dirty = true; } };
     for (const c of list) { c.layers.set(RIGID_LAYER); c.userData.rigidHidden = true; }
     out.push(sk); }
   M.userData.rigid = out; return M; }
@@ -23373,7 +23380,7 @@ if (renderer.capabilities.isWebGL2 && !/[?&]nobatch/.test(location.search)) {
   function addTo(G, o) { if (G.n >= G.maxN) return false; let gid = G.geo.get(o.geometry);
     if (gid === undefined) { const g = o.geometry, nv = g.attributes.position.count, ni = g.index ? g.index.count : 0; if (G.v + nv > G.maxV || G.i + ni > G.maxI) return false;
       try { gid = G.bm.addGeometry(g); } catch (e) { return false; } G.geo.set(g, gid); G.v += nv; G.i += ni; }
-    const id = G.bm.addInstance(gid); G.n++; const rec = { o, G, id, geo: o.geometry, mat: o.material, cast: o.castShadow, recv: o.receiveShadow, ro: o.renderOrder, m: new Float32Array(16).fill(NaN), vis: null, gone: 0 };
+    const id = G.bm.addInstance(gid); G.n++; const rec = { o, G, id, geo: o.geometry, mat: o.material, cast: o.castShadow, recv: o.receiveShadow, ro: o.renderOrder, m: new Float64Array(16).fill(NaN), vis: null, gone: 0 }; /* (doubles: a single-precision copy never equalled the real matrix, so every piece was re-sent every frame) */
     AB.recs.set(o, rec); if (G.ready) hideO(o); return true; }
   const hideO = o => { o.layers.disable(0); o.layers.enable(HID); o.userData.abH = true; };
   function drop(rec) { const o = rec.o; rec.G.bm.deleteInstance(rec.id); rec.G.n--; rec.G.dirty = true; AB.recs.delete(o); if (o.userData.abH) { o.userData.abH = false; o.layers.disable(HID); if (!(o.layers.mask & (1 << 31))) o.layers.enable(0); } }
@@ -24339,7 +24346,7 @@ if (NE.want) {
       if (k === 'inst') { d.im = attrRef(o.instanceMatrix); d.ic = o.instanceColor ? attrRef(o.instanceColor) : null; d.count = o.count; }
       if (k === 'skin') { d.nb = o.skeleton ? o.skeleton.bones.length : 1; d.bind = Array.from(o.bindMatrix.elements); d.bindMode = o.bindMode; }
       if (k === 'spr') d.center = [o.center.x, o.center.y];
-      op('o', id, d); st = { o, k, root: rootId, g: o.geometry, m: o.material, mw: new Float32Array(16).fill(NaN), v: null, l: null, cs: null, rs: null, ro: null, fc: null, count: d.count, imv: o.instanceMatrix ? o.instanceMatrix.version : 0, icv: o.instanceColor ? o.instanceColor.version : 0, ic: o.instanceColor || null, cdm: undefined, cdist: undefined, seen: 0 }; OS.set(id, st);
+      op('o', id, d); st = { o, k, root: rootId, g: o.geometry, m: o.material, mw: new Float64Array(16).fill(NaN), v: null, l: null, cs: null, rs: null, ro: null, fc: null, count: d.count, imv: o.instanceMatrix ? o.instanceMatrix.version : 0, icv: o.instanceColor ? o.instanceColor.version : 0, ic: o.instanceColor || null, cdm: undefined, cdist: undefined, seen: 0 }; OS.set(id, st);
       if (k === 'inst') { AS.get(o.instanceMatrix).ver = o.instanceMatrix.version; } }
     st.seen = frameNo; const p = {};
     if (st.v !== true) { st.v = true; p.v = true; } if (st.l !== o.layers.mask) { st.l = o.layers.mask; p.l = st.l; } if (st.cs !== o.castShadow) { st.cs = o.castShadow; p.cs = st.cs; } if (st.rs !== o.receiveShadow) { st.rs = o.receiveShadow; p.rs = st.rs; }
