@@ -13856,7 +13856,10 @@ async function netJoin(code, gen = null, quiet = false) {
         const old = NET; if (old && old.client && old !== J) { J.lastMove = old.lastMove || 0; J.started = old.started; } /* (carrying on after a hand-over) */
         J.pending = true; J.onSeat = ok => { fin(ok); if (ok && old && old !== J && old.peer) setTimeout(() => { try { old.peer.destroy(); } catch (_) {} }, 500); };
         NET = J; conn.send(JSON.stringify({ t: 'hi', name: netName(), rejoin })); if (!quiet) netStatus(rejoin >= 0 ? 'Back in the room. Rejoining your robot…' : 'Connected. Waiting for the host to start…'); });
-      conn.on('data', d => { if (NET !== J) return; if (typeof d === 'string') clientMsg(JSON.parse(d)); else clientSnap(d instanceof ArrayBuffer ? d : d.buffer || d); });
+      conn.on('data', d => { J.lastRx = performance.now(); if (NET !== J) return; if (typeof d === 'string') clientMsg(JSON.parse(d)); else clientSnap(d instanceof ArrayBuffer ? d : d.buffer || d); });
+      /* (a host whose phone just vanishes doesn't always say goodbye: 5 s of silence counts as gone) */
+      const wd = setInterval(() => { if (NET !== J || J.handing) { if (NET !== J && !J.pending) clearInterval(wd); return; } if (J.pending || !J.lastRx) return;
+        if (performance.now() - J.lastRx > 5000) { clearInterval(wd); try { conn.close(); } catch (_) {} if (J.again || match.state === 'end') { location.reload(); return; } handOver(J); } }, 1000);
       conn.on('close', () => { if (NET !== J) return; if (J.pending) { J.pending = false; fin(false); return; } if (J.again || match.state === 'end') { setTimeout(() => location.reload(), 800); return; } handOver(J); });
     });
   });
@@ -13890,6 +13893,7 @@ function handOver(C) { if (C.handing) return; C.handing = true;
     if (performance.now() - t0 > 45000) { toast('LOST THE MATCH'); setTimeout(() => location.reload(), 1500); return; }
     setTimeout(step, 800); };
   setTimeout(step, 300 + rank * 300); }
+setInterval(() => { const N = NET; if (!N || !N.host) return; const s = '{"t":"ping"}'; for (const c of N.conns) if (c.open) try { c.send(s); } catch (_) {} }, 1000); // (so the others know the host is still there, even in the lobby)
 function hostWire(peer) {
   peer.on('connection', conn => { conn.on('open', () => {}); conn.on('data', d => { if (typeof d === 'string') hostMsg(conn, JSON.parse(d)); }); conn.on('close', () => hostLeave(conn)); }); }
 function becomeHost(C, gen) { return new Promise(done => { const peer = new Peer(NET_PREFIX + C.code + '-' + gen, { debug: 1 }); let over = false;
@@ -13911,7 +13915,7 @@ function clientMsg(m) {
   const N = NET;
   if (m.t === 'busy') { netStatus('That match is full right now.'); try { sessionStorage.removeItem('nymbo-seat'); } catch (e) {} N.pending = false; if (N.onSeat) N.onSeat(false); return; }
   if (m.list && typeof m.host === 'number') { N.roster = m.list; N.hostIdx = m.host; }
-  if (m.t === 'roster') return;
+  if (m.t === 'roster' || m.t === 'ping') return;
   if (m.t === 'seat') {
     if ((m.world === 'night') !== NIGHT) { // the host plays in the other world: switch to it (the page reloads and re-joins by itself)
       S.world = m.world; saveS(); netStatus(m.world === 'night' ? 'Switching to Aurora night…' : 'Switching to Day…'); N.peer.destroy(); setTimeout(() => location.reload(), 400); return;
