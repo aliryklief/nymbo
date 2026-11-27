@@ -442,7 +442,7 @@ html,body{overflow-x:hidden}#menu{overflow-x:hidden;touch-action:pan-y;overscrol
       <div class="tog"><label for="sReplay">Instant replay</label><input id="sReplay" type="checkbox"></div>
       <div class="tog"><label for="sLand">On-screen controls</label><input id="sLand" type="checkbox"></div>
       <div class="tog"><label for="sMaxQ">Max quality</label><input id="sMaxQ" type="checkbox"></div>
-      <div class="tog"><label for="sNE">Nymbo Engine (draws on a second core)</label><input id="sNE" type="checkbox"></div>
+      <div class="tog"><label for="sNE">Nymbo Engine, test version (draws on a second core)</label><input id="sNE" type="checkbox"></div>
       <div class="tog"><label for="sCap">Frame rate</label><select id="sCap" style="font:600 14px var(--body);padding:4px 8px;border-radius:10px;border:0"><option value="auto">Auto (steady)</option><option value="60">60 locked</option><option value="max">Max (screen)</option></select></div></div>
     <div class="sect"><h3>Testing</h3>
       <div class="tog"><label for="sAllPowers">All powers</label><input id="sAllPowers" type="checkbox"></div>
@@ -23804,7 +23804,7 @@ await __ldStep("15j_space.js", 0.9979, 0.9980);
     // blocks drift past
     for (let k = B.length - 1; k >= 0; k--) { const b = B[k]; b.x += b.vx * dt; b.y += b.vy * dt; b.a += b.va * dt; if (b.x < -80 || b.x > W + 80 || b.y < -80 || b.y > H + 80) B.splice(k, 1); } while (B.length < 16) newBlock(false);
     for (const f of F) { const hw = f.s * .36, hh = f.s * .55;
-      if (f.warp > 0) { f.warp -= dt; if (f.warp <= .35 && !f.out) { f.out = true; const q = PO.filter(p => p !== f.from && p.t > .5 && p.t < p.life)[0]; if (q) { f.x = q.x; f.y = q.y; } } if (f.warp <= 0) f.out = false; continue; } // (in through one, out of another)
+      if (f.warp > 0) { f.warp -= dt; if (f.warp <= .35 && !f.out) { f.out = true; const Q = PO.filter(p => p !== f.from && p.t > .5 && p.t < p.life), q = Q[Math.floor(Math.random() * Q.length)]; if (q) { f.x = q.x; f.y = q.y; } } if (f.warp <= 0) { f.out = false; f.pcool = 4 + Math.random() * 4; const sp = Math.hypot(f.vx, f.vy), a_ = Math.random() * 6.28; if (sp < 20) { f.vx = Math.cos(a_) * 30; f.vy = Math.sin(a_) * 30; } } continue; } // (in through one, out of another; then it floats on for a while before another portal can take it: Ali 27 Nov, one kept bouncing between the same two)
       f.x += f.vx * dt; f.y += f.vy * dt; f.a += f.va * dt; f.va = clamp(f.va + (Math.random() - .5) * dt * .6, -3.2, 3.2); // (tumbling slowly round and round, sometimes upside down)
       if (f.x > W - hw && f.vx > 0 || f.x < hw && f.vx < 0) { f.vx = -f.vx; f.blink = -.01; f.va += (Math.random() - .5) * 3; } // (a knock off the wall sets it spinning)
       if (f.y > H - hh && f.vy > 0 || f.y < hh && f.vy < 0) { f.vy = -f.vy; f.blink = -.01; f.va += (Math.random() - .5) * 3; }
@@ -23812,7 +23812,7 @@ await __ldStep("15j_space.js", 0.9979, 0.9980);
       if ((f.blink -= dt) < -.13) f.blink = 1.8 + Math.random() * 3.5;
       if ((f.look -= dt) <= 0) { f.look = 3 + Math.random() * 5; f.flip = -f.flip; }
       f.wa += Math.hypot(f.vx, f.vy) * dt * .08 * Math.sign(f.vx || 1);
-      for (const p of PO) if (p.t > .6 && p.t < p.life && Math.hypot(p.x - f.x, p.y - f.y) < p.r * .45 && PO.length > 1 && Math.random() < .5) { f.warp = .7; f.from = p; break; } }
+      if (f.pcool > 0) f.pcool -= dt; else for (const p of PO) if (p.t > .6 && p.t < p.life && Math.hypot(p.x - f.x, p.y - f.y) < p.r * .45 && PO.length > 1 && Math.random() < .5) { f.warp = .7; f.from = p; break; } }
     for (let i = 0; i < F.length; i++) for (let j = i + 1; j < F.length; j++) { const a = F[i], b = F[j]; if (a.warp > 0 || b.warp > 0) continue; const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), m = (a.s + b.s) * .36;
       if (d > 0 && d < m) { const nx = dx / d, ny = dy / d, rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny, o = (m - d) / 2; a.x -= nx * o; a.y -= ny * o; b.x += nx * o; b.y += ny * o; if (rel < 0) { a.vx += rel * nx; a.vy += rel * ny; b.vx -= rel * nx; b.vy -= rel * ny; a.blink = b.blink = -.01; const tw = (Math.random() - .5) * 2.4; a.va += tw; b.va -= tw; } } }
     for (const f of F) { const sp = Math.hypot(f.vx, f.vy), w = clamp(sp, 14, 44); if (sp > 0) { f.vx *= w / sp; f.vy *= w / sp; } } };
@@ -24306,8 +24306,8 @@ await __ldStep("16_ne.js", 0.9998, 1.0000);
 // ============================================================
 const NE = window.NE = { want: false, on: false, ready: false, err: null, stats: {}, frames: 0, skipped: 0, mainMs: 0 };
 { let p = null, q = null; try { p = localStorage.getItem('nymbo-ne2'); q = new URLSearchParams(location.search).get('ne'); } catch (_) {}
-  let slow = null; try { slow = localStorage.getItem('nymbo-ne-slow'); } catch (_) {} NE.V = '5'; NE.force = q === '1';
-  NE.want = q === '1' || (q !== '0' && p !== '0' && slow !== NE.V); /* (on, unless switched off, or this version already turned out slower than the old way on this phone) */
+  let slow = null; try { slow = localStorage.getItem('nymbo-ne-slow'); } catch (_) {} NE.V = '5'; NE.force = q === '1' || p === '1';
+  NE.want = q === '1' || p === '1'; /* (Ali 27 Nov: pieces of blocks went missing with it (a freeze block without its snowflake): off unless switched on in Settings, until it draws everything exactly like the normal way) */
   if (!NE.want && slow === NE.V && p !== '0' && q !== '0') NE.err = 'slower on this phone';
   if (typeof OffscreenCanvas === 'undefined' || !HTMLCanvasElement.prototype.transferControlToOffscreen || typeof Worker === 'undefined') NE.want = false; }
 if (NE.want) {
@@ -24568,7 +24568,7 @@ if (NE.want) {
 }
 
 // the switch in Settings (takes effect when the game restarts)
-{ const el = document.getElementById('sNE'); if (el) { let p = null; try { p = localStorage.getItem('nymbo-ne2'); } catch (_) {} el.checked = p !== '0';
+{ const el = document.getElementById('sNE'); if (el) { let p = null; try { p = localStorage.getItem('nymbo-ne2'); } catch (_) {} el.checked = p === '1';
     const lab = el.parentNode && el.parentNode.querySelector('label'); if (lab && NE.err) lab.textContent = 'Nymbo Engine (off: ' + NE.err + ')';
     el.onchange = () => { try { localStorage.setItem('nymbo-ne2', el.checked ? '1' : '0'); localStorage.removeItem('nymbo-ne-slow'); localStorage.removeItem('nymbo-ne-ab'); } catch (_) {} setTimeout(() => location.reload(), 150); }; } }
 
