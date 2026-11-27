@@ -18925,7 +18925,11 @@ if (CLX) {
   const FLOORB = []; // (where the floors are: no grass grows there)
   { const FR = LABK.rng(2024), fr = (a, b) => a + (b - a) * FR(), parts = {};
     const GREYS = ['#8e9097', '#9a9ca3', '#83858c', '#a3a39c', '#8a8a92', '#9c968c'];
-    let FRES = RES; const slab = (w, d, x, y, z, yaw, tx, tz, col, fam) => { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let g = LABK.paintStone(stoneGeoC(w, d, sd, R, FRES), LABK.shade(new THREE.Color(col), R, .06));
+    /* (Ali 27 Nov, speed: the flagstone floors were the heaviest thing on the map for the graphics chip (well over half its triangles, for slabs
+       seen from above). Each slab is now cut from fewer, larger facets: same stones, colours, chips and layout) */
+    const FQ = (() => { try { const m = /[?&]fres=(\d+),(\d+)/.exec(location.search); if (m) return [+m[1], +m[2]]; } catch (_) {} return null; })();
+    const PAD_RES = FQ ? FQ[1] : Math.min(RES, S.maxq ? 6 : CL_TOUCH ? 4 : 5), FORT_RES = FQ ? FQ[0] : (S.maxq ? 5 : CL_TOUCH ? 3 : 4);
+    let FRES = PAD_RES; const slab = (w, d, x, y, z, yaw, tx, tz, col, fam) => { const sd = Math.floor(FR() * 1e6), R = LABK.rng(sd); let g = LABK.paintStone(stoneGeoC(w, d, sd, R, FRES), LABK.shade(new THREE.Color(col), R, .06));
       g = clean(g); g.rotateX(-Math.PI / 2); g.computeBoundingBox(); const t = g.boundingBox.max.y - g.boundingBox.min.y; g.scale(1, .38 / t, 1); g.scale(1.05, 1, 1.05); g.computeBoundingBox(); g.translate(0, -g.boundingBox.max.y, 0);
       g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(tx, yaw, tz))); g.translate(x, y, z); (parts[fam] = parts[fam] || []).push(famAttrs(g, fam)); };
     function floor(cx, y, cz, inside, cells, o = {}) { // cells: [x,z] integer offsets; inside(x,z): is this cell part of the floor
@@ -18951,12 +18955,12 @@ if (CLX) {
     for (const h of HUBS) { const [cells, inside] = disc(5.6, 1.3); floor(h.x, .03, h.z, inside, cells); padCol(h.x, h.z, RAPIER.ColliderDesc.cylinder(.045, 5.2)); }
     for (const sp of PORTAL_SPOTS) { const cells = []; for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) cells.push([a, b]); const cut = new Set(cells.filter(([a, b]) => Math.abs(a) === 2 && Math.abs(b) === 2 && FR() < .6).map(c => c + '')); floor(Math.round(sp.x), .03, Math.round(sp.z), (x, z) => Math.abs(x) <= 2 && Math.abs(z) <= 2 && !cut.has([x, z] + ''), cells, { miss: .02 }); padCol(Math.round(sp.x), Math.round(sp.z), RAPIER.ColliderDesc.cuboid(2.4, .045, 2.4)); }
     // the forts: the same stone floor inside the walls (a bit simpler, there's a lot of it)
-    FRES = S.maxq ? 9 : CL_TOUCH ? 4 : 6;
+    FRES = FORT_RES;
     for (const t of ['blue', 'red']) { const F = FORT[t], ix = FORT_RX, iz = FORT_RZ, cells = []; /* (right out under the walls) */ for (let x = -ix; x <= ix; x++) for (let z = -iz; z <= iz; z++) cells.push([x, z]);
       const col = r_ => new THREE.Color(GREYS[Math.floor(r_() * GREYS.length)]).lerp(new THREE.Color(t === 'red' ? '#c08a84' : '#8a98b8'), .25).getStyle();
       floor(Math.round(F.x), .03, Math.round(F.z), (x, z) => Math.abs(x) <= ix && Math.abs(z) <= iz, cells, { miss: .03, col });
       padCol(Math.round(F.x), Math.round(F.z), RAPIER.ColliderDesc.cuboid(ix - 1.5, .045, iz - 1.5)); } // (solid inside the walls; under the walls themselves it's just looks)
-    FRES = RES;
+    FRES = PAD_RES;
     // the sky island: a stone floor on top, and a rough rocky underside hanging below it
     if (ISLAND.on) { for (const o of [...scene.children]) if (o.isInstancedMesh && o.geometry === cubeGeo && o.count < 80) { const m = new THREE.Matrix4(); o.getMatrixAt(0, m); if (Math.abs(m.elements[13] - (ISLAND.top - .5)) < .05) scene.remove(o); }
       const [cells, inside] = disc(ISLAND.r + .15, .7); floor(0, ISLAND.top, 0, inside, cells, { miss: .04, col: r_ => ['#a9adb8', '#9a9ea9', '#b4b0a6', '#9c9890'][Math.floor(r_() * 4)] });
