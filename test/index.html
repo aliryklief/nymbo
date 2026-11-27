@@ -19753,6 +19753,8 @@ try { window.__liteAll && window.__liteAll(); BATCH.sync(); window.__plainSync &
   //  so those versions are ready before anyone needs them)
   window.__ghostWarm = () => { try { const gs = typeof nbrGhost === 'function' ? robots.filter(r => r.model && r.model.rigged && r.model.mats) : [];
       const roots = [...robots.map(r => r.model && r.model.g), ...blocks.filter(e => e.animal && e.mesh).map(e => e.mesh)].filter(Boolean);
+      /* (Ali 28 Nov, 1% lows: the first ice strike or nuke of a match built its falling shells' and warning circles' paint right then, a 90 ms stop) */
+      try { if (!window.__strikeWarm) { const W_ = new THREE.Group(); W_.add(iceShell.clone(), nukeShell.clone(), new THREE.Mesh(warnGeo, new THREE.MeshBasicMaterial({ color: 0x8fdcff, transparent: true, opacity: .8, depthWrite: false, side: THREE.DoubleSide }))); W_.position.y = -900; window.__strikeWarm = W_; } roots.push(window.__strikeWarm); } catch (_) {}
       const comp1 = () => { for (const g of roots) try { renderer.compile(g, camera, scene); } catch (_) {} }; /* (built in the background: the chip finishes them while the intro plays) */
       const casters = []; scene.traverse(o => { if (o.isLight && o.castShadow) casters.push(o); });
       const comp = () => { comp1(); for (const l of casters) l.castShadow = false; comp1(); for (const l of casters) l.castShadow = true; }; /* (and the versions for the moments the shadows are a saved picture, with no light casting live shadows) */
