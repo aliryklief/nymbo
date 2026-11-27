@@ -18913,7 +18913,7 @@ if (CLX) {
         if (!m.visible) continue;
         if (!IM || n >= cap) { const keep = IM ? IM.count : 0; make(Math.max(64, Math.ceil(LAB.length * .5), (n + 1) * 2)); if (!IM) return; }
         _S.makeScale(sz.x, sz.y, sz.z).setPosition(sz.cx, sz.cy, sz.cz); _S.premultiply(m.matrix); IM.setMatrixAt(n, _S); _C.setRGB(sz.r, sz.g, sz.b, THREE.LinearSRGBColorSpace); IM.setColorAt(n, _C); n++; }
-      if (IM) { IM.count = n; IM.visible = n > 0; if (n) { IM.instanceMatrix.needsUpdate = true; IM.instanceColor.needsUpdate = true; } } };
+      if (IM) { IM.count = n; IM.visible = n > 0; IM.castShadow = IM.receiveShadow = true; /* (the loose blocks keep their shadows) */ if (n) { IM.instanceMatrix.needsUpdate = true; IM.instanceColor.needsUpdate = true; } } };
     const pH3 = pulseHalos; pulseHalos = function (t) { pH3(t); try { sync(); } catch (e) { noteErr(e); window.__flatInstOff = true; if (IM) IM.visible = false; for (const p of LAB) if (p.mesh && p.mesh.layers.mask === 1 << FL_LAYER) p.mesh.layers.set(0); } }; }
   window.__nymbo && (window.__nymbo.LAB = LAB);
   // ---- the plain boxes under the stones: only the ones still shown are sent to the graphics chip ----
