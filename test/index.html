@@ -13900,7 +13900,7 @@ function becomeHost(C, gen) { return new Promise(done => { const peer = new Peer
   peer.on('error', err => { if (over) return; if (err.type === 'unavailable-id') { over = true; try { peer.destroy(); } catch (_) {} done(false); } });
   peer.on('open', () => { if (over || NET !== C) { try { peer.destroy(); } catch (_) {} done(false); return; } over = true;
     // this phone's world becomes the real one: anything it saw move is loose where it lies; the others' robots are bots until they're back
-    for (const e of blocks) { if (!e.dead && e.body && !e.holder && e.nb && e.nb.length && e.anchored) try { unanchor(e); } catch (_) {} e.nb = null; }
+    for (const e of blocks) { if (!e.dead && e.body && !e.holder && e.anchored && e.spawnPos) { const t = e.body.translation(); if (Math.abs(t.x - e.spawnPos.x) + Math.abs(t.y - e.spawnPos.y) + Math.abs(t.z - e.spawnPos.z) > .08) try { unanchor(e); } catch (_) {} } e.nb = null; } /* (only blocks that really left their place: walls still standing stay locked) */
     NET_MOVED.clear();
     for (const r of robots) { r.remote = false; r.netIn = null; r.nb = null; r.isPlayer = false; if (r.state === 'rag') r.ragT = Math.max(r.ragT || 0, .8); }
     P = robots[C.me]; P.isPlayer = true;
