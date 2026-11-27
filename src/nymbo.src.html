@@ -1398,7 +1398,8 @@ function buildRaised() { // one triangle mesh for all the raised ground (rebuilt
 }
 if (RAISED.size) {
   buildRaised();
-  for (const k of RAISED) { const [cx, cz] = k.split(','); buildChunk(Math.floor(cx / GCH), Math.floor(cz / GCH)); } // (rebuild those chunks without their flat boxes)
+  { const CH_ = new Set(); for (const k of RAISED) { const [cx, cz] = k.split(','); CH_.add(Math.floor(cx / GCH) + ',' + Math.floor(cz / GCH)); } /* (Ali 28 Nov, loading: each chunk was rebuilt once for every raised square in it, often dozens of times over; now once each) */
+    for (const c of CH_) { const [i, j] = c.split(',').map(Number); buildChunk(i, j); if (__ldDue()) await __ldY(); } } // (rebuild those chunks without their flat boxes)
 }
 const keepClear = [ // places scenery must avoid
   ...Object.values(FORT).map(f => ({ x: f.x, z: f.z, r: 25 })),
