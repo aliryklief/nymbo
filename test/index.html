@@ -8217,13 +8217,15 @@ const PACE = window.PACE = { lock: false, next: 0, late: 0, n: 0, tries: 0, hold
       if (this.n >= 240) { if (this.late / this.n > .06) { this.lock = true; this.tries++; this.holdT = 20 * Math.pow(2, this.tries - 1); } this.n = this.late = 0; } } // (more than 6% of frames late over ~2 s: settle at 60; each retry waits twice as long)
     else if ((this.holdT -= raw) <= 0 && this.tries < 4) { this.lock = false; this.n = this.late = 0; } } };
 const ERRS = window.__ERRS = []; const noteErr = e => { const m = String(e && e.message || e).slice(0, 120) + ' @' + String(e && e.stack || '').split('\n')[1]?.trim().replace(/^at /, '').replace(/https?:\/\/[^ )]*\//g, '').slice(0, 80); const o = ERRS.find(x => x.m === m); if (o) o.n++; else if (ERRS.length < 8) { ERRS.push({ m, n: 1, map: MAP, at: Math.round(performance.now() / 1000) }); console.error(e); } };
-function frame() {
+function frame(ts) {
   if (window.HOLD || !window.__built) { last = now(); requestAnimationFrame(frame); return; } // (test hook; and the world is still being built in steps behind the loading screen)
   // (Ali 24 Nov, steady frames: a rock-steady 60 feels smoother than 120 that keeps dropping to 37. On a 120 Hz screen,
   //  when the game can't keep up (or the setting says 60), every other screen refresh is skipped so each frame lasts exactly
   //  two refreshes; Auto goes back up to 120 now and then to see if the phone copes again)
   if (PACE.skip(now())) { requestAnimationFrame(frame); return; }
-  const t = now(), raw = (t - last) / 1000, dt = Math.min(.05, raw); last = t; PACE.saw(raw);
+  // (Ali 28 Nov, 1% lows: the frame's time is the screen refresh it belongs to (the browser's own timestamp), not the moment
+  //  this code happened to start, which wobbled by a few ms with whatever ran first. Steadier steps: smoother movement)
+  const n_ = now(), t = typeof ts === 'number' && ts > last && n_ - ts < 40 ? ts : n_, raw = (t - last) / 1000, dt = Math.min(.05, raw); last = t; PACE.saw(raw);
   // automatic quality: only judged on real play (not while loading, not on one-off hiccups like a shader warming up or the
   // app coming back from the background), only stepped down when it's slow for a good while, and stepped back UP when
   // the device copes again. (It used to drop on a few slow frames at the start and never come back: even a top phone
@@ -18556,7 +18558,11 @@ function stoneMaterial(base) {
       vec3 stN0 = normalize(objectNormal), stT1 = normalize(cross(stN0, abs(stN0.y) < .9 ? vec3(0, 1, 0) : vec3(1, 0, 0))), stT2 = cross(stN0, stT1);
       vec3 stP = stD(position), stA = stD(position + stT1 * .02), stB = stD(position + stT2 * .02), stCr = cross(stA - stP, stB - stP), stNN = dot(stCr, stCr) > 1e-12 ? normalize(stCr) : stN0;
       if (dot(stNN, stN0) < 0.) stNN = -stNN;
-      if (aSt.w > 2.5 && aSt.w < 3.5) stNN = normalize(mix(stNN, stN0, .65)); /* (leafy tops: the rounded edges lit almost like the faces, so where two leaf blocks meet there's no bright line) */
+      if (aSt.w > 2.5 && aSt.w < 3.5) { /* (Ali 28 Nov, "make the tree tops smooth on the corners, it looks chipped": the same rounded block, but every
+           point is put exactly on a perfectly round edge and given that edge's true direction for the light, so the corners
+           shade smoothly instead of in flat chipped-looking facets. The shape and size are as before) */
+        vec3 lp = position * 1.05, inn = clamp(lp, vec3(-.525 + .147), vec3(.525 - .147)), dd = lp - inn; float L = length(dd);
+        vec3 dir = L > 1e-5 ? dd / L : stN0; stP = inn + dir * .147; stNN = normalize(mix(dir, stN0, .25)); }
       objectNormal = stNN;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
       transformed = stP; vSp = position; vSm = stP * stS; vSt = aSt; vNo = stN0;`);
