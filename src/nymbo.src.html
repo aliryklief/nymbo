@@ -1806,7 +1806,7 @@ function updateLaunchers(dt, visualOnly = false) {
   if (visualOnly) return; // (a joined phone only shows the lights; the host does the launching)
   for (let _q1 = 0; _q1 < robots.length; _q1++) { const r = robots[_q1];
     if (r.state !== 'play' || r.frozenT > 0) continue;
-    const c = rPos(r), lv = r.body.linvel(), prev = r.padPrev || c; r.padPrev = c.clone();
+    const c = rPos(r), lv = r.body.linvel(), prev = r.padPrev ? (r._padPv || (r._padPv = new THREE.Vector3())).copy(r.padPrev) : c; r.padPrev = (r.padPrev || new THREE.Vector3()).copy(c);
     // the pad can fire again as soon as you're back on the ground (the old 2.9 s lock outlasted the flight, so landing back on
     // a pad sometimes did nothing), and it checks the path since last frame, so a fast robot or a slow frame can't skip over it
     const ready = (r.padT || 0) <= 0 || (r.grounded && r.padT < 2.4);
@@ -2808,7 +2808,7 @@ function unanchor(e) {
 const supRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }); let supI = 0;
 function hasSupport(e) {
   const t = e.body.translation(), hy = e.anchored ? e.dims.y / 2 : e.size * .75, ix = Math.max(0, e.dims.x / 2 - .12), iz = Math.max(0, e.dims.z / 2 - .12);
-  for (const [dx, dz] of [[0, 0], [-ix, -iz], [ix, -iz], [-ix, iz], [ix, iz]]) {
+  for (let k = 0; k < 5; k++) { const dx = k === 0 ? 0 : (k & 1 ? -ix : ix), dz = k === 0 ? 0 : (k < 3 ? -iz : iz); /* (no little lists made each check) */
     supRay.origin.x = t.x + dx; supRay.origin.y = t.y; supRay.origin.z = t.z + dz;
     if (world.castRay(supRay, hy + .2, true, undefined, undefined, undefined, e.body)) return true;
   }
