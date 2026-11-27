@@ -19297,12 +19297,16 @@ if (CLX) {
 
 }
 
+await __ldY(); /* (a breather) */
 // ---- cows and sheep in proportion (Ali): a cow is a big animal, a sheep a small one ----
+await __ldY(); /* (a breather) */
 { const K_ = { cow: 1.3, sheep: .97 }; /* (each keeps the weight it always had) */ /* (Ali: cows at their old size, the size they look on your head) */
   for (let _q1065 = 0, e; _q1065 < blocks.length && ((e = blocks[_q1065]), true); _q1065++) if (e.kind === 'animal' && K_[e.animal] && K_[e.animal] !== 1 && e.body) { const k = K_[e.animal], t = e.body.translation(), r = e.body.rotation();
     dropBody(e); e._massK = k * k * k; e.dims.multiplyScalar(k); e.size = Math.max(e.dims.x, e.dims.y, e.dims.z); e.rad = (e.dims.x + e.dims.y + e.dims.z) / 6; e.mesh.scale.multiplyScalar(k);
     makeBody(e, V(t.x, t.y + (k - 1) * e.dims.y / (2 * k), t.z), new THREE.Quaternion(r.x, r.y, r.z, r.w)); if (e.col) e.col.setDensity(9 / e._massK); if (e.upright !== false) { e.upright = true; e.body.setEnabledRotations(false, true, false, true); } } } // (stands upright again, as it did before)
+await __ldY(); /* (a breather) */
 // ---- the pick-up outline on animals: a shell round the animal you actually see (its new model), not the old box parts ----
+await __ldY(); /* (a breather) */
 { const hullA = new THREE.MeshBasicMaterial({ color: 0xffe14a, side: THREE.BackSide, transparent: true, depthWrite: false });
   hullA.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += normalize(normal) * .06;'); }; hullA.customProgramCacheKey = () => 'hullA';
   const ah = animalHull; animalHull = function (e) { if (!e.mesh) return ah(e); if (!e._hullA) { const list = [], src = [];
@@ -19311,11 +19315,14 @@ if (CLX) {
       e._hullA = list.length ? list : ah(e); }
     hullA.color.copy(hullMat.color); hullA.opacity = hullMat.opacity; return e._hullA; }; }
 // carried on your head, a cow or sheep goes back to its old size (a big cow on your head blocked the view)
+await __ldY(); /* (a breather) */
 { const rh = refreshHeld; refreshHeld = function (r) { rh(r); for (const x of r.stack) if (x.kind === 'animal' && x._massK && x.mesh) x._carried = true;
     for (let _q1066 = 0, e; _q1066 < blocks.length && ((e = blocks[_q1066]), true); _q1066++) if (e.kind === 'animal' && e._massK && e.mesh) { const held = robots.some(q => q.heldAnimal === e), k = Math.cbrt(e._massK), want = held ? 1 : k; if (Math.abs(e.mesh.scale.x - want) > 1e-3) e.mesh.scale.setScalar(want); } }; }
 // a bigger cow isn't a heavier wrecking ball, a smaller sheep isn't lighter: every animal keeps the weight it always had
+await __ldY(); /* (a breather) */
 { const mb = makeBody; makeBody = function (e, ...a) { mb(e, ...a); if (e.kind === 'animal' && e._massK && e.col) e.col.setDensity(9 / e._massK); }; }
 
+await __ldY(); /* (a breather) */
 // ---- the portals and the flag gates: a flowing liquid screen (like the gold block's insides), still see-through ----
 function liquidScreen(deep, mid, hi, square, pal) {
   const P4 = (pal || [deep, mid, hi, hi]).map(c => new THREE.Color(c));
@@ -19338,26 +19345,32 @@ function liquidScreen(deep, mid, hi, square, pal) {
         float al = (.42 + .4 * smoothstep(.3, .78, f)) * smoothstep(1., ${square ? '.9' : '.86'}, r);
         gl_FragColor = vec4(c, al * op); }` });
   return m; }
+await __ldY(); /* (a breather) */
 { const LIQ = [];
   if (!DESERT && !VOLC && !PLAT) { const pm = liquidScreen('#3d0a8a', '#a44aff', '#ffd0ff', CLX); for (const P of PORTALS) { if (P.disc) P.disc.material = pm; if (P.arch) P.arch.material = pm; } LIQ.push([pm, null]); } // (classic: the screen fills an arch, so its edge fades square)
   if (CLX) for (const team of ['blue', 'red']) { const G = GATES[team]; if (!G || !G.glow) continue; const m = liquidScreen('#000000', '#888888', team === 'blue' ? '#c8f0ff' : '#ffe0c0', true, TEAMS[team].cols); m.opacity = G.glow.material.opacity; G.glow.material = m; LIQ.push([m, G.glow]); }
   const pH = pulseHalos; let last = 0; pulseHalos = function (tm) { pH(tm); const dt = clamp((tm - (last || tm)) / 1000, 0, .05); last = tm; for (const [m] of LIQ) { m.uniforms.t.value += dt; m.uniforms.op.value = Math.min(1, (m.opacity ?? 1) * 1.6); } }; }
 // get every material ready while the game loads, so nothing pops in or stutters the first time you see it
 window.__clt0 = performance.now() - CL_T0;
+await __ldY(); /* (a breather) */
 if (CLX) try { renderer.compile(scene, camera); } catch (_) {}
 // a hazier distance on the classic stage: the haze starts closer and is thicker by the far edge (whatever the camera does)
+await __ldY(); /* (a breather) */
 if (CLX) { const ob = scene.onBeforeRender; scene.onBeforeRender = function (...a) { if (ob) ob.apply(this, a); if (scene.fog && !(PW && PW.dark > 0)) { scene.fog.near *= .62; scene.fog.far *= .78; } };
   const ar = scene.onAfterRender; scene.onAfterRender = function (...a) { if (ar) ar.apply(this, a); if (scene.fog && !(PW && PW.dark > 0)) { scene.fog.near /= .62; scene.fog.far /= .78; } }; }
 window.__clt = performance.now() - CL_T0;
 // shadows on the rounded stones: a little more offset so they don't streak with lines (shadow acne)
+await __ldY(); /* (a breather) */
 if (CLX) { sun.shadow.bias = -0.0009; sun.shadow.normalBias = 0.06; }
 // the Nym casts a real sun shadow (body, arms, ball and whatever it carries), so its shadow matches the trees' and joins
 // up with the block on its head (they used to cast none; only the round patch underneath stood in for one)
+await __ldY(); /* (a breather) */
 { const nm = nymMeshModel; nymMeshModel = function (...a) { const m = nm(...a); if (m && m.g) m.g.traverse(o => { if (o.isMesh && o.material && o.material.visible !== false && !o.material.transparent) o.castShadow = true; }); if (m && m.held) m.held.castShadow = true; return m; };
   for (let _q1067 = 0, r; _q1067 < robots.length && ((r = robots[_q1067]), true); _q1067++) if (r.model && r.model.g) r.model.g.traverse(o => { if (o.isMesh && o.material && o.material.visible !== false && !o.material.transparent) o.castShadow = true; }); }
 
 // every solid thing casts a sun shadow: power blocks and flag blocks (their glassy / liquid cores too, not just the frame),
 // whatever a Nym carries, and the centre pole's scoreboard. Glows, outlines and see-through screens stay shadowless.
+await __ldY(); /* (a breather) */
 { const solid = o => { if (!o.isMesh || o.castShadow || o.userData.tinySh) return false; /* (tinySh: too small to make a shadow, see SPEED) */ const m = Array.isArray(o.material) ? o.material[0] : o.material; return m && m.visible !== false && !m.transparent && m.type !== 'MeshBasicMaterial' && !(m.emissiveIntensity > 1); };
   const cast = root => root && root.traverse(o => { if (solid(o)) o.castShadow = true; });
   if (MONUMENT.g) cast(MONUMENT.g);
@@ -19368,6 +19381,7 @@ if (CLX) { sun.shadow.bias = -0.0009; sun.shadow.normalBias = 0.06; }
     for (let i = k; i < robots.length; i += 20) { const r = robots[i]; if (r.model && r.model.g) cast(r.model.g); } }; }
 // simpler far away: a Nym or an animal more than ~18 m off swaps its round parts (ball, body, arms, legs) for versions
 // with fewer corners; up close they swap straight back. At that distance you can't see the difference, the phone can.
+await __ldY(); /* (a breather) */
 { const LOW = new Map(), FAR = 18 * 18, _c = new THREE.Vector3(), _p = new THREE.Vector3();
   const remake = (g, kk) => { const P = g.parameters, t = g.type, k = kk || .4; if (!P) return null;
     if (t === 'SphereGeometry') return new THREE.SphereGeometry(P.radius, kk ? P.widthSegments : Math.max(10, Math.round(P.widthSegments * k)), kk ? P.heightSegments : Math.max(6, Math.round(P.heightSegments * k)), P.phiStart, P.phiLength, P.thetaStart, P.thetaLength);
@@ -19401,11 +19415,13 @@ if (!S.maxq && matchMedia('(pointer: coarse)').matches) { const done = new WeakS
     if (m.isMeshPhysicalMaterial && (m.clearcoat > 0 || m.sheen > 0)) { if (window.__built && window.__liteLog) { let p_ = []; for (let a_ = o; a_; a_ = a_.parent) p_.push(a_.type + (a_.userData.batch ? 'B' : '') + (a_.isSkinnedMesh ? 'S' : '')); window.__liteLog.push(p_.join('<')); } if (m.clearcoat > 0) m.roughness = Math.max(.12, m.roughness * (1 - .3 * m.clearcoat)); m.clearcoat = 0; m.sheen = 0; m.needsUpdate = true; } } });
   lite(scene); window.__liteAll = () => { lite(scene); for (const L of Object.values(SKIN.POOL || {})) for (const g of L) lite(g); for (const S of BATCH.slots.values()) if (S.mat) lite(new THREE.Mesh(S.geo, S.mat)); }; /* (everything made so far, spares too: done before the warm-up, not a second into the match) */
   let k = 0; const pH = pulseHalos; pulseHalos = function (t) { pH(t); __hkM("12m_classic"); k = (k + 1) % 30; const C = scene.children; for (let i = k; i < C.length; i += 30) lite(C[i]); }; } /* (Ali 23 Nov, smoothness: a thirtieth of the world each frame instead of all of it every 30th frame) */
+await __ldY(); /* (a breather) */
 // ---- shadows of things that never move are drawn once ----
 // The sun's shadow picture used to be redrawn from scratch every frame: every stone, floor, gate and fence, again and
 // again. Now the still things are drawn once into a bigger saved shadow picture round you; each frame the right part of
 // it is copied in and only the moving things (Nyms, animals, blocks, trees you can pick up, loose stones) are drawn on
 // top. A stone knocked loose has just its own little patch of the saved picture redrawn. (Max quality: the old way.)
+await __ldY(); /* (a breather) */
 if (CLX && renderer.capabilities.isWebGL2) try { /* (Ali 26 Nov: on max quality too now, but whether it's used is decided by the phone's own speed test (it was slower on the test computer, maybe not on the phone): 'nymbo-shtune' = saved / live) */
   { let pref = null; try { pref = localStorage.getItem('nymbo-shtune' + (S.maxq ? '-max' : '')); } catch (_) {} if (pref === 'live' || (!pref && S.maxq)) window.__noStaticSh = true; else if (pref === 'saved') window.__noStaticSh = false; window.__shTune = true; }
   const SH = sun.shadow, N0 = SH.mapSize.x, NS = N0 * 2, L_ST = 5, L_DY = 6; SH.camera.updateProjectionMatrix(); /* (its size and reach were set without telling it: three.js only does that when it makes the picture itself) */
@@ -19481,9 +19497,11 @@ if (CLX && renderer.capabilities.isWebGL2) try { /* (Ali 26 Nov: on max quality 
 } catch (err) { console.warn('static shadows', err); }
 
 
+await __ldY(); /* (a breather) */
 // ---- a carried animal floats above your head in a haze of your colour, held there by a zap from your antenna ----
 // (Ali, 15 Nov: the animal sat right on the antenna and looked odd; now it hovers half a metre up, wrapped in two soft
 //  shells of the carrier's own colour, with a flickering bolt from the antenna tip to its belly)
+await __ldY(); /* (a breather) */
 { const LIFT = .5, _a = new THREE.Vector3(), _b = new THREE.Vector3(), _bb = new THREE.Box3(), _c3 = new THREE.Vector3(), _cam = new THREE.Vector3(), _w = new THREE.Color(0xffffff);
   const shellMat = (off, op) => { const m = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide, transparent: true, opacity: op, depthWrite: false });
     m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += normalize(normal) * ' + off.toFixed(3) + ';'); }; m.customProgramCacheKey = () => 'haze' + off; m.userData.op = op; return m; };
@@ -19516,11 +19534,13 @@ if (CLX && renderer.capabilities.isWebGL2) try { /* (Ali 26 Nov: on max quality 
     else { z.pts[0].copy(_a); z.pts[6].copy(B); }
     bolt(z.glow, _a, B, .045, z.pts); bolt(z.core, _a, B, .016, z.pts);
   } catch (_) {} return out; }; }
+await __ldY(); /* (a breather) */
 // ---- warm-up behind the loading screen: everything is drawn once (things off screen and hidden ones too), so every
 //      shape, picture and look is already on the graphics chip when the match starts, instead of the first time it's
 //      seen (that was the stutter as the match began and you ran out of the fort) ----
 // (first: the effects that used to be made the first time they were needed - the reload burst, the zap that brings a block
 //  to your head, the hole bolt, the carried-animal haze and zap - are made now for every Nym and animal, then hidden)
+await __ldY(); /* (a breather) */
 try { const tri = () => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, .01, 0, 0, 0, .01, 0], 3)); return g; };
   const glowSprite = () => { const s_ = new THREE.Sprite(new THREE.SpriteMaterial({ map: nbrGlowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); s_.renderOrder = 3; s_.visible = false; s_.userData.warm = 1; scene.add(s_); return s_; };
   for (let _q169 = 0; _q169 < robots.length; _q169++) { const r = robots[_q169]; const M = r.model; if (!M || !M.ant) continue;
@@ -19528,6 +19548,7 @@ try { const tri = () => { const g = new THREE.BufferGeometry(); g.setAttribute('
     if (!M.zapBolt) { M.zapBolt = new THREE.Mesh(tri(), NBR_ZAPM.clone()); M.zapBolt.frustumCulled = false; M.zapBolt.renderOrder = 3; M.zapBolt.visible = false; M.zapBolt.userData.warm = 1; scene.add(M.zapBolt); M.zapFlash = glowSprite(); }
     if (!M.holeBolt) { M.holeBolt = new THREE.Mesh(tri(), NBR_ZAPM.clone()); M.holeBolt.frustumCulled = false; M.holeBolt.renderOrder = 3; M.holeBolt.visible = false; M.holeBolt.userData.warm = 1; scene.add(M.holeBolt); M.holeZ = 0; } }
   if (window.__prepCarry) window.__prepCarry(); } catch (err) { console.warn('prepare effects', err); }
+await __ldY(); /* (a breather) */
 try { const spares = []; for (const L of Object.values(SKIN.POOL || {})) for (const g of L) { scene.add(g); spares.push(g); } /* (the spare designs too) */
   const culled = [], hidden = []; scene.traverse(o => { if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; } if (!o.visible && o.userData.warm) { hidden.push(o); o.visible = true; } });
   try { renderer.compile(scene, camera); } catch (_) {} await __progWait();
