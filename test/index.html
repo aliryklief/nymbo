@@ -8257,6 +8257,7 @@ function frame(ts) {
         Object.defineProperty(sh, 'autoUpdate', { configurable: true, get: () => au && !window.__shOffState, set: v => { au = v; } });
         Object.defineProperty(sh, 'needsUpdate', { configurable: true, get: () => nu && !window.__shOffState, set: v => { nu = v; } }); sh.__i0 = sh.intensity; }
       window.__shOffState = !!off; sh.intensity = off ? 0 : sh.__i0; sun.castShadow = true; }
+    window.__shOff = shOff;
     // (Ali 24 Nov: a blast's few busy seconds used to make the picture go blurry and then sharp again, each change a
     //  stall of its own. Now only slowness that lasts ~6 seconds lowers the sharpness, and it comes back after ~10 smooth ones)
     if (perf.slow >= 6 && perf.level < (per < 1 / 80 && avg < 1 / 50 ? (S.cap === 'max' ? 3 : 2) : 4)) { apply(perf.level + 1); perf.slow = 0; } /* (chasing 120: drop sharpness at most two notches, keep shadows; only a game that's slow even for 60 goes further) */ // (slow for ~3 seconds of play in a row)
