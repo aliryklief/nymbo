@@ -24696,6 +24696,12 @@ await __ldStep('end', 1, 1); window.__built = true; __ldBar(1);
 // (Ali 27 Nov, "some shadows were missing from the towers": the saved shadow picture of the still things could be taken part-way
 //  through loading, before everything was in place. It's taken again now everything is built, and again as each match starts)
 try { window.__shRebuild && window.__shRebuild(); } catch (_) {}
+// (testing aid: a list of stages in sessionStorage 'nymbo-sweep' runs the benchmark on each in turn and keeps the results)
+try { const SW = JSON.parse(sessionStorage.getItem('nymbo-sweep') || 'null'); if (SW) { const iv = setInterval(() => { if (!window.BENCH || !BENCH.done) return; clearInterval(iv);
+  const t = document.body.innerText, i = t.indexOf('Average'), res = JSON.parse(localStorage.getItem('nymbo-sweep-res') || '{}');
+  res[MAP] = { card: t.slice(i, i + 110).replace(/\s+/g, ' '), rep: String(window.__lag ? __lag.report() : '').slice(0, 2600), ld: __LD.G || [], gaps: (window.__GAPS || []).filter(g => g[3] !== 'load').slice(0, 6) };
+  localStorage.setItem('nymbo-sweep-res', JSON.stringify(res)); const next = SW.shift();
+  if (next) { sessionStorage.setItem('nymbo-sweep', JSON.stringify(SW)); localStorage.setItem('nymbo-map', next); sessionStorage.setItem('nymbo-bench', '1'); location.href = location.pathname + '?lagdbg=1&v=' + Date.now(); } else sessionStorage.removeItem('nymbo-sweep'); }, 2000); } } catch (_) {}
 if (window.__ldFinish) window.__ldFinish(); else setTimeout(() => { document.getElementById('loading').hidden = true; }, 150);
 
 window.__ev = s => eval(s);
