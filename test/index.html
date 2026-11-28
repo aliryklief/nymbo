@@ -895,6 +895,9 @@ const plStaticAt = (x, z) => { for (const o of PL_DEF) if (!o.mv && Math.abs(x -
 // ---------------- renderer / scene ----------------
 const stage = $('stage');
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+/* (?lagdbg: slow pictures that had to build shaders are written down with where they were drawn from) */
+if (/lagdbg/.test(location.search)) { window.__SLOWR = []; const r0 = renderer.render.bind(renderer); renderer.render = function (sc, cam) { const t = performance.now(), n0 = renderer.info.programs.length; r0(sc, cam); const d = performance.now() - t, n = renderer.info.programs.length - n0;
+  if (d > 40 && window.__SLOWR.length < 40) window.__SLOWR.push([Math.round(t), Math.round(d), n, (window.__LD && __LD.cur) || '', String(new Error().stack).split('\n').slice(2, 5).map(x => x.replace(/.*:(\d+):\d+\)?$/, '$1')).join('<'), renderer.getRenderTarget() ? 'rt' : 'scr']); }; }
 renderer.setPixelRatio(Math.min(devicePixelRatio, S.maxq ? 2.25 : 1.75)); // (speed, Ali 18 Nov: phones like the Fold are ~2.6x; drawing every pixel at that size was most of the slowness. Max quality: 2.25x) // (Settings → Max quality: full sharpness on high-res screens)
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // soft shadow edges (no stair-steps)
@@ -1416,7 +1419,8 @@ const keepClear = [ // places scenery must avoid
   ...(MAP === 'sky' ? STRIP_SPOTS.map(S_ => ({ x: S_.x + S_.dx * 4, z: S_.z + S_.dz * 4, r: 8 })) : []),
   ...(ICEMAP ? [] : PORTAL_SPOTS).map(p => { const L = Math.hypot(p.x, p.z); return { x: p.x - p.x / L * 8.5, z: p.z - p.z / L * 8.5, r: 10 }; }), // the pastures
 ];
-const clearAt = (x, z, pad = 0) => (!TERRAIN || pad < 0 || TH(x, z) < .05 || pad === 2) && keepClear.every(k => Math.hypot(x - k.x, z - k.z) > k.r + pad) && Math.abs(x) < MX - 3 && Math.abs(z) < MZ - 3 && (!SHAPED || inShape(x, z, 3)) && chasmDist(x, z) > 2.5 + Math.max(0, pad);
+const kcFree = (x, z, pad) => { for (let i = 0; i < keepClear.length; i++) { const k = keepClear[i], dx = x - k.x, dz = z - k.z, r = k.r + pad; if (r > 0 && dx * dx + dz * dz <= r * r) return false; } return true; }; /* (no little function made on every check) */
+const clearAt = (x, z, pad = 0) => (!TERRAIN || pad < 0 || TH(x, z) < .05 || pad === 2) && kcFree(x, z, pad) && Math.abs(x) < MX - 3 && Math.abs(z) < MZ - 3 && (!SHAPED || inShape(x, z, 3)) && chasmDist(x, z) > 2.5 + Math.max(0, pad);
 // trees are made of real blocks now (built in the blocks file, asleep until something hits them)
 const TREES = [];
 // the toy train's track round the edge of the toy room (14r): nothing gets put on it
@@ -2153,11 +2157,11 @@ function buildTemple(team) {
 // ---- every frame (called from the jungle's update in 09p) ----
 // (Ali 23 Nov, speed: the two stone balls used to ask the physics engine where every one of the ~1600 blocks was, every
 //  frame. A block that's locked in place doesn't move, so its spot is remembered for a moment instead)
-function jmBPos(e, t) { if (!e.anchored) return e.body.translation(); const c = e._jmP; if (c && c.b === e.body && c.t > t) return c; const p = e.body.translation(); return e._jmP = { x: p.x, y: p.y, z: p.z, b: e.body, t: t + .4 + Math.random() * .2 }; }
+function jmBPos(e, t) { if (!e.anchored) return e.body.translation(); const c = e._jmP; if (c && c.b === e.body && c.t > t) return c; const p = e.body.translation(); const o = e._jmP || (e._jmP = {}); o.x = p.x; o.y = p.y; o.z = p.z; o.b = e.body; o.t = t + .4 + Math.random() * .2; return o; } /* (one note per block, re-used: less memory to clean up) */
 // (and the balls only look at the blocks in the few squares round them: the blocks are sorted into 4 m squares once a second;
 //  loose ones are always checked)
 let jmG = null, jmGT = 0, jmLoose = []; const jmNearOut = [];
-function jmNear(x, z, t) { if (!jmG || t > jmGT) { jmG = new Map(); jmGT = t + 1; jmLoose = [];
+function jmNear(x, z, t) { if (!jmG || t > jmGT) { if (!jmG) jmG = new Map(); else for (const L of jmG.values()) L.length = 0; jmGT = t + 1; jmLoose.length = 0;
     for (let _q2 = 0; _q2 < blocks.length; _q2++) { const e = blocks[_q2]; if (e.dead || !e.body || e.kind === 'flag' || e.kind === 'animal') continue; if (!e.anchored) { jmLoose.push(e); continue; } const p = jmBPos(e, t), k = Math.floor(p.x / 4) * 4096 + Math.floor(p.z / 4); let L = jmG.get(k); if (!L) jmG.set(k, L = []); L.push(e); } }
   jmNearOut.length = 0; for (const e of jmLoose) jmNearOut.push(e); const ci = Math.floor(x / 4), cj = Math.floor(z / 4);
   for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) { const L = jmG.get((ci + a) * 4096 + cj + b); if (L) for (const e of L) jmNearOut.push(e); } return jmNearOut; }
@@ -2835,13 +2839,13 @@ function checkSupport() {
 const ANCH = { map: new Map(), dirty: true, at: 0 };
 function anchCells() {
   if (!ANCH.dirty && now() - ANCH.at < 1500) return ANCH.map;
-  ANCH.map.clear();
-  for (let _q1002 = 0, b; _q1002 < blocks.length && ((b = blocks[_q1002]), true); _q1002++) if (b.anchored && b.body && !b.dead) { const t = b.body.translation(); b.ap = { x: t.x, y: t.y, z: t.z }; const k = Math.floor(t.x / 2) + ',' + Math.floor(t.z / 2); let l = ANCH.map.get(k); if (!l) ANCH.map.set(k, l = []); l.push(b); }
+  for (const l of ANCH.map.values()) l.length = 0; /* (lists re-used, number keys: much less memory thrown away) */
+  for (let _q1002 = 0, b; _q1002 < blocks.length && ((b = blocks[_q1002]), true); _q1002++) if (b.anchored && b.body && !b.dead) { const t = b.body.translation(), ap = b.ap || (b.ap = {}); ap.x = t.x; ap.y = t.y; ap.z = t.z; const k = Math.floor(t.x / 2) * 8192 + Math.floor(t.z / 2); let l = ANCH.map.get(k); if (!l) ANCH.map.set(k, l = []); l.push(b); }
   ANCH.dirty = false; ANCH.at = now(); return ANCH.map;
 }
 function anchoredNear(x, z, R) {
   const m = anchCells(), out = [];
-  for (let i = Math.floor((x - R) / 2); i <= Math.floor((x + R) / 2); i++) for (let j = Math.floor((z - R) / 2); j <= Math.floor((z + R) / 2); j++) { const l = m.get(i + ',' + j); if (l) for (const b of l) if (b.anchored && b.body && !b.dead) out.push(b); }
+  for (let i = Math.floor((x - R) / 2); i <= Math.floor((x + R) / 2); i++) for (let j = Math.floor((z - R) / 2); j <= Math.floor((z + R) / 2); j++) { const l = m.get(i * 8192 + j); if (l) for (const b of l) if (b.anchored && b.body && !b.dead) out.push(b); }
   return out;
 }
 function unanchorAround(p, rad, skip) {
@@ -7082,7 +7086,7 @@ function removeDog(D, how) {
   if (how === 'blast') { fxDebris(at, 0xc27a3a, 22, 8); fxDebris(at, 0x6b3e1c, 10, 6); sfx('poof', at); toast('THE DOG GOT BLOWN UP'); }
   else if (how) fxBurst(at, 0xd08a45, 1.2, .3);
   if (D.fight) { scene.remove(D.fight.cloud); D.fight.r = null; } if (D.target && D.target.inFight) { D.target.inFight = null; D.target.model.g.visible = true; }
-  scene.remove(D.m.g); if (D.ice) scene.remove(D.ice); if (D.bone.parent) D.bone.parent.remove(D.bone); scene.remove(D.glow); unBone(D);
+  scene.remove(D.m.g); if (window.__dogPool && window.__dogPool.length < 2 && !D.m.g.parent) window.__dogPool.push(D.m); if (D.ice) scene.remove(D.ice); if (D.bone.parent) D.bone.parent.remove(D.bone); scene.remove(D.glow); unBone(D);
   if (D.fetch) { const fb = D.fetch.b; if (fb && fb.boneOf) unboneBlock(fb); else { scene.remove(D.fetch.mesh); D.fetch = null; } } /* (the dog's gone: its bone turns back into the block it was) */
   DOGS.splice(DOGS.indexOf(D), 1);
 }
@@ -15274,6 +15278,7 @@ if (DESERT) {
       }` }));
   const qs = new THREE.Scene(); qs.add(q); const qc = new THREE.Camera(); q.frustumCulled = false;
   HDW.haze = { U, q, qs, qc, rt: null };
+  window.__hazeCompile = () => { if (!S.haze) return; const rt_ = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType }); const r0 = renderer.getRenderTarget(); renderer.setRenderTarget(rt_); try { renderer.compile(scene, camera); } finally { renderer.setRenderTarget(r0); rt_.dispose(); } renderer.compile(qs, qc); }; /* (the haze draws the world into a picture first: those shaders asked for while loading) */
   const ds0 = drawScene;
   drawScene = function () {
     const H = HDW.haze, on = S.haze && perf.level < 2 && !window.FAST && renderer.capabilities.isWebGL2;
@@ -17454,7 +17459,7 @@ function makeAnimals(THREE, MERGE_) {
   //  out the same, so the first one is fitted properly and where each part ended up is written down; the rest copy it.
   //  A part only copies if it started from exactly the same spot, otherwise it's fitted the slow way.)
   // (and that note is kept on the phone too, so even the first sheep is quick next time; a new version of the game starts afresh)
-  const PFK = 'nymbo-fit-' + (window.NYMBO_VER || '0') + '-' + (matchMedia('(pointer: coarse)').matches ? 'm' : 'd'); let PFIT = {}; let REC = null;
+  const PFK = 'nymbo-fit-z1-' + /* (Ali 28 Nov, loading: this saved fitting used to be thrown away with every game update, so the first load after an update spent ~0.6 s re-fitting the sheep's wool; it checks itself as it replays, so it can be kept across updates) */ (matchMedia('(pointer: coarse)').matches ? 'm' : 'd'); let PFIT = {}; let REC = null;
   try { const raw = JSON.parse(localStorage.getItem(PFK) || '{}'); for (const k in raw) PFIT[k] = raw[k].map(a => ({ p0: new THREE.Vector3().fromArray(a, 0), q0: new THREE.Quaternion().fromArray(a, 3), p1: new THREE.Vector3().fromArray(a, 7), q1: new THREE.Quaternion().fromArray(a, 10), s1: new THREE.Vector3().fromArray(a, 14) })); } catch (_) { PFIT = {}; }
   const pfSave = () => { try { for (const k of Object.keys(localStorage)) if (k.startsWith('nymbo-fit-') && k !== PFK) localStorage.removeItem(k); const o = {}; for (const k in PFIT) o[k] = PFIT[k].map(r => [...r.p0.toArray(), ...r.q0.toArray(), ...r.p1.toArray(), ...r.q1.toArray(), ...r.s1.toArray()].map(v => +v.toFixed(7))); localStorage.setItem(PFK, JSON.stringify(o)); } catch (_) {} };
   const remember = fn => function (g, part, ...a) { if (!REC) return fn(g, part, ...a); const r = REC.replay ? REC.list[REC.i] : null; REC.i++;
@@ -17660,12 +17665,20 @@ const zooKind = (kind) => kind === 'cow' ? (VOLC ? 'goat' : ICEMAP ? 'seal' : DE
 // animals in the pastures (cows / goats / seals / camels, sheep, chickens, penguins): every new one, and the ones already out
 const zooOpt = k => k === 'seal' ? { dy: -.35 } : undefined; /* (Ali 20 Nov: "why is the seal floating?": it lies right down on the ice) */
 { const mk = makeAnimal; makeAnimal = function (kind) { const g = mk(kind); ZOO.dress(g, zooKind(kind), zooOpt(zooKind(kind))); return g; }; }
+/* (Ali 28 Nov, "test all maps": on the sky stage a penguin popping out of a tree was built and dressed right then, a 50 ms stop
+   plus its shaders. A few are made while loading and kept ready) */
+{ const POOL = {}, mk2 = makeAnimal; makeAnimal = function (kind) { const L = POOL[kind]; if (L && L.length) { const g = L.pop(); g.visible = true; scene.add(g); return g; } return mk2(kind); };
+  if (PENG.on) try { POOL.penguin = [mk2('penguin'), mk2('penguin'), mk2('penguin')]; for (const g of POOL.penguin) { scene.remove(g); renderer.compile(g, camera, scene); } } catch (err) { console.warn('penguins ready', err); } }
 for (let _q1061 = 0, e; _q1061 < blocks.length && ((e = blocks[_q1061]), true); _q1061++) if (e.kind === 'animal' && e.mesh) { ZOO.dress(e.mesh, zooKind(e.animal), zooOpt(zooKind(e.animal))); if (__ldDue()) await __ldY(); } // (a breather after each animal: the loading screen keeps going)
 { const al = animateLegs; animateLegs = function (e, mode, sp) { al(e, mode, sp); if (mode === 'held') ZOO.held(e); }; }
 // the dog (the Fetch power)
 { const dm = dogModel; dogModel = function () { const m = dm(); ZOO.dress(m.g, 'dog', { keep: [], angry: () => false, mood: () => 'happy' });
   const z = m.g.userData.zoo; if (z) { const o = z.o; o.held = () => false; const mv = z.ud.update; z.ud.update = dt => { mv(dt); // its head follows the old head (sniffing, biting), its tail the old tail; mid-leap legs stretch out
       const H = z.ud.head; if (H) H.rotation.x += m.head.rotation.x; }; z.dogRig = m; } return m; }; }
+/* (Ali 28 Nov, "test all maps": the first FETCH of a match built and dressed the dog right then, a 90 ms stop on the dragon stage.
+   One dog is made while loading and kept ready; a dog that leaves goes back to wait for the next FETCH) */
+{ const POOL = window.__dogPool = [], dm2 = dogModel; dogModel = function () { const m = POOL.pop(); if (m) { m.g.position.set(0, 0, 0); m.g.rotation.set(0, 0, 0); m.g.visible = true; scene.add(m.g); return m; } return dm2(); };
+  try { const m0 = dm2(); scene.remove(m0.g); POOL.push(m0); } catch (err) { console.warn('dog ready', err); } }
 // the polar bear
 { const bm = bearModel; bearModel = function () { const m = bm(); ZOO.dress(m.g, 'polarBear', { bear: m, before: () => { m.up.rotation.x = 1.32; }, after: () => { m.up.rotation.x = m.pitch; }, angry: () => false, fit: 'l' }); return m; }; }
 // monkeys in the jungle (they keep the block they're carrying up over their heads)
@@ -19585,8 +19598,16 @@ try { const tri = () => { const g = new THREE.BufferGeometry(); g.setAttribute('
 await __ldY(); /* (a breather) */
 try { const spares = []; for (const L of Object.values(SKIN.POOL || {})) for (const g of L) { scene.add(g); spares.push(g); } /* (the spare designs too) */
   const culled = [], hidden = []; scene.traverse(o => { if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; } if (!o.visible && o.userData.warm) { hidden.push(o); o.visible = true; } });
-  try { renderer.compile(scene, camera); } catch (_) {} await __progWait();
-  const rt = new THREE.WebGLRenderTarget(64, 64), sau = renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate = false; renderer.setRenderTarget(null); renderer.render(scene, camera); /* (Ali 27 Nov: drawn to the real screen, hidden behind the loading screen: drawing it into a little picture needed a whole second set of shaders the game never uses, half a second of frozen loading screen) */ renderer.shadowMap.autoUpdate = sau; /* (no shadow pass for this one: it's only to get things ready) */
+  try { renderer.compile(scene, camera); window.__hazeCompile && window.__hazeCompile(); } catch (_) {} await __progWait();
+  const rt = new THREE.WebGLRenderTarget(64, 64), sau = renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate = false; renderer.setRenderTarget(null);
+  /* (Ali 28 Nov, "test all maps": drawing everything for the first time sends every shape and picture to the graphics chip, and
+     on the bigger stages that one picture took 1-1.6 s with the loading screen frozen. It's now drawn a slice of the world at a
+     time, with the loading screen moving in between; the lights stay on throughout so the shaders are the same ones) */
+  { const kids = []; for (const o of scene.children) { if (!o.isLight && o.children.length >= 4) kids.push(...o.children); else kids.push(o); } /* (big groups are split into their parts) */
+    const vis = kids.map(o => o.visible), B = Math.max(4, Math.ceil(kids.length / 32));
+    try { for (let i = 0; i < kids.length; i += B) { for (let k = 0; k < kids.length; k++) kids[k].visible = vis[k] && (kids[k].isLight || (k >= i && k < i + B)); renderer.render(scene, camera); for (let k = 0; k < kids.length; k++) kids[k].visible = vis[k]; await __ldYield0(); } }
+    finally { for (let k = 0; k < kids.length; k++) kids[k].visible = vis[k]; } }
+  renderer.render(scene, camera); /* (Ali 27 Nov: drawn to the real screen, hidden behind the loading screen: drawing it into a little picture needed a whole second set of shaders the game never uses, half a second of frozen loading screen) */ renderer.shadowMap.autoUpdate = sau; /* (no shadow pass for this one: it's only to get things ready) */
   renderer.setRenderTarget(null);
   for (const o of hidden) o.visible = false; for (const o of culled) o.frustumCulled = true; drawScene(); for (const g of spares) scene.remove(g); rt.dispose(); } catch (err) { console.warn('warm-up', err); }
 
@@ -19765,7 +19786,7 @@ if (TESTF.has('sh0')) { renderer.shadowMap.enabled = false; sun.castShadow = fal
 try { window.__liteAll && window.__liteAll(); BATCH.sync(); window.__plainSync && window.__plainSync();
   const slotsOn = []; for (const S of BATCH.slots.values()) { if (!S.im.count) { S.im.count = 1; S.im.setMatrixAt(0, new THREE.Matrix4().makeTranslation(0, -500, 0)); S.im.instanceMatrix.needsUpdate = true; slotsOn.push(S.im); } S.im.visible = true; }
   const culled = [], hidden = []; scene.traverse(o => { if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; } if (!o.visible && (o.userData.warm || o.isSkinnedMesh || o.userData.batch)) { hidden.push(o); o.visible = true; } });
-  try { renderer.compile(scene, camera); if (window.__lodWarm) { window.__lodWarm(true); window.__farWarm && window.__farWarm(true); renderer.compile(scene, camera); window.__lodWarm(false); window.__farWarm && window.__farWarm(false); } } catch (_) {} await __progWait();
+  try { renderer.compile(scene, camera); window.__hazeCompile && window.__hazeCompile(); if (window.__lodWarm) { window.__lodWarm(true); window.__farWarm && window.__farWarm(true); renderer.compile(scene, camera); window.__lodWarm(false); window.__farWarm && window.__farWarm(false); } } catch (_) {} await __progWait();
   const rt = new THREE.WebGLRenderTarget(64, 64), sau = renderer.shadowMap.autoUpdate, snu = renderer.shadowMap.needsUpdate;
   const sa = sun.shadow.autoUpdate; renderer.setRenderTarget(null); /* (the real screen, behind the loading screen: see above) */ renderer.shadowMap.autoUpdate = true; sun.shadow.autoUpdate = true; sun.shadow.needsUpdate = true; renderer.render(scene, camera); sun.shadow.autoUpdate = sa; /* (with the shadow pass: their shadow versions get made too) */
   if (window.__lodWarm) { window.__lodWarm(true); window.__farWarm && window.__farWarm(true); renderer.render(scene, camera); window.__lodWarm(false); window.__farWarm && window.__farWarm(false); }
@@ -19780,10 +19801,15 @@ try { window.__liteAll && window.__liteAll(); BATCH.sync(); window.__plainSync &
       const comp1 = () => { for (const g of roots) try { renderer.compile(g, camera, scene); } catch (_) {} }; /* (built in the background: the chip finishes them while the intro plays) */
       const casters = []; scene.traverse(o => { if (o.isLight && o.castShadow) casters.push(o); });
       const comp = () => { comp1(); for (const l of casters) l.castShadow = false; comp1(); for (const l of casters) l.castShadow = true; }; /* (and the versions for the moments the shadows are a saved picture, with no light casting live shadows) */
-      for (const r of gs) { r.model.__sw = r.model.seeThru; r.model.seeThru = true; nbrGhost(r); }
-      comp(); if (window.__farWarm) { window.__farWarm(true); comp(); window.__farWarm(false); }
-      for (const r of gs) { r.model.seeThru = r.model.__sw; delete r.model.__sw; nbrGhost(r); }
-      comp(); if (window.__farWarm) { window.__farWarm(true); comp(); window.__farWarm(false); } } catch (err) { console.warn('ghost warm', err); } };
+      /* (Ali 28 Nov, "test all maps, make it better": done all at once this was a 170 ms stop as the intro started; now each of the
+         eight versions (see-through or not, near or far, live shadows or not) is prepared on a frame of its own) */
+      const variant = (ghost, far, noSh) => () => { if (ghost) for (const r of gs) { r.model.__sw = r.model.seeThru; r.model.seeThru = true; nbrGhost(r); }
+        if (far && window.__farWarm) window.__farWarm(true); if (noSh) for (const l of casters) l.castShadow = false;
+        try { comp1(); } finally { if (noSh) for (const l of casters) l.castShadow = true; if (far && window.__farWarm) window.__farWarm(false); if (ghost) for (const r of gs) { r.model.seeThru = r.model.__sw; delete r.model.__sw; nbrGhost(r); } } };
+      const Q = []; for (const g_ of [0, 1]) for (const f_ of [0, 1]) for (const n_ of [0, 1]) Q.push(variant(g_, f_, n_));
+      if (!window.__built) { for (const f of Q) f(); return; } /* (while loading: straight away) */
+      const step = () => { const f = Q.shift(); if (!f) return; try { f(); } catch (err) { console.warn('ghost warm', err); } requestAnimationFrame(step); }; requestAnimationFrame(step);
+      void comp; } catch (err) { console.warn('ghost warm', err); } };
   window.__ghostWarm();
   renderer.shadowMap.autoUpdate = sau; renderer.shadowMap.needsUpdate = snu; renderer.setRenderTarget(null); rt.dispose();
   try { drawScene(); } catch (_) {} /* (and once through the game's own shadow drawing, which has its own versions) */
@@ -24691,7 +24717,8 @@ if (NE.want) {
 /* (Ali 28 Nov, "less lag spikes on the loading screens, homescreens": the last parts of the stage (water, grass, the home screen and
    so on) are made after the big warm-up, so the very first picture had to build their shaders, a 100-450 ms stop as the menu
    appeared. They're asked for here, and the graphics chip builds them while the loading screen is still up) */
-try { renderer.compile(scene, camera); } catch (_) {} await __progWait(4000);
+try { renderer.compile(scene, camera); /* (stages that first draw the world into a picture of their own (the desert's heat haze) need a second set of shaders for that: asked for too) */
+  window.__hazeCompile && window.__hazeCompile(); } catch (_) {} await __progWait(4000);
 await __ldStep('end', 1, 1); window.__built = true; __ldBar(1);
 // (Ali 27 Nov, "some shadows were missing from the towers": the saved shadow picture of the still things could be taken part-way
 //  through loading, before everything was in place. It's taken again now everything is built, and again as each match starts)
