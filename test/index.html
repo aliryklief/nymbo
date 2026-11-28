@@ -8248,7 +8248,15 @@ function frame(ts) {
     const per = PACE.per(); if (avg > per * 1.2) { perf.slow = (perf.slow || 0) + 1; perf.fast = 0; } else if (avg < per * 1.06) { perf.fast = (perf.fast || 0) + 1; perf.slow = 0; } else perf.slow = perf.fast = 0;
     const apply = l => { perf.level = l; const base = Math.min(devicePixelRatio, S.maxq ? 2.25 : 1.75);
       renderer.setPixelRatio(l >= 4 ? 1 : Math.max(Math.min(devicePixelRatio, 1), base - .2 * l)); // (Ali 19 Nov: sharpness goes down in small steps first; the shadows stay on till the very last step)
-      sun.castShadow = l < 4; resize(); };
+      shOff(l >= 4); resize(); };
+    /* (Ali 28 Nov, lag report from the phone app: a 750 ms freeze, then 480, 275 and 230, the moment the game turned the live
+       shadows off to keep up (and again when it turned them back on): every shader in the game had to be rebuilt without
+       shadows. Now the sun keeps "casting", so nothing is rebuilt: its shadow picture just stops being drawn and is shown at
+       zero strength. Same saving, no freeze) */
+    function shOff(off) { const sh = sun.shadow; if (!sh.__gated) { sh.__gated = true; let au = sh.autoUpdate, nu = sh.needsUpdate;
+        Object.defineProperty(sh, 'autoUpdate', { configurable: true, get: () => au && !window.__shOffState, set: v => { au = v; } });
+        Object.defineProperty(sh, 'needsUpdate', { configurable: true, get: () => nu && !window.__shOffState, set: v => { nu = v; } }); sh.__i0 = sh.intensity; }
+      window.__shOffState = !!off; sh.intensity = off ? 0 : sh.__i0; sun.castShadow = true; }
     // (Ali 24 Nov: a blast's few busy seconds used to make the picture go blurry and then sharp again, each change a
     //  stall of its own. Now only slowness that lasts ~6 seconds lowers the sharpness, and it comes back after ~10 smooth ones)
     if (perf.slow >= 6 && perf.level < (per < 1 / 80 && avg < 1 / 50 ? (S.cap === 'max' ? 3 : 2) : 4)) { apply(perf.level + 1); perf.slow = 0; } /* (chasing 120: drop sharpness at most two notches, keep shadows; only a game that's slow even for 60 goes further) */ // (slow for ~3 seconds of play in a row)
@@ -17551,6 +17559,10 @@ const ZOO = (() => {
     mood(z, held ? 'stressed' : angry ? 'angry' : (o.mood && o.mood(r)) || 'calm');
     // glowing red when it's fuming (the old animal's body glowed; now the new one does)
     const gk = r.material && r.material.emissive && r.material.emissive.g < .05 ? r.material.emissive.r : 0; // (Ali 18 Nov: one clean, even red glow over the whole animal, breathing, with puffs of steam: it used to tint each part a different red)
+    /* (Ali 28 Nov: "all the animals were angry after I made one cow angry": every cow shared the same paint, so one cow's angry glow
+       turned them all red. The first time an animal gets angry it gets its own copy of its paint) */
+    if (gk > .02 && !z.own) { z.own = true; const mp = new Map(), f = m => { if (!m || !z.mats.includes(m)) return m; if (!mp.has(m)) { const c = m.clone(); c.onBeforeCompile = m.onBeforeCompile; c.customProgramCacheKey = m.customProgramCacheKey; c.userData = {}; mp.set(m, c); } return mp.get(m); };
+      z.M.traverse(x => { if (x.isMesh && x.material) x.material = Array.isArray(x.material) ? x.material.map(f) : f(x.material); }); z.mats = z.mats.map(m => mp.get(m) || m); }
     if (gk > .02 || z.glow > 0) { const k = gk / .55, pulse = k * (.75 + .25 * Math.sin(z.t * (4 + k * 6))); z.glow = gk > .02 ? gk : 0;
       for (const m of z.mats) { if (!m.emissive) continue; if (m.userData.e0 === undefined) { m.userData.e0 = m.emissive.getHex(); m.userData.ei0 = m.emissiveIntensity; } if (!z.glow) { m.emissive.setHex(m.userData.e0); m.emissiveIntensity = m.userData.ei0; continue; }
         m.emissive.setHex(m.userData.e0).lerp(ANGRY_C, Math.min(1, pulse * 1.2)); m.emissiveIntensity = m.userData.ei0 + (.9 - m.userData.ei0) * Math.min(1, pulse * 1.2); m.color.lerpColors(m.userData.c0 || (m.userData.c0 = m.color.clone()), ANGRY_TINT, pulse * .45); }
